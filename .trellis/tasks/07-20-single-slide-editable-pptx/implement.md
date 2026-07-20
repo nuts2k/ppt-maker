@@ -40,12 +40,12 @@
 
 ## 5. GPT Image 2 Clean Plate
 
-- [ ] 将用户确认的去字规则版本化为 clean plate 提示词模板。
-- [ ] 实现 OpenAI Image API `gpt-image-2` Provider，固定 2048x1152/high/PNG。
-- [ ] 实现 `slide clean --confirm-upload`，上传前展示源图和 mask 范围，保存请求 ID、用量、耗时、响应和哈希。
-- [ ] 支持多次尝试但不覆盖旧结果；每次尝试关联具体 mask 和提示词版本。
-- [ ] 实现尺寸、文字残留候选、mask 外差异和容器检查辅助产物。
-- [ ] 实现 `slide accept-clean`，只有当前产物哈希可被接受，上游变化后自动 stale。
+- [x] 将用户确认的去字规则版本化为 clean plate 提示词模板。
+- [x] 实现 OpenAI Image API `gpt-image-2` Provider，固定 2048x1152/high/PNG。
+- [x] 实现 `slide clean --confirm-upload`，上传前展示源图和 mask 范围，保存请求 ID、用量、耗时、响应和哈希。
+- [x] 支持多次尝试但不覆盖旧结果；每次尝试关联具体 mask 和提示词版本。
+- [x] 实现尺寸、文字残留候选、mask 外差异和容器检查辅助产物。
+- [x] 实现 `slide accept-clean`，只有当前产物哈希可被接受，上游变化后自动 stale。
 - [ ] 在有 `OPENAI_API_KEY` 且用户明确批准计费调用后运行真实合成页与真实页实验。
 
 ## 6. PPTX 合成与最终接受

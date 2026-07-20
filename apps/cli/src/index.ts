@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { resolve } from "node:path";
 import { Command } from "commander";
+import { runAcceptClean } from "./clean/accept.js";
+import { runSlideClean } from "./clean/run.js";
 import {
   assertPptxFontReady,
   collectSystemDoctorReport,
@@ -10,6 +12,7 @@ import { readImageMetadata } from "./image.js";
 import { runSlideMask } from "./mask/run.js";
 import { runVisionOcr, writeOcrResult } from "./ocr.js";
 import { createPptxProbe } from "./pptx.js";
+import { OPENAI_IMAGE_MODEL } from "./providers/openai-image.js";
 import { OPENAI_VISION_MODEL } from "./providers/openai-vision.js";
 import { runSlideAnalyze } from "./slide/analyze.js";
 import { runSlideOcr } from "./slide/ocr.js";
@@ -176,6 +179,43 @@ slide
       `掩盖像素 ${result.totalMaskedPixels}${result.reused ? "（复用）" : ""}\n`,
     );
   });
+
+slide
+  .command("clean")
+  .argument("<workspace>", "页面工作区")
+  .option("--confirm-upload", "确认上传源图与 mask 到 OpenAI gpt-image-2")
+  .description("显式调用 gpt-image-2 生成 clean plate 底板并计算离线检查产物")
+  .action(async (workspace: string, options: { confirmUpload?: boolean }) => {
+    const result = await runSlideClean({
+      workspacePath: resolve(workspace),
+      confirmUpload: options.confirmUpload === true,
+      onBeforeUpload: (notice) => {
+        process.stderr.write(
+          `即将上传到 ${OPENAI_IMAGE_MODEL}：${notice.sentAssets
+            .map((asset) => `${asset.path} (${asset.sha256})`)
+            .join(", ")}\n`,
+        );
+      },
+    });
+    process.stdout.write(`${result.cleanPath}\n`);
+  });
+
+slide
+  .command("accept-clean")
+  .argument("<workspace>", "页面工作区")
+  .option("--by <name>", "接受者标识")
+  .option("--note <text>", "接受备注")
+  .description("记录 clean plate 人工接受；上游变化后接受记录自动 stale")
+  .action(
+    async (workspace: string, options: { by?: string; note?: string }) => {
+      const result = await runAcceptClean({
+        workspacePath: resolve(workspace),
+        ...(options.by === undefined ? {} : { acceptedBy: options.by }),
+        ...(options.note === undefined ? {} : { note: options.note }),
+      });
+      process.stdout.write(`${result.acceptedPath}\n`);
+    },
+  );
 
 probe
   .command("pptx")
