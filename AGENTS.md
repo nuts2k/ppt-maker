@@ -17,6 +17,12 @@
 - 仅当任务依赖近期对话时，才将 `fork_turns` 设置为满足需求的最小值 `"1"` 或 `"2"`。
 - 不使用 `fork_turns="all"`。
 
+## 语言与沟通规范
+
+- 非必要情况下，沟通、代码注释、Git 提交消息、文档均使用**中文**。
+- 变量名、函数名、类型名等代码标识符使用英文。
+- 不发送非必要的过程性说明。
+
 ## 代码搜索规则
 
 - **代码语义探索优先 CodeGraph**：当目标是理解代码实现、调用链、影响面、符号关系、handler/service/store/router 追踪时，优先使用 CodeGraph MCP（`codegraph_context` / `codegraph_trace` / `codegraph_impact` / `codegraph_search`）。若 CodeGraph 未初始化、不可用或结果不足，再回退到 `mcp__fast-context__fast_context_search`。
