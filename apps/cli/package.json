@@ -1,0 +1,20 @@
+{
+  "name": "@ppt-maker/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "ppt-maker": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ppt-maker/core": "workspace:*",
+    "commander": "^14.0.0",
+    "image-size": "^2.0.0",
+    "pptxgenjs": "^4.0.0"
+  }
+}

@@ -1,51 +1,26 @@
-# Logging Guidelines
+# 日志与命令输出
 
-> How logging is done in this project.
+M0 尚未引入常驻服务或日志库。当前规范只约束 CLI 的标准输出、标准错误和可保存报告，禁止虚构服务端日志体系。
 
----
+## 输出通道
 
-## Overview
+- stdout：成功结果、`doctor` 人类可读报告、JSON 响应或输出文件的绝对路径。
+- stderr：顶层错误的一行中文摘要，以及外部进程失败时由运行时提供的诊断。
+- 退出码：成功为 0；命令存在失败检查或执行错误时为 1；警告本身不改变退出码。
 
-<!--
-Document your project's logging conventions here.
+## 结构化结果
 
-Questions to answer:
-- What logging library do you use?
-- What are the log levels and when to use each?
-- What should be logged?
-- What should NOT be logged (PII, secrets)?
--->
+- 需要被后续阶段读取的内容必须写成版本化 JSON，而不是解析人类文本。
+- `doctor --json` 输出完整 `DoctorReport`；OCR 输出完整 `OcrProbeResponse`。
+- 写文件时使用 UTF-8、两空格缩进并以换行结尾。
+- 输出路径由用户显式指定，CLI 可以创建其父目录，但不得写入输入目录的隐式旁路文件。
 
-(To be filled by the team)
+## 不得输出
 
----
+- 不记录输入图片的二进制或 base64。
+- 不记录 API 密钥、环境秘密或未来云 Provider 的认证头。
+- 不把完整用户文档内容复制到错误 details；只保留定位所需的路径、尺寸、状态和短消息。
 
-## Log Levels
+## 后续演进
 
-<!-- When to use each level: debug, info, warn, error -->
-
-(To be filled by the team)
-
----
-
-## Structured Logging
-
-<!-- Log format, required fields -->
-
-(To be filled by the team)
-
----
-
-## What to Log
-
-<!-- Important events to log -->
-
-(To be filled by the team)
-
----
-
-## What NOT to Log
-
-<!-- Sensitive data, PII, secrets -->
-
-(To be filled by the team)
+引入 M3 常驻任务或持久化后，再基于真实实现补充结构化事件字段、日志级别、关联 ID、轮转和脱敏规则。在此之前不要增加无消费者的日志抽象。

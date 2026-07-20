@@ -3,3 +3,17 @@
 
 # Local code navigation/index data.
 /.codegraph/
+
+# JavaScript / TypeScript dependencies and build output.
+/node_modules/
+**/node_modules/
+**/dist/
+**/coverage/
+
+# Native probe build output and generated artifacts.
+**/.build/
+/artifacts/
+
+# Local environment noise.
+.DS_Store
+*.log

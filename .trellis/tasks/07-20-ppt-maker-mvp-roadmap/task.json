@@ -18,7 +18,9 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [],
+  "children": [
+    "07-20-project-foundation"
+  ],
   "parent": null,
   "relatedFiles": [
     "ROADMAP.md",

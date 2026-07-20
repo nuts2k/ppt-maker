@@ -1,0 +1,33 @@
+{
+  "id": "project-foundation",
+  "name": "project-foundation",
+  "title": "M0 项目骨架与技术基线",
+  "description": "建立可重复工程基础并验证离线 OCR、坐标与 PPTX 技术基线",
+  "status": "in_progress",
+  "dev_type": "backend",
+  "scope": "project-foundation",
+  "package": null,
+  "priority": "P1",
+  "creator": "nuts2k",
+  "assignee": "nuts2k",
+  "createdAt": "2026-07-20",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": "07-20-ppt-maker-mvp-roadmap",
+  "relatedFiles": [
+    "package.json",
+    "pnpm-workspace.yaml",
+    "apps/cli/",
+    "packages/core/",
+    "native/macos-vision-ocr/",
+    ".trellis/spec/backend/"
+  ],
+  "notes": "M0 只建立最小骨架和技术探针，不实现完整转换流水线。",
+  "meta": {}
+}
