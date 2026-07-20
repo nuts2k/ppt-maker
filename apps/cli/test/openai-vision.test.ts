@@ -65,6 +65,36 @@ describe("OpenAI vision provider", () => {
     expect(analysis.result.image).toEqual({ width: 1600, height: 900 });
   });
 
+  it("请求携带 Structured Outputs schema", async () => {
+    let captured: VisionAnalysisRequest | undefined;
+    await analyzeSlideVision({
+      imagePath: await imagePath(),
+      imageMimeType: "image/png",
+      ocr: OCR,
+      referenceText: null,
+      parseResponse: async (request) => {
+        captured = request;
+        return {
+          id: "resp_test",
+          model: OPENAI_VISION_MODEL,
+          usage: null,
+          outputParsed: {
+            schemaVersion: SCHEMA_VERSION,
+            image: { width: 1600, height: 900 },
+            candidates: [],
+            missingTextHints: [],
+            pageRisks: [],
+          },
+          rawResponse: {},
+        };
+      },
+    });
+    expect(JSON.stringify(captured?.text.format)).toContain(
+      "slide_visual_analysis",
+    );
+    expect(captured?.text.format).toMatchObject({ type: "json_schema" });
+  });
+
   it("拒绝 refusal 或空解析结果", async () => {
     await expect(
       analyzeSlideVision({
@@ -81,6 +111,30 @@ describe("OpenAI vision provider", () => {
         }),
       }),
     ).rejects.toThrow("refusal");
+  });
+
+  it("拒绝结构不符或截断的解析结果", async () => {
+    await expect(
+      analyzeSlideVision({
+        imagePath: await imagePath(),
+        imageMimeType: "image/png",
+        ocr: OCR,
+        referenceText: null,
+        parseResponse: async () => ({
+          id: "resp_malformed",
+          model: OPENAI_VISION_MODEL,
+          usage: null,
+          // candidates 类型错误且缺少 pageRisks，模拟截断/结构不符响应。
+          outputParsed: {
+            schemaVersion: SCHEMA_VERSION,
+            image: { width: 1600, height: 900 },
+            candidates: "not-an-array",
+            missingTextHints: [],
+          },
+          rawResponse: { id: "resp_malformed" },
+        }),
+      }),
+    ).rejects.toThrow("Schema");
   });
 
   it("请求对象不包含认证字段", async () => {

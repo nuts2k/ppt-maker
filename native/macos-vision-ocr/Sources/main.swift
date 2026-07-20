@@ -11,6 +11,19 @@ private struct BoundingBoxPx: Encodable {
     let height: Double
 }
 
+private struct PointPx: Encodable {
+    let x: Double
+    let y: Double
+}
+
+/// 字符或子串级别的定位提示。仅用于下游 mask 局部分割的先验，
+/// 不是精确字形轮廓，也不承诺覆盖每一个字符。
+private struct GlyphHint: Encodable {
+    let text: String
+    /// 源图像素坐标系（左上角原点），四点顺序固定为左上、右上、右下、左下。
+    let quadPx: [PointPx]
+}
+
 private struct ImageInfo: Encodable {
     let width: Int
     let height: Int
@@ -22,6 +35,7 @@ private struct RecognizedBlock: Encodable {
     let bboxPx: BoundingBoxPx
     let confidence: Float
     let rotationDeg: Double?
+    let glyphHints: [GlyphHint]
 
     private enum CodingKeys: String, CodingKey {
         case id
@@ -29,6 +43,7 @@ private struct RecognizedBlock: Encodable {
         case bboxPx
         case confidence
         case rotationDeg
+        case glyphHints
     }
 
     func encode(to encoder: Encoder) throws {
@@ -42,6 +57,7 @@ private struct RecognizedBlock: Encodable {
         } else {
             try container.encodeNil(forKey: .rotationDeg)
         }
+        try container.encode(glyphHints, forKey: .glyphHints)
     }
 }
 
@@ -80,6 +96,48 @@ private func loadImage(path: String) throws -> CGImage {
     return image
 }
 
+/// 将 Vision 归一化坐标（左下角原点，y 向上）转换为源图像素坐标（左上角原点）。
+private func toPixel(_ point: CGPoint, width: Double, height: Double) -> PointPx {
+    let x = min(max(point.x * width, 0), width)
+    let y = min(max((1 - point.y) * height, 0), height)
+    return PointPx(x: x, y: y)
+}
+
+/// 逐字符查询 Vision 的子串框，产出定位提示。Vision 官方说明字符框仅适合 UI 场景，
+/// 不适合直接图像处理，因此这里只作为下游局部分割的先验，不承诺是精确字形。
+private func glyphHints(
+    from candidate: VNRecognizedText,
+    width: Double,
+    height: Double
+) -> [GlyphHint] {
+    let string = candidate.string
+    var hints: [GlyphHint] = []
+    var index = string.startIndex
+    while index < string.endIndex {
+        let next = string.index(after: index)
+        let fragment = String(string[index ..< next])
+        defer { index = next }
+        if fragment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            continue
+        }
+        guard let observation = try? candidate.boundingBox(for: index ..< next) else {
+            continue
+        }
+        hints.append(
+            GlyphHint(
+                text: fragment,
+                quadPx: [
+                    toPixel(observation.topLeft, width: width, height: height),
+                    toPixel(observation.topRight, width: width, height: height),
+                    toPixel(observation.bottomRight, width: width, height: height),
+                    toPixel(observation.bottomLeft, width: width, height: height),
+                ]
+            )
+        )
+    }
+    return hints
+}
+
 private func recognize(image: CGImage) throws -> [RecognizedBlock] {
     let request = VNRecognizeTextRequest()
     request.recognitionLevel = .accurate
@@ -92,32 +150,33 @@ private func recognize(image: CGImage) throws -> [RecognizedBlock] {
     let width = Double(image.width)
     let height = Double(image.height)
 
-    let observations = (request.results ?? []).compactMap { observation -> (String, Float, CGRect)? in
+    let observations = (request.results ?? []).compactMap { observation -> (VNRecognizedText, CGRect)? in
         guard let candidate = observation.topCandidates(1).first else { return nil }
-        return (candidate.string, candidate.confidence, observation.boundingBox)
+        return (candidate, observation.boundingBox)
     }
     .sorted { lhs, rhs in
-        let lhsTop = 1 - lhs.2.origin.y - lhs.2.height
-        let rhsTop = 1 - rhs.2.origin.y - rhs.2.height
+        let lhsTop = 1 - lhs.1.origin.y - lhs.1.height
+        let rhsTop = 1 - rhs.1.origin.y - rhs.1.height
         if abs(lhsTop - rhsTop) > 0.01 {
             return lhsTop < rhsTop
         }
-        return lhs.2.origin.x < rhs.2.origin.x
+        return lhs.1.origin.x < rhs.1.origin.x
     }
 
     return observations.enumerated().map { index, item in
-        let (text, confidence, box) = item
+        let (candidate, box) = item
         return RecognizedBlock(
             id: "vision-\(index)",
-            text: text,
+            text: candidate.string,
             bboxPx: BoundingBoxPx(
                 x: box.origin.x * width,
                 y: (1 - box.origin.y - box.height) * height,
                 width: box.width * width,
                 height: box.height * height
             ),
-            confidence: confidence,
-            rotationDeg: nil
+            confidence: candidate.confidence,
+            rotationDeg: nil,
+            glyphHints: glyphHints(from: candidate, width: width, height: height)
         )
     }
 }

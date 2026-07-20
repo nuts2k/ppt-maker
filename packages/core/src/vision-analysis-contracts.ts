@@ -1,18 +1,6 @@
 import { z } from "zod";
 import { SCHEMA_VERSION } from "./constants.js";
-import { BoundingBoxPxSchema } from "./contracts.js";
-
-export const PointPxSchema = z.object({
-  x: z.number().finite().nonnegative(),
-  y: z.number().finite().nonnegative(),
-});
-
-export const QuadPxSchema = z.tuple([
-  PointPxSchema,
-  PointPxSchema,
-  PointPxSchema,
-  PointPxSchema,
-]);
+import { BoundingBoxPxSchema, QuadPxSchema } from "./contracts.js";
 
 export const VisionTextCandidateSchema = z.object({
   id: z.string().min(1),
@@ -67,7 +55,5 @@ export const VisionAnalysisResultSchema = z.object({
   pageRisks: z.array(z.string().min(1)),
 });
 
-export type PointPx = z.infer<typeof PointPxSchema>;
-export type QuadPx = z.infer<typeof QuadPxSchema>;
 export type VisionTextCandidate = z.infer<typeof VisionTextCandidateSchema>;
 export type VisionAnalysisResult = z.infer<typeof VisionAnalysisResultSchema>;

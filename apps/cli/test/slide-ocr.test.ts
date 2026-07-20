@@ -1,4 +1,10 @@
-import { appendFile, chmod, mkdtemp, writeFile } from "node:fs/promises";
+import {
+  appendFile,
+  chmod,
+  mkdtemp,
+  readFile,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -29,6 +35,17 @@ async function createFakeVisionBinary(directory: string): Promise<string> {
         bboxPx: { x: 120, y: 100, width: 480, height: 80 },
         confidence: 0.98,
         rotationDeg: null,
+        glyphHints: [
+          {
+            text: "你",
+            quadPx: [
+              { x: 120, y: 100 },
+              { x: 180, y: 100 },
+              { x: 180, y: 180 },
+              { x: 120, y: 180 },
+            ],
+          },
+        ],
       },
     ],
   };
@@ -69,6 +86,28 @@ describe("slide ocr", () => {
       status: "completed",
       lastSuccessfulAttemptId: "ocr-001",
     });
+  });
+
+  it("把 Vision 字符定位提示写入 OCR 产物", async () => {
+    const parent = await mkdtemp(join(tmpdir(), "ppt-maker-slide-ocr-"));
+    const workspacePath = join(parent, "slide");
+    const binaryPath = await createFakeVisionBinary(parent);
+    await createSlideWorkspace({ imagePath: fixturePath(), workspacePath });
+
+    const { outputPath } = await runSlideOcr({ workspacePath, binaryPath });
+    const stored = JSON.parse(await readFile(outputPath, "utf8"));
+
+    expect(stored.blocks[0].glyphHints).toEqual([
+      {
+        text: "你",
+        quadPx: [
+          { x: 120, y: 100 },
+          { x: 180, y: 100 },
+          { x: 180, y: 180 },
+          { x: 120, y: 180 },
+        ],
+      },
+    ]);
   });
 
   it("失败时保留尝试记录且不伪造 OCR 资产", async () => {

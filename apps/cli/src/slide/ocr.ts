@@ -118,7 +118,7 @@ export async function runSlideOcr(
   const inputFingerprint = sha256Values([
     source.sha256,
     binaryFingerprint,
-    "apple-vision-ocr-schema:1",
+    "apple-vision-ocr-schema:2",
   ]);
   const previousState = workspace.manifest.stages.find(
     (state) => state.stage === "ocr",

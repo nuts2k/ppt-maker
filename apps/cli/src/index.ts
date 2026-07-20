@@ -12,6 +12,8 @@ import { createPptxProbe } from "./pptx.js";
 import { OPENAI_VISION_MODEL } from "./providers/openai-vision.js";
 import { runSlideAnalyze } from "./slide/analyze.js";
 import { runSlideOcr } from "./slide/ocr.js";
+import { runSlideReview } from "./slide/review.js";
+import { runSlideValidateReview } from "./slide/validate-review.js";
 import { createSlideWorkspace } from "./slide/workspace.js";
 
 const program = new Command();
@@ -125,6 +127,41 @@ slide
       },
     });
     process.stdout.write(`${result.outputPath}\n`);
+  });
+
+slide
+  .command("review")
+  .argument("<workspace>", "页面工作区")
+  .description(
+    "离线合并 OCR、视觉与参考文案候选，生成可编辑的 text-blocks.json",
+  )
+  .action(async (workspace: string) => {
+    const result = await runSlideReview({
+      workspacePath: resolve(workspace),
+    });
+    process.stdout.write(`${result.outputPath}\n`);
+  });
+
+slide
+  .command("validate-review")
+  .argument("<workspace>", "页面工作区")
+  .description("离线校验人工编辑后的 text-blocks.json，违规时非零退出")
+  .action(async (workspace: string) => {
+    const { reportPath, report } = await runSlideValidateReview({
+      workspacePath: resolve(workspace),
+    });
+    for (const violation of report.violations) {
+      process.stderr.write(
+        `[${violation.severity}] ${violation.blockId ?? "文档"} ${violation.field}：${violation.message} (${violation.code})\n`,
+      );
+    }
+    process.stdout.write(`${reportPath}\n`);
+    process.stdout.write(
+      `校验${report.status === "passed" ? "通过" : "未通过"}：错误 ${report.summary.errors}，警告 ${report.summary.warnings}\n`,
+    );
+    if (report.status !== "passed") {
+      process.exitCode = 1;
+    }
   });
 
 probe

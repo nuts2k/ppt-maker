@@ -19,13 +19,13 @@
 
 ## 3. OCR、视觉分析和复核文件
 
-- [ ] 扩展 Swift Vision 输出字符/子串 `glyphHints` 四边形，不把它描述为精确字形。
+- [x] 扩展 Swift Vision 输出字符/子串 `glyphHints` 四边形，不把它描述为精确字形。
 - [x] 将 OCR 探针升级为工作区 `slide ocr` 阶段，保留完全离线属性和 Provider 记录。
 - [x] 实现 OpenAI Responses API `gpt-5.6-sol` 视觉 Provider，固定 original/high/Structured Outputs。
 - [x] 实现 `slide analyze --confirm-upload`，记录完整请求元数据并拒绝隐式上传。
-- [ ] 合并 OCR、视觉、参考文案候选，生成 `review/text-blocks.json`，不覆盖既有人工确认值。
-- [ ] 实现 `slide validate-review`，覆盖分类、mask 参与、坐标、四边形、旋转、样式和风险接受规则。
-- [ ] 增加 Provider fake 测试、Schema 测试、候选冲突与敏感信息不落盘测试。
+- [x] 合并 OCR、视觉、参考文案候选，生成 `review/text-blocks.json`，不覆盖既有人工确认值。
+- [x] 实现 `slide validate-review`，覆盖分类、mask 参与、坐标、四边形、旋转、样式和风险接受规则。
+- [x] 增加 Provider fake 测试、Schema 测试、候选冲突与敏感信息不落盘测试。
 
 ## 4. 自动字形 Mask
 

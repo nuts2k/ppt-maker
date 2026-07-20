@@ -59,9 +59,17 @@ interface OcrProvider {
     bboxPx: { x: nonNegative; y: nonNegative; width: positive; height: positive };
     confidence: numberBetween0And1;
     rotationDeg: finiteNumber | null;
+    // Vision 子串框派生的字符/子串定位提示，缺省回填 []。
+    glyphHints: Array<{
+      text: nonEmptyString;
+      // 四点顺序固定为左上、右上、右下、左下，源图左上角原点像素系。
+      quadPx: [PointPx, PointPx, PointPx, PointPx];
+    }>;
   }>;
 }
 ```
+
+`glyphHints` 只是下游 mask 局部分割的先验，不是精确字形轮廓，也不保证覆盖每个字符；类型名、字段名和注释一律使用“提示（hints）”措辞。`glyphHints` 属于 OCR 阶段输出的一部分，OCR 输入指纹的 Schema 标记为 `apple-vision-ocr-schema:2`，输出结构演进时使 OCR 及已完成下游 stale。
 
 `TextBlock` 除 OCR 字段外，还必须表达 `classification`、`sources`、`includeInMask`、`reviewStatus` 和可空 `updatedAt`。OCR 文本和原始文案都只是候选来源；图片中实际可见内容经人工复核后才是最终值。
 

@@ -43,6 +43,7 @@ export const WorkspaceAssetSchema = z.object({
     "ocr_result",
     "analysis_result",
     "text_review",
+    "review_validation",
     "mask",
     "mask_preview",
     "mask_overlay",

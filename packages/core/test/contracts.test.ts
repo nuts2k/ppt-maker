@@ -1,55 +1,109 @@
 import { describe, expect, it } from "vitest";
 import {
   ArtifactAcceptanceSchema,
+  createInitialStageStates,
+  OcrProbeResponseSchema,
+  ProviderCallRecordSchema,
   SCHEMA_VERSION,
   SlideManifestSchema,
+  SlideWorkspaceConfigSchema,
   SlideWorkspaceManifestSchema,
-  TextBlockSchema,
+  TextReviewValidationReportSchema,
   WorkspaceRelativePathSchema,
+  WorkspaceStageAttemptSchema,
 } from "../src/index.js";
 
-describe("TextBlockSchema", () => {
-  it("接受版本化文字块", () => {
-    const result = TextBlockSchema.parse({
+describe("OcrProbeResponseSchema glyphHints", () => {
+  function response(glyphHints: unknown) {
+    return {
       schemaVersion: SCHEMA_VERSION,
-      id: "block-1",
-      text: "你好 PPT Maker",
-      bboxPx: { x: 100, y: 100, width: 500, height: 80 },
-      rotationDeg: 0,
-      confidence: 0.98,
-      classification: "uncertain",
-      sources: [
+      provider: "apple-vision",
+      image: { width: 1600, height: 900 },
+      blocks: [
         {
-          kind: "offline_ocr",
-          provider: "apple-vision",
-          text: "你好 PPT Maker",
-          confidence: 0.98,
+          id: "vision-0",
+          text: "Hi",
+          bboxPx: { x: 100, y: 100, width: 200, height: 60 },
+          confidence: 0.97,
+          rotationDeg: null,
+          glyphHints,
         },
       ],
-      includeInMask: false,
-      reviewStatus: "unreviewed",
-      updatedAt: null,
-    });
+    };
+  }
 
-    expect(result.id).toBe("block-1");
+  it("解析字符级定位提示的四点四边形", () => {
+    const parsed = OcrProbeResponseSchema.parse(
+      response([
+        {
+          text: "H",
+          quadPx: [
+            { x: 100, y: 100 },
+            { x: 130, y: 100 },
+            { x: 130, y: 160 },
+            { x: 100, y: 160 },
+          ],
+        },
+      ]),
+    );
+
+    expect(parsed.blocks[0]?.glyphHints).toHaveLength(1);
+    expect(parsed.blocks[0]?.glyphHints[0]?.quadPx[2]).toEqual({
+      x: 130,
+      y: 160,
+    });
   });
 
-  it("拒绝未知 schema 版本", () => {
-    expect(() =>
-      TextBlockSchema.parse({
-        schemaVersion: 2,
-        id: "block-1",
-        text: "text",
-        bboxPx: { x: 0, y: 0, width: 10, height: 10 },
-        rotationDeg: 0,
-        confidence: null,
-        classification: "uncertain",
-        sources: [],
-        includeInMask: false,
-        reviewStatus: "unreviewed",
-        updatedAt: null,
-      }),
-    ).toThrow();
+  it("缺省 glyphHints 时回填空数组，保持向后兼容", () => {
+    const parsed = OcrProbeResponseSchema.parse({
+      schemaVersion: SCHEMA_VERSION,
+      provider: "apple-vision",
+      image: { width: 1600, height: 900 },
+      blocks: [
+        {
+          id: "vision-0",
+          text: "Hi",
+          bboxPx: { x: 100, y: 100, width: 200, height: 60 },
+          confidence: 0.97,
+          rotationDeg: null,
+        },
+      ],
+    });
+
+    expect(parsed.blocks[0]?.glyphHints).toEqual([]);
+  });
+
+  it("拒绝点数不足或负坐标的四边形", () => {
+    expect(
+      OcrProbeResponseSchema.safeParse(
+        response([
+          {
+            text: "H",
+            quadPx: [
+              { x: 100, y: 100 },
+              { x: 130, y: 100 },
+              { x: 130, y: 160 },
+            ],
+          },
+        ]),
+      ).success,
+    ).toBe(false);
+
+    expect(
+      OcrProbeResponseSchema.safeParse(
+        response([
+          {
+            text: "H",
+            quadPx: [
+              { x: -1, y: 100 },
+              { x: 130, y: 100 },
+              { x: 130, y: 160 },
+              { x: 100, y: 160 },
+            ],
+          },
+        ]),
+      ).success,
+    ).toBe(false);
   });
 });
 
@@ -120,5 +174,145 @@ describe("M1 workspace contracts", () => {
         checklist: { noTextResidue: true },
       }).artifactAssetId,
     ).toBe("clean-001");
+  });
+});
+
+describe("核心 Schema 拒绝路径", () => {
+  it("拒绝非法阶段尝试状态", () => {
+    const result = WorkspaceStageAttemptSchema.safeParse({
+      schemaVersion: SCHEMA_VERSION,
+      id: "ocr-001",
+      stage: "ocr",
+      number: 1,
+      status: "cancelled",
+      inputFingerprint: "a".repeat(64),
+      startedAt: "2026-07-20T00:00:00.000Z",
+      endedAt: null,
+      provider: "apple-vision",
+      providerVersion: "1",
+      assetIds: [],
+      error: null,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("拒绝非 sha256 的阶段尝试输入指纹", () => {
+    const result = WorkspaceStageAttemptSchema.safeParse({
+      schemaVersion: SCHEMA_VERSION,
+      id: "ocr-001",
+      stage: "ocr",
+      number: 1,
+      status: "running",
+      inputFingerprint: "not-a-hash",
+      startedAt: "2026-07-20T00:00:00.000Z",
+      endedAt: null,
+      provider: "apple-vision",
+      providerVersion: "1",
+      assetIds: [],
+      error: null,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("拒绝非 openai 的 Provider 调用记录与非法哈希", () => {
+    const base = {
+      schemaVersion: SCHEMA_VERSION,
+      id: "provider-analyze-001",
+      stage: "analyze" as const,
+      endpoint: "/v1/responses",
+      model: "gpt-5.6-sol",
+      parameters: {},
+      promptVersion: "m1-vision-analysis-v1",
+      sentAssets: [{ path: "inputs/source.png", sha256: "a".repeat(64) }],
+      requestId: "resp_1",
+      startedAt: "2026-07-20T00:00:00.000Z",
+      endedAt: "2026-07-20T00:00:01.000Z",
+      durationMs: 1000,
+      usage: null,
+      error: null,
+      rawResponsePath: "stages/analyze/analyze-001/raw-response.json",
+      rawResponseSha256: "a".repeat(64),
+      parsedResponsePath: "stages/analyze/analyze-001/result.json",
+      parsedResponseSha256: "b".repeat(64),
+    };
+    expect(
+      ProviderCallRecordSchema.safeParse({ ...base, provider: "anthropic" })
+        .success,
+    ).toBe(false);
+    expect(
+      ProviderCallRecordSchema.safeParse({
+        ...base,
+        provider: "openai",
+        rawResponseSha256: "short",
+      }).success,
+    ).toBe(false);
+    expect(
+      ProviderCallRecordSchema.safeParse({ ...base, provider: "openai" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("拒绝偏离固定档位的工作区配置", () => {
+    const base = {
+      schemaVersion: SCHEMA_VERSION,
+      slideId: "slide-1",
+      aspectRatio: "16:9" as const,
+      fontFace: "Microsoft YaHei" as const,
+      cloudCalls: "explicit_only" as const,
+      sourceImagePath: "inputs/source.png",
+      referenceTextPath: null,
+    };
+    expect(
+      SlideWorkspaceConfigSchema.safeParse({ ...base, fontFace: "Arial" })
+        .success,
+    ).toBe(false);
+    expect(
+      SlideWorkspaceConfigSchema.safeParse({ ...base, cloudCalls: "always" })
+        .success,
+    ).toBe(false);
+    expect(SlideWorkspaceConfigSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("拒绝资产 id 重复的 manifest", () => {
+    const asset = {
+      schemaVersion: SCHEMA_VERSION,
+      id: "dup",
+      path: "inputs/source.png",
+      role: "source_image" as const,
+      sha256: "a".repeat(64),
+      byteSize: 1,
+      createdAt: "2026-07-20T00:00:00.000Z",
+      producedBy: "init" as const,
+      attemptId: "init-001",
+      image: { width: 1600, height: 900, format: "png" as const },
+    };
+    const result = SlideWorkspaceManifestSchema.safeParse({
+      schemaVersion: SCHEMA_VERSION,
+      workspaceVersion: 1,
+      slideId: "slide-1",
+      createdAt: "2026-07-20T00:00:00.000Z",
+      updatedAt: "2026-07-20T00:00:00.000Z",
+      configPath: "config.json",
+      sourceImageAssetId: "dup",
+      referenceTextAssetId: null,
+      assets: [asset, { ...asset }],
+      stages: createInitialStageStates("init-001", "a".repeat(64)),
+      attempts: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("拒绝哈希非法的复核校验报告", () => {
+    const result = TextReviewValidationReportSchema.safeParse({
+      schemaVersion: SCHEMA_VERSION,
+      slideId: "slide-1",
+      rulesVersion: "review-validation-v1",
+      status: "passed",
+      checkedAt: "2026-07-20T00:00:00.000Z",
+      documentSha256: "not-a-hash",
+      violations: [],
+      summary: { errors: 0, warnings: 0 },
+    });
+    expect(result.success).toBe(false);
   });
 });

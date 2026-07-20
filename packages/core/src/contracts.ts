@@ -8,29 +8,31 @@ export const BoundingBoxPxSchema = z.object({
   height: z.number().finite().positive(),
 });
 
+export const PointPxSchema = z.object({
+  x: z.number().finite().nonnegative(),
+  y: z.number().finite().nonnegative(),
+});
+
+// 四点顺序固定为左上、右上、右下、左下，坐标基于源图左上角原点像素系。
+export const QuadPxSchema = z.tuple([
+  PointPxSchema,
+  PointPxSchema,
+  PointPxSchema,
+  PointPxSchema,
+]);
+
+// 字符或子串级别的定位提示，来自 Vision 子串框。仅作为下游 mask 局部分割的先验，
+// 不是精确字形轮廓，也不保证覆盖每个字符。
+export const GlyphHintSchema = z.object({
+  text: z.string().min(1),
+  quadPx: QuadPxSchema,
+});
+
 export const TextBlockSourceSchema = z.object({
   kind: z.enum(["offline_ocr", "cloud_vision", "reference_text", "manual"]),
   provider: z.string().min(1),
   text: z.string().min(1),
   confidence: z.number().min(0).max(1).nullable(),
-});
-
-export const TextBlockSchema = z.object({
-  schemaVersion: z.literal(SCHEMA_VERSION),
-  id: z.string().min(1),
-  text: z.string().min(1),
-  bboxPx: BoundingBoxPxSchema,
-  rotationDeg: z.number().finite(),
-  confidence: z.number().min(0).max(1).nullable(),
-  classification: z.enum([
-    "layout_text",
-    "object_integrated_symbol",
-    "uncertain",
-  ]),
-  sources: z.array(TextBlockSourceSchema),
-  includeInMask: z.boolean(),
-  reviewStatus: z.enum(["unreviewed", "reviewed", "accepted_with_risk"]),
-  updatedAt: z.string().datetime().nullable(),
 });
 
 export const StageStatusSchema = z.enum([
@@ -82,6 +84,7 @@ export const OcrProbeResponseSchema = z.object({
       bboxPx: BoundingBoxPxSchema,
       confidence: z.number().min(0).max(1),
       rotationDeg: z.number().finite().nullable(),
+      glyphHints: z.array(GlyphHintSchema).default([]),
     }),
   ),
 });
@@ -105,7 +108,9 @@ export const DoctorReportSchema = z.object({
   }),
 });
 
-export type TextBlock = z.infer<typeof TextBlockSchema>;
+export type PointPx = z.infer<typeof PointPxSchema>;
+export type QuadPx = z.infer<typeof QuadPxSchema>;
+export type GlyphHint = z.infer<typeof GlyphHintSchema>;
 export type StageRecord = z.infer<typeof StageRecordSchema>;
 export type SlideManifest = z.infer<typeof SlideManifestSchema>;
 export type OcrProbeResponse = z.infer<typeof OcrProbeResponseSchema>;

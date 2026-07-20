@@ -4,7 +4,10 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ProviderCallRecordSchema, SCHEMA_VERSION } from "@ppt-maker/core";
 import { describe, expect, it } from "vitest";
-import { OPENAI_VISION_MODEL } from "../src/providers/openai-vision.js";
+import {
+  OPENAI_VISION_MODEL,
+  VISION_ANALYSIS_PROMPT_VERSION,
+} from "../src/providers/openai-vision.js";
 import { runSlideAnalyze } from "../src/slide/analyze.js";
 import { runSlideOcr } from "../src/slide/ocr.js";
 import {
@@ -121,6 +124,47 @@ describe("slide analyze", () => {
     ).toHaveLength(3);
   });
 
+  it("Provider 记录保存用量、请求标识与仅含哈希的发送资产", async () => {
+    const parent = await mkdtemp(join(tmpdir(), "ppt-maker-analyze-"));
+    const workspacePath = await createOcrWorkspace(parent);
+    await runSlideAnalyze({
+      workspacePath,
+      confirmUpload: true,
+      parseResponse: async () => ({
+        id: "resp_meta",
+        model: OPENAI_VISION_MODEL,
+        usage: { input_tokens: 321, output_tokens: 123 },
+        outputParsed: parsedResult(),
+        rawResponse: { id: "resp_meta", status: "completed" },
+      }),
+    });
+
+    const record = ProviderCallRecordSchema.parse(
+      JSON.parse(
+        await readFile(
+          join(workspacePath, "stages/analyze/analyze-001/provider.json"),
+          "utf8",
+        ),
+      ),
+    );
+
+    expect(record.requestId).toBe("resp_meta");
+    expect(record.model).toBe(OPENAI_VISION_MODEL);
+    expect(record.promptVersion).toBe(VISION_ANALYSIS_PROMPT_VERSION);
+    expect(record.usage).toMatchObject({
+      input_tokens: 321,
+      output_tokens: 123,
+    });
+    expect(record.durationMs).not.toBeNull();
+    expect(record.error).toBeNull();
+    // 发送资产只记录相对路径与哈希，不落盘图片内容。
+    expect(record.sentAssets.length).toBeGreaterThan(0);
+    for (const asset of record.sentAssets) {
+      expect(asset.sha256).toMatch(/^[a-f0-9]{64}$/u);
+      expect(Object.keys(asset).sort()).toEqual(["path", "sha256"]);
+    }
+  });
+
   it("调用失败时保存 Provider 错误记录且不生成分析结果", async () => {
     const parent = await mkdtemp(join(tmpdir(), "ppt-maker-analyze-"));
     const workspacePath = await createOcrWorkspace(parent);
@@ -158,5 +202,42 @@ describe("slide analyze", () => {
         (asset) => asset.role === "provider_record",
       ),
     ).toHaveLength(1);
+  });
+
+  it("错误消息内含 API Key 时落盘前脱敏为 [REDACTED]", async () => {
+    const sentinelKey = "sk-SENTINEL-error-message-0123456789abcdef";
+    const parent = await mkdtemp(join(tmpdir(), "ppt-maker-analyze-"));
+    const workspacePath = await createOcrWorkspace(parent);
+
+    const previousKey = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = sentinelKey;
+    try {
+      await expect(
+        runSlideAnalyze({
+          workspacePath,
+          confirmUpload: true,
+          parseResponse: async () => {
+            throw new Error(`上游返回 401，key=${sentinelKey} 无效`);
+          },
+        }),
+      ).rejects.toThrow();
+    } finally {
+      if (previousKey === undefined) {
+        delete process.env.OPENAI_API_KEY;
+      } else {
+        process.env.OPENAI_API_KEY = previousKey;
+      }
+    }
+
+    const providerRecord = ProviderCallRecordSchema.parse(
+      JSON.parse(
+        await readFile(
+          join(workspacePath, "stages/analyze/analyze-001/provider.json"),
+          "utf8",
+        ),
+      ),
+    );
+    expect(providerRecord.error?.message).not.toContain(sentinelKey);
+    expect(providerRecord.error?.message).toContain("[REDACTED]");
   });
 });

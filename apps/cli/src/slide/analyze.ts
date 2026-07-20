@@ -109,13 +109,25 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return Object.fromEntries(Object.entries(value));
 }
 
+// 落盘前从任意错误消息中抹去 API Key 字面量，兑现 spec §7.3「禁止写入错误 details」。
+// 空 key 不做替换，避免空串 split/join 误伤。
+function redactApiKey(message: string): string {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (apiKey === undefined || apiKey.length === 0) {
+    return message;
+  }
+  return message.split(apiKey).join("[REDACTED]");
+}
+
 function errorRecord(error: unknown): { code: string; message: string } {
   if (error instanceof FoundationError) {
-    return { code: error.code, message: error.message };
+    return { code: error.code, message: redactApiKey(error.message) };
   }
   return {
     code: "UNKNOWN_ERROR",
-    message: error instanceof Error ? error.message : String(error),
+    message: redactApiKey(
+      error instanceof Error ? error.message : String(error),
+    ),
   };
 }
 
