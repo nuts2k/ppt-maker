@@ -58,11 +58,11 @@
 
 ## 7. 增量重跑与报告
 
-- [ ] 实现所有显式阶段命令及 `slide run --from`；在上传和人工门前停止。
-- [ ] 验证文字内容/样式变更只重跑 PPTX，下游几何/分类变更重跑 mask、clean 和 PPTX。
-- [ ] 实现 `slide report`，分别报告 OCR/内容、分类、mask、clean plate、PPTX 和人工耗时。
-- [ ] 报告未通过项目不得汇总为成功，且必须区分自动检查和人工接受。
-- [ ] 更新 README，给出从 init 到最终接受的完整单页操作示例。
+- [x] 实现所有显式阶段命令及 `slide run --from`；在上传和人工门前停止。
+- [x] 验证文字内容/样式变更只重跑 PPTX，下游几何/分类变更重跑 mask、clean 和 PPTX。
+- [x] 实现 `slide report`，分别报告 OCR/内容、分类、mask、clean plate、PPTX 和人工耗时。
+- [x] 报告未通过项目不得汇总为成功，且必须区分自动检查和人工接受。
+- [x] 更新 README，给出从 init 到最终接受的完整单页操作示例。
 
 ## 8. 双样例验收
 

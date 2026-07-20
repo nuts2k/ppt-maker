@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  maskInvalidationProjection,
   mergeTextBlockCandidates,
   type OcrProbeResponse,
   SCHEMA_VERSION,
@@ -439,5 +440,131 @@ describe("mergeTextBlockCandidates", () => {
 
     expect(document.blocks).toHaveLength(1);
     expect(document.blocks[0]?.text).toBe("新候选");
+  });
+});
+
+describe("maskInvalidationProjection 变更粒度矩阵", () => {
+  function baseDocument(): TextReviewDocument {
+    return TextReviewDocumentSchema.parse({
+      schemaVersion: SCHEMA_VERSION,
+      slideId: "slide-1",
+      image: IMAGE,
+      generatedAt: NOW,
+      reviewStartedAt: NOW,
+      blocks: [
+        {
+          schemaVersion: SCHEMA_VERSION,
+          id: "block-001",
+          text: "标题文字",
+          lines: ["标题文字"],
+          bboxPx: { x: 100, y: 100, width: 400, height: 80 },
+          quadPx: null,
+          rotationDeg: 0,
+          zIndex: 0,
+          classification: "layout_text",
+          sources: [],
+          includeInMask: true,
+          reviewStatus: "reviewed",
+          riskAcceptance: null,
+          style: {
+            fontSizePx: 48,
+            fontWeight: "bold",
+            colorHex: "#ffffff",
+            horizontalAlign: "left",
+            verticalAlign: "top",
+            lineHeight: null,
+          },
+          maskParams: {
+            foregroundColors: ["#ffffff"],
+            colorTolerance: 96,
+            edgeThreshold: 0.5,
+            minComponentAreaPx: 4,
+            dilationRadiusPx: 1,
+            excludePolygons: [],
+          },
+          updatedAt: NOW,
+        },
+      ],
+      unmatchedReferenceCandidates: [],
+    });
+  }
+
+  function projectionAfter(mutate: (block: TextReviewBlock) => void): {
+    before: string;
+    after: string;
+  } {
+    const before = maskInvalidationProjection(baseDocument());
+    const document = baseDocument();
+    const block = document.blocks[0];
+    if (block !== undefined) {
+      mutate(block as unknown as TextReviewBlock);
+    }
+    return { before, after: maskInvalidationProjection(document) };
+  }
+
+  it("同一文档两次投影哈希一致（确定性）", () => {
+    expect(maskInvalidationProjection(baseDocument())).toBe(
+      maskInvalidationProjection(baseDocument()),
+    );
+  });
+
+  // 不进入 mask 投影的字段：内容/换行/样式/复核状态/zIndex 变更不改变投影 → mask 复用。
+  it("内容变更不改变投影", () => {
+    const { before, after } = projectionAfter((block) => {
+      block.text = "改后文字";
+      block.lines = ["改后文字"];
+    });
+    expect(after).toBe(before);
+  });
+
+  it("样式变更不改变投影", () => {
+    const { before, after } = projectionAfter((block) => {
+      block.style.colorHex = "#000000";
+      block.style.fontWeight = "regular";
+    });
+    expect(after).toBe(before);
+  });
+
+  it("zIndex 变更不改变投影", () => {
+    const { before, after } = projectionAfter((block) => {
+      block.zIndex = 5;
+    });
+    expect(after).toBe(before);
+  });
+
+  // 进入 mask 投影的字段：几何/旋转/分类/mask 参与/mask 参数变更改变投影 → mask 重跑。
+  it("几何变更改变投影", () => {
+    const { before, after } = projectionAfter((block) => {
+      block.bboxPx = { x: 120, y: 100, width: 400, height: 80 };
+    });
+    expect(after).not.toBe(before);
+  });
+
+  it("旋转变更改变投影", () => {
+    const { before, after } = projectionAfter((block) => {
+      block.rotationDeg = 24;
+    });
+    expect(after).not.toBe(before);
+  });
+
+  it("分类变更改变投影", () => {
+    const { before, after } = projectionAfter((block) => {
+      block.classification = "uncertain";
+    });
+    expect(after).not.toBe(before);
+  });
+
+  it("mask 参与变更改变投影", () => {
+    const { before, after } = projectionAfter((block) => {
+      block.includeInMask = false;
+    });
+    expect(after).not.toBe(before);
+  });
+
+  it("mask 参数变更改变投影", () => {
+    const { before, after } = projectionAfter((block) => {
+      block.maskParams.colorTolerance = 32;
+    });
+    expect(after).not.toBe(before);
   });
 });

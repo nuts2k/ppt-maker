@@ -16,9 +16,11 @@ import { runSlidePptx } from "./pptx/run.js";
 import { createPptxProbe } from "./pptx.js";
 import { OPENAI_IMAGE_MODEL } from "./providers/openai-image.js";
 import { OPENAI_VISION_MODEL } from "./providers/openai-vision.js";
+import { formatSlideReport, runSlideReport } from "./report/run.js";
 import { runSlideAnalyze } from "./slide/analyze.js";
 import { runSlideOcr } from "./slide/ocr.js";
 import { runSlideReview } from "./slide/review.js";
+import { runSlideRunFrom } from "./slide/run-from.js";
 import { runSlideValidateReview } from "./slide/validate-review.js";
 import { createSlideWorkspace } from "./slide/workspace.js";
 
@@ -215,6 +217,7 @@ slide
         ...(options.by === undefined ? {} : { acceptedBy: options.by }),
         ...(options.note === undefined ? {} : { note: options.note }),
       });
+      process.stderr.write(`当前自动检查：${result.autoCheckSummary}\n`);
       process.stdout.write(`${result.acceptedPath}\n`);
     },
   );
@@ -249,9 +252,52 @@ slide
         ...(options.by === undefined ? {} : { acceptedBy: options.by }),
         ...(options.note === undefined ? {} : { note: options.note }),
       });
+      process.stderr.write(`${result.autoCheckSummary}\n`);
       process.stdout.write(`${result.acceptedPath}\n`);
     },
   );
+
+slide
+  .command("report")
+  .argument("<workspace>", "页面工作区")
+  .option("--json", "输出结构化 JSON")
+  .description(
+    "分阶段汇总内容/分类/mask/clean/PPTX 自动检查、人工接受与复核耗时",
+  )
+  .action(async (workspace: string, options: { json?: boolean }) => {
+    const { reportPath, report } = await runSlideReport({
+      workspacePath: resolve(workspace),
+    });
+    process.stdout.write(
+      options.json
+        ? `${JSON.stringify(report, null, 2)}\n`
+        : `${formatSlideReport(report)}\n${reportPath}\n`,
+    );
+    if (report.overallStatus !== "complete") {
+      process.exitCode = 1;
+    }
+  });
+
+slide
+  .command("run")
+  .argument("<workspace>", "页面工作区")
+  .requiredOption("--from <stage>", "从指定阶段起执行本地阶段")
+  .description("按 DAG 顺序执行本地阶段，遇上传门和人工门停止并提示下一步")
+  .action(async (workspace: string, options: { from: string }) => {
+    const result = await runSlideRunFrom(options.from, {
+      workspacePath: resolve(workspace),
+    });
+    process.stdout.write(
+      `已执行：${result.executed.length > 0 ? result.executed.join(" → ") : "（无）"}\n`,
+    );
+    process.stdout.write(`${result.message}\n`);
+    if (result.nextCommand !== null) {
+      process.stdout.write(`下一步：${result.nextCommand}\n`);
+    }
+    if (result.gate === "error" || result.gate === "validation-failed") {
+      process.exitCode = 1;
+    }
+  });
 
 probe
   .command("pptx")

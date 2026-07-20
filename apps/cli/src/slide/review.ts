@@ -28,6 +28,20 @@ import {
 
 const REVIEW_OUTPUT_PATH = "stages/review/text-blocks.json";
 
+// review 阶段输入指纹公式的唯一来源；run --from 的 review 新鲜度检查复用它，避免口径漂移。
+export function computeReviewInputFingerprint(input: {
+  readonly ocrSha256: string;
+  readonly analysisSha256: string | null;
+  readonly referenceSha256: string | null;
+}): string {
+  return sha256Values([
+    input.ocrSha256,
+    input.analysisSha256 ?? "no-analysis",
+    input.referenceSha256 ?? "no-reference",
+    TEXT_MERGE_ALGORITHM_VERSION,
+  ]);
+}
+
 export interface RunSlideReviewOptions {
   readonly workspacePath: string;
 }
@@ -179,12 +193,11 @@ export async function runSlideReview(
     }
   }
 
-  const inputFingerprint = sha256Values([
-    ocrAsset.sha256,
-    analysisAsset?.sha256 ?? "no-analysis",
-    referenceAsset?.sha256 ?? "no-reference",
-    TEXT_MERGE_ALGORITHM_VERSION,
-  ]);
+  const inputFingerprint = computeReviewInputFingerprint({
+    ocrSha256: ocrAsset.sha256,
+    analysisSha256: analysisAsset?.sha256 ?? null,
+    referenceSha256: referenceAsset?.sha256 ?? null,
+  });
   const previousState = workspace.manifest.stages.find(
     (state) => state.stage === "review",
   );

@@ -1,8 +1,10 @@
+import { readFile } from "node:fs/promises";
 import {
   type ArtifactAcceptance,
   ArtifactAcceptanceSchema,
   assertStageDependenciesCompleted,
   FoundationError,
+  PptxCheckReportSchema,
   SCHEMA_VERSION,
   type SlideWorkspaceManifest,
   type WorkspaceAsset,
@@ -32,6 +34,7 @@ export interface RunAcceptPptxResult {
   readonly acceptedPath: string;
   readonly acceptanceId: string;
   readonly artifactSha256: string;
+  readonly autoCheckSummary: string;
 }
 
 // PowerPoint for Mac 人工检查清单（implement §8 验收条目）。
@@ -83,6 +86,25 @@ export async function runAcceptPptx(
     );
   }
   await assertWorkspaceAssetIntegrity(workspace.path, pptxAsset);
+
+  const checkAsset = workspace.manifest.assets.find(
+    (asset): asset is WorkspaceAsset =>
+      asset.role === "pptx_check" &&
+      asset.attemptId === pptxState.lastSuccessfulAttemptId,
+  );
+  let autoCheckSummary = "无自动检查记录";
+  if (checkAsset !== undefined) {
+    const check = PptxCheckReportSchema.parse(
+      JSON.parse(
+        await readFile(
+          resolveWorkspacePath(workspace.path, checkAsset.path),
+          "utf8",
+        ),
+      ),
+    );
+    const failed = check.checks.filter((item) => item.status === "failed");
+    autoCheckSummary = `自动检查 ${check.status}，形状 图${check.shapes.images}/文本框${check.shapes.textBoxes}${failed.length > 0 ? `，失败项：${failed.map((item) => item.id).join(",")}` : ""}`;
+  }
 
   const acceptanceNumber =
     workspace.manifest.attempts.filter(
@@ -168,5 +190,6 @@ export async function runAcceptPptx(
     acceptedPath,
     acceptanceId,
     artifactSha256: pptxAsset.sha256,
+    autoCheckSummary,
   };
 }

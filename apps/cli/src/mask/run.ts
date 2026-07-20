@@ -8,6 +8,7 @@ import {
   type MaskBlockCoverage,
   type MaskRecord,
   MaskRecordSchema,
+  maskInvalidationProjection,
   type OcrProbeResponse,
   OcrProbeResponseSchema,
   SCHEMA_VERSION,
@@ -321,9 +322,10 @@ export async function runSlideMask(
     ),
   );
 
+  // 只用几何/分类/mask 参与/mask 参数投影，内容/样式变更不重跑 mask（design §6）。
   const inputFingerprint = sha256Values([
     source.sha256,
-    reviewDocumentSha256,
+    maskInvalidationProjection(document),
     ocrAsset.sha256,
     MASK_ALGORITHM_VERSION,
   ]);

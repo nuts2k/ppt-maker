@@ -194,10 +194,11 @@ export async function runSlideClean(
     path: asset.path,
     sha256: asset.sha256,
   }));
+  // clean plate 只依赖 mask 输出与固定档位；mask.sha 已投影几何/mask 参数变更，
+  // 内容/样式变更（不改 mask）不重跑 clean（design §6）。reviewDocumentSha256 仅存证于记录。
   const inputFingerprint = sha256Values([
     source.sha256,
     maskAsset.sha256,
-    reviewDocumentSha256,
     OPENAI_IMAGE_MODEL,
     CLEAN_PLATE_PROMPT_VERSION,
     CLEAN_PLATE_SIZE,

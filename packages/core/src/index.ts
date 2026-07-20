@@ -6,6 +6,7 @@ export * from "./geometry.js";
 export * from "./mask-contracts.js";
 export * from "./pptx-contracts.js";
 export * from "./provider.js";
+export * from "./report-contracts.js";
 export * from "./stage-graph.js";
 export * from "./text-blocks.js";
 export * from "./vision-analysis-contracts.js";

@@ -1,7 +1,9 @@
+import { readFile } from "node:fs/promises";
 import {
   type ArtifactAcceptance,
   ArtifactAcceptanceSchema,
   assertStageDependenciesCompleted,
+  CleanAttemptRecordSchema,
   FoundationError,
   SCHEMA_VERSION,
   type SlideWorkspaceManifest,
@@ -32,6 +34,8 @@ export interface RunAcceptCleanResult {
   readonly acceptedPath: string;
   readonly acceptanceId: string;
   readonly artifactSha256: string;
+  // 供 CLI 打印，让开发者接受前对照当前自动检查数值。
+  readonly autoCheckSummary: string;
 }
 
 const DEFAULT_CHECKLIST: Record<string, boolean> = {
@@ -82,6 +86,24 @@ export async function runAcceptClean(
     );
   }
   await assertWorkspaceAssetIntegrity(workspace.path, cleanAsset);
+
+  const recordAsset = workspace.manifest.assets.find(
+    (asset): asset is WorkspaceAsset =>
+      asset.role === "clean_record" &&
+      asset.attemptId === cleanState.lastSuccessfulAttemptId,
+  );
+  let autoCheckSummary = "无自动检查记录";
+  if (recordAsset !== undefined) {
+    const record = CleanAttemptRecordSchema.parse(
+      JSON.parse(
+        await readFile(
+          resolveWorkspacePath(workspace.path, recordAsset.path),
+          "utf8",
+        ),
+      ),
+    );
+    autoCheckSummary = `尺寸${record.checks.size.ok ? "OK" : "异常"}，文字残留 ${record.checks.textResidue.residualForegroundPixels} 像素，mask 外改动率 ${record.checks.outsideMaskDiff.changedRatio.toFixed(4)}，容器环改动率 ${record.checks.containerRingDiff.changedRatio.toFixed(4)}`;
+  }
 
   const acceptanceNumber =
     workspace.manifest.attempts.filter(
@@ -168,5 +190,6 @@ export async function runAcceptClean(
     acceptedPath,
     acceptanceId,
     artifactSha256: cleanAsset.sha256,
+    autoCheckSummary,
   };
 }

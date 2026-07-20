@@ -420,6 +420,25 @@ export function mergeTextBlockCandidates(
   };
 }
 
+// mask 失效投影：只提取影响 mask 像素输出的字段（design §6：几何/分类/mask 参与/mask 参数）。
+// 内容/样式/复核状态/换行/zIndex 等变更不改变该投影，故不重跑 mask，只重跑 PPTX。
+export function maskInvalidationProjection(
+  document: TextReviewDocument,
+): string {
+  const blocks = document.blocks
+    .map((block) => ({
+      id: block.id,
+      bboxPx: block.bboxPx,
+      quadPx: block.quadPx,
+      rotationDeg: block.rotationDeg,
+      classification: block.classification,
+      includeInMask: block.includeInMask,
+      maskParams: block.maskParams,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+  return JSON.stringify({ image: document.image, blocks });
+}
+
 // review 校验规则版本，写入校验报告，规则演进时可与旧报告区分。
 export const REVIEW_VALIDATION_RULES_VERSION = "review-validation-v1";
 
