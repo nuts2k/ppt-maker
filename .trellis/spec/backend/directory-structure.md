@@ -4,7 +4,7 @@
 
 ```text
 apps/
-  cli/                       # 命令解析、环境诊断和技术探针编排
+  cli/                       # 命令解析、环境诊断、技术探针和单页阶段编排
 packages/
   core/                      # 平台无关领域 Schema、常量、坐标和错误类型
 native/
@@ -19,6 +19,7 @@ pnpm workspace 只包含 `apps/*` 和 `packages/*`。Swift 适配器由根脚本
 
 - `packages/core` 不依赖 CLI、PptxGenJS、Swift 或 `open-design/`，也不暴露 Apple Vision 类型。
 - `apps/cli` 负责解析参数、调用核心校验、启动外部适配器及写出显式目标文件，不承载长期领域状态。
+- `apps/cli/src/slide/` 负责 M1 页面工作区的文件编排；阶段图、Schema 和失效规则仍由 `packages/core` 持有。
 - `native/macos-vision-ocr` 只负责调用系统 Vision 并输出版本化 JSON；它不得修改输入图片或联网。
 - 测试放在各包的 `test/`，并通过公开或明确导出的函数验证稳定行为。
 - 生成物只进入已忽略的 `dist/`、`native/**/.build/` 和 `artifacts/`。

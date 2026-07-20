@@ -2,26 +2,27 @@
 
 ## 1. 规划与技术准备
 
-- [ ] 完成 PRD convergence pass，用户评审 `prd.md`、`design.md` 和本计划。
-- [ ] 激活任务后加载 `trellis-before-dev`、backend spec、跨层和代码复用指南。
-- [ ] 固定 OpenAI SDK 版本，验证 Node.js 24 下 Responses API Structured Outputs 与 Image API `gpt-image-2` 编辑请求的类型契约。
+- [x] 完成 PRD convergence pass，用户评审 `prd.md`、`design.md` 和本计划。
+- [x] 激活任务后加载 `trellis-before-dev`、backend spec、跨层和代码复用指南。
+- [x] 固定 OpenAI SDK 版本，并验证 Node.js 24 下 Responses API 图片输入、Structured Outputs 与 Zod 解析类型契约。
+- [ ] 验证 Node.js 24 下 Image API `gpt-image-2` 编辑请求的类型契约。
 - [ ] 准备仓库内合成复杂 fixture；实现开始后由开发者提供一张真实复杂页面的本地路径。
 - [ ] 保持 `open-design/` 在 workspace、格式化、构建、测试和所有写入范围之外。
 
 ## 2. M1 工作区和阶段图
 
-- [ ] 定义页面工作区、资产记录、阶段尝试、Provider 调用、人工接受和报告 Schema。
-- [ ] 实现 SHA-256、原子写入、相对路径约束和派生产物完整性校验。
-- [ ] 实现阶段 DAG、输入指纹、复用、stale 标记和下游失效规则。
-- [ ] 实现 `slide init` 与工作区加载/校验。
-- [ ] 为阶段图、哈希失效、错误恢复和路径安全增加测试。
+- [x] 定义页面工作区、资产记录、阶段尝试、Provider 调用、人工接受和报告 Schema。
+- [x] 实现 SHA-256、原子写入、相对路径约束和派生产物完整性校验。
+- [x] 实现阶段 DAG、输入指纹、复用、stale 标记和下游失效规则。
+- [x] 实现 `slide init` 与工作区加载/校验。
+- [x] 为阶段图、哈希失效、错误恢复和路径安全增加测试。
 
 ## 3. OCR、视觉分析和复核文件
 
 - [ ] 扩展 Swift Vision 输出字符/子串 `glyphHints` 四边形，不把它描述为精确字形。
-- [ ] 将 OCR 探针升级为工作区 `slide ocr` 阶段，保留完全离线属性和 Provider 记录。
-- [ ] 实现 OpenAI Responses API `gpt-5.6-sol` 视觉 Provider，固定 original/high/Structured Outputs。
-- [ ] 实现 `slide analyze --confirm-upload`，记录完整请求元数据并拒绝隐式上传。
+- [x] 将 OCR 探针升级为工作区 `slide ocr` 阶段，保留完全离线属性和 Provider 记录。
+- [x] 实现 OpenAI Responses API `gpt-5.6-sol` 视觉 Provider，固定 original/high/Structured Outputs。
+- [x] 实现 `slide analyze --confirm-upload`，记录完整请求元数据并拒绝隐式上传。
 - [ ] 合并 OCR、视觉、参考文案候选，生成 `review/text-blocks.json`，不覆盖既有人工确认值。
 - [ ] 实现 `slide validate-review`，覆盖分类、mask 参与、坐标、四边形、旋转、样式和风险接受规则。
 - [ ] 增加 Provider fake 测试、Schema 测试、候选冲突与敏感信息不落盘测试。

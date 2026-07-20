@@ -9,13 +9,14 @@ import {
 import { readImageMetadata } from "./image.js";
 import { runVisionOcr, writeOcrResult } from "./ocr.js";
 import { createPptxProbe } from "./pptx.js";
+import { OPENAI_VISION_MODEL } from "./providers/openai-vision.js";
+import { runSlideAnalyze } from "./slide/analyze.js";
+import { runSlideOcr } from "./slide/ocr.js";
+import { createSlideWorkspace } from "./slide/workspace.js";
 
 const program = new Command();
 
-program
-  .name("ppt-maker")
-  .description("PPT Maker M0 技术基线 CLI")
-  .version("0.0.0");
+program.name("ppt-maker").description("PPT Maker CLI").version("0.0.0");
 
 program
   .command("doctor")
@@ -64,6 +65,67 @@ probe
       process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     },
   );
+
+const slide = program
+  .command("slide")
+  .description("运行单页可编辑 PPTX 流水线");
+
+slide
+  .command("init")
+  .argument("<image>", "16:9 PNG/JPEG 源图")
+  .requiredOption("--workspace <path>", "新建页面工作区")
+  .option("--reference <path>", "可选原始文案参考")
+  .description("校验输入并创建可重放的单页工作区")
+  .action(
+    async (
+      image: string,
+      options: { workspace: string; reference?: string },
+    ) => {
+      const workspace = await createSlideWorkspace({
+        imagePath: resolve(image),
+        workspacePath: resolve(options.workspace),
+        ...(options.reference === undefined
+          ? {}
+          : { referencePath: resolve(options.reference) }),
+      });
+      process.stdout.write(`${workspace.path}\n`);
+    },
+  );
+
+slide
+  .command("ocr")
+  .argument("<workspace>", "页面工作区")
+  .option("--binary <path>", "Apple Vision 二进制路径")
+  .description("在工作区中运行离线 Apple Vision OCR")
+  .action(async (workspace: string, options: { binary?: string }) => {
+    const result = await runSlideOcr({
+      workspacePath: resolve(workspace),
+      ...(options.binary === undefined
+        ? {}
+        : { binaryPath: resolve(options.binary) }),
+    });
+    process.stdout.write(`${result.outputPath}\n`);
+  });
+
+slide
+  .command("analyze")
+  .argument("<workspace>", "页面工作区")
+  .option("--confirm-upload", "确认上传完整页面到 OpenAI")
+  .description("显式调用 OpenAI 视觉理解补充旋转、漏字与分类候选")
+  .action(async (workspace: string, options: { confirmUpload?: boolean }) => {
+    const result = await runSlideAnalyze({
+      workspacePath: resolve(workspace),
+      confirmUpload: options.confirmUpload === true,
+      onBeforeUpload: (notice) => {
+        process.stderr.write(
+          `即将上传到 ${OPENAI_VISION_MODEL}：${notice.sentAssets
+            .map((asset) => `${asset.path} (${asset.sha256})`)
+            .join(", ")}\n`,
+        );
+      },
+    });
+    process.stdout.write(`${result.outputPath}\n`);
+  });
 
 probe
   .command("pptx")

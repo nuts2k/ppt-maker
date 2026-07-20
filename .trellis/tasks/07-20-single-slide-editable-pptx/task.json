@@ -3,7 +3,7 @@
   "name": "single-slide-editable-pptx",
   "title": "M1 单页图片转可编辑 PPTX 原型",
   "description": "跑通单张 16:9 页面图片经离线 OCR、显式云端视觉分析、自动 mask、GPT Image 2 clean plate 和原生文本框合成的可复核 PPTX 链路",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

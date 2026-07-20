@@ -3,3 +3,6 @@ export * from "./contracts.js";
 export * from "./errors.js";
 export * from "./geometry.js";
 export * from "./provider.js";
+export * from "./stage-graph.js";
+export * from "./vision-analysis-contracts.js";
+export * from "./workspace-contracts.js";

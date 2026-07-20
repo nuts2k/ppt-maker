@@ -20,6 +20,12 @@ throw new FoundationError(
 | `INVALID_ASPECT_RATIO` | 输入超出固定 16:9 容差 |
 | `INVALID_BOUNDING_BOX` | bbox 非正尺寸或越出源图 |
 | `INVALID_PROVIDER_RESPONSE` | Provider 输出无法满足版本化契约 |
+| `INVALID_WORKSPACE` | 工作区 manifest/config 缺失、引用不一致或格式非法 |
+| `WORKSPACE_ALREADY_EXISTS` | `slide init` 目标路径已存在，禁止覆盖 |
+| `INVALID_STAGE_STATE` | 阶段前置条件未完成或失效操作非法 |
+| `ASSET_INTEGRITY_MISMATCH` | 工作区资产字节数或 SHA-256 与 manifest 不一致 |
+| `PATH_OUTSIDE_WORKSPACE` | 持久化相对路径试图离开页面工作区 |
+| `UPLOAD_CONFIRMATION_REQUIRED` | 云端阶段缺少显式 `--confirm-upload` 门禁 |
 | `MISSING_DEPENDENCY` | 字体、原生二进制等必要依赖缺失 |
 | `UNSUPPORTED_ENVIRONMENT` | 当前平台不受支持 |
 
@@ -34,6 +40,9 @@ throw new FoundationError(
 - `probe image` 对合法但非 16:9 的图片输出元数据后设置退出码 1。
 - `probe ocr` 和 `probe pptx` 在执行外部工作前先校验 16:9。
 - PPTX 默认字体预检失败时阻止生成；仅显式 `--font-face` 允许人工覆盖。
+- `slide init` 不得替换已有目录，即使目标目录为空；POSIX `rename` 可以替换空目录，因此重命名前必须再次检查目标不存在。
+- 阶段失败写入新的 attempt 记录，不覆盖先前成功资产；派生产物使用独立 attempt 路径。
+- `slide analyze` 在读取 API Key 或创建 attempt 前先检查上传确认；缺少确认时不得访问网络。
 
 ## 常见错误
 

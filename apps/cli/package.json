@@ -15,6 +15,7 @@
     "@ppt-maker/core": "workspace:*",
     "commander": "^14.0.0",
     "image-size": "^2.0.0",
+    "openai": "6.48.0",
     "pptxgenjs": "^4.0.0"
   }
 }

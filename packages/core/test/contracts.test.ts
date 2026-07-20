@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  ArtifactAcceptanceSchema,
   SCHEMA_VERSION,
   SlideManifestSchema,
+  SlideWorkspaceManifestSchema,
   TextBlockSchema,
+  WorkspaceRelativePathSchema,
 } from "../src/index.js";
 
 describe("TextBlockSchema", () => {
@@ -66,5 +69,56 @@ describe("SlideManifestSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("M1 workspace contracts", () => {
+  it("拒绝离开工作区的持久化路径", () => {
+    expect(WorkspaceRelativePathSchema.safeParse("../secret.txt").success).toBe(
+      false,
+    );
+    expect(
+      WorkspaceRelativePathSchema.safeParse("/tmp/secret.txt").success,
+    ).toBe(false);
+    expect(
+      WorkspaceRelativePathSchema.safeParse("C:\\temp\\secret.txt").success,
+    ).toBe(false);
+    expect(
+      WorkspaceRelativePathSchema.safeParse("stages/ocr/result.json").success,
+    ).toBe(true);
+  });
+
+  it("拒绝缺少完整阶段集合的 manifest", () => {
+    const result = SlideWorkspaceManifestSchema.safeParse({
+      schemaVersion: SCHEMA_VERSION,
+      workspaceVersion: 1,
+      slideId: "slide-1",
+      createdAt: "2026-07-20T00:00:00.000Z",
+      updatedAt: "2026-07-20T00:00:00.000Z",
+      configPath: "config.json",
+      sourceImageAssetId: "source",
+      referenceTextAssetId: null,
+      assets: [],
+      stages: [],
+      attempts: [],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("人工接受记录绑定产物哈希和上游指纹", () => {
+    expect(
+      ArtifactAcceptanceSchema.parse({
+        schemaVersion: SCHEMA_VERSION,
+        id: "accept-clean-001",
+        stage: "accept-clean",
+        artifactAssetId: "clean-001",
+        artifactSha256: "a".repeat(64),
+        upstreamFingerprint: "b".repeat(64),
+        acceptedAt: "2026-07-20T00:00:00.000Z",
+        acceptedBy: "developer",
+        note: "容器和符号完整",
+        checklist: { noTextResidue: true },
+      }).artifactAssetId,
+    ).toBe("clean-001");
   });
 });
