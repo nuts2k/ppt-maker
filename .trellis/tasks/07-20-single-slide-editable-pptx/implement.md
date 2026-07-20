@@ -50,11 +50,11 @@
 
 ## 6. PPTX 合成与最终接受
 
-- [ ] 将 M0 PPTX 探针升级为正式单页合成器，读取已接受 clean plate 和已复核文字块。
-- [ ] 实现微软雅黑预检、文本框位置/尺寸/旋转/换行/样式/zIndex 映射。
-- [ ] 拒绝未复核目标文字、未接受 clean plate、stale 接受记录和对象内符号文本框。
-- [ ] 自动检查 PPTX ZIP/XML、16:9、文字内容、字体声明和形状数量。
-- [ ] 实现 `slide accept-pptx`，记录 PowerPoint for Mac 人工检查结果和产物哈希。
+- [x] 将 M0 PPTX 探针升级为正式单页合成器，读取已接受 clean plate 和已复核文字块。
+- [x] 实现微软雅黑预检、文本框位置/尺寸/旋转/换行/样式/zIndex 映射。
+- [x] 拒绝未复核目标文字、未接受 clean plate、stale 接受记录和对象内符号文本框。
+- [x] 自动检查 PPTX ZIP/XML、16:9、文字内容、字体声明和形状数量。
+- [x] 实现 `slide accept-pptx`，记录 PowerPoint for Mac 人工检查结果和产物哈希。
 
 ## 7. 增量重跑与报告
 

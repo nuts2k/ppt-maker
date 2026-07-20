@@ -11,6 +11,8 @@ import {
 import { readImageMetadata } from "./image.js";
 import { runSlideMask } from "./mask/run.js";
 import { runVisionOcr, writeOcrResult } from "./ocr.js";
+import { runAcceptPptx } from "./pptx/accept.js";
+import { runSlidePptx } from "./pptx/run.js";
 import { createPptxProbe } from "./pptx.js";
 import { OPENAI_IMAGE_MODEL } from "./providers/openai-image.js";
 import { OPENAI_VISION_MODEL } from "./providers/openai-vision.js";
@@ -209,6 +211,40 @@ slide
   .action(
     async (workspace: string, options: { by?: string; note?: string }) => {
       const result = await runAcceptClean({
+        workspacePath: resolve(workspace),
+        ...(options.by === undefined ? {} : { acceptedBy: options.by }),
+        ...(options.note === undefined ? {} : { note: options.note }),
+      });
+      process.stdout.write(`${result.acceptedPath}\n`);
+    },
+  );
+
+slide
+  .command("pptx")
+  .argument("<workspace>", "页面工作区")
+  .option("--font-face <name>", "显式备用字体，仅在微软雅黑不可用时记录偏离")
+  .description("用已接受 clean plate 与已复核文字块合成 16:9 可编辑 PPTX")
+  .action(async (workspace: string, options: { fontFace?: string }) => {
+    const result = await runSlidePptx({
+      workspacePath: resolve(workspace),
+      ...(options.fontFace === undefined ? {} : { fontFace: options.fontFace }),
+    });
+    process.stdout.write(`${result.pptxPath}\n`);
+    process.stdout.write(`自动检查：${result.checkStatus}\n`);
+    if (result.checkStatus !== "passed") {
+      process.exitCode = 1;
+    }
+  });
+
+slide
+  .command("accept-pptx")
+  .argument("<workspace>", "页面工作区")
+  .option("--by <name>", "接受者标识")
+  .option("--note <text>", "PowerPoint for Mac 人工检查备注")
+  .description("记录 PowerPoint for Mac 人工检查结果；上游变化后自动 stale")
+  .action(
+    async (workspace: string, options: { by?: string; note?: string }) => {
+      const result = await runAcceptPptx({
         workspacePath: resolve(workspace),
         ...(options.by === undefined ? {} : { acceptedBy: options.by }),
         ...(options.note === undefined ? {} : { note: options.note }),
