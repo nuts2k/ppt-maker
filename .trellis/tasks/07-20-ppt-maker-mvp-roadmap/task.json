@@ -1,0 +1,29 @@
+{
+  "id": "ppt-maker-mvp-roadmap",
+  "name": "ppt-maker-mvp-roadmap",
+  "title": "PPT Maker MVP 路线图",
+  "description": "建立 PPT Maker 从核心转换验证到本地桌面工具的正式路线图",
+  "status": "in_progress",
+  "dev_type": "docs",
+  "scope": "product-roadmap",
+  "package": null,
+  "priority": "P1",
+  "creator": "nuts2k",
+  "assignee": "nuts2k",
+  "createdAt": "2026-07-20",
+  "completedAt": null,
+  "branch": null,
+  "base_branch": "main",
+  "worktree_path": null,
+  "commit": null,
+  "pr_url": null,
+  "subtasks": [],
+  "children": [],
+  "parent": null,
+  "relatedFiles": [
+    "ROADMAP.md",
+    "PPT-APP-OPEN-DESIGN-ANALYSIS.md"
+  ],
+  "notes": "父任务保存整体路线图与里程碑映射；具体产品代码由子任务承担。",
+  "meta": {}
+}
