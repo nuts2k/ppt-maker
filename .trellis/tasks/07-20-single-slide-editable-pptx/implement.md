@@ -5,8 +5,9 @@
 - [x] 完成 PRD convergence pass，用户评审 `prd.md`、`design.md` 和本计划。
 - [x] 激活任务后加载 `trellis-before-dev`、backend spec、跨层和代码复用指南。
 - [x] 固定 OpenAI SDK 版本，并验证 Node.js 24 下 Responses API 图片输入、Structured Outputs 与 Zod 解析类型契约。
-- [ ] 验证 Node.js 24 下 Image API `gpt-image-2` 编辑请求的类型契约。
-- [ ] 准备仓库内合成复杂 fixture；实现开始后由开发者提供一张真实复杂页面的本地路径。
+- [x] 验证 Node.js 24 下 Image API `gpt-image-2` 编辑请求的类型契约。
+- [x] 准备仓库内合成复杂 fixture（`fixtures/single-slide/complex-page.png`，`pnpm fixture:single-slide` 可复现）。
+- [ ] 实现开始后由开发者提供一张真实复杂页面的本地路径。
 - [ ] 保持 `open-design/` 在 workspace、格式化、构建、测试和所有写入范围之外。
 
 ## 2. M1 工作区和阶段图
@@ -29,7 +30,7 @@
 
 ## 4. 自动字形 Mask
 
-- [ ] 选择并验证 Node 24/macOS arm64 可重复的本地图像像素处理依赖；记录选择依据和回滚方案。
+- [x] 选择并验证 Node 24/macOS arm64 可重复的本地图像像素处理依赖；记录选择依据和回滚方案。
 - [ ] 实现基于复核区域、字符提示、颜色/亮度、边缘和连通域的局部分割。
 - [ ] 实现每块结构化参数、排除多边形、受控膨胀和旋转区域处理。
 - [ ] 生成 API alpha mask、黑白预览、源图叠加预览和覆盖率统计。
