@@ -1,3 +1,5 @@
 # External reference repository; keep it out of this project's Git history.
 /open-design/
 
+# Local code navigation/index data.
+/.codegraph/
