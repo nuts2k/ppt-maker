@@ -188,9 +188,11 @@ output: Structured Outputs
 
 mask 是系统派生产物，禁止人工编辑或替换。
 
+`glyphHints` 由 mask 阶段直接从 OCR 阶段产物读取（按 bbox 重叠匹配到复核块），复核文件（§7.2）不携带逐字符 quad——逐字符 quad 是机器先验，不进入人工编辑面。OCR 产物哈希纳入 mask 输入指纹，OCR 重跑使 hints 变化并让 mask 及下游失效。`glyphHints` 只作软先验（外扩容错后收窄搜索范围），为空或缺失时降级到 `quadPx`/bbox，永不作为精确字形轮廓直接输出。
+
 候选算法：
 
-1. 使用复核后的 `quadPx` 和 Vision `glyphHints` 限制局部搜索范围。
+1. 使用复核后的 `quadPx` 和从 OCR 产物读取的 Vision `glyphHints` 限制局部搜索范围。
 2. 根据源图像素、云端颜色候选和结构化参数计算颜色/亮度距离与边缘响应。
 3. 生成连通域，剔除越出允许区域、面积异常或落入排除多边形的区域。
 4. 对描边、阴影和抗锯齿边缘执行受控膨胀，合并所有 `includeInMask` 文字块。

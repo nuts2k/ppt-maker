@@ -23,7 +23,11 @@ function fixturePath(): string {
 
 // fake OCR：以合成 fixture 已知的字形坐标发块，避免在测试里依赖真实 Vision 二进制。
 // 顺序（阅读序）：标题（白，同色结构）→ 核心指标（白，容器内）→ 限时优惠（金，旋转艺术字）。
-async function createFakeVisionBinary(directory: string): Promise<string> {
+// 可选给标题块注入 glyphHints（软先验），默认空以保持基线降级路径。
+async function createFakeVisionBinary(
+  directory: string,
+  titleGlyphHints: unknown[] = [],
+): Promise<string> {
   const path = join(directory, "fake-vision");
   const response = {
     schemaVersion: 1,
@@ -36,7 +40,7 @@ async function createFakeVisionBinary(directory: string): Promise<string> {
         bboxPx: { x: 95, y: 44, width: 307, height: 54 },
         confidence: 0.95,
         rotationDeg: null,
-        glyphHints: [],
+        glyphHints: titleGlyphHints,
       },
       {
         id: "card",
@@ -93,10 +97,14 @@ async function editReviewBlocks(
 
 async function prepareReviewed(options: {
   reviewStatus: "reviewed" | "unreviewed";
+  titleGlyphHints?: unknown[];
 }): Promise<{ workspacePath: string; reviewPath: string }> {
   const parent = await mkdtemp(join(tmpdir(), "ppt-maker-slide-mask-"));
   const workspacePath = join(parent, "slide");
-  const binaryPath = await createFakeVisionBinary(parent);
+  const binaryPath = await createFakeVisionBinary(
+    parent,
+    options.titleGlyphHints ?? [],
+  );
   await createSlideWorkspace({ imagePath: fixturePath(), workspacePath });
   await runSlideOcr({ workspacePath, binaryPath });
   const review = await runSlideReview({ workspacePath });
@@ -140,6 +148,65 @@ describe("slide mask", () => {
 
     const second = await runSlideMask({ workspacePath });
     expect(second.reused).toBe(true);
+  });
+
+  it("OCR 的 glyphHints 作软先验收窄标题范围，空 hints 块不受影响", async () => {
+    // 仅覆盖标题左半的 hint 四边形，收窄该块搜索范围；其余块 hints 为空走降级。
+    const titleHint = [
+      {
+        text: "全",
+        quadPx: [
+          { x: 95, y: 44 },
+          { x: 240, y: 44 },
+          { x: 240, y: 98 },
+          { x: 95, y: 98 },
+        ],
+      },
+    ];
+    const { workspacePath } = await prepareReviewed({
+      reviewStatus: "reviewed",
+      titleGlyphHints: titleHint,
+    });
+    await runSlideValidateReview({ workspacePath });
+    await runSlideMask({ workspacePath });
+
+    const record = JSON.parse(
+      await readFile(join(workspacePath, "stages/mask/record.json"), "utf8"),
+    );
+    const byId = Object.fromEntries(
+      record.blocks.map((block: { blockId: string }) => [block.blockId, block]),
+    );
+    // 标题被 hint 收窄，掩盖像素明显少于无 hint 基线 11196。
+    expect(byId["block-001"].maskedPixels).toBe(5475);
+    expect(byId["block-001"].maskedPixels).toBeLessThan(11196);
+    // 空 hints 的块与基线完全一致（降级路径）。
+    expect(byId["block-002"].maskedPixels).toBe(2708);
+    expect(byId["block-003"].maskedPixels).toBe(8040);
+    expect(record.totals.maskedPixels).toBe(16223);
+  });
+
+  it("validate-review status=failed 时 mask 被拒", async () => {
+    const { workspacePath, reviewPath } = await prepareReviewed({
+      reviewStatus: "reviewed",
+    });
+    const document = JSON.parse(
+      await readFile(reviewPath, "utf8"),
+    ) as TextReviewDocument;
+    const first = document.blocks[0];
+    if (first !== undefined) {
+      first.rotationDeg = 720; // 触发 ROTATION_OUT_OF_RANGE 错误
+    }
+    await writeFile(
+      reviewPath,
+      `${JSON.stringify(document, null, 2)}\n`,
+      "utf8",
+    );
+    const { report } = await runSlideValidateReview({ workspacePath });
+    expect(report.status).toBe("failed");
+
+    await expect(runSlideMask({ workspacePath })).rejects.toThrow(
+      "validate-review 未通过",
+    );
   });
 
   it("未通过 validate-review 时拒绝运行 mask", async () => {

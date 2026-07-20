@@ -4,7 +4,7 @@ import { SCHEMA_VERSION } from "./constants.js";
 const SHA256 = /^[a-f0-9]{64}$/;
 
 // 自动 mask 算法版本，纳入 mask 阶段输入指纹；算法演进使 mask 及下游失效。
-export const MASK_ALGORITHM_VERSION = "glyph-mask-v1";
+export const MASK_ALGORITHM_VERSION = "glyph-mask-v2";
 
 export const MaskBlockCoverageSchema = z.object({
   blockId: z.string().min(1),

@@ -30,7 +30,15 @@ export interface BlockSegmentationParams {
   readonly minComponentAreaPx: number;
   readonly dilationRadiusPx: number;
   readonly excludePolygons: readonly (readonly Point[])[];
+  // Vision 逐字符/子串定位提示（来自 OCR 产物）。作为软先验收窄搜索范围，
+  // 每个 quad 适度外扩以容忍不精确；为空或缺省时不影响分割（降级到 bbox/quad）。
+  readonly glyphHintQuads?: readonly (readonly Point[])[];
+  readonly glyphHintMarginPx?: number;
 }
+
+// glyphHints 是 UI 级提示而非精确字形，默认外扩 6px 容忍定位误差。
+// 该常量属于算法语义：改动时必须同步 bump MASK_ALGORITHM_VERSION 以失效下游产物。
+export const DEFAULT_GLYPH_HINT_MARGIN_PX = 6;
 
 export function hexToRgb(hex: string): [number, number, number] {
   const match = /^#([a-f0-9]{6})$/iu.exec(hex.trim());
@@ -392,13 +400,61 @@ function applyExcludePolygons(
   }
 }
 
-// 单块字形分割：区域限制 → 颜色分割(+边缘增强) → 排除多边形 → 连通域过滤 → 受控膨胀 → 再排除。
+// glyphHints 软先验：并集栅格化各提示四边形并外扩容错，作为收窄搜索范围的区域。
+export function rasterizeGlyphHintRegion(
+  width: number,
+  height: number,
+  quads: readonly (readonly Point[])[],
+  marginPx: number,
+): Uint8Array {
+  const base = new Uint8Array(width * height);
+  for (const quad of quads) {
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    for (const point of quad) {
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
+    }
+    const x0 = Math.max(0, Math.floor(minX));
+    const y0 = Math.max(0, Math.floor(minY));
+    const x1 = Math.min(width, Math.ceil(maxX));
+    const y1 = Math.min(height, Math.ceil(maxY));
+    for (let y = y0; y < y1; y += 1) {
+      for (let x = x0; x < x1; x += 1) {
+        if (pointInPolygon(x + 0.5, y + 0.5, quad)) {
+          base[y * width + x] = 1;
+        }
+      }
+    }
+  }
+  return dilate(base, width, height, marginPx);
+}
+
+// 单块字形分割：区域限制(+glyphHints 软先验) → 颜色分割(+边缘增强) → 排除多边形 → 连通域过滤 → 受控膨胀 → 再排除。
 export function segmentBlockGlyphs(
   image: RgbaImage,
   params: BlockSegmentationParams,
 ): Uint8Array {
   const { width, height } = image;
   const region = rasterizeRegion(width, height, params.bbox, params.quad);
+  // glyphHints 存在时用其外扩并集与区域求交，收窄到字形附近；为空则区域不变（降级路径）。
+  if (params.glyphHintQuads !== undefined && params.glyphHintQuads.length > 0) {
+    const hintRegion = rasterizeGlyphHintRegion(
+      width,
+      height,
+      params.glyphHintQuads,
+      params.glyphHintMarginPx ?? DEFAULT_GLYPH_HINT_MARGIN_PX,
+    );
+    for (let i = 0; i < region.length; i += 1) {
+      if (hintRegion[i] === 0) {
+        region[i] = 0;
+      }
+    }
+  }
   const colorMask = buildForegroundMask(
     image,
     region,

@@ -208,6 +208,68 @@ describe("segmentBlockGlyphs", () => {
   });
 });
 
+describe("segmentBlockGlyphs glyphHints 软先验", () => {
+  function twoBlobImage(): RgbaImage {
+    const pixels: number[][][] = Array.from({ length: 12 }, () =>
+      Array.from({ length: 12 }, () => [0, 0, 0]),
+    );
+    const paint = (x: number, y: number): void => {
+      const row = pixels[y];
+      if (row !== undefined) {
+        row[x] = [255, 255, 255];
+      }
+    };
+    for (let y = 2; y <= 3; y += 1) {
+      for (let x = 2; x <= 3; x += 1) {
+        paint(x, y);
+      }
+    }
+    for (let y = 8; y <= 9; y += 1) {
+      for (let x = 8; x <= 9; x += 1) {
+        paint(x, y);
+      }
+    }
+    return makeImage(pixels);
+  }
+
+  const baseParams = {
+    bbox: { x: 0, y: 0, width: 12, height: 12 },
+    quad: null,
+    foregroundColors: [[255, 255, 255]] as [number, number, number][],
+    colorTolerance: 30,
+    edgeThreshold: 1,
+    minComponentAreaPx: 1,
+    dilationRadiusPx: 0,
+    excludePolygons: [],
+  };
+
+  it("空 glyphHints 时覆盖全部前景（降级路径）", () => {
+    const mask = segmentBlockGlyphs(twoBlobImage(), {
+      ...baseParams,
+      glyphHintQuads: [],
+    });
+    expect(countMasked(mask)).toBe(8);
+  });
+
+  it("hint 四边形只覆盖第一个 blob 时收窄到该 blob", () => {
+    const mask = segmentBlockGlyphs(twoBlobImage(), {
+      ...baseParams,
+      glyphHintQuads: [
+        [
+          { x: 1, y: 1 },
+          { x: 4, y: 1 },
+          { x: 4, y: 4 },
+          { x: 1, y: 4 },
+        ],
+      ],
+      glyphHintMarginPx: 0,
+    });
+    expect(countMasked(mask)).toBe(4);
+    expect(mask[2 * 12 + 2]).toBe(1);
+    expect(mask[8 * 12 + 8]).toBe(0);
+  });
+});
+
 describe("hexToRgb", () => {
   it("解析 6 位十六进制颜色", () => {
     expect(hexToRgb("#ffffff")).toEqual([255, 255, 255]);

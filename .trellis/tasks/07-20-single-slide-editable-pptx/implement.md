@@ -32,7 +32,7 @@
 
 - [x] 选择并验证 Node 24/macOS arm64 可重复的本地图像像素处理依赖；记录选择依据和回滚方案。
 - [x] 实现基于复核区域（bbox/quad）、颜色/亮度、边缘和连通域的局部分割。
-- [ ] 将 Vision `glyphHints`（字符提示）作为局部搜索范围先验/前景加权接入 mask：design §9 要求，但 §7.2 复核文件未携带 glyphHints、合并阶段已丢弃，mask 仅从复核文件读参数，故需跨层补齐（扩展 review 契约携带或 mask 侧按 bbox 重读 OCR）；作为软先验收窄/加权，不作精确轮廓。合成 fixture（空 glyphHints）暂不受影响，精度已达标。
+- [x] 将 Vision `glyphHints`（字符提示）作为局部搜索范围先验/前景加权接入 mask：design §9 要求，但 §7.2 复核文件未携带 glyphHints、合并阶段已丢弃，mask 仅从复核文件读参数，故需跨层补齐（扩展 review 契约携带或 mask 侧按 bbox 重读 OCR）；作为软先验收窄/加权，不作精确轮廓。合成 fixture（空 glyphHints）暂不受影响，精度已达标。
 - [x] 实现每块结构化参数、排除多边形、受控膨胀和旋转区域处理。
 - [x] 生成 API alpha mask、黑白预览、源图叠加预览和覆盖率统计。
 - [x] 保存算法版本、全部输入哈希和输出哈希；检测人工修改/替换 mask 并阻止下游。

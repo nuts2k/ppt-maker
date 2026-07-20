@@ -8,6 +8,8 @@ import {
   type MaskBlockCoverage,
   type MaskRecord,
   MaskRecordSchema,
+  type OcrProbeResponse,
+  OcrProbeResponseSchema,
   SCHEMA_VERSION,
   type SlideWorkspaceManifest,
   type TextReviewBlock,
@@ -170,7 +172,40 @@ function assertMaskBlocksConfirmed(blocks: readonly TextReviewBlock[]): void {
   }
 }
 
-function toSegmentationParams(block: TextReviewBlock): BlockSegmentationParams {
+function bboxesOverlap(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): boolean {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
+}
+
+// 软先验来源：从 OCR 产物按 bbox 重叠把逐字符/子串 glyphHints 匹配到复核块。
+// review 合并可能把多个 OCR 块并入一个复核块，故收集所有重叠 OCR 块的提示四边形。
+function collectGlyphHintQuads(
+  ocr: OcrProbeResponse,
+  block: TextReviewBlock,
+): Point[][] {
+  const quads: Point[][] = [];
+  for (const ocrBlock of ocr.blocks) {
+    if (!bboxesOverlap(ocrBlock.bboxPx, block.bboxPx)) {
+      continue;
+    }
+    for (const hint of ocrBlock.glyphHints) {
+      quads.push(hint.quadPx.map((point) => ({ x: point.x, y: point.y })));
+    }
+  }
+  return quads;
+}
+
+function toSegmentationParams(
+  block: TextReviewBlock,
+  glyphHintQuads: readonly (readonly Point[])[],
+): BlockSegmentationParams {
   return {
     bbox: block.bboxPx,
     quad: block.quadPx as readonly Point[] | null,
@@ -181,6 +216,7 @@ function toSegmentationParams(block: TextReviewBlock): BlockSegmentationParams {
     dilationRadiusPx: block.maskParams.dilationRadiusPx,
     excludePolygons: block.maskParams
       .excludePolygons as readonly (readonly Point[])[],
+    glyphHintQuads,
   };
 }
 
@@ -260,9 +296,35 @@ export async function runSlideMask(
   const maskBlocks = document.blocks.filter((block) => block.includeInMask);
   assertMaskBlocksConfirmed(maskBlocks);
 
+  // glyphHints 软先验来自 OCR 产物（复核文件不携带逐字符 quad）。
+  const ocrState = workspace.manifest.stages.find(
+    (state) => state.stage === "ocr",
+  );
+  const ocrAsset = workspace.manifest.assets.find(
+    (asset) =>
+      asset.role === "ocr_result" &&
+      asset.attemptId === ocrState?.lastSuccessfulAttemptId,
+  );
+  if (ocrAsset === undefined) {
+    throw new FoundationError(
+      "INVALID_STAGE_STATE",
+      "运行 mask 前必须存在成功的 OCR 产物",
+    );
+  }
+  await assertWorkspaceAssetIntegrity(workspace.path, ocrAsset);
+  const ocr = OcrProbeResponseSchema.parse(
+    JSON.parse(
+      await readFile(
+        resolveWorkspacePath(workspace.path, ocrAsset.path),
+        "utf8",
+      ),
+    ),
+  );
+
   const inputFingerprint = sha256Values([
     source.sha256,
     reviewDocumentSha256,
+    ocrAsset.sha256,
     MASK_ALGORITHM_VERSION,
   ]);
   const previousState = workspace.manifest.stages.find(
@@ -366,7 +428,10 @@ export async function runSlideMask(
     const fullMask = new Uint8Array(width * height);
     const coverage: MaskBlockCoverage[] = [];
     for (const block of maskBlocks) {
-      const blockMask = segmentBlockGlyphs(image, toSegmentationParams(block));
+      const blockMask = segmentBlockGlyphs(
+        image,
+        toSegmentationParams(block, collectGlyphHintQuads(ocr, block)),
+      );
       const maskedPixels = countMasked(blockMask);
       unionInto(fullMask, blockMask);
       const bboxAreaPx = Math.round(block.bboxPx.width * block.bboxPx.height);
