@@ -31,3 +31,24 @@
 - **精确定位**：已知文件名、函数名、字符串、错误消息、日志文本、测试名时，用 Grep / Glob；已知文件路径时直接读取。
 - **Worktree 注意**：CodeGraph 索引按 worktree 独立维护；若 CodeGraph 提示当前 worktree 未初始化或索引来自其他 worktree，先在当前 worktree 根目录运行 `codegraph init -i`。
 - 并行读取多个文件时无需等待，直接同时发起所有 Read 调用。
+<!-- TRELLIS:START -->
+# Trellis Instructions
+
+These instructions are for AI assistants working in this project.
+
+This project is managed by Trellis. The working knowledge you need lives under `.trellis/`:
+
+- `.trellis/workflow.md` — development phases, when to create tasks, skill routing
+- `.trellis/spec/` — package- and layer-scoped coding guidelines (read before writing code in a given layer)
+- `.trellis/workspace/` — per-developer journals and session traces
+- `.trellis/tasks/` — active and archived tasks (PRDs, research, jsonl context)
+
+If a Trellis command is available on your platform (e.g. `/trellis:finish-work`, `/trellis:continue`), prefer it over manual steps. Not every platform exposes every command.
+
+If you're using Codex or another agent-capable tool, additional project-scoped helpers may live in:
+- `.agents/skills/` — reusable Trellis skills
+- `.codex/agents/` — optional custom subagents
+
+Managed by Trellis. Edits outside this block are preserved; edits inside may be overwritten by a future `trellis update`.
+
+<!-- TRELLIS:END -->
