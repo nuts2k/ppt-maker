@@ -7,6 +7,7 @@ import {
   formatDoctorReport,
 } from "./doctor.js";
 import { readImageMetadata } from "./image.js";
+import { runSlideMask } from "./mask/run.js";
 import { runVisionOcr, writeOcrResult } from "./ocr.js";
 import { createPptxProbe } from "./pptx.js";
 import { OPENAI_VISION_MODEL } from "./providers/openai-vision.js";
@@ -162,6 +163,18 @@ slide
     if (report.status !== "passed") {
       process.exitCode = 1;
     }
+  });
+
+slide
+  .command("mask")
+  .argument("<workspace>", "页面工作区")
+  .description("离线从已复核结构化文字块派生字形 mask、预览与覆盖率统计")
+  .action(async (workspace: string) => {
+    const result = await runSlideMask({ workspacePath: resolve(workspace) });
+    process.stdout.write(`${result.maskPath}\n`);
+    process.stdout.write(
+      `掩盖像素 ${result.totalMaskedPixels}${result.reused ? "（复用）" : ""}\n`,
+    );
   });
 
 probe

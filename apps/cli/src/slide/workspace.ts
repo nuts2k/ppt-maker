@@ -72,6 +72,22 @@ export async function writeJsonAtomic(
   }
 }
 
+export async function writeBufferAtomic(
+  path: string,
+  buffer: Buffer,
+): Promise<void> {
+  const target = resolve(path);
+  await mkdir(dirname(target), { recursive: true });
+  const temporary = `${target}.tmp-${randomUUID()}`;
+  try {
+    await writeFile(temporary, buffer, { flag: "wx" });
+    await rename(temporary, target);
+  } catch (error) {
+    await rm(temporary, { force: true }).catch(() => undefined);
+    throw error;
+  }
+}
+
 export function resolveWorkspacePath(
   workspacePath: string,
   relativePath: string,

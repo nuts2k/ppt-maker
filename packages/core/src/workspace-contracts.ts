@@ -47,6 +47,7 @@ export const WorkspaceAssetSchema = z.object({
     "mask",
     "mask_preview",
     "mask_overlay",
+    "mask_record",
     "clean_plate",
     "pptx",
     "report",
