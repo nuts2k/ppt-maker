@@ -66,7 +66,7 @@
 
 ## 8. 双样例验收
 
-- [ ] 合成 fixture 自动化覆盖中文、英文/混排、容器内文字、对象内符号、旋转文字或艺术字。
+- [x] 合成 fixture 自动化覆盖中文、英文/混排、容器内文字、对象内符号、旋转文字或艺术字。
 - [ ] 使用开发者实际生成的一张复杂页面完成完整本地工作区流程。
 - [ ] 人工确认真实页全部目标文字进入原生层，clean plate 无目标文字残留，容器和对象内符号未破坏。
 - [ ] 在 PowerPoint for Mac 检查 16:9、可打开、可编辑、微软雅黑和文本框排版。
@@ -74,12 +74,12 @@
 
 ## 9. 质量、规范与收尾
 
-- [ ] 运行 `pnpm format:check`、`pnpm typecheck`、`pnpm test`、`pnpm build`。
+- [x] 运行 `pnpm format:check`、`pnpm typecheck`、`pnpm test`、`pnpm build`。
 - [ ] 在 Node.js 24 环境运行相关测试和 CLI 基本链路。
-- [ ] 运行任务 validate、`git diff --check`，确认 `open-design/` 无改动。
-- [ ] 运行 `trellis-check`，复核跨层 Schema、阶段数据流、外部调用门禁、敏感信息和测试覆盖。
-- [ ] 使用真实实现更新 backend contracts、错误、质量和日志规范；不填写数据库/frontend 虚构约定。
-- [ ] 更新 `ROADMAP.md` M1 状态、技术结论和是否进入 M2 的条件。
+- [x] 运行任务 validate、`git diff --check`，确认 `open-design/` 无改动。
+- [x] 运行 `trellis-check`，复核跨层 Schema、阶段数据流、外部调用门禁、敏感信息和测试覆盖。
+- [x] 使用真实实现更新 backend contracts、错误、质量和日志规范；不填写数据库/frontend 虚构约定。
+- [x] 更新 `ROADMAP.md` M1 状态、技术结论和是否进入 M2 的条件。
 - [ ] 用户确认结果后提交并归档 M1；父路线图继续保留。
 
 ## 10. 计划验证命令

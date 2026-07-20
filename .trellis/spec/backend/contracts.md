@@ -221,3 +221,41 @@ await writeWorkspaceManifest(workspacePath, completedManifest);
 ```
 
 每次尝试使用独立路径，文件原子替换，manifest 只在产物落盘并校验后登记。
+
+## 场景：M1 复核、mask、clean plate、PPTX 与报告阶段
+
+### 1. Scope / Trigger
+
+- 触发条件：新增或修改 review 合并、validate-review、mask、clean plate、PPTX 合成、accept 门、report 或 `run --from` 编排的契约、指纹规则、上传门禁或人工接受语义。
+- 已由真实代码验证：候选合并生成 `stages/review/text-blocks.json`、validate-review 结构化校验、自动字形 mask（sharp + TS 像素算法）、gpt-image-2 clean plate、微软雅黑 PPTX 合成 + ZIP/XML 自动检查、两道人工接受门、分阶段报告、增量重跑编排。
+
+### 2. Contracts
+
+阶段 DAG（`workspace-contracts.ts` 的 `SlideStage`）：`init → ocr → analyze(可选) → review → mask → clean → accept-clean → pptx → accept-pptx → report`。全部可持久化对象为 `schemaVersion: 1`。
+
+- `TextReviewDocument`（`stages/review/text-blocks.json`，唯一人工编辑入口）：`slideId`、`image`、`generatedAt`、`reviewStartedAt`（首次候选时间，跨重跑保留）、`blocks[]`、`unmatchedReferenceCandidates[]`。每个 `TextReviewBlock`：`id`、`text`、`lines`、`bboxPx`、`quadPx|null`、`rotationDeg`、`zIndex`、`classification(layout_text|object_integrated_symbol|uncertain)`、`sources[]`（offline_ocr/cloud_vision/reference_text/manual 带来源）、`includeInMask`、`reviewStatus(unreviewed|reviewed|accepted_with_risk)`、`riskAcceptance|null`、`style`、`maskParams`、`updatedAt`。合并保留既有人工确认值，不静默覆盖；逐字符 `glyphHints` 不进复核文件，由 mask 从 OCR 产物按 bbox 重叠读取作软先验。
+- `TextReviewValidationReport`（`stages/review/validation.json`）：`status(passed|failed)`、`documentSha256`（被校验文件哈希，作为 mask 消费门禁锚点）、`violations[]`（blockId/field/code/message/severity）。规则：`includeInMask` 仅 `layout_text`；bbox/quad 界内且四边形非退化；旋转 `≤±360`；字号 `≤` 页高；`accepted_with_risk` 须有 riskAcceptance 且状态一致；未复核版式文字为 warning（硬门禁在 mask/pptx）。
+- `MaskRecord`（`stages/mask/record.json`）：`algorithmVersion`、`sourceImageSha256`、`reviewDocumentSha256`、`reviewValidationSha256`、`maskedBlockIds[]`、`blocks[]`（每块 maskedPixels/bboxAreaPx/coverageRatio）、`totals`、`outputs`（mask/preview/overlay 哈希）。mask PNG 为源图同尺寸带 alpha，字形 `alpha=0`（gpt-image-2 待编辑语义）。
+- `CleanAttemptRecord`（`stages/clean/clean-NNN/record.json`）：`model=gpt-image-2`、`promptVersion`、`size=2048x1152`、`quality=high`、`outputFormat=png`、`sourceImageSha256`、`maskSha256`、`resultSha256`、`requestId`、`usage`、`durationMs`、`checks`（size/textResidue/outsideMaskDiff/containerRingDiff 离线数值）。多次尝试序号递增不覆盖。
+- `PptxCheckReport`（`stages/pptx/check.json`）：`status`、`layout`（cx/cy EMU + 16:9）、`shapes`（images=1 背景图 + textBoxes=N）、`fontDeclared`、`missingTexts[]`。仅 `layout_text` 且已复核块生成微软雅黑文本框；坐标经 `pixelsToPptxBox` 换算，字号 `fontSizePx × 72 × 13.333 / 源图宽` 磅。
+- `ArtifactAcceptance`（`stages/clean/accepted.json`、`stages/pptx/accepted.json`）：`stage(accept-clean|accept-pptx)`、`artifactAssetId`、`artifactSha256`、`upstreamFingerprint`（对应阶段完成指纹）、`acceptedBy`、`note`、`checklist`。
+- `SlideReport`（`stages/report/report.json`）：`overallStatus(complete|incomplete)`、`discovery`、`classification`、`mask`、`autoChecks`（自动检查）与 `manualAcceptance`（人工接受）分区、`providerCalls`、`manualReview`（reviewStartedAt→pptx 接受耗时）。任何未通过/未完成不汇总为 complete。
+
+### 3. 指纹与失效投影（design §6）
+
+- mask 输入指纹 = `sha(源图sha + maskInvalidationProjection(review) + OCR产物sha + 算法版本)`。投影只含每块 `{id,bboxPx,quadPx,rotationDeg,classification,includeInMask,maskParams}`；`text/lines/style/reviewStatus/riskAcceptance/zIndex/updatedAt` 不在投影内。
+- clean 输入指纹 = `sha(源图sha + maskAsset.sha256 + 模型 + 提示词版本 + size/quality/format)`，不含整复核文件哈希。
+- pptx 输入指纹含整复核文件哈希（内容/样式影响文本层）。
+- 结论：仅改文字内容/样式 → mask/clean 复用、只重跑 PPTX；改几何/分类/mask 参与/mask 参数 → mask 及全部下游重跑。上游阶段以变化后指纹重跑时经 `invalidateStageAndDownstream` 把下游（含 accept 记录对应阶段）标记 stale。
+
+### 4. 上传门禁、脱敏与人工门
+
+- `analyze` 与 `clean` 必须显式 `--confirm-upload`，否则 `UPLOAD_CONFIRMATION_REQUIRED`；上传前打印将发送的文件与 sha。`run --from` 绝不自动触发上传阶段，遇上传/人工门停止并提示下一条命令。
+- API Key 只从 `OPENAI_API_KEY` 读取；Provider 记录与错误 details 落盘前用 `split(apiKey).join("[REDACTED]")` 脱敏；sentAssets 只存 `{path, sha256}` 不落图片内容。
+- mask 消费门禁：存在 `review_validation` 且 `status=passed` 且 `documentSha256 == 当前 text-blocks.json 实时 sha`；`includeInMask` 块须已复核（硬门禁）。
+- clean 上游门禁：mask/mask_record 资产完整性。pptx 上游门禁：accept-clean completed（非 stale）+ 接受记录 `artifactSha256 == 当前 clean_plate 资产 sha`；所有 layout_text 已复核；微软雅黑预检（缺失且无 `--font-face` 备用则 `MISSING_DEPENDENCY` 阻断，显式备用记录偏离）。
+- accept 哈希锚定：`accept-clean/accept-pptx` 只接受当前尝试产物（校验完整性），`upstreamFingerprint` 绑定阶段完成指纹；上游重跑经 DAG 使接受阶段 stale，accepted.json 不删除但状态失效。
+
+### 5. Tests Required
+
+- 候选合并/冲突/人工值保留、validate-review 各类违规、mask 算法（CCL/膨胀/多边形/分割）与像素统计基线、glyphHints 软先验收窄、clean fake editor 全链路（成功/失败/脱敏/多尝试/完整性拒绝）、pptx 门禁与自动检查、accept 哈希锚定与 stale、变更粒度失效矩阵、run --from 停止点、report 汇总规则、合成 fixture 五类元素端到端覆盖。
