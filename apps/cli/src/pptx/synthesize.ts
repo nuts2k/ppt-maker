@@ -61,7 +61,7 @@ function resolveFontSizePt(block: TextReviewBlock, imageWidth: number): number {
   }
   // 缺省时按 bbox 高度与行数估算单行字高。
   const lineCount = Math.max(1, block.lines.length);
-  const estimatedPx = (block.bboxPx.height / lineCount) * 0.8;
+  const estimatedPx = (block.bboxPx.height / lineCount) * 0.65;
   return fontSizePtFromPx(estimatedPx, imageWidth);
 }
 

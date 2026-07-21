@@ -38,7 +38,7 @@ const REVIEW_OUTPUT_PATH = "stages/review/text-blocks.json";
 const PPTX_PATH = "stages/pptx/slide.pptx";
 const CHECK_PATH = "stages/pptx/check.json";
 const RECORD_PATH = "stages/pptx/record.json";
-export const PPTX_SYNTHESIS_VERSION = "pptx-synthesis-v2";
+export const PPTX_SYNTHESIS_VERSION = "pptx-synthesis-v6";
 
 export interface RunSlidePptxOptions {
   readonly workspacePath: string;
