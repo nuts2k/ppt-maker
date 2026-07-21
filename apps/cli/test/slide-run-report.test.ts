@@ -17,7 +17,11 @@ import { runSlideOcr } from "../src/slide/ocr.js";
 import { runSlideReview } from "../src/slide/review.js";
 import { runSlideRunFrom } from "../src/slide/run-from.js";
 import { runSlideValidateReview } from "../src/slide/validate-review.js";
-import { createSlideWorkspace } from "../src/slide/workspace.js";
+import {
+  createSlideWorkspace,
+  loadSlideWorkspace,
+  writeWorkspaceManifest,
+} from "../src/slide/workspace.js";
 
 const FONT = "Microsoft YaHei";
 
@@ -115,6 +119,25 @@ function fakeEditor(cleanBuffer: Buffer): OpenAiImageEditor {
   });
 }
 
+async function markAssistReviewCompleted(workspacePath: string): Promise<void> {
+  const workspace = await loadSlideWorkspace(workspacePath);
+  const stages = workspace.manifest.stages.map((s) =>
+    s.stage === "assist-review"
+      ? {
+          ...s,
+          status: "completed" as const,
+          lastSuccessfulAttemptId: "assist-review-skip",
+          completedInputFingerprint:
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        }
+      : s,
+  );
+  await writeWorkspaceManifest(workspace.path, {
+    ...workspace.manifest,
+    stages,
+  });
+}
+
 async function editReview(
   reviewPath: string,
   mutate: (doc: TextReviewDocument) => void,
@@ -147,6 +170,7 @@ async function setupReviewedMask(): Promise<{
       title.maskParams.colorTolerance = 96;
     }
   });
+  await markAssistReviewCompleted(workspacePath);
   await runSlideValidateReview({ workspacePath });
   await runSlideMask({ workspacePath });
   return { workspacePath, reviewPath: review.outputPath };
@@ -237,8 +261,8 @@ describe("slide run --from 停止点", () => {
 
     const result = await runSlideRunFrom("review", { workspacePath });
     expect(result.executed).toContain("review");
-    expect(result.stoppedAt).toBe("review");
-    expect(result.gate).toBe("human-edit");
+    expect(result.stoppedAt).toBe("assist-review");
+    expect(result.gate).toBe("api");
   });
 
   it("run --from validate-review 执行 mask 后停在上传门", async () => {

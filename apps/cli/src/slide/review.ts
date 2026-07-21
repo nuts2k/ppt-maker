@@ -10,8 +10,6 @@ import {
   TEXT_MERGE_ALGORITHM_VERSION,
   type TextReviewDocument,
   TextReviewDocumentSchema,
-  type VisionAnalysisResult,
-  VisionAnalysisResultSchema,
   type WorkspaceAsset,
   type WorkspaceStageAttempt,
   type WorkspaceStageState,
@@ -31,12 +29,10 @@ const REVIEW_OUTPUT_PATH = "stages/review/text-blocks.json";
 // review 阶段输入指纹公式的唯一来源；run --from 的 review 新鲜度检查复用它，避免口径漂移。
 export function computeReviewInputFingerprint(input: {
   readonly ocrSha256: string;
-  readonly analysisSha256: string | null;
   readonly referenceSha256: string | null;
 }): string {
   return sha256Values([
     input.ocrSha256,
-    input.analysisSha256 ?? "no-analysis",
     input.referenceSha256 ?? "no-reference",
     TEXT_MERGE_ALGORITHM_VERSION,
   ]);
@@ -87,8 +83,8 @@ function findAssetById(
 
 function findLastSuccessfulAsset(
   manifest: SlideWorkspaceManifest,
-  stage: "ocr" | "analyze" | "review",
-  role: "ocr_result" | "analysis_result" | "text_review",
+  stage: "ocr" | "review",
+  role: "ocr_result" | "text_review",
 ): WorkspaceAsset | null {
   const state = manifest.stages.find((candidate) => candidate.stage === stage);
   if (state === undefined || state.lastSuccessfulAttemptId === null) {
@@ -167,18 +163,6 @@ export async function runSlideReview(
       "运行 review 前必须存在成功且有效的 OCR 产物",
     );
   }
-  // 云端 analyze 是显式可选阶段；已成功产出时并入候选，否则仅用离线 OCR。
-  const analyzeState = workspace.manifest.stages.find(
-    (state) => state.stage === "analyze",
-  );
-  const analysisAsset =
-    analyzeState?.status === "completed"
-      ? findLastSuccessfulAsset(
-          workspace.manifest,
-          "analyze",
-          "analysis_result",
-        )
-      : null;
   const referenceAsset =
     workspace.manifest.referenceTextAssetId === null
       ? null
@@ -187,7 +171,7 @@ export async function runSlideReview(
           workspace.manifest.referenceTextAssetId,
         );
 
-  for (const asset of [ocrAsset, analysisAsset, referenceAsset]) {
+  for (const asset of [ocrAsset, referenceAsset]) {
     if (asset !== null) {
       await assertWorkspaceAssetIntegrity(workspace.path, asset);
     }
@@ -195,7 +179,6 @@ export async function runSlideReview(
 
   const inputFingerprint = computeReviewInputFingerprint({
     ocrSha256: ocrAsset.sha256,
-    analysisSha256: analysisAsset?.sha256 ?? null,
     referenceSha256: referenceAsset?.sha256 ?? null,
   });
   const previousState = workspace.manifest.stages.find(
@@ -230,17 +213,6 @@ export async function runSlideReview(
       ),
     ),
   );
-  let analysis: VisionAnalysisResult | null = null;
-  if (analysisAsset !== null) {
-    analysis = VisionAnalysisResultSchema.parse(
-      JSON.parse(
-        await readFile(
-          resolveWorkspacePath(workspace.path, analysisAsset.path),
-          "utf8",
-        ),
-      ),
-    );
-  }
   const referenceText =
     referenceAsset === null
       ? null
@@ -312,7 +284,7 @@ export async function runSlideReview(
         height: ocr.image.height,
       },
       ocr,
-      analysis,
+      analysis: null,
       referenceText,
       existing,
       now: startedAt,

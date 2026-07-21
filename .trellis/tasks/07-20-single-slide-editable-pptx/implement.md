@@ -18,15 +18,21 @@
 - [x] 实现 `slide init` 与工作区加载/校验。
 - [x] 为阶段图、哈希失效、错误恢复和路径安全增加测试。
 
-## 3. OCR、视觉分析和复核文件
+## 3. OCR、AI 辅助复核和复核文件
 
 - [x] 扩展 Swift Vision 输出字符/子串 `glyphHints` 四边形，不把它描述为精确字形。
 - [x] 将 OCR 探针升级为工作区 `slide ocr` 阶段，保留完全离线属性和 Provider 记录。
-- [x] 实现 OpenAI Responses API `gpt-5.6-sol` 视觉 Provider，固定 original/high/Structured Outputs。
-- [x] 实现 `slide analyze --confirm-upload`，记录完整请求元数据并拒绝隐式上传。
-- [x] 合并 OCR、视觉、参考文案候选，生成 `review/text-blocks.json`，不覆盖既有人工确认值。
+- [x] 合并 OCR、参考文案候选，生成 `review/text-blocks.json`，不覆盖既有人工确认值。
 - [x] 实现 `slide validate-review`，覆盖分类、mask 参与、坐标、四边形、旋转、样式和风险接受规则。
 - [x] 增加 Provider fake 测试、Schema 测试、候选冲突与敏感信息不落盘测试。
+- [ ] 扩展 `TextBlockSourceSchema` 的 kind 枚举，新增 `"ai_text_assist"`。
+- [ ] 实现 OpenAI Responses API `gpt-5.6-luna` 纯文本 Provider，固定 Structured Outputs。
+- [ ] 实现 `slide assist-review --confirm-api`：读取 text-blocks.json，发送文本+bbox 上下文到 GPT-5.6-Luna，获取纠错文本和分类。
+- [ ] assist-review 自动复核逻辑：AI 明确分类的块设为 reviewed + includeInMask；uncertain/risk 块保持 unreviewed；不覆盖已人工编辑的块。
+- [ ] 记录完整 Provider 调用元数据（模型、参数、提示词版本、请求 ID、耗时、用量）。
+- [ ] assist-review 纳入阶段 DAG，OCR 或 reference 变化使其失效。
+- [ ] 增加 assist-review 的 fake 测试：Schema 验证、auto-review 逻辑、人工块不覆盖、API Key 不落盘。
+- [ ] 移除或废弃 `slide analyze` 命令和 `openai-vision` Provider（保留代码但从 CLI 入口移除）。
 
 ## 4. 自动字形 Mask
 
@@ -101,6 +107,7 @@ git diff --check
 
 ## 11. 风险与回滚点
 
+- GPT-5.6-Luna 纠错或分类质量不足：保留 OCR 原始候选和人工 review 入口，修正提示词/Schema，不放宽结构化校验。
 - OpenAI API 或模型契约变化：保留版本化 Provider 记录，更新适配器和 spec，不放宽结构化校验。
 - 自动 mask 不能保持容器：停止进入 clean 阶段，调整局部分割；禁止人工 bitmap 绕过。
 - GPT Image 2 质量不合格：保留全部尝试，调整上游和提示词后重试；不切 Provider、不导入人工 clean plate。

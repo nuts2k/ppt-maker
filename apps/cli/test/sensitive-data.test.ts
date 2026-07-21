@@ -3,14 +3,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { OPENAI_VISION_MODEL } from "../src/providers/openai-vision.js";
-import { runSlideAnalyze } from "../src/slide/analyze.js";
+import { OPENAI_TEXT_ASSIST_MODEL } from "../src/providers/openai-text-assist.js";
+import { runAssistReview } from "../src/slide/assist-review.js";
 import { runSlideOcr } from "../src/slide/ocr.js";
+import { runSlideReview } from "../src/slide/review.js";
 import { createSlideWorkspace } from "../src/slide/workspace.js";
 
 const SENTINEL_KEY = "sk-SENTINEL-must-not-persist-0123456789abcdef";
 
-// 捕获真实 createDefaultParser 传给 OpenAI 客户端的 apiKey，证明真实读取密钥的路径确实执行过。
 const openaiMock = vi.hoisted(() => ({ capturedApiKey: "" }));
 
 vi.mock("openai", () => ({
@@ -18,13 +18,10 @@ vi.mock("openai", () => ({
     responses = {
       parse: async () => ({
         id: "resp_mock",
-        model: OPENAI_VISION_MODEL,
+        model: OPENAI_TEXT_ASSIST_MODEL,
         output_parsed: {
           schemaVersion: 1,
-          image: { width: 1600, height: 900 },
-          candidates: [],
-          missingTextHints: [],
-          pageRisks: [],
+          blocks: [],
         },
         usage: { input_tokens: 1, output_tokens: 1 },
         status: "completed",
@@ -85,29 +82,35 @@ async function listFiles(directory: string): Promise<string[]> {
 }
 
 describe("敏感信息不落盘", () => {
-  it("analyze 流程后 API Key 与认证头不出现在任何工作区文件中", async () => {
+  it("assist-review 流程后 API Key 不出现在任何工作区文件中", async () => {
     const parent = await mkdtemp(join(tmpdir(), "ppt-maker-secret-"));
     const workspacePath = join(parent, "slide");
     const binaryPath = await createFakeVisionBinary(parent);
     await createSlideWorkspace({ imagePath: fixturePath(), workspacePath });
     await runSlideOcr({ workspacePath, binaryPath });
+    await runSlideReview({ workspacePath });
 
     const previousKey = process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = SENTINEL_KEY;
     try {
-      await runSlideAnalyze({
+      await runAssistReview({
         workspacePath,
-        confirmUpload: true,
+        confirmApi: true,
         parseResponse: async () => ({
           id: "resp_secret",
-          model: OPENAI_VISION_MODEL,
+          model: OPENAI_TEXT_ASSIST_MODEL,
           usage: { input_tokens: 10, output_tokens: 5 },
           outputParsed: {
             schemaVersion: 1,
-            image: { width: 1600, height: 900 },
-            candidates: [],
-            missingTextHints: [],
-            pageRisks: [],
+            blocks: [
+              {
+                blockId: "block-001",
+                correctedText: "你好世界",
+                classification: "layout_text",
+                risks: [],
+                rationale: "test",
+              },
+            ],
           },
           rawResponse: { id: "resp_secret", status: "completed" },
         }),
@@ -121,7 +124,6 @@ describe("敏感信息不落盘", () => {
     }
 
     const files = await listFiles(workspacePath);
-    // 覆盖 manifest、config、attempt、provider 记录、原始响应、结构化结果等全部写出文件。
     expect(files.length).toBeGreaterThan(3);
     for (const file of files) {
       const content = await readFile(file, "utf8").catch(() => "");
@@ -132,18 +134,18 @@ describe("敏感信息不落盘", () => {
     }
   });
 
-  it("真实 createDefaultParser 路径（mock OpenAI SDK）也不把 API Key 写入任何产物", async () => {
+  it("真实 createDefaultParser 路径也不把 API Key 写入产物", async () => {
     const parent = await mkdtemp(join(tmpdir(), "ppt-maker-secret-real-"));
     const workspacePath = join(parent, "slide");
     const binaryPath = await createFakeVisionBinary(parent);
     await createSlideWorkspace({ imagePath: fixturePath(), workspacePath });
     await runSlideOcr({ workspacePath, binaryPath });
+    await runSlideReview({ workspacePath });
 
     const previousKey = process.env.OPENAI_API_KEY;
     process.env.OPENAI_API_KEY = SENTINEL_KEY;
     try {
-      // 不注入 parseResponse：走真实 createDefaultParser，触发 new OpenAI({apiKey}) 与响应解析。
-      await runSlideAnalyze({ workspacePath, confirmUpload: true });
+      await runAssistReview({ workspacePath, confirmApi: true });
     } finally {
       if (previousKey === undefined) {
         delete process.env.OPENAI_API_KEY;
@@ -152,7 +154,6 @@ describe("敏感信息不落盘", () => {
       }
     }
 
-    // 证明真实读取密钥的路径确实执行：mock 客户端收到的就是 sentinel key。
     expect(openaiMock.capturedApiKey).toBe(SENTINEL_KEY);
 
     const files = await listFiles(workspacePath);

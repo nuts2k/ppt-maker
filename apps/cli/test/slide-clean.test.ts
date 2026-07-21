@@ -16,6 +16,7 @@ import { runSlideValidateReview } from "../src/slide/validate-review.js";
 import {
   createSlideWorkspace,
   loadSlideWorkspace,
+  writeWorkspaceManifest,
 } from "../src/slide/workspace.js";
 
 // 捕获真实 createDefaultImageEditor 传给 OpenAI 客户端的 apiKey，并让 images.edit 返回受控 clean plate。
@@ -75,6 +76,25 @@ async function createFakeVisionBinary(directory: string): Promise<string> {
   return path;
 }
 
+async function markAssistReviewCompleted(workspacePath: string): Promise<void> {
+  const workspace = await loadSlideWorkspace(workspacePath);
+  const stages = workspace.manifest.stages.map((s) =>
+    s.stage === "assist-review"
+      ? {
+          ...s,
+          status: "completed" as const,
+          lastSuccessfulAttemptId: "assist-review-skip",
+          completedInputFingerprint:
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        }
+      : s,
+  );
+  await writeWorkspaceManifest(workspace.path, {
+    ...workspace.manifest,
+    stages,
+  });
+}
+
 async function prepareMasked(): Promise<{
   workspacePath: string;
   sourcePath: string;
@@ -103,6 +123,7 @@ async function prepareMasked(): Promise<{
     `${JSON.stringify(document, null, 2)}\n`,
     "utf8",
   );
+  await markAssistReviewCompleted(workspacePath);
   await runSlideValidateReview({ workspacePath });
   await runSlideMask({ workspacePath });
   return {

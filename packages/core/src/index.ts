@@ -8,6 +8,7 @@ export * from "./pptx-contracts.js";
 export * from "./provider.js";
 export * from "./report-contracts.js";
 export * from "./stage-graph.js";
+export * from "./text-assist-contracts.js";
 export * from "./text-blocks.js";
 export * from "./vision-analysis-contracts.js";
 export * from "./workspace-contracts.js";

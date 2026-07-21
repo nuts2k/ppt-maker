@@ -18,6 +18,7 @@ import { runSlideValidateReview } from "../src/slide/validate-review.js";
 import {
   createSlideWorkspace,
   loadSlideWorkspace,
+  writeWorkspaceManifest,
 } from "../src/slide/workspace.js";
 
 // 微软雅黑预检在无 PowerPoint 的 CI 会失败；显式传入字体名跳过可用性阻断（等价开发者断言字体存在）。
@@ -122,6 +123,25 @@ function fakeEditor(cleanBuffer: Buffer): OpenAiImageEditor {
   });
 }
 
+async function markAssistReviewCompleted(workspacePath: string): Promise<void> {
+  const workspace = await loadSlideWorkspace(workspacePath);
+  const stages = workspace.manifest.stages.map((s) =>
+    s.stage === "assist-review"
+      ? {
+          ...s,
+          status: "completed" as const,
+          lastSuccessfulAttemptId: "assist-review-skip",
+          completedInputFingerprint:
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        }
+      : s,
+  );
+  await writeWorkspaceManifest(workspace.path, {
+    ...workspace.manifest,
+    stages,
+  });
+}
+
 interface PrepareOptions {
   readonly blocks?: readonly FakeBlock[];
   readonly edit?: (doc: TextReviewDocument) => void;
@@ -167,6 +187,7 @@ async function prepareAcceptedClean(
     `${JSON.stringify(document, null, 2)}\n`,
     "utf8",
   );
+  await markAssistReviewCompleted(workspacePath);
   await runSlideValidateReview({ workspacePath });
   await runSlideMask({ workspacePath });
   const cleanBuffer = await buildFakeCleanPlate(
@@ -301,6 +322,7 @@ describe("slide pptx", () => {
       `${JSON.stringify(document, null, 2)}\n`,
       "utf8",
     );
+    await markAssistReviewCompleted(workspacePath);
     await runSlideValidateReview({ workspacePath });
     await runSlideMask({ workspacePath });
     await expect(

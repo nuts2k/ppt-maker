@@ -61,7 +61,7 @@ describe("stage graph", () => {
   it("前置阶段未完成时拒绝运行", () => {
     const states = createInitialStageStates("init-001", HASH);
     expect(() => assertStageDependenciesCompleted(states, "review")).toThrow(
-      "ocr, analyze",
+      "ocr",
     );
   });
 

@@ -13,6 +13,7 @@ import {
   assertWorkspaceAssetIntegrity,
   createSlideWorkspace,
   loadSlideWorkspace,
+  writeWorkspaceManifest,
 } from "../src/slide/workspace.js";
 
 function fixturePath(): string {
@@ -71,6 +72,25 @@ async function createFakeVisionBinary(
   return path;
 }
 
+async function markAssistReviewCompleted(workspacePath: string): Promise<void> {
+  const workspace = await loadSlideWorkspace(workspacePath);
+  const stages = workspace.manifest.stages.map((s) =>
+    s.stage === "assist-review"
+      ? {
+          ...s,
+          status: "completed" as const,
+          lastSuccessfulAttemptId: "assist-review-skip",
+          completedInputFingerprint:
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        }
+      : s,
+  );
+  await writeWorkspaceManifest(workspace.path, {
+    ...workspace.manifest,
+    stages,
+  });
+}
+
 const FOREGROUND = ["#ffffff", "#ffffff", "#fad16b"];
 
 async function editReviewBlocks(
@@ -109,6 +129,7 @@ async function prepareReviewed(options: {
   await runSlideOcr({ workspacePath, binaryPath });
   const review = await runSlideReview({ workspacePath });
   await editReviewBlocks(review.outputPath, options);
+  await markAssistReviewCompleted(workspacePath);
   return { workspacePath, reviewPath: review.outputPath };
 }
 

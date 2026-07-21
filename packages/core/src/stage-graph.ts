@@ -12,9 +12,9 @@ const STAGE_DEPENDENCIES: Readonly<Record<SlideStage, readonly SlideStage[]>> =
   {
     init: [],
     ocr: ["init"],
-    analyze: ["ocr"],
-    review: ["ocr", "analyze"],
-    mask: ["review"],
+    review: ["ocr"],
+    "assist-review": ["review"],
+    mask: ["assist-review"],
     clean: ["mask"],
     "accept-clean": ["clean"],
     pptx: ["accept-clean"],

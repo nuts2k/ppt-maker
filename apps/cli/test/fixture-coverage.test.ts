@@ -16,7 +16,11 @@ import { runSlideReport } from "../src/report/run.js";
 import { runSlideOcr } from "../src/slide/ocr.js";
 import { runSlideReview } from "../src/slide/review.js";
 import { runSlideValidateReview } from "../src/slide/validate-review.js";
-import { createSlideWorkspace } from "../src/slide/workspace.js";
+import {
+  createSlideWorkspace,
+  loadSlideWorkspace,
+  writeWorkspaceManifest,
+} from "../src/slide/workspace.js";
 
 const FONT = "Microsoft YaHei";
 
@@ -139,6 +143,25 @@ function fakeEditor(cleanBuffer: Buffer): OpenAiImageEditor {
   });
 }
 
+async function markAssistReviewCompleted(workspacePath: string): Promise<void> {
+  const workspace = await loadSlideWorkspace(workspacePath);
+  const stages = workspace.manifest.stages.map((s) =>
+    s.stage === "assist-review"
+      ? {
+          ...s,
+          status: "completed" as const,
+          lastSuccessfulAttemptId: "assist-review-skip",
+          completedInputFingerprint:
+            "0000000000000000000000000000000000000000000000000000000000000000",
+        }
+      : s,
+  );
+  await writeWorkspaceManifest(workspace.path, {
+    ...workspace.manifest,
+    stages,
+  });
+}
+
 // 每块的人工复核前景色，供 mask 分割（对象内符号不参与 mask）。
 const FOREGROUND: Record<string, string> = {
   title: "#ffffff",
@@ -188,6 +211,7 @@ describe("合成 fixture 五类元素端到端覆盖", () => {
       `${JSON.stringify(document, null, 2)}\n`,
       "utf8",
     );
+    await markAssistReviewCompleted(workspacePath);
 
     const validation = await runSlideValidateReview({ workspacePath });
     expect(validation.report.status).toBe("passed");

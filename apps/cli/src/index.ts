@@ -15,9 +15,8 @@ import { runAcceptPptx } from "./pptx/accept.js";
 import { runSlidePptx } from "./pptx/run.js";
 import { createPptxProbe } from "./pptx.js";
 import { OPENAI_IMAGE_MODEL } from "./providers/openai-image.js";
-import { OPENAI_VISION_MODEL } from "./providers/openai-vision.js";
 import { formatSlideReport, runSlideReport } from "./report/run.js";
-import { runSlideAnalyze } from "./slide/analyze.js";
+import { runAssistReview } from "./slide/assist-review.js";
 import { runSlideOcr } from "./slide/ocr.js";
 import { runSlideReview } from "./slide/review.js";
 import { runSlideRunFrom } from "./slide/run-from.js";
@@ -118,31 +117,27 @@ slide
   });
 
 slide
-  .command("analyze")
+  .command("assist-review")
   .argument("<workspace>", "页面工作区")
-  .option("--confirm-upload", "确认上传完整页面到 OpenAI")
-  .description("显式调用 OpenAI 视觉理解补充旋转、漏字与分类候选")
-  .action(async (workspace: string, options: { confirmUpload?: boolean }) => {
-    const result = await runSlideAnalyze({
+  .option("--confirm-api", "确认调用 OpenAI API 进行 AI 辅助复核")
+  .description(
+    "调用 GPT-5.6-Luna 对 OCR 文本做纠错与分类，明确分类的块自动标记为 reviewed",
+  )
+  .action(async (workspace: string, options: { confirmApi?: boolean }) => {
+    const result = await runAssistReview({
       workspacePath: resolve(workspace),
-      confirmUpload: options.confirmUpload === true,
-      onBeforeUpload: (notice) => {
-        process.stderr.write(
-          `即将上传到 ${OPENAI_VISION_MODEL}：${notice.sentAssets
-            .map((asset) => `${asset.path} (${asset.sha256})`)
-            .join(", ")}\n`,
-        );
-      },
+      confirmApi: options.confirmApi === true,
     });
     process.stdout.write(`${result.outputPath}\n`);
+    process.stderr.write(
+      `自动复核 ${result.autoReviewed} 块，剩余待人工处理 ${result.remainingUnreviewed} 块\n`,
+    );
   });
 
 slide
   .command("review")
   .argument("<workspace>", "页面工作区")
-  .description(
-    "离线合并 OCR、视觉与参考文案候选，生成可编辑的 text-blocks.json",
-  )
+  .description("离线合并 OCR 与参考文案候选，生成可编辑的 text-blocks.json")
   .action(async (workspace: string) => {
     const result = await runSlideReview({
       workspacePath: resolve(workspace),

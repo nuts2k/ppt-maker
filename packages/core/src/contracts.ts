@@ -29,7 +29,13 @@ export const GlyphHintSchema = z.object({
 });
 
 export const TextBlockSourceSchema = z.object({
-  kind: z.enum(["offline_ocr", "cloud_vision", "reference_text", "manual"]),
+  kind: z.enum([
+    "offline_ocr",
+    "cloud_vision",
+    "reference_text",
+    "ai_text_assist",
+    "manual",
+  ]),
   provider: z.string().min(1),
   text: z.string().min(1),
   confidence: z.number().min(0).max(1).nullable(),

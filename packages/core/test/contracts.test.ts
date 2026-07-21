@@ -217,12 +217,12 @@ describe("核心 Schema 拒绝路径", () => {
   it("拒绝非 openai 的 Provider 调用记录与非法哈希", () => {
     const base = {
       schemaVersion: SCHEMA_VERSION,
-      id: "provider-analyze-001",
-      stage: "analyze" as const,
+      id: "provider-assist-review-001",
+      stage: "assist-review" as const,
       endpoint: "/v1/responses",
-      model: "gpt-5.6-sol",
+      model: "gpt-5.6-luna",
       parameters: {},
-      promptVersion: "m1-vision-analysis-v1",
+      promptVersion: "m1-text-assist-v1",
       sentAssets: [{ path: "inputs/source.png", sha256: "a".repeat(64) }],
       requestId: "resp_1",
       startedAt: "2026-07-20T00:00:00.000Z",

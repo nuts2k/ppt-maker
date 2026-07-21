@@ -6,8 +6,8 @@ export const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 export const SlideStageSchema = z.enum([
   "init",
   "ocr",
-  "analyze",
   "review",
+  "assist-review",
   "mask",
   "clean",
   "accept-clean",
@@ -41,7 +41,7 @@ export const WorkspaceAssetSchema = z.object({
     "source_image",
     "reference_text",
     "ocr_result",
-    "analysis_result",
+    "assist_review_result",
     "text_review",
     "review_validation",
     "mask",
@@ -109,7 +109,7 @@ export const WorkspaceStageAttemptSchema = z.object({
 export const ProviderCallRecordSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
   id: z.string().min(1),
-  stage: z.enum(["analyze", "clean"]),
+  stage: z.enum(["assist-review", "clean"]),
   provider: z.literal("openai"),
   endpoint: z.string().min(1),
   model: z.string().min(1),
