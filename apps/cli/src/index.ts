@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import "dotenv/config";
 import { resolve } from "node:path";
 import { Command } from "commander";
 import { runAcceptClean } from "./clean/accept.js";

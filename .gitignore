@@ -17,3 +17,5 @@
 # Local environment noise.
 .DS_Store
 *.log
+.env
+.env.local

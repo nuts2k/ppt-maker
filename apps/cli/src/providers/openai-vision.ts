@@ -101,7 +101,10 @@ async function createDefaultParser(): Promise<OpenAiVisionResponseParser> {
       "缺少 OPENAI_API_KEY，无法运行显式云端视觉分析",
     );
   }
-  const client = new OpenAI({ apiKey: resolvedApiKey });
+  const client = new OpenAI({
+    apiKey: resolvedApiKey,
+    baseURL: process.env.OPENAI_BASE_URL || undefined,
+  });
   return async (request) => {
     const response = await client.responses.parse(request);
     return {

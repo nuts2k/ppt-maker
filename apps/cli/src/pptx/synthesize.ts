@@ -141,7 +141,7 @@ export async function synthesizePptx(
       h: box.height,
       fontFace: input.fontFace,
       fontSize: resolveFontSizePt(block, input.imageWidth),
-      color: (block.style.colorHex ?? "#ffffff").replace("#", "").toUpperCase(),
+      color: (block.style.colorHex ?? "#333333").replace("#", "").toUpperCase(),
       bold: toBold(block.style.fontWeight),
       align: toAlign(block.style.horizontalAlign),
       valign: toValign(block.style.verticalAlign),

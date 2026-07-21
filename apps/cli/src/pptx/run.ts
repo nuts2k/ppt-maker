@@ -31,13 +31,14 @@ import {
   writeWorkspaceManifest,
 } from "../slide/workspace.js";
 import { checkPptx } from "./checks.js";
+import { sampleBlockColors } from "./sample-color.js";
 import { synthesizePptx } from "./synthesize.js";
 
 const REVIEW_OUTPUT_PATH = "stages/review/text-blocks.json";
 const PPTX_PATH = "stages/pptx/slide.pptx";
 const CHECK_PATH = "stages/pptx/check.json";
 const RECORD_PATH = "stages/pptx/record.json";
-export const PPTX_SYNTHESIS_VERSION = "pptx-synthesis-v1";
+export const PPTX_SYNTHESIS_VERSION = "pptx-synthesis-v2";
 
 export interface RunSlidePptxOptions {
   readonly workspacePath: string;
@@ -293,11 +294,29 @@ export async function runSlidePptx(
   await writeWorkspaceManifest(workspace.path, runningManifest);
 
   try {
+    const sourcePath = resolveWorkspacePath(workspace.path, source.path);
+    const maskPath = resolveWorkspacePath(
+      workspace.path,
+      "stages/mask/mask.png",
+    );
+    const sampledColors = await sampleBlockColors({
+      sourcePath,
+      maskPath,
+      blocks: boxBlocks,
+      imageWidth: source.image.width,
+      imageHeight: source.image.height,
+    });
+    const coloredBlocks = boxBlocks.map((block) => {
+      const hex = sampledColors.get(block.id);
+      if (hex === undefined || block.style.colorHex !== null) return block;
+      return { ...block, style: { ...block.style, colorHex: hex } };
+    });
+
     const pptxPath = resolveWorkspacePath(workspace.path, PPTX_PATH);
     const synthesis = await synthesizePptx({
       cleanPlatePath: resolveWorkspacePath(workspace.path, cleanAsset.path),
       outputPath: pptxPath,
-      blocks: boxBlocks,
+      blocks: coloredBlocks,
       imageWidth: source.image.width,
       imageHeight: source.image.height,
       fontFace,

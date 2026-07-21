@@ -90,7 +90,10 @@ async function createDefaultParser(): Promise<OpenAiTextAssistResponseParser> {
       "缺少 OPENAI_API_KEY，无法运行 AI 辅助复核",
     );
   }
-  const client = new OpenAI({ apiKey: resolvedApiKey });
+  const client = new OpenAI({
+    apiKey: resolvedApiKey,
+    baseURL: process.env.OPENAI_BASE_URL || undefined,
+  });
   return async (request) => {
     const response = await client.responses.parse(request);
     return {

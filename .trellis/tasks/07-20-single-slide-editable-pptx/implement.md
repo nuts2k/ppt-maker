@@ -25,14 +25,14 @@
 - [x] 合并 OCR、参考文案候选，生成 `review/text-blocks.json`，不覆盖既有人工确认值。
 - [x] 实现 `slide validate-review`，覆盖分类、mask 参与、坐标、四边形、旋转、样式和风险接受规则。
 - [x] 增加 Provider fake 测试、Schema 测试、候选冲突与敏感信息不落盘测试。
-- [ ] 扩展 `TextBlockSourceSchema` 的 kind 枚举，新增 `"ai_text_assist"`。
-- [ ] 实现 OpenAI Responses API `gpt-5.6-luna` 纯文本 Provider，固定 Structured Outputs。
-- [ ] 实现 `slide assist-review --confirm-api`：读取 text-blocks.json，发送文本+bbox 上下文到 GPT-5.6-Luna，获取纠错文本和分类。
-- [ ] assist-review 自动复核逻辑：AI 明确分类的块设为 reviewed + includeInMask；uncertain/risk 块保持 unreviewed；不覆盖已人工编辑的块。
-- [ ] 记录完整 Provider 调用元数据（模型、参数、提示词版本、请求 ID、耗时、用量）。
-- [ ] assist-review 纳入阶段 DAG，OCR 或 reference 变化使其失效。
-- [ ] 增加 assist-review 的 fake 测试：Schema 验证、auto-review 逻辑、人工块不覆盖、API Key 不落盘。
-- [ ] 移除或废弃 `slide analyze` 命令和 `openai-vision` Provider（保留代码但从 CLI 入口移除）。
+- [x] 扩展 `TextBlockSourceSchema` 的 kind 枚举，新增 `"ai_text_assist"`。
+- [x] 实现 OpenAI Responses API `gpt-5.6-luna` 纯文本 Provider，固定 Structured Outputs。
+- [x] 实现 `slide assist-review --confirm-api`：读取 text-blocks.json，发送文本+bbox 上下文到 GPT-5.6-Luna，获取纠错文本和分类。
+- [x] assist-review 自动复核逻辑：AI 明确分类的块设为 reviewed + includeInMask；uncertain/risk 块保持 unreviewed；不覆盖已人工编辑的块。
+- [x] 记录完整 Provider 调用元数据（模型、参数、提示词版本、请求 ID、耗时、用量）。
+- [x] assist-review 纳入阶段 DAG，OCR 或 reference 变化使其失效。
+- [x] 增加 assist-review 的 fake 测试：Schema 验证、auto-review 逻辑、人工块不覆盖、API Key 不落盘。
+- [x] 移除或废弃 `slide analyze` 命令和 `openai-vision` Provider（保留代码但从 CLI 入口移除）。
 
 ## 4. 自动字形 Mask
 

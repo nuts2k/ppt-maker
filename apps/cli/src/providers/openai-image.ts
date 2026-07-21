@@ -1,7 +1,8 @@
 // gpt-image-2 clean plate Provider（implement.md 第 5 节）。
 // 确立 Image API images.edit 的固定档位、版本化去字提示词，并封装一次编辑调用。
 // API Key 只从环境读取，绝不落盘；真实调用由 `slide clean --confirm-upload` 显式触发。
-import { createReadStream } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { basename } from "node:path";
 import {
   FoundationError,
   PPTX_WIDE_HEIGHT_INCHES,
@@ -98,7 +99,10 @@ export async function createDefaultImageEditor(): Promise<OpenAiImageEditor> {
       "缺少 OPENAI_API_KEY，无法运行 gpt-image-2 clean plate",
     );
   }
-  const client = new OpenAI({ apiKey });
+  const client = new OpenAI({
+    apiKey,
+    baseURL: process.env.OPENAI_BASE_URL || undefined,
+  });
   return async (params) => {
     const { data, request_id } = await client.images
       .edit(params)
@@ -126,9 +130,17 @@ export async function runCleanPlateEdit(
   options: CleanPlateEditOptions,
 ): Promise<CleanPlateEditOutcome> {
   const editor = options.edit ?? (await createDefaultImageEditor());
+  const [imageFile, maskFile] = await Promise.all([
+    readFile(options.imagePath).then((buf) =>
+      new File([buf], basename(options.imagePath), { type: "image/png" }),
+    ),
+    readFile(options.maskPath).then((buf) =>
+      new File([buf], basename(options.maskPath), { type: "image/png" }),
+    ),
+  ]);
   const params = buildCleanPlateEditParams({
-    image: createReadStream(options.imagePath),
-    mask: createReadStream(options.maskPath),
+    image: imageFile,
+    mask: maskFile,
     prompt: options.prompt ?? CLEAN_PLATE_PROMPT,
   });
   const outcome = await editor(params);
