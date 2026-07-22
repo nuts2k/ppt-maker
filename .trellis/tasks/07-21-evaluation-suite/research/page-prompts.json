@@ -1,0 +1,177 @@
+[
+  {
+    "pageNumber": 1,
+    "pageType": "cover",
+    "title": "封面",
+    "contentDescription": "深色科技感背景封面，主标题《供应链计划协同数字化（PPSO）项目投标实施方案》，副标题：端到端协同｜流程可视｜风险预警｜数据驱动｜智能增强",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. This is a cover page with a dark technology-inspired background using deep navy blue (#002542) and accent blue (#006FC6) tones. Place the main title '供应链计划协同数字化（PPSO）项目投标实施方案' prominently in the center-left area using large white Microsoft YaHei font. Below the title, add a subtitle line: '端到端协同｜流程可视｜风险预警｜数据驱动｜智能增强' in lighter blue (#008DD1). Include subtle geometric lines, nodes, and circuit-like patterns in the background suggesting digital connectivity and supply chain networks. The design should feel professional, corporate, and modern. No company logos or specific brand names."
+  },
+  {
+    "pageNumber": 2,
+    "pageType": "agenda",
+    "title": "汇报议题",
+    "contentDescription": "议题目录页，5个议题模块，深色或浅色背景，01-05编号",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. This is an agenda/table of contents page with a clean light background (#F1F8FC). At the top, place the header '汇报议题' in large dark blue (#002542) Microsoft YaHei font with a blue accent bar on the left. Below, arrange 5 numbered agenda items in a horizontal or grid layout with blue (#00589E) numbered circles: '01 项目理解与建设目标' with subtitle '精准理解业务诉求，明确数字化建设方向'; '02 总体方案与业务蓝图' with subtitle '端到端协同闭环，覆盖全链路关键节点'; '03 核心能力与AI Agent应用' with subtitle '智能预测、风险预警、协同提效'; '04 技术架构与集成方案' with subtitle '稳定可扩展的平台化技术底座'; '05 实施计划、项目治理与交付保障' with subtitle '可控交付、风险管理、质量闭环'. Each item should be a card or block with clean typography. Professional business style."
+  },
+  {
+    "pageNumber": 3,
+    "pageType": "transition",
+    "title": "议题一引导页",
+    "contentDescription": "议题过渡页，深色背景，议题编号01和标题",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. This is a section transition page with a dark navy blue (#002542) background. Display a large '01' number in semi-transparent light blue on the left side. Place the section title '项目理解与建设目标' in large white Microsoft YaHei font in the center. Add a thin blue (#006FC6) horizontal accent line below the title. Include subtle abstract geometric patterns in the background. The design should be clean, bold, and clearly mark the beginning of a new section. Minimal text, maximum visual impact."
+  },
+  {
+    "pageNumber": 4,
+    "pageType": "content",
+    "title": "项目背景与业务挑战",
+    "contentDescription": "白底内容页，五类痛点（流程、协同、数据、风险、复盘），图标+文字卡片布局",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with a blue (#00589E) vertical accent bar and page title '项目背景与业务挑战' in the top-left area using Microsoft YaHei font. The content area shows 5 pain point categories arranged in a row of icon-and-text cards: '流程不透明' with a process/workflow icon, '协同链路长' with a chain/link icon, '数据割裂' with a broken database icon, '风险发现滞后' with a warning/alert icon, '复盘不充分' with a chart/analysis icon. Each card has a blue (#006FC6) icon on top, a bold title below, and 1-2 lines of supporting text in dark gray. Below the cards, add a summary sentence: 'LTO/活动型商品端到端计划协同面临五大核心挑战'. Clean corporate layout, structured and easy to scan."
+  },
+  {
+    "pageNumber": 5,
+    "pageType": "content",
+    "title": "需求理解与建设目标",
+    "contentDescription": "白底内容页，左侧需求理解要点，右侧建设目标矩阵",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue (#00589E) vertical accent bar and title '需求理解与建设目标' at top-left in Microsoft YaHei. Split the content into two columns. Left column titled '需求理解' shows 4-5 bullet points about business challenges: '端到端流程缺乏统一视图', '跨部门协同节奏不一致', '关键风险难以提前识别', '数据指标分散无法支撑复盘', '系统间数据交互依赖人工'. Right column titled '建设目标' shows 5 target outcomes in blue-bordered cards: '计划过程可视', '协同过程可追踪', '风险过程可预警', '经营复盘可分析', '业务效率可提升'. Use arrow or flow indicators connecting left challenges to right goals. Professional business consulting style."
+  },
+  {
+    "pageNumber": 6,
+    "pageType": "transition",
+    "title": "议题二引导页",
+    "contentDescription": "议题过渡页，深色背景，议题编号02和标题",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. Section transition page with dark navy blue (#002542) background. Display large '02' in semi-transparent light blue on the left. Place section title '总体方案与业务蓝图' in large white Microsoft YaHei font in the center. Thin blue (#006FC6) accent line below the title. Subtle abstract geometric background patterns. Clean, bold section divider."
+  },
+  {
+    "pageNumber": 7,
+    "pageType": "blueprint",
+    "title": "PPSO 总体业务蓝图",
+    "contentDescription": "核心蓝图页，展示从定品→定价→定量→执行→监控→复盘的端到端闭环流程图",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title 'PPSO 总体业务蓝图' at top-left. The main content is a horizontal end-to-end process flow diagram showing 6 major phases connected by arrows: '定品' (product selection), '定价' (pricing), '定量' (quantity planning), '执行监控' (execution monitoring), '风险预警' (risk alerting), '档期复盘' (campaign review). Each phase is a rounded rectangle in gradient blue (#00589E to #008DD1) with white text. Below each phase, show 2-3 key activities in smaller cards. Above the flow, add a banner reading '端到端计划协同闭环'. Below the flow, show supporting layers: '数据指标体系', 'AI Agent辅助', '系统集成'. Use connecting lines and arrows to show data flow. Professional blueprint style with clear visual hierarchy."
+  },
+  {
+    "pageNumber": 8,
+    "pageType": "content",
+    "title": "阶段一建设范围与边界",
+    "contentDescription": "白底内容页，核心范围矩阵+明确边界说明",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title '阶段一建设范围与边界' at top-left in Microsoft YaHei. The content is divided into two areas. Top area titled '核心建设范围' shows a 3x4 grid of capability cards with blue (#006FC6) headers: 'LTO端到端流程管理', '品价量节点可视化', '跨部门协同线上化', '流程健康度管理', '需求预测白盒化', '供需协同', '门店铺补货管理', '售罄与清货预案', '档期复盘分析', '数据指标体系', '系统集成', 'AI Agent应用'. Bottom area titled '边界说明' has 2-3 lines of text in a light gray (#F1F8FC) box explaining what is NOT included in Phase 1. Clean structured layout."
+  },
+  {
+    "pageNumber": 9,
+    "pageType": "content",
+    "title": "To-Be 流程设计方法",
+    "contentDescription": "白底内容页，展示L3-L5流程设计层级和方法论",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title 'To-Be 流程设计方法' at top-left in Microsoft YaHei. Show a layered methodology diagram with 3 levels stacked vertically: 'L3 业务流程' (top, widest, light blue background) showing swim-lane style process steps, 'L4 协作角色与操作动作' (middle, medium blue) showing role-based interactions, 'L5 系统支撑与数据输入输出' (bottom, darker blue) showing system support and data flows. On the right side, list design dimensions: '业务流程', '协作角色', '操作动作', '系统支撑', '数据输入输出'. Use layered rectangular blocks with clear labels. Professional consulting methodology style."
+  },
+  {
+    "pageNumber": 10,
+    "pageType": "transition",
+    "title": "议题三引导页",
+    "contentDescription": "议题过渡页，深色背景，议题编号03和标题",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. Section transition page with dark navy blue (#002542) background. Display large '03' in semi-transparent light blue on the left. Place section title '核心能力与AI Agent应用' in large white Microsoft YaHei font in the center. Thin blue (#006FC6) accent line below the title. Subtle tech-inspired geometric background patterns with AI/neural network motifs. Clean, bold section divider."
+  },
+  {
+    "pageNumber": 11,
+    "pageType": "content",
+    "title": "核心能力一：品价量协同与节点可视（概览）",
+    "contentDescription": "白底内容页，品价量三个核心节点的统一管理和协同节奏",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title '品价量协同与节点可视' at top-left in Microsoft YaHei. Show a triangular relationship diagram connecting three core nodes: '定品' (product), '定价' (pricing), '定量' (quantity) in blue (#00589E) circles with connecting bidirectional arrows. Around each node, list 2-3 key capabilities in smaller text. In the center of the triangle, place '协同节奏管理' as the coordination hub. Below the diagram, show a timeline bar indicating '跨部门协同节奏' with role markers for different departments. Add a key message box: '统一管理核心节点，形成跨部门责任闭环'. Clean business diagram style."
+  },
+  {
+    "pageNumber": 12,
+    "pageType": "content",
+    "title": "核心能力一：品价量协同与节点可视（详情）",
+    "contentDescription": "白底内容页，节点管理详细功能和协作流程",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title '品价量节点管理详情' at top-left in Microsoft YaHei. Show a detailed process flow from left to right: '品类规划' → '选品决策' → '定价审批' → '需求量确定' → '订单下达'. Each step is a blue-outlined card showing: responsible role (top, small text), key activities (middle, bullet points), system support (bottom, gray text). Between steps, show approval gates as diamond shapes. Add status indicators (green/yellow/red dots) showing node health. Below the flow, list '关键输出物' for each node. Professional process design style."
+  },
+  {
+    "pageNumber": 13,
+    "pageType": "content",
+    "title": "核心能力二：需求预测与供需协同（概览）",
+    "contentDescription": "白底内容页，需求预测白盒化和供需平衡机制",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title '需求预测、供需协同与门店执行' at top-left in Microsoft YaHei. Show a left-to-right flow with three major blocks: Left block '需求预测白盒化' showing a funnel diagram with inputs (历史数据, 市场趋势, 促销计划) flowing into '预测模型' and outputting '需求计划'. Middle block '供需协同' showing a balance/scale diagram balancing '需求' and '供给' with adjustment levers. Right block '门店执行' showing store icons with '铺货', '补货', '售罄监控', '清货预案' labels. Connecting arrows between blocks. Use blue color scheme throughout. Business analytics style."
+  },
+  {
+    "pageNumber": 14,
+    "pageType": "content",
+    "title": "核心能力二：门店铺补货与售罄清货（详情）",
+    "contentDescription": "白底内容页，门店层面的铺补货管理和售罄清货预案",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title '门店铺补货与售罄清货管理' at top-left in Microsoft YaHei. Split into two sections. Left section '铺货与补货' shows a diagram with headquarters at top distributing to regional warehouses, then to individual stores, with quantity labels and timing indicators. Right section '售罄与清货' shows a timeline with trigger points: '售罄预警线' (warning threshold) and '清货启动线' (clearance trigger), with action cards below: '价格调整', '跨店调拨', '渠道分流'. Include percentage indicators like '85%售罄率' and '95%清货率' as target KPIs. Data-driven retail operations style."
+  },
+  {
+    "pageNumber": 15,
+    "pageType": "content",
+    "title": "核心能力三：流程健康度与风险预警",
+    "contentDescription": "白底内容页，六类风险的识别和预警机制矩阵",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title '流程健康度与风险预警' at top-left in Microsoft YaHei. Show a risk monitoring dashboard layout with 6 risk categories arranged in a 2x3 grid of monitoring cards: '进度风险' with a timeline/Gantt icon, '供应风险' with a truck/supply icon, '库存风险' with a warehouse icon, '审批风险' with a stamp/approval icon, '售罄风险' with a chart declining icon, '清货风险' with a clock/countdown icon. Each card shows: risk name, monitoring indicator, threshold value, and alert level (green/yellow/red). Above the grid, show a horizontal health bar labeled '流程健康度综合评分'. Below, add '预警触发 → 自动通知 → 处置跟踪 → 闭环确认' as the alert workflow. Dashboard monitoring style."
+  },
+  {
+    "pageNumber": 16,
+    "pageType": "content",
+    "title": "数据指标与档期复盘体系",
+    "contentDescription": "白底内容页，档期前中后分析框架和指标矩阵",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title '数据指标与档期复盘体系' at top-left in Microsoft YaHei. Show a three-phase analysis framework as horizontal sections: '档期前分析' (pre-campaign, light blue background) with metrics like '预测准确率', '备货充足率'; '档期中监控' (during campaign, medium blue) with '销售达成率', '库存周转', '售罄进度'; '档期后复盘' (post-campaign, darker blue) with '预测偏差分析', '清货效率', '成本复盘'. On the right side, show a vertical metrics matrix table with rows for each metric and columns for '指标定义', '数据来源', '目标值', '预警阈值'. Professional analytics and business intelligence style."
+  },
+  {
+    "pageNumber": 17,
+    "pageType": "transition",
+    "title": "议题三补充引导",
+    "contentDescription": "AI Agent专题过渡页，深色背景",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. A visually striking transition page with dark navy (#002542) background. Show 'AI Agent 应用方案' as the main title in large white Microsoft YaHei font. Include decorative AI-themed visual elements: neural network nodes, brain outline, circuit patterns, and data stream lines in glowing blue (#006FC6) and cyan (#008DD1). Add a subtitle '智能辅助运营与决策' in lighter text below. The design should convey innovation and intelligence while remaining professional and corporate."
+  },
+  {
+    "pageNumber": 18,
+    "pageType": "content",
+    "title": "AI Agent 应用方案",
+    "contentDescription": "白底内容页，AI Agent的6个应用场景和定位说明",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title 'AI Agent 应用方案' at top-left in Microsoft YaHei. Show 6 AI Agent application scenarios in a circular or hexagonal arrangement around a central 'AI Agent' hub: '信息收集' (information gathering) with a search icon, '节点跟催' (node follow-up) with a bell/notification icon, '风险识别' (risk identification) with a shield icon, '异常提示' (anomaly alerting) with an exclamation mark icon, '智能问答' (intelligent Q&A) with a chat bubble icon, '复盘辅助' (review assistance) with a chart/report icon. Each scenario has a brief 1-line description. At the bottom, prominently display a key message in a blue (#00589E) banner: 'AI Agent 定位：辅助运营和辅助决策，不替代业务责任人'. Clean, modern AI/tech style."
+  },
+  {
+    "pageNumber": 19,
+    "pageType": "transition",
+    "title": "议题四引导页",
+    "contentDescription": "议题过渡页，深色背景，议题编号04和标题",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. Section transition page with dark navy blue (#002542) background. Display large '04' in semi-transparent light blue on the left. Place section title '技术架构与集成方案' in large white Microsoft YaHei font in the center. Thin blue (#006FC6) accent line below. Subtle technology architecture patterns (server racks, cloud, API connections) in the background. Clean, bold section divider."
+  },
+  {
+    "pageNumber": 20,
+    "pageType": "architecture",
+    "title": "技术架构与系统集成方案",
+    "contentDescription": "白底架构图页，展示6层技术架构和系统集成",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title '技术架构与系统集成方案' at top-left in Microsoft YaHei. Show a layered architecture diagram with 6 horizontal layers stacked vertically: '应用层' (top, light blue) showing '流程管理', '协同看板', '预警中心', '复盘分析'; '流程层' showing '流程引擎', '审批管理', '消息通知'; '数据层' showing '指标计算', '数据仓库', '主数据管理'; '集成层' showing 'API网关', 'ETL', '消息队列' with arrows pointing to external systems '现有ERP', '现有WMS', '现有POS'; 'AI能力层' showing 'Agent框架', '预测模型', 'NLP引擎'; '安全权限层' (bottom, dark blue) showing '身份认证', '权限控制', '日志审计'. Use different shades of blue for each layer. Professional enterprise architecture diagram style."
+  },
+  {
+    "pageNumber": 21,
+    "pageType": "transition",
+    "title": "议题五引导页",
+    "contentDescription": "议题过渡页，深色背景，议题编号05和标题",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. Section transition page with dark navy blue (#002542) background. Display large '05' in semi-transparent light blue on the left. Place section title '实施计划、项目治理与交付保障' in large white Microsoft YaHei font in the center. Thin blue (#006FC6) accent line below. Subtle project management patterns (Gantt chart lines, milestone markers) in the background. Clean, bold section divider."
+  },
+  {
+    "pageNumber": 22,
+    "pageType": "timeline",
+    "title": "项目实施计划与交付物",
+    "contentDescription": "白底时间线页，6个月实施计划甘特图和交付物清单",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title '项目实施计划与交付物' at top-left in Microsoft YaHei. Show a Gantt chart timeline spanning 6 months (M1-M6) with 8 work streams as horizontal bars: '项目启动与调研' (M1, blue), 'To-Be流程设计' (M1-M2, medium blue), 'BRD编制与评审' (M2, light blue), '系统开发' (M2-M4, dark blue, longest bar), 'SIT/UAT测试' (M4-M5, orange-tinted blue), '上线培训' (M5, green-tinted), '稳定运行' (M5-M6, teal), '验收交接' (M6, dark blue). Add milestone diamonds at key points. Below the Gantt chart, list key deliverables in a compact row: '调研报告', '流程设计', 'BRD', '测试文档', '上线方案', '培训材料', '运行评估'. Professional project management style."
+  },
+  {
+    "pageNumber": 23,
+    "pageType": "content",
+    "title": "交付物清单",
+    "contentDescription": "白底内容页，按阶段列出的完整交付物矩阵",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title '交付物清单' at top-left in Microsoft YaHei. Show a structured table/matrix with columns: '阶段' (phase), '交付物名称' (deliverable name), '交付形式' (format), '评审方式' (review method). Rows grouped by phase: 调研阶段 includes '调研报告', '现状流程文档'; 设计阶段 includes 'To-Be流程设计', '整体方案', 'BRD'; 开发阶段 includes '系统配置文档', '接口规范'; 测试阶段 includes '测试用例', '测试报告'; 上线阶段 includes '上线方案', '培训材料', '操作手册'; 验收阶段 includes '运行评估报告', '项目管理文档'. Use alternating light blue (#F1F8FC) and white row backgrounds. Clean tabular layout."
+  },
+  {
+    "pageNumber": 24,
+    "pageType": "content",
+    "title": "项目治理与风险控制",
+    "contentDescription": "白底内容页，项目组织、沟通机制、风险管理和质量管理",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. White background with blue accent bar and title '项目治理与风险控制' at top-left in Microsoft YaHei. Split into 4 quadrants. Top-left '项目组织' shows a simple org chart with '项目指导委员会' at top, '项目经理' in middle, and team boxes below. Top-right '沟通机制' lists meeting types: '周例会', '月度汇报', '专题会议', '变更评审'. Bottom-left '风险管理' shows a 2x2 risk matrix (影响×概率) with colored quadrants (green/yellow/orange/red) and example risks plotted. Bottom-right '质量管理' shows a process: '需求冻结' → '变更管理' → '测试覆盖' → '阶段评审' → '验收机制'. Each quadrant has a blue (#006FC6) section header. Professional governance style."
+  },
+  {
+    "pageNumber": 25,
+    "pageType": "closing",
+    "title": "总结与致谢",
+    "contentDescription": "深色结尾页，业务价值总结和感谢聆听",
+    "prompt": "Design a 16:9 widescreen presentation slide in Chinese. This is a closing page with a dark navy blue (#002542) background matching the cover page style. In the upper portion, display 5 value propositions in a horizontal row of small light-blue bordered cards: '缩短决策周期', '提升供需匹配', '降低库存风险', '提升协同效率', '支撑智能演进'. Below, place large white text '感谢聆听' in the center. Underneath, add 'Q & A' in a lighter blue (#008DD1). Include the same subtle geometric/circuit patterns from the cover page in the background for visual consistency. Professional, confident closing slide."
+  }
+]

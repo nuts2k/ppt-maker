@@ -27,7 +27,19 @@ export async function runVisionOcr(
     maxBuffer: 10 * 1024 * 1024,
   });
 
-  return OcrProbeResponseSchema.parse(JSON.parse(stdout));
+  const raw = JSON.parse(stdout);
+  // Vision 偶尔返回微小负坐标（文字靠近页面边缘），clamp 到 0。
+  if (Array.isArray(raw.blocks)) {
+    for (const block of raw.blocks) {
+      if (block.bboxPx) {
+        if (typeof block.bboxPx.x === "number" && block.bboxPx.x < 0)
+          block.bboxPx.x = 0;
+        if (typeof block.bboxPx.y === "number" && block.bboxPx.y < 0)
+          block.bboxPx.y = 0;
+      }
+    }
+  }
+  return OcrProbeResponseSchema.parse(raw);
 }
 
 export async function writeOcrResult(

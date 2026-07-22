@@ -154,6 +154,74 @@ export async function runCleanPlateEdit(
   };
 }
 
+// --- 图片生成接口（M2 评测集页面生成） ---
+
+export interface ImageGenerationResult {
+  readonly b64Png: string;
+  readonly usage: OpenAI.Images.ImagesResponse.Usage | null;
+  readonly requestId: string | null;
+  readonly rawResponse: unknown;
+}
+
+export type OpenAiImageGenerator = (
+  params: OpenAI.Images.ImageGenerateParamsNonStreaming,
+) => Promise<{ response: OpenAI.Images.ImagesResponse; requestId: string | null }>;
+
+export async function createDefaultImageGenerator(): Promise<OpenAiImageGenerator> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (apiKey === undefined || apiKey.trim().length === 0) {
+    throw new FoundationError(
+      "MISSING_DEPENDENCY",
+      "缺少 OPENAI_API_KEY，无法运行 gpt-image-2 图片生成",
+    );
+  }
+  const client = new OpenAI({
+    apiKey,
+    baseURL: process.env.OPENAI_BASE_URL || undefined,
+  });
+  return async (params) => {
+    const { data, request_id } = await client.images
+      .generate(params)
+      .withResponse();
+    return { response: data, requestId: request_id };
+  };
+}
+
+export interface GeneratePageImageOptions {
+  readonly prompt: string;
+  readonly generate?: OpenAiImageGenerator;
+}
+
+export async function generatePageImage(
+  options: GeneratePageImageOptions,
+): Promise<ImageGenerationResult> {
+  const generator =
+    options.generate ?? (await createDefaultImageGenerator());
+  const params: OpenAI.Images.ImageGenerateParamsNonStreaming = {
+    model: OPENAI_IMAGE_MODEL,
+    prompt: options.prompt,
+    size: CLEAN_PLATE_SIZE,
+    quality: CLEAN_PLATE_QUALITY,
+    output_format: CLEAN_PLATE_OUTPUT_FORMAT,
+    n: 1,
+    stream: false,
+  };
+  const outcome = await generator(params);
+  const b64Png = outcome.response.data?.[0]?.b64_json;
+  if (b64Png === undefined) {
+    throw new FoundationError(
+      "INVALID_PROVIDER_RESPONSE",
+      "gpt-image-2 未返回 base64 图片数据",
+    );
+  }
+  return {
+    b64Png,
+    usage: outcome.response.usage ?? null,
+    requestId: outcome.requestId,
+    rawResponse: outcome.response,
+  };
+}
+
 // clean plate 固定输出 2048x1152，与 PPTX wide 16:9（13.333×7.5 英寸）同比例。
 export function cleanPlateMatchesWideRatio(): boolean {
   const imageRatio = CLEAN_PLATE_WIDTH / CLEAN_PLATE_HEIGHT;
