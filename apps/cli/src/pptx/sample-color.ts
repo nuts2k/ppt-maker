@@ -89,6 +89,37 @@ async function sampleBlockColor(
   ]);
 
   const pixelCount = maskWidth * maskHeight;
+
+  // 从 mask 不透明区域（背景）估计局部背景色，用于过滤膨胀区域的背景像素
+  const bgHistogram = new Map<number, number>();
+  for (let i = 0; i < pixelCount; i++) {
+    const maskAlpha = maskRegion[i * 4 + 3];
+    if (maskAlpha === undefined || maskAlpha === 0) continue;
+    const r = srcRegion[i * 4] ?? 0;
+    const g = srcRegion[i * 4 + 1] ?? 0;
+    const b = srcRegion[i * 4 + 2] ?? 0;
+    const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+    bgHistogram.set(key, (bgHistogram.get(key) ?? 0) + 1);
+  }
+
+  let bgR = -1;
+  let bgG = -1;
+  let bgB = -1;
+  if (bgHistogram.size > 0) {
+    let bestKey = 0;
+    let bestCount = -1;
+    for (const [key, count] of bgHistogram) {
+      if (count > bestCount) {
+        bestCount = count;
+        bestKey = key;
+      }
+    }
+    bgR = ((bestKey >> 8) & 0xf) * 16 + 8;
+    bgG = ((bestKey >> 4) & 0xf) * 16 + 8;
+    bgB = (bestKey & 0xf) * 16 + 8;
+  }
+
+  const BG_DIST_SQ = 30 * 30;
   const rValues: number[] = [];
   const gValues: number[] = [];
   const bValues: number[] = [];
@@ -100,6 +131,13 @@ async function sampleBlockColor(
     const g = srcRegion[i * 4 + 1];
     const b = srcRegion[i * 4 + 2];
     if (r === undefined || g === undefined || b === undefined) continue;
+    // 过滤掉与背景色接近的像素（来自 mask 膨胀区域，不是文字）
+    if (bgR >= 0) {
+      const dr = r - bgR;
+      const dg = g - bgG;
+      const db = b - bgB;
+      if (dr * dr + dg * dg + db * db < BG_DIST_SQ) continue;
+    }
     rValues.push(r);
     gValues.push(g);
     bValues.push(b);
