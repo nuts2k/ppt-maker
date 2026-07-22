@@ -1,5 +1,5 @@
-import sharp from "sharp";
 import type { TextReviewBlock } from "@ppt-maker/core";
+import sharp from "sharp";
 
 export interface SampleColorInput {
   readonly sourcePath: string;
@@ -148,7 +148,9 @@ async function sampleBlockColor(
   const median = (arr: number[]): number => {
     arr.sort((a, b) => a - b);
     const mid = Math.floor(arr.length / 2);
-    return arr.length % 2 === 0 ? (arr[mid - 1]! + arr[mid]!) >> 1 : arr[mid]!;
+    const a = arr[mid - 1] ?? 0;
+    const b = arr[mid] ?? 0;
+    return arr.length % 2 === 0 ? (a + b) >> 1 : b;
   };
 
   const r = median(rValues);

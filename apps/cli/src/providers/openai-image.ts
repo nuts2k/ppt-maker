@@ -130,11 +130,13 @@ export async function runCleanPlateEdit(
 ): Promise<CleanPlateEditOutcome> {
   const editor = options.edit ?? (await createDefaultImageEditor());
   const [imageFile, maskFile] = await Promise.all([
-    readFile(options.imagePath).then((buf) =>
-      new File([buf], basename(options.imagePath), { type: "image/png" }),
+    readFile(options.imagePath).then(
+      (buf) =>
+        new File([buf], basename(options.imagePath), { type: "image/png" }),
     ),
-    readFile(options.maskPath).then((buf) =>
-      new File([buf], basename(options.maskPath), { type: "image/png" }),
+    readFile(options.maskPath).then(
+      (buf) =>
+        new File([buf], basename(options.maskPath), { type: "image/png" }),
     ),
   ]);
   const params = buildCleanPlateEditParams({

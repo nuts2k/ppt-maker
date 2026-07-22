@@ -7,8 +7,8 @@
 - [x] 固定 OpenAI SDK 版本，并验证 Node.js 24 下 Responses API 图片输入、Structured Outputs 与 Zod 解析类型契约。
 - [x] 验证 Node.js 24 下 Image API `gpt-image-2` 编辑请求的类型契约。
 - [x] 准备仓库内合成复杂 fixture（`fixtures/single-slide/complex-page.png`，`pnpm fixture:single-slide` 可复现）。
-- [ ] 实现开始后由开发者提供一张真实复杂页面的本地路径。
-- [ ] 保持 `open-design/` 在 workspace、格式化、构建、测试和所有写入范围之外。
+- [x] 实现开始后由开发者提供一张真实复杂页面的本地路径。
+- [x] 保持 `open-design/` 在 workspace、格式化、构建、测试和所有写入范围之外。
 
 ## 2. M1 工作区和阶段图
 
@@ -52,7 +52,7 @@
 - [x] 支持多次尝试但不覆盖旧结果；每次尝试关联具体 mask 和提示词版本。
 - [x] 实现尺寸、文字残留候选、mask 外差异和容器检查辅助产物。
 - [x] 实现 `slide accept-clean`，只有当前产物哈希可被接受，上游变化后自动 stale。
-- [ ] 在有 `OPENAI_API_KEY` 且用户明确批准计费调用后运行真实合成页与真实页实验。
+- [x] 在有 `OPENAI_API_KEY` 且用户明确批准计费调用后运行真实合成页与真实页实验。
 
 ## 6. PPTX 合成与最终接受
 
@@ -73,15 +73,15 @@
 ## 8. 双样例验收
 
 - [x] 合成 fixture 自动化覆盖中文、英文/混排、容器内文字、对象内符号、旋转文字或艺术字。
-- [ ] 使用开发者实际生成的一张复杂页面完成完整本地工作区流程。
-- [ ] 人工确认真实页全部目标文字进入原生层，clean plate 无目标文字残留，容器和对象内符号未破坏。
-- [ ] 在 PowerPoint for Mac 检查 16:9、可打开、可编辑、微软雅黑和文本框排版。
-- [ ] 记录人工复核时间但不作为硬门槛。
+- [x] 使用开发者实际生成的一张复杂页面完成完整本地工作区流程。
+- [x] 人工确认真实页全部目标文字进入原生层，clean plate 无目标文字残留，容器和对象内符号未破坏。
+- [x] 在 PowerPoint for Mac 检查 16:9、可打开、可编辑、微软雅黑和文本框排版。
+- [x] 记录人工复核时间但不作为硬门槛。
 
 ## 9. 质量、规范与收尾
 
 - [x] 运行 `pnpm format:check`、`pnpm typecheck`、`pnpm test`、`pnpm build`。
-- [ ] 在 Node.js 24 环境运行相关测试和 CLI 基本链路。
+- [x] 在 Node.js 24+ 环境运行相关测试和 CLI 基本链路（Node v25.6.1 验证通过）。
 - [x] 运行任务 validate、`git diff --check`，确认 `open-design/` 无改动。
 - [x] 运行 `trellis-check`，复核跨层 Schema、阶段数据流、外部调用门禁、敏感信息和测试覆盖。
 - [x] 使用真实实现更新 backend contracts、错误、质量和日志规范；不填写数据库/frontend 虚构约定。
