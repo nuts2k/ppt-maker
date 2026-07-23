@@ -146,7 +146,7 @@ function applyAssistResult(
       autoReviewed += 1;
     } else {
       block.classification = assist.classification;
-      block.includeInMask = false;
+      block.includeInMask = assist.classification === "layout_text";
       remainingUnreviewed += 1;
     }
   }

@@ -14,6 +14,15 @@ function countMatches(haystack: string, pattern: RegExp): number {
   return haystack.match(pattern)?.length ?? 0;
 }
 
+function unescapeXml(s: string): string {
+  return s
+    .replaceAll("&amp;", "&")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&apos;", "'")
+    .replaceAll("&quot;", '"');
+}
+
 // 解析 pptx（ZIP/XML）并校验版面 16:9、文字内容、字体声明与形状数量。
 export async function checkPptx(
   input: PptxCheckInput,
@@ -67,7 +76,7 @@ export async function checkPptx(
 
   const slideText = slideXml ?? "";
   const runTexts = [...slideText.matchAll(/<a:t>([^<]*)<\/a:t>/gu)]
-    .map((match) => match[1] ?? "")
+    .map((match) => unescapeXml(match[1] ?? ""))
     .join("\n");
   const missingTexts: string[] = [];
   for (const expected of input.expectedTexts) {

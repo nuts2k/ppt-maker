@@ -165,7 +165,10 @@ export interface ImageGenerationResult {
 
 export type OpenAiImageGenerator = (
   params: OpenAI.Images.ImageGenerateParamsNonStreaming,
-) => Promise<{ response: OpenAI.Images.ImagesResponse; requestId: string | null }>;
+) => Promise<{
+  response: OpenAI.Images.ImagesResponse;
+  requestId: string | null;
+}>;
 
 export async function createDefaultImageGenerator(): Promise<OpenAiImageGenerator> {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -195,8 +198,7 @@ export interface GeneratePageImageOptions {
 export async function generatePageImage(
   options: GeneratePageImageOptions,
 ): Promise<ImageGenerationResult> {
-  const generator =
-    options.generate ?? (await createDefaultImageGenerator());
+  const generator = options.generate ?? (await createDefaultImageGenerator());
   const params: OpenAI.Images.ImageGenerateParamsNonStreaming = {
     model: OPENAI_IMAGE_MODEL,
     prompt: options.prompt,
