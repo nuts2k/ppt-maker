@@ -1,6 +1,7 @@
 export * from "./clean-contracts.js";
 export * from "./constants.js";
 export * from "./contracts.js";
+export * from "./deck-contracts.js";
 export * from "./errors.js";
 export * from "./geometry.js";
 export * from "./mask-contracts.js";

@@ -4,6 +4,12 @@ import { resolve } from "node:path";
 import { Command } from "commander";
 import { runAcceptClean } from "./clean/accept.js";
 import { runSlideClean } from "./clean/run.js";
+import { addSlideToDeck } from "./deck/add-slide.js";
+import { exportDeckPptx } from "./deck/export.js";
+import { removeSlideFromDeck } from "./deck/remove-slide.js";
+import { formatDeckRunResult, runDeckPipeline } from "./deck/run.js";
+import { deckStatus, formatDeckStatus } from "./deck/status.js";
+import { createDeckWorkspace } from "./deck/workspace.js";
 import {
   assertPptxFontReady,
   collectSystemDoctorReport,
@@ -278,21 +284,147 @@ slide
   .command("run")
   .argument("<workspace>", "页面工作区")
   .requiredOption("--from <stage>", "从指定阶段起执行本地阶段")
+  .option("--confirm-api", "自动通过 API 门（assist-review）")
+  .option("--confirm-upload", "自动通过上传门（clean）")
   .description("按 DAG 顺序执行本地阶段，遇上传门和人工门停止并提示下一步")
-  .action(async (workspace: string, options: { from: string }) => {
-    const result = await runSlideRunFrom(options.from, {
-      workspacePath: resolve(workspace),
-    });
+  .action(
+    async (
+      workspace: string,
+      options: {
+        from: string;
+        confirmApi?: boolean;
+        confirmUpload?: boolean;
+      },
+    ) => {
+      const result = await runSlideRunFrom(options.from, {
+        workspacePath: resolve(workspace),
+        ...(options.confirmApi === true ? { confirmApi: true } : {}),
+        ...(options.confirmUpload === true ? { confirmUpload: true } : {}),
+      });
+      process.stdout.write(
+        `已执行：${result.executed.length > 0 ? result.executed.join(" → ") : "（无）"}\n`,
+      );
+      process.stdout.write(`${result.message}\n`);
+      if (result.nextCommand !== null) {
+        process.stdout.write(`下一步：${result.nextCommand}\n`);
+      }
+      if (result.gate === "error" || result.gate === "validation-failed") {
+        process.exitCode = 1;
+      }
+    },
+  );
+
+const deck = program.command("deck").description("多页 Deck 工作流");
+
+deck
+  .command("init")
+  .requiredOption("--images <dir>", "源图目录（PNG/JPEG）")
+  .requiredOption("--workspace <path>", "新建 deck 工作区")
+  .option("--name <title>", "deck 显示名称")
+  .description("扫描目录下所有 16:9 图片，创建多页 deck 工作区")
+  .action(
+    async (options: { images: string; workspace: string; name?: string }) => {
+      const result = await createDeckWorkspace({
+        imagesDir: resolve(options.images),
+        workspacePath: resolve(options.workspace),
+        ...(options.name === undefined ? {} : { name: options.name }),
+      });
+      process.stdout.write(`${result.path}\n`);
+      process.stderr.write(
+        `已创建 deck：${result.manifest.slides.length} 页\n`,
+      );
+    },
+  );
+
+deck
+  .command("run")
+  .argument("<deck>", "deck 工作区")
+  .option("--confirm-api", "自动通过 API 门")
+  .option("--confirm-upload", "自动通过上传门")
+  .description("逐页串行执行 pipeline，人工门停止后汇报每页状态")
+  .action(
+    async (
+      deckPath: string,
+      options: { confirmApi?: boolean; confirmUpload?: boolean },
+    ) => {
+      const result = await runDeckPipeline({
+        deckPath: resolve(deckPath),
+        ...(options.confirmApi === true ? { confirmApi: true } : {}),
+        ...(options.confirmUpload === true ? { confirmUpload: true } : {}),
+      });
+      process.stdout.write(`${formatDeckRunResult(result)}\n`);
+      if (result.summary.failed > 0) {
+        process.exitCode = 1;
+      }
+    },
+  );
+
+deck
+  .command("status")
+  .argument("<deck>", "deck 工作区")
+  .option("--json", "输出结构化 JSON")
+  .description("每页阶段状态与汇总统计")
+  .action(async (deckPath: string, options: { json?: boolean }) => {
+    const result = await deckStatus(resolve(deckPath));
     process.stdout.write(
-      `已执行：${result.executed.length > 0 ? result.executed.join(" → ") : "（无）"}\n`,
+      options.json
+        ? `${JSON.stringify(result, null, 2)}\n`
+        : `${formatDeckStatus(result)}\n`,
     );
-    process.stdout.write(`${result.message}\n`);
-    if (result.nextCommand !== null) {
-      process.stdout.write(`下一步：${result.nextCommand}\n`);
-    }
-    if (result.gate === "error" || result.gate === "validation-failed") {
-      process.exitCode = 1;
-    }
+  });
+
+deck
+  .command("export")
+  .argument("<deck>", "deck 工作区")
+  .requiredOption("-o, --output <path>", "输出 PPTX 文件路径")
+  .option("--strict", "要求所有页面通过 accept-pptx 才允许导出")
+  .option("--font-face <name>", "显式备用字体")
+  .description("合并多页为单一 PPTX 文件")
+  .action(
+    async (
+      deckPath: string,
+      options: { output: string; strict?: boolean; fontFace?: string },
+    ) => {
+      const result = await exportDeckPptx({
+        deckPath: resolve(deckPath),
+        outputPath: options.output,
+        ...(options.strict === true ? { strict: true } : {}),
+        ...(options.fontFace === undefined
+          ? {}
+          : { fontFace: options.fontFace }),
+      });
+      process.stdout.write(`${result.outputPath}\n`);
+      process.stdout.write(
+        `导出：${result.nativeSlides} 页原生 + ${result.placeholderSlides} 页占位\n`,
+      );
+    },
+  );
+
+deck
+  .command("add-slide")
+  .argument("<deck>", "deck 工作区")
+  .argument("<image>", "16:9 PNG/JPEG 源图")
+  .description("向已有 deck 追加一页")
+  .action(async (deckPath: string, image: string) => {
+    const result = await addSlideToDeck({
+      deckPath: resolve(deckPath),
+      imagePath: resolve(image),
+    });
+    process.stdout.write(`${result.pageLabel}\n`);
+    process.stderr.write(`已添加 ${result.pageLabel} (${result.slideId})\n`);
+  });
+
+deck
+  .command("remove-slide")
+  .argument("<deck>", "deck 工作区")
+  .argument("<page>", "页面标识（如 page-01）")
+  .description("从 deck 移除页面引用（不删除磁盘数据）")
+  .action(async (deckPath: string, page: string) => {
+    const result = await removeSlideFromDeck({
+      deckPath: resolve(deckPath),
+      pageLabel: page,
+    });
+    process.stderr.write(`已移除 ${result.workspacePath}\n`);
   });
 
 probe

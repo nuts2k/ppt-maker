@@ -101,7 +101,7 @@ function stageError(error: unknown): WorkspaceStageAttempt["error"] {
 }
 
 // 门禁：所有 layout_text 块必须已复核；object_integrated_symbol/uncertain 不进文本框。
-function selectTextBoxBlocks(
+export function selectTextBoxBlocks(
   blocks: readonly TextReviewBlock[],
 ): TextReviewBlock[] {
   const unreviewed = blocks.filter(
@@ -120,7 +120,7 @@ function selectTextBoxBlocks(
 }
 
 // 门禁：clean plate 必须存在有效且非 stale 的人工接受记录，且接受哈希锚定当前产物。
-async function assertAcceptedCleanPlate(
+export async function assertAcceptedCleanPlate(
   workspacePath: string,
   manifest: SlideWorkspaceManifest,
 ): Promise<WorkspaceAsset> {

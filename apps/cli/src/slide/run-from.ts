@@ -1,7 +1,9 @@
 import { FoundationError, type SlideWorkspaceManifest } from "@ppt-maker/core";
+import { runSlideClean } from "../clean/run.js";
 import { runSlideMask } from "../mask/run.js";
 import { runSlidePptx } from "../pptx/run.js";
 import { runSlideReport } from "../report/run.js";
+import { runAssistReview } from "./assist-review.js";
 import { runSlideOcr } from "./ocr.js";
 import { runSlideReview } from "./review.js";
 import { runSlideValidateReview } from "./validate-review.js";
@@ -24,6 +26,8 @@ type RunStage = (typeof RUN_SEQUENCE)[number];
 
 export interface RunFromOptions {
   readonly workspacePath: string;
+  readonly confirmApi?: boolean;
+  readonly confirmUpload?: boolean;
 }
 
 export interface RunFromResult {
@@ -78,14 +82,22 @@ export async function runSlideRunFrom(
           stageState(workspace.manifest, "assist-review")?.status !==
           "completed"
         ) {
-          return {
-            executed,
-            stoppedAt: "assist-review",
-            gate: "api",
-            nextCommand: `ppt-maker slide assist-review --confirm-api ${options.workspacePath}`,
-            message:
-              "AI 辅助复核需显式调用 API，run 不会自动触发；完成后可继续 run --from validate-review",
-          };
+          if (options.confirmApi === true) {
+            await runAssistReview({
+              workspacePath: options.workspacePath,
+              confirmApi: true,
+            });
+            executed.push("assist-review");
+          } else {
+            return {
+              executed,
+              stoppedAt: "assist-review",
+              gate: "api",
+              nextCommand: `ppt-maker slide assist-review --confirm-api ${options.workspacePath}`,
+              message:
+                "AI 辅助复核需显式调用 API，run 不会自动触发；完成后可继续 run --from validate-review",
+            };
+          }
         }
       } else if (stage === "validate-review") {
         const { report } = await runSlideValidateReview({
@@ -112,13 +124,21 @@ export async function runSlideRunFrom(
         executed.push(stage);
       } else if (stage === "clean") {
         if (stageState(workspace.manifest, "clean")?.status !== "completed") {
-          return {
-            executed,
-            stoppedAt: "clean",
-            gate: "upload",
-            nextCommand: `ppt-maker slide clean --confirm-upload ${options.workspacePath}`,
-            message: "clean plate 需显式上传源图与 mask，run 不会自动上传",
-          };
+          if (options.confirmUpload === true) {
+            await runSlideClean({
+              workspacePath: options.workspacePath,
+              confirmUpload: true,
+            });
+            executed.push("clean");
+          } else {
+            return {
+              executed,
+              stoppedAt: "clean",
+              gate: "upload",
+              nextCommand: `ppt-maker slide clean --confirm-upload ${options.workspacePath}`,
+              message: "clean plate 需显式上传源图与 mask，run 不会自动上传",
+            };
+          }
         }
       } else if (stage === "accept-clean" || stage === "accept-pptx") {
         if (stageState(workspace.manifest, stage)?.status !== "completed") {

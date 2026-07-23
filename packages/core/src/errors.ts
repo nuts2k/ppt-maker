@@ -1,4 +1,6 @@
 export type FoundationErrorCode =
+  | "INVALID_INPUT"
+  | "WORKSPACE_EXISTS"
   | "INVALID_DIMENSIONS"
   | "INVALID_ASPECT_RATIO"
   | "INVALID_BOUNDING_BOX"

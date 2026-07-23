@@ -21,7 +21,8 @@
   "children": [
     "07-20-project-foundation",
     "07-20-single-slide-editable-pptx",
-    "07-21-evaluation-suite"
+    "07-21-evaluation-suite",
+    "07-22-local-deck-workflow"
   ],
   "parent": null,
   "relatedFiles": [

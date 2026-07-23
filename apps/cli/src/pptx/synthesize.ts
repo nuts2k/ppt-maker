@@ -55,7 +55,10 @@ function fontSizePtFromPx(fontSizePx: number, imageWidth: number): number {
   return (fontSizePx * 72 * PPTX_WIDE_WIDTH_INCHES) / imageWidth;
 }
 
-function resolveFontSizePt(block: TextReviewBlock, imageWidth: number): number {
+export function resolveFontSizePt(
+  block: TextReviewBlock,
+  imageWidth: number,
+): number {
   if (block.style.fontSizePx !== null) {
     return fontSizePtFromPx(block.style.fontSizePx, imageWidth);
   }
@@ -65,23 +68,25 @@ function resolveFontSizePt(block: TextReviewBlock, imageWidth: number): number {
   return fontSizePtFromPx(estimatedPx, imageWidth);
 }
 
-function toBold(weight: TextReviewBlock["style"]["fontWeight"]): boolean {
+export function toBold(
+  weight: TextReviewBlock["style"]["fontWeight"],
+): boolean {
   return weight === "semibold" || weight === "bold";
 }
 
-function toAlign(
+export function toAlign(
   align: TextReviewBlock["style"]["horizontalAlign"],
 ): "left" | "center" | "right" {
   return align ?? "left";
 }
 
-function toValign(
+export function toValign(
   align: TextReviewBlock["style"]["verticalAlign"],
 ): "top" | "middle" {
   return align === "middle" ? "middle" : "top";
 }
 
-function normalizeRotation(rotationDeg: number): number {
+export function normalizeRotation(rotationDeg: number): number {
   const wrapped = rotationDeg % 360;
   return wrapped < 0 ? wrapped + 360 : wrapped;
 }
