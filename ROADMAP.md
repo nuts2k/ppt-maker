@@ -1,6 +1,6 @@
 # PPT Maker 路线图
 
-> 状态：执行中（M0 已完成；M1 已完成；下一步 M2 评测体系）
+> 状态：执行中（M0–M3 已完成；下一步 M4 桌面复核工作台）
 >
 > 目标用户：开发者本人
 >
@@ -130,19 +130,34 @@ Trellis 子任务：`07-21-evaluation-suite`
 
 ### M3 多页本地转换工具
 
-状态：待开始
+状态：已完成（2026-07-22）
 
 目标：形成开发者本人可以长期使用的多页图片转 PPTX 工具。
 
-进入条件：M2 证明核心路线值得继续投入。
+进入条件：✅ 已满足 — M2 证明核心路线值得继续投入。
 
-主要交付物：多页导入、Deck/Slide 模型、本地资产和元数据持久化、阶段恢复、批处理、整套 PPTX 导出和稳定 CLI 工作流。
+已交付：
 
-完成条件：多页任务中单页失败不会丢失其他结果；应用重启后可恢复；整套 PPTX 可重复导出并保留人工校正记录。
+- DeckManifest 契约（轻量索引 + N 个独立 slide workspace，slide 内部结构不变）。
+- `deck init --images <dir>`：扫描目录下 PNG/JPEG，按文件名排序批量创建 slide workspace。
+- `deck run --confirm-api --confirm-upload`：逐页串行执行 pipeline，自动通过 API/上传门，人工门逐页停止，结束后汇报每页状态。
+- `deck status`：每页阶段状态 + 汇总统计，支持 `--json`。
+- `deck export -o <path>`：多页合并为单一 PPTX，已验收页使用原生文本层，未完成页用源图占位（标记"待完成"），`--strict` 要求全部验收。
+- `deck add-slide / remove-slide`：追加页面 / 软删除（不删磁盘数据）。
+- `slide run --from` 扩展：新增 `--confirm-api / --confirm-upload` 自动通过门。
+- 阶段恢复：中断后重启 `deck run` 可恢复，已完成阶段通过指纹复用跳过。
 
-非目标：完整桌面可视化编辑、内容策划和图片生成。
+技术结论：
 
-计划 Trellis 子任务：`local-deck-workflow`
+- Deck 层作为 slide workspace 的编排层，不修改 slide 内部结构，slide 命令全部复用。
+- 串行执行 + 错误隔离在 25 页规模下可接受，并行优化留到有需求时再做。
+- PptxGenJS 多页合成为 addSlide 循环调用，与单页逻辑一致。
+
+进入 M4 条件：✅ 已满足 — deck init/run/status/export/add-slide/remove-slide 全部可用，typecheck 通过，139 测试全绿，端到端冒烟测试通过。
+
+非目标：完整桌面可视化编辑、内容策划和图片生成、页面并行执行、参考文案批量匹配。
+
+Trellis 子任务：`07-22-local-deck-workflow`
 
 ### M4 桌面复核工作台
 
