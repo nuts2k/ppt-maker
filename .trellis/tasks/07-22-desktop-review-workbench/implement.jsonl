@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": "DESIGN.md", "reason": "所有前端视觉的唯一设计系统来源：颜色/排版/圆角/间距 token 与组件规格，V2 验收标准明确要求逐组件合规"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "workspace manifest、阶段图、16:9 与 PPTX 契约；DeckRunner 断点续跑与 status-detailed 聚合必须遵守这些契约"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "稳定错误码与工作区完整性约定；错误可见性（F2.6）要透传 manifest attempts 中的 code+message"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "本任务新增 IPC 事件（DeckRunEvent）与 jsonl 记录跨 main/renderer 层，需按跨层清单设计 payload 类型"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "阶段状态色/中文名映射在卡片、轨道、队列多处复用，必须单点定义"}

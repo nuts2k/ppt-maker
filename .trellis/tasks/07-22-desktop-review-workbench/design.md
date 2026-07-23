@@ -1,303 +1,141 @@
-# M4 桌面复核工作台 — 技术设计
+# M4 桌面复核工作台 V2 — 技术设计
 
-## 1. 项目结构
+> 对应 PRD 决策 D1–D4。V1 的画布内核组件保留，其余 renderer 层与 main 进程执行层重构。
 
-```
-apps/
-  desktop/                     # 新增 Electron 桌面应用
-    electron.vite.config.ts
-    package.json
-    src/
-      main/                    # Electron main process
-        index.ts               # app 生命周期、窗口管理
-        ipc/                   # IPC handler 注册
-          deck.ts              # deck 操作（init/status/export/add/remove）
-          slide.ts             # slide 操作（run/review/accept）
-          system.ts            # doctor、文件对话框
-        preload/
-          index.ts             # contextBridge 暴露 API
-      renderer/                # React 前端
-        index.html
-        main.tsx
-        App.tsx
-        stores/                # Zustand stores
-          deck-store.ts        # deck 状态（manifest、slides 列表）
-          slide-store.ts       # 当前 slide 状态（text-blocks、stage states）
-          pipeline-store.ts    # pipeline 执行进度
-          ui-store.ts          # UI 状态（选中块、缩放、面板开关）
-        pages/
-          DeckPage.tsx         # 页面总览（缩略图列表）
-          SlidePage.tsx        # 单页复核画布
-        components/
-          canvas/              # 画布相关
-            ReviewCanvas.tsx   # 画布容器（缩放/平移）
-            TextBlockOverlay.tsx  # 文字框叠加层
-            TextBlockHandle.tsx   # 拖拽/缩放手柄
-            TextEditor.tsx     # 双击编辑文字
-          compare/
-            SliderCompare.tsx  # 滑块擦除对比
-          pipeline/
-            StageProgress.tsx  # 阶段进度条
-            AcceptPanel.tsx    # 内联验收面板
-          sidebar/
-            PropertyPanel.tsx  # 属性面板
-            SourceList.tsx     # 候选来源列表
-            ConfidenceQueue.tsx # 低置信度队列
-          deck/
-            SlideGrid.tsx      # 缩略图网格
-            SlideCard.tsx      # 单页缩略图卡片
-          layout/
-            AppShell.tsx       # 顶层布局
-            Toolbar.tsx        # 工具栏
-        hooks/
-          useIpc.ts            # IPC 调用封装
-          useCanvasTransform.ts # 画布缩放/平移状态
-        lib/
-          ipc-client.ts        # 类型安全的 IPC 客户端
-  cli/                         # 现有 CLI（不变）
-packages/
-  core/                        # 现有核心契约（不变）
-```
-
-## 2. 架构分层
+## 1. 架构总览
 
 ```
-┌─────────────────────────────────────────────┐
-│  Renderer (React + Zustand + Tailwind)      │
-│  - 纯 UI 渲染和交互                          │
-│  - 通过 preload API 调用 main               │
-└──────────────────┬──────────────────────────┘
-                   │ IPC (contextBridge)
-┌──────────────────▼──────────────────────────┐
-│  Main Process (Electron)                     │
-│  - IPC handler 薄壳                          │
-│  - 直接 import 业务函数                       │
-│  - 文件系统、对话框、菜单                      │
-└──────────────────┬──────────────────────────┘
-                   │ 直接函数调用
-┌──────────────────▼──────────────────────────┐
-│  业务层 (apps/cli/src + packages/core)       │
-│  - loadDeckWorkspace / writeDeckManifest     │
-│  - runSlideRunFrom / runAssistReview         │
-│  - exportDeckPptx / runAcceptClean           │
-│  - 所有数据契约和校验                          │
-└─────────────────────────────────────────────┘
+┌─ renderer ────────────────────────────────────────────┐
+│ ConsolePage（控制台）        SlidePage（单页复核）        │
+│   ├ RunControlBar             ├ SlideToolbar（重写）     │
+│   ├ SlideCardGrid（阶段轨道）   ├ StageRail（常驻）        │
+│   ├ TodoQueuePanel            ├ ReviewCanvas ★保留      │
+│   └ ActivityPanel             ├ SliderCompare ★保留     │
+│                               └ AcceptFlow（重写）       │
+│ stores: deck-store / run-store / activity-store / ui  │
+└──────────────┬────────────────────────────────────────┘
+               │ IPC（invoke + event）
+┌─ main ───────┴────────────────────────────────────────┐
+│ DeckRunner（串行执行器，唯一执行入口）                     │
+│ ActivityLog（userData jsonl 追加写）                    │
+│ ipc/deck.ts（status-detailed / run-start / run-stop）  │
+│ ipc/slide.ts（review 读写、accept、load-image，保留）     │
+│ 业务函数：@cli/deck/* @cli/slide/* @ppt-maker/core 不改  │
+└───────────────────────────────────────────────────────┘
 ```
 
-关键原则：renderer 层不直接操作文件系统或调用业务逻辑，所有数据操作通过 IPC 走 main process。
+## 2. main 进程
 
-## 3. IPC 契约
+### 2.1 DeckRunner（新，`src/main/runner/deck-runner.ts`）
 
-### 3.1 类型安全设计
+应用内**唯一** pipeline 执行入口（批量与单页共用，杜绝并发写 workspace）。
 
-在 preload 中用 `contextBridge.exposeInMainWorld` 暴露类型化 API：
+- 状态机：`idle → running → stopping → idle`；内部 FIFO 任务队列，每项 = 一个 slide。
+- 批量启动：`loadDeckWorkspace` 取活动页 → 过滤已完成（accept-pptx completed）与已移除 → 全部入队。单页启动：单项入队（运行中则追加排队）。
+- 每项执行：读取 slide manifest，计算 `from` = `RUN_SEQUENCE` 中第一个 `status !== "completed"` 的阶段（断点续跑，不重做已完成阶段），调 `runSlideRunFrom(from, { workspacePath, confirmApi, confirmUpload, onStageStart, onStageComplete })`。
+- 停止语义：`stop()` 置 `stopping`，当前阶段执行完、当前页返回后不再取下一项。
+- 事件广播（`deck:run-progress`）：
 
-```typescript
-// src/main/preload/index.ts
-const api = {
-  deck: {
-    open: (path: string) => ipcRenderer.invoke('deck:open', path),
-    create: (imagesDir: string, name?: string) => ipcRenderer.invoke('deck:create', imagesDir, name),
-    status: (path: string) => ipcRenderer.invoke('deck:status', path),
-    export: (path: string, output: string, strict?: boolean) => ipcRenderer.invoke('deck:export', path, output, strict),
-    addSlide: (deckPath: string, imagePath: string) => ipcRenderer.invoke('deck:add-slide', deckPath, imagePath),
-    removeSlide: (deckPath: string, pageLabel: string) => ipcRenderer.invoke('deck:remove-slide', deckPath, pageLabel),
-  },
-  slide: {
-    loadReview: (workspacePath: string) => ipcRenderer.invoke('slide:load-review', workspacePath),
-    saveReview: (workspacePath: string, document: TextReviewDocument) => ipcRenderer.invoke('slide:save-review', workspacePath, document),
-    run: (workspacePath: string, from: string, opts?: RunOptions) => ipcRenderer.invoke('slide:run', workspacePath, from, opts),
-    acceptClean: (workspacePath: string, opts?: AcceptOptions) => ipcRenderer.invoke('slide:accept-clean', workspacePath, opts),
-    acceptPptx: (workspacePath: string, opts?: AcceptOptions) => ipcRenderer.invoke('slide:accept-pptx', workspacePath, opts),
-    loadAssetImage: (workspacePath: string, assetPath: string) => ipcRenderer.invoke('slide:load-asset-image', workspacePath, assetPath),
-  },
-  system: {
-    doctor: () => ipcRenderer.invoke('system:doctor'),
-    selectDirectory: () => ipcRenderer.invoke('system:select-directory'),
-    saveFileDialog: (defaultName: string) => ipcRenderer.invoke('system:save-file-dialog', defaultName),
-  },
-  onPipelineProgress: (callback: (event: PipelineProgressEvent) => void) => {
-    ipcRenderer.on('pipeline:progress', (_e, event) => callback(event));
-    return () => ipcRenderer.removeAllListeners('pipeline:progress');
-  },
-};
+```ts
+type DeckRunEvent =
+  | { kind: "run-start"; total: number; slideIds: string[] }
+  | { kind: "page-start"; slideId: string; pageLabel: string; index: number; total: number }
+  | { kind: "stage-start"; slideId: string; stage: SlideStage; at: string }
+  | { kind: "stage-complete"; slideId: string; stage: SlideStage; at: string; durationMs: number }
+  | { kind: "page-done"; slideId: string; gate: string | null; stoppedAt: string | null; message: string; error: { code: string; message: string } | null }
+  | { kind: "run-stopping" }
+  | { kind: "run-done"; summary: { total: number; completed: number; gated: number; failed: number } };
 ```
 
-### 3.2 Pipeline 进度事件
+- 每个事件同步写入 ActivityLog（stage-complete 含耗时；page-done 含 gate/错误）。
 
-Pipeline 执行是长时间操作。main process 通过 `webContents.send` 向 renderer 推送进度：
+### 2.2 ActivityLog（新，`src/main/activity-log.ts`）
 
-```typescript
-interface PipelineProgressEvent {
-  slideId: string;
-  stage: SlideStage;
-  status: 'running' | 'completed' | 'failed';
-  gate?: 'accept-clean' | 'accept-pptx';  // 到达人工门时填入
-  error?: { code: string; message: string };
+- 路径：`app.getPath("userData")/activity/<deckId>.jsonl`，追加写，不写 deck 工作区（PRD D4）。
+- 记录：`{ at, kind, slideId?, pageLabel?, stage?, result, durationMs?, detail? }`；来源包括 runner 事件、accept-clean/accept-pptx、导出、deck 创建/添加/移除页。
+- IPC `activity:list(deckPath, limit=200)`：倒序返回，renderer 按日期分组渲染。
+
+### 2.3 deck:status-detailed（增强只读聚合）
+
+`deckStatus()` 提供 currentStage/stageStatus/summary（沿用）；main 进程再对每个活动页 `loadSlideWorkspace` 读取 manifest，聚合：
+
+```ts
+interface SlideDetail extends DeckSlideStatus {
+  stages: { stage: SlideStage; status: string }[];        // 10 阶段全量
+  lastError: { stage: string; code: string; message: string } | null; // 最近 failed attempt
+  stageDurations: Record<string, number>;                  // attempts startedAt/endedAt 求得
 }
 ```
 
-## 4. 状态管理
+错误与耗时来自 manifest `attempts`（持久化，重启可恢复）——V1 未利用的关键数据源。只读聚合不构成对业务契约的绕过。
 
-### 4.1 Store 划分
+### 2.4 保留的 IPC
 
-```typescript
-// deck-store: 当前打开的 deck
-interface DeckState {
-  deckPath: string | null;
-  manifest: DeckManifest | null;
-  slideStatuses: Map<string, SlideStatusSummary>;  // slideId → 阶段汇总
-  // actions
-  openDeck: (path: string) => Promise<void>;
-  refreshStatus: () => Promise<void>;
-}
+`slide:load-review / save-review / accept-clean / accept-pptx / load-image`、`deck:open / create / add-slide / remove-slide / export`、`system:*` 保留；**移除 `slide:run`**（执行统一走 DeckRunner）。accept-* 与 export handler 追加 ActivityLog 记录。
 
-// slide-store: 当前选中的 slide 复核数据
-interface SlideState {
-  slideId: string | null;
-  workspacePath: string | null;
-  reviewDocument: TextReviewDocument | null;
-  sourceImageUrl: string | null;  // data: URL 或 file: URL
-  cleanPlateUrl: string | null;
-  dirty: boolean;  // 是否有未保存的编辑
-  // actions
-  loadSlide: (workspacePath: string) => Promise<void>;
-  updateBlock: (blockId: string, patch: Partial<TextReviewBlock>) => void;
-  saveReview: () => Promise<void>;
-}
+## 3. renderer
 
-// pipeline-store: 执行进度
-interface PipelineState {
-  running: boolean;
-  currentSlideId: string | null;
-  stageStatuses: Map<SlideStage, PipelineStageStatus>;
-  pendingGate: 'accept-clean' | 'accept-pptx' | null;
-}
+### 3.1 stores
 
-// ui-store: 纯 UI 状态
-interface UIState {
-  selectedBlockId: string | null;
-  canvasTransform: { scale: number; offsetX: number; offsetY: number };
-  compareMode: boolean;
-  sidebarPanel: 'properties' | 'sources' | 'queue';
-}
-```
+| store | 职责 | 关键点 |
+|---|---|---|
+| deck-store | deckPath、SlideDetail[]、summary | 打开/刷新时 `deck:status-detailed`；`page-done` 后增量刷新该页 |
+| run-store | 执行态：status、当前页/阶段、stageStartedAt、本次 run 各页 live 阶段状态 | 订阅 `deck:run-progress`；耗时用 1s ticker 基于 stageStartedAt 计算；重启后耐久态由 deck-store 提供 |
+| activity-store | 日志列表 + live 追加 | 初始 `activity:list`，run 事件到达时本地追加 |
+| ui-store | 视图路由（console/slide）、选中页/块、队列面板展开态 | 沿用改造 |
 
-### 4.2 数据流
+删除 V1 `pipeline-store`（全局单例缺陷的根源）。
 
-1. 用户打开 deck → `deck-store.openDeck()` → IPC `deck:open` → main 调用 `loadDeckWorkspace` + `deckStatus` → 返回 manifest + 状态
-2. 用户点击 slide → `slide-store.loadSlide()` → IPC `slide:load-review` → main 读取 `text-blocks.json` → 返回 `TextReviewDocument`
-3. 用户编辑文字框 → `slide-store.updateBlock()` → 本地更新 store（标记 dirty）
-4. 用户保存 → `slide-store.saveReview()` → IPC `slide:save-review` → main 写入 `text-blocks.json` + 运行 `validateTextReviewDocument`
-5. 用户触发 pipeline → `pipeline-store` 接收进度事件 → UI 实时更新阶段状态
-6. Pipeline 到达人工门 → `pipeline-store.pendingGate` 置位 → UI 显示内联确认面板
+### 3.2 待办队列推导（不新增持久化）
 
-## 5. 画布渲染
+纯派生数据，来源两层合并：
 
-### 5.1 坐标系
+- **耐久层**（manifest，重启可恢复）：`stageStatus ∈ {failed, interrupted, stale}` → 失败组；10 阶段中 clean completed 且 accept-clean 未 completed → 待验收 clean；pptx completed 且 accept-pptx 未 completed → 待验收 pptx。
+- **会话层**（run 结果）：`gate === "validation-failed"` → 需复核校验组（耐久层无法区分该态，重启后该页表现为停在 validate-review，归入失败组提示重跑）。
 
-- 源图实际像素坐标系（如 2048×1152）作为画布内部坐标
-- `TextReviewBlock.bboxPx` 直接映射到画布坐标
-- CSS transform（scale + translate）实现缩放和平移
-- 文字框用绝对定位的 `<div>` 叠加在 `<img>` 上方
+### 3.3 页面结构与 DESIGN.md 映射
 
-### 5.2 交互层
+**AppShell**：`top-nav`（64px、canvas 白底）——wordmark + deck 名（title-sm）+ doctor 状态 chip（caption）+ 右侧「导出 PPTX」`button-primary`（近黑 #181d26、rounded-lg 12px）。
+
+**ConsolePage**：
+
+- **RunControlBar**：空闲态 = 全局摘要（body-md）+「处理全部」`button-primary` +「停止」`button-secondary`（hairline 描边）；执行态 = 总进度条 + "第 N/M 页 · 页名 · 阶段 · 已用 42s"（caption，muted）。执行条容器用 `surface-soft`（#f8fafc）、rounded-lg。
+- **SlideCardGrid**：`demo-grid-card` 规格（rounded-md 10px、白底、hairline 描边、16px 内距、24px gutter，3–4 列响应式）。卡片 = 16:9 缩略图 + 页名（label-md 16/500）+ **阶段轨道**（10 圆点，状态色）+ 当前阶段中文名 + 状态/计时（caption）。失败页：底部错误条显示 `code: message`（signature-coral #aa2d00 作为失败强调色，白字）。
+- **TodoQueuePanel**：右侧 240px rail（`topic-filter-rail` 规格），分组标题（caption 大写）+ 计数徽标；组内项 = 页名 + 原因（body-md）；点击跳转。待验收组用 `cream-callout-card`（#f5e9d4、rounded-md、24px 内距）承载强调。
+- **ActivityPanel**：底部可折叠抽屉；行 = 时间（caption、muted）+ 内容（body-md）；按日期分隔线（hairline）分组。
+
+**SlidePage**：
+
+- SlideToolbar：返回、页名、上一页/下一页；「运行此页」`button-primary`、从阶段重跑为 `button-secondary` + 菜单；保存按钮 + 脏标记；执行中态内联显示当前阶段+计时。
+- StageRail：画布左缘或顶部常驻 10 阶段横向轨道（同卡片轨道视觉，尺寸放大），失败阶段可点开错误详情。
+- AcceptFlow：到达 accept-clean 的页进入验收布局——SliderCompare 全幅 + 右侧核查清单卡（`feature-card-tabbed` 规格 surface-soft/rounded-lg/32px）+ 接受（button-primary）/拒绝并重跑（button-secondary）；accept-pptx 同布局换清单内容。
+- 侧边栏保留属性/来源/低置信度队列三块（视觉重做：body-md、hairline、rounded-sm 输入 44px 高）。
+
+**状态色约定**（唯一表，全局复用）：completed → success `#006400`；running → info `#254fad`（脉动）；failed/interrupted → signature-coral `#aa2d00`；stale → signature-mustard `#d9a441`；pending → surface-strong `#e0e2e6`。字体按 DESIGN.md 替代方案：macOS 直接 system-ui；display 不加粗（≤500）。
+
+## 4. 数据流（批量执行一轮）
 
 ```
-<ReviewCanvas>                    # 缩放/平移容器
-  <img src={sourceImage} />       # 底图
-  {blocks.map(block =>
-    <TextBlockOverlay              # 文字框叠加
-      key={block.id}
-      block={block}
-      selected={block.id === selectedBlockId}
-      onSelect / onDragEnd / onResizeEnd / onDoubleClick
-    />
-  )}
-</ReviewCanvas>
+用户点「处理全部」→ deck:run-start
+→ DeckRunner 入队 N 页 → 逐页：
+   stage-start ──→ run-store 更新卡片 live 态 + ticker 计时
+   stage-complete → run-store + ActivityLog（含耗时）
+   page-done ────→ deck-store 增量刷新该页耐久态；有 gate 则队列面板出现新项
+→ run-done → 控制条显示汇总；全程 ActivityLog 落盘
+重启后：deck:status-detailed 从 manifest 恢复阶段/错误/耗时；activity:list 恢复流水
 ```
 
-- 选中态：蓝色描边 + 四角/四边拖拽手柄
-- 未选中态：半透明边框，颜色按 classification 区分
-  - `layout_text`：绿色（将进入原生层）
-  - `object_integrated_symbol`：灰色（保留在背景）
-  - `uncertain`：橙色（需要人工判断）
-- reviewStatus === "unreviewed" 的块额外添加虚线边框
+## 5. 兼容与回滚
 
-### 5.3 拖拽和缩放
+- 不改 `packages/core`、`apps/cli`（D3）；main 进程只 import 既有导出函数；workspace 数据与 CLI 双向兼容不变。
+- userData jsonl 为纯附加文件，删除不影响任何功能。
+- 回滚 = git revert 桌面端 renderer/main 改动；workspace 数据格式无迁移。
 
-使用 pointer events 实现：
-- `onPointerDown` 记录起始位置
-- `onPointerMove` 计算偏移量，更新 store 中的 bboxPx
-- `onPointerUp` 提交最终位置
-- 缩放手柄在四角和四边中点，拖拽时保持对边/对角不动
+## 6. 风险与权衡
 
-## 6. 滑块擦除对比
-
-```
-<SliderCompare>
-  <div style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}>
-    <img src={sourceImage} />     # 原图
-  </div>
-  <div style={{ clipPath: `inset(0 0 0 ${sliderPos}%)` }}>
-    <img src={cleanPlate} />      # clean plate
-  </div>
-  <div className="slider-handle"  # 垂直分割线 + 拖拽手柄
-    style={{ left: `${sliderPos}%` }}
-  />
-</SliderCompare>
-```
-
-## 7. 业务函数复用策略
-
-### 7.1 可直接复用的函数
-
-| 函数 | 来源 | 用途 |
-|------|------|------|
-| `loadDeckWorkspace` | `apps/cli/src/deck/workspace.ts` | 读取 deck manifest |
-| `writeDeckManifest` | 同上 | 写入 deck manifest |
-| `createDeckWorkspace` | 同上 | deck init |
-| `deckStatus` | `apps/cli/src/deck/status.ts` | deck 状态查询 |
-| `exportDeckPptx` | `apps/cli/src/deck/export.ts` | deck 导出 |
-| `addSlideToDeck` | `apps/cli/src/deck/add-slide.ts` | 添加页面 |
-| `removeSlideFromDeck` | `apps/cli/src/deck/remove-slide.ts` | 移除页面 |
-| `runSlideRunFrom` | `apps/cli/src/slide/run-from.ts` | 按阶段执行 |
-| `runAcceptClean` | `apps/cli/src/clean/accept.ts` | 接受 clean plate |
-| `runAcceptPptx` | `apps/cli/src/pptx/accept.ts` | 接受 PPTX |
-| `collectSystemDoctorReport` | `apps/cli/src/doctor.ts` | 环境检查 |
-| `validateTextReviewDocument` | `packages/core/src/text-blocks.ts` | text-blocks 校验 |
-
-### 7.2 需要适配的部分
-
-- `runSlideRunFrom` 的门控回调：CLI 通过 process.stdin 交互，桌面版改为 IPC 事件通知 + 等待 renderer 响应
-- 图片加载：renderer 不能直接读文件系统，需要 main process 读取图片后通过 IPC 返回 data URL 或 使用 `file://` 协议（需配置 Electron 安全策略）
-- 进度回调：CLI 的 `process.stderr.write` 改为 `webContents.send`
-
-## 8. Electron 安全
-
-- 启用 contextIsolation，禁用 nodeIntegration
-- preload 脚本通过 contextBridge 暴露白名单 API
-- 使用 `protocol.registerFileProtocol` 注册自定义协议（如 `pptmaker://`）安全加载工作区图片
-- CSP 限制：仅允许加载本地资源
-
-## 9. 兼容性保证
-
-- UI 编辑的 `TextReviewDocument` 通过 `TextReviewDocumentSchema.parse()` 校验后再写入磁盘
-- workspace manifest 的读写复用现有函数，不引入新的序列化路径
-- CLI 和桌面应用操作同一个工作区时，通过文件修改时间戳检测冲突（简单起见，不做文件锁）
-
-## 10. 包依赖关系
-
-```
-apps/desktop
-  ├── packages/core          # 数据契约和校验
-  ├── apps/cli/src (部分)     # 业务函数（通过 TypeScript path alias 或 workspace 引用）
-  ├── electron               # 桌面框架
-  ├── electron-vite           # 构建工具
-  ├── react + react-dom       # UI 框架
-  ├── zustand                 # 状态管理
-  ├── tailwindcss             # CSS
-  └── @radix-ui/* + shadcn/ui 组件  # UI 组件
-```
-
-注意：apps/cli/src 中的业务函数需要从 CLI 的 index.ts（commander 壳）中分离出来单独引用。当前架构已经满足这一条件——业务逻辑在各子模块中，index.ts 仅做 CLI 参数解析和 process 交互。
+| 风险 | 处理 |
+|---|---|
+| `runSlideRunFrom` 从断点续跑的 `from` 计算与 CLI `deck run`（固定 from ocr）语义不同 | 逐阶段幂等由 manifest fingerprint 保障；断点续跑只会少做不会多做；实现时用真实 deck 验证 |
+| validation-failed 态无耐久标记 | 会话内精确分组；重启后降级归入失败组并给出"重新校验"入口 |
+| deckStatus + 逐页 loadSlideWorkspace 双次读盘 | 本地 JSON、页数 ≤ 数十，可忽略；不为此改 CLI |
+| DESIGN.md 无 error 语义色 | 使用文档内 signature-coral / signature-mustard，不引入新色 |

@@ -12584,11 +12584,24 @@ const useDeckStore = create((set, get) => ({
 function toMessage(err) {
   return err instanceof Error ? err.message : String(err);
 }
+function AppShell({ children }) {
+  const name = useDeckStore((s) => s.name);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-screen flex-col bg-canvas text-ink", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "header",
+      {
+        className: "flex h-11 shrink-0 items-end justify-center border-b border-hairline pb-2",
+        style: { WebkitAppRegion: "drag" },
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-medium text-muted", children: name ?? "PPT Maker" })
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "min-h-0 flex-1", children })
+  ] });
+}
 const useUIStore = create((set) => ({
   currentView: "welcome",
   selectedSlideId: null,
   selectedBlockId: null,
-  sidebarPanel: "properties",
   setView(view) {
     set({ currentView: view });
   },
@@ -12597,56 +12610,18 @@ const useUIStore = create((set) => ({
   },
   selectBlock(blockId) {
     set({ selectedBlockId: blockId });
-  },
-  setSidebarPanel(panel) {
-    set({ sidebarPanel: panel });
   }
 }));
-function AppShell({ children }) {
-  const name = useDeckStore((s) => s.name);
-  const deckPath = useDeckStore((s) => s.deckPath);
-  const currentView = useUIStore((s) => s.currentView);
-  const setView = useUIStore((s) => s.setView);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-screen flex-col bg-canvas text-ink", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "header",
-      {
-        className: "flex h-14 shrink-0 items-center gap-3 border-b border-hairline px-4 pt-8",
-        style: { WebkitAppRegion: "drag" },
-        children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "div",
-          {
-            className: "flex items-center gap-3",
-            style: { WebkitAppRegion: "no-drag" },
-            children: [
-              deckPath && currentView === "slide" && /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "button",
-                {
-                  type: "button",
-                  onClick: () => setView("deck"),
-                  className: "rounded-sm border border-hairline px-2.5 py-1 text-xs text-ink transition hover:border-border-strong",
-                  children: "返回"
-                }
-              ),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-ink", children: name ?? "PPT Maker" })
-            ]
-          }
-        )
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "min-h-0 flex-1", children })
-  ] });
-}
 const PENDING_STYLE = {
   label: "未开始",
   className: "bg-surface-strong text-muted"
 };
 const STAGE_STATUS_STYLE = {
-  completed: { label: "已完成", className: "bg-green-50 text-success" },
-  running: { label: "进行中", className: "bg-blue-50 text-info" },
-  failed: { label: "失败", className: "bg-red-50 text-red-600" },
-  interrupted: { label: "已中断", className: "bg-amber-50 text-amber-600" },
-  stale: { label: "已过期", className: "bg-amber-50 text-amber-600" },
+  completed: { label: "已完成", className: "bg-success/10 text-success" },
+  running: { label: "进行中", className: "bg-info/10 text-info" },
+  failed: { label: "失败", className: "bg-error-light text-error" },
+  interrupted: { label: "已中断", className: "bg-warning-light text-warning" },
+  stale: { label: "已过期", className: "bg-warning-light text-warning" },
   pending: PENDING_STYLE
 };
 function pageNameFromPath(workspacePath) {
@@ -12741,8 +12716,10 @@ function DeckPage() {
   async function handleCreate() {
     const imagesDir = await window.api.system.selectDirectory();
     if (!imagesDir) return;
-    const workspacePath = await window.api.system.selectDirectory();
-    if (!workspacePath) return;
+    const parentDir = imagesDir.split("/").slice(0, -1).join("/");
+    const name = imagesDir.split("/").pop() ?? "deck";
+    const ts = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    const workspacePath = `${parentDir}/${name}-${ts}`;
     await createDeck(imagesDir, workspacePath);
   }
   async function handleAddSlide() {
@@ -12761,32 +12738,34 @@ function DeckPage() {
     setExportResult(null);
     try {
       const result = await window.api.deck.export(deckPath, outputPath, strict);
-      setExportResult(
-        `导出成功：${result.nativeSlides} 页原生 + ${result.placeholderSlides} 页占位 → ${result.outputPath}`
-      );
+      setExportResult({
+        ok: true,
+        message: `导出成功：${result.nativeSlides} 页原生 + ${result.placeholderSlides} 页占位 → ${result.outputPath}`
+      });
       void refreshStatus();
     } catch (err) {
-      setExportResult(
-        `导出失败：${err instanceof Error ? err.message : String(err)}`
-      );
+      setExportResult({
+        ok: false,
+        message: `导出失败：${err instanceof Error ? err.message : String(err)}`
+      });
     } finally {
       setExporting(false);
     }
   }
   if (!deckPath) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full flex-col items-center justify-center gap-8 px-6", children: [
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full flex-col items-center justify-center gap-10 px-6", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-2xl font-semibold text-ink", children: "PPT Maker" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-2 text-sm text-muted", children: "打开一个已有 Deck，或从图片目录创建新的 Deck" })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-2xl font-medium text-ink", children: "PPT Maker" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-3 max-w-sm text-sm leading-relaxed text-body", children: "可视化复核 PPT 中的文字检测结果，运行去字和重建 Pipeline，导出为可编辑 PPTX。" })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-3", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
             type: "button",
             onClick: () => void handleOpen(),
             disabled: loading,
-            className: "rounded-lg border border-hairline bg-canvas px-5 py-2.5 text-sm font-medium text-ink transition hover:border-border-strong disabled:opacity-50",
+            className: "rounded-lg bg-primary px-6 py-3 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-50",
             children: "打开已有 Deck"
           }
         ),
@@ -12796,12 +12775,22 @@ function DeckPage() {
             type: "button",
             onClick: () => void handleCreate(),
             disabled: loading,
-            className: "rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary transition hover:bg-primary-active disabled:opacity-50",
-            children: "创建新 Deck"
+            className: "rounded-lg border border-hairline bg-canvas px-6 py-3 text-sm font-medium text-ink transition active:border-border-strong disabled:opacity-50",
+            children: "从图片目录创建"
           }
         )
       ] }),
-      error && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-red-600", children: error })
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-w-xs text-center text-xs leading-relaxed text-muted", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { className: "font-medium text-body", children: "打开" }),
+          " — 选择一个已有的 Deck 工作区目录"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "mt-1", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { className: "font-medium text-body", children: "创建" }),
+          " — 选择包含 PPT 截图的图片目录，自动在同级目录创建工作区"
+        ] })
+      ] }),
+      error && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-sm bg-error-light px-4 py-2 text-sm text-error", children: error })
     ] });
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full flex-col", children: [
@@ -12824,7 +12813,7 @@ function DeckPage() {
             type: "button",
             onClick: () => void refreshStatus(),
             disabled: loading,
-            className: "rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition hover:border-border-strong disabled:opacity-50",
+            className: "rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-50",
             children: "刷新"
           }
         ),
@@ -12834,35 +12823,48 @@ function DeckPage() {
             type: "button",
             onClick: () => void handleAddSlide(),
             disabled: loading,
-            className: "rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition hover:border-border-strong disabled:opacity-50",
+            className: "rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-50",
             children: "添加页面"
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex items-center gap-1.5 text-xs text-muted", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "input",
-            {
-              type: "checkbox",
-              checked: strict,
-              onChange: (e) => setStrict(e.target.checked)
-            }
-          ),
-          "Strict"
-        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "label",
+          {
+            className: "flex items-center gap-1.5 text-xs text-muted",
+            title: "要求所有页面通过 accept-pptx 验收后才允许导出",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "input",
+                {
+                  type: "checkbox",
+                  checked: strict,
+                  onChange: (e) => setStrict(e.target.checked)
+                }
+              ),
+              "严格模式"
+            ]
+          }
+        ),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
             type: "button",
             onClick: () => void handleExport(),
             disabled: loading || exporting,
-            className: "rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-on-primary transition hover:bg-primary-active disabled:opacity-50",
+            className: "rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-50",
             children: exporting ? "导出中…" : "导出 PPTX"
           }
         )
       ] })
     ] }),
-    error && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "border-b border-hairline bg-red-50 px-6 py-2 text-sm text-red-600", children: error }),
-    exportResult && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "border-b border-hairline bg-surface-soft px-6 py-2 text-sm text-body", children: exportResult }),
+    error && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "border-b border-hairline bg-error-light px-6 py-2 text-sm text-error", children: error }),
+    exportResult && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "p",
+      {
+        className: `border-b border-hairline px-6 py-2 text-sm ${exportResult.ok ? "bg-success/10 text-success" : "bg-error-light text-error"}`,
+        children: exportResult.message
+      }
+    ),
     /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-auto p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx(SlideGrid, {}) })
   ] });
 }
@@ -16239,19 +16241,151 @@ const twMerge = /* @__PURE__ */ createTailwindMerge(getDefaultConfig);
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
+const CURSOR_MAP = {
+  nw: "nwse-resize",
+  ne: "nesw-resize",
+  sw: "nesw-resize",
+  se: "nwse-resize",
+  n: "ns-resize",
+  s: "ns-resize",
+  e: "ew-resize",
+  w: "ew-resize"
+};
+const POSITION_CLASSES = {
+  nw: "-top-1 -left-1",
+  ne: "-top-1 -right-1",
+  sw: "-bottom-1 -left-1",
+  se: "-bottom-1 -right-1",
+  n: "-top-1 left-1/2 -translate-x-1/2",
+  s: "-bottom-1 left-1/2 -translate-x-1/2",
+  e: "top-1/2 -right-1 -translate-y-1/2",
+  w: "top-1/2 -left-1 -translate-y-1/2"
+};
+function computeDelta(position, movementX, movementY) {
+  const result = { dx: 0, dy: 0, dw: 0, dh: 0 };
+  if (position.includes("w")) {
+    result.dx = movementX;
+    result.dw = -movementX;
+  }
+  if (position.includes("e")) {
+    result.dw = movementX;
+  }
+  if (position.includes("n")) {
+    result.dy = movementY;
+    result.dh = -movementY;
+  }
+  if (position.includes("s")) {
+    result.dh = movementY;
+  }
+  return result;
+}
+function TextBlockHandle({
+  position,
+  scale,
+  onDragStart,
+  onDrag,
+  onDragEnd
+}) {
+  const dragging = reactExports.useRef(false);
+  const handlePointerDown = reactExports.useCallback(
+    (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      dragging.current = true;
+      e.target.setPointerCapture(e.pointerId);
+      onDragStart();
+    },
+    [onDragStart]
+  );
+  const handlePointerMove = reactExports.useCallback(
+    (e) => {
+      if (!dragging.current) return;
+      e.stopPropagation();
+      const delta = computeDelta(
+        position,
+        e.movementX / scale,
+        e.movementY / scale
+      );
+      onDrag(delta);
+    },
+    [position, scale, onDrag]
+  );
+  const handlePointerUp = reactExports.useCallback(
+    (e) => {
+      if (!dragging.current) return;
+      e.stopPropagation();
+      dragging.current = false;
+      onDragEnd();
+    },
+    [onDragEnd]
+  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      className: `absolute z-10 h-2.5 w-2.5 rounded-xs border border-info-border bg-canvas ${POSITION_CLASSES[position]}`,
+      style: { cursor: CURSOR_MAP[position] },
+      onPointerDown: handlePointerDown,
+      onPointerMove: handlePointerMove,
+      onPointerUp: handlePointerUp
+    }
+  );
+}
+function TextEditor({
+  text,
+  onCommit,
+  onCancel
+}) {
+  const ref = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    const el = ref.current;
+    if (el) {
+      el.focus();
+      el.select();
+    }
+  }, []);
+  const handleKeyDown = reactExports.useCallback(
+    (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onCancel();
+      } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.stopPropagation();
+        onCommit(ref.current?.value ?? text);
+      }
+    },
+    [text, onCommit, onCancel]
+  );
+  const handleBlur = reactExports.useCallback(() => {
+    onCommit(ref.current?.value ?? text);
+  }, [text, onCommit]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "textarea",
+    {
+      ref,
+      className: "absolute inset-0 resize-none border-none bg-canvas/90 p-1 text-xs text-ink outline-none focus:ring-1 focus:ring-info-border",
+      defaultValue: text,
+      onKeyDown: handleKeyDown,
+      onBlur: handleBlur
+    }
+  );
+}
 const CLASSIFICATION_BORDER = {
   layout_text: "border-block-layout",
   object_integrated_symbol: "border-block-object",
   uncertain: "border-block-uncertain"
 };
+const HANDLE_POSITIONS = ["nw", "ne", "sw", "se", "n", "s", "e", "w"];
 function TextBlockOverlay({
   block,
   imageWidth,
   imageHeight,
   selected,
-  onClick
+  scale,
+  onClick,
+  onUpdate
 }) {
   const { x, y, width, height } = block.bboxPx;
+  const [editing, setEditing] = reactExports.useState(false);
   const style = {
     left: `${x / imageWidth * 100}%`,
     top: `${y / imageHeight * 100}%`,
@@ -16259,18 +16393,80 @@ function TextBlockOverlay({
     height: `${height / imageHeight * 100}%`
   };
   const unreviewed = block.reviewStatus === "unreviewed";
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "button",
+  const handleDragStart = reactExports.useCallback(() => {
+  }, []);
+  const handleDrag = reactExports.useCallback(
+    (delta) => {
+      if (!onUpdate) return;
+      onUpdate(block.id, {
+        bboxPx: {
+          x: block.bboxPx.x + delta.dx,
+          y: block.bboxPx.y + delta.dy,
+          width: Math.max(10, block.bboxPx.width + delta.dw),
+          height: Math.max(10, block.bboxPx.height + delta.dh)
+        }
+      });
+    },
+    [block.id, block.bboxPx, onUpdate]
+  );
+  const handleDragEnd = reactExports.useCallback(() => {
+  }, []);
+  const handleDoubleClick = reactExports.useCallback(
+    (e) => {
+      e.stopPropagation();
+      if (onUpdate) setEditing(true);
+    },
+    [onUpdate]
+  );
+  const handleTextCommit = reactExports.useCallback(
+    (text) => {
+      setEditing(false);
+      if (!onUpdate) return;
+      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+      onUpdate(block.id, { text, lines: lines.length > 0 ? lines : [text] });
+    },
+    [block.id, onUpdate]
+  );
+  const handleTextCancel = reactExports.useCallback(() => {
+    setEditing(false);
+  }, []);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
     {
-      type: "button",
+      role: "button",
+      tabIndex: 0,
       style,
       onClick,
+      onDoubleClick: handleDoubleClick,
+      onKeyDown: (e) => {
+        if (e.key === "Enter") onClick();
+      },
       className: cn(
-        "absolute box-border overflow-hidden border-2 text-left transition-colors",
-        selected ? "border-link bg-link/10" : CLASSIFICATION_BORDER[block.classification],
+        "absolute box-border overflow-visible border-2 text-left transition-colors",
+        selected ? "border-info-border bg-info/10" : CLASSIFICATION_BORDER[block.classification],
         !selected && unreviewed && "border-dashed"
       ),
-      children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "block truncate p-0.5 text-[10px] leading-tight text-ink", children: block.text })
+      children: [
+        editing ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+          TextEditor,
+          {
+            text: block.text,
+            onCommit: handleTextCommit,
+            onCancel: handleTextCancel
+          }
+        ) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "block truncate p-0.5 text-[10px] leading-tight text-ink", children: block.text }),
+        selected && onUpdate && !editing && /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: HANDLE_POSITIONS.map((pos) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          TextBlockHandle,
+          {
+            position: pos,
+            scale,
+            onDragStart: handleDragStart,
+            onDrag: handleDrag,
+            onDragEnd: handleDragEnd
+          },
+          pos
+        )) })
+      ]
     }
   );
 }
@@ -16278,7 +16474,8 @@ function ReviewCanvas({
   imageUrl,
   blocks,
   selectedBlockId,
-  onSelectBlock
+  onSelectBlock,
+  onUpdateBlock
 }) {
   const [size, setSize] = reactExports.useState(
     null
@@ -16292,7 +16489,7 @@ function ReviewCanvas({
     onPointerUp,
     resetView
   } = useCanvasTransform(size);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
       role: "application",
@@ -16304,41 +16501,49 @@ function ReviewCanvas({
       onPointerUp,
       onDoubleClick: resetView,
       className: "relative h-full w-full overflow-hidden bg-surface-strong",
-      children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "div",
-        {
-          className: "absolute left-0 top-0 origin-top-left",
-          style: {
-            transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`
-          },
-          children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "img",
-              {
-                src: imageUrl,
-                alt: "幻灯片源图",
-                draggable: false,
-                onLoad: (e) => setSize({
-                  width: e.currentTarget.naturalWidth,
-                  height: e.currentTarget.naturalHeight
-                }),
-                className: "block max-w-none select-none"
-              }
-            ),
-            size !== null && blocks.map((block) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-              TextBlockOverlay,
-              {
-                block,
-                imageWidth: size.width,
-                imageHeight: size.height,
-                selected: selectedBlockId === block.id,
-                onClick: () => onSelectBlock?.(block.id)
-              },
-              block.id
-            ))
-          ]
-        }
-      )
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "absolute left-0 top-0 origin-top-left",
+            style: {
+              transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`
+            },
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "img",
+                {
+                  src: imageUrl,
+                  alt: "幻灯片源图",
+                  draggable: false,
+                  onLoad: (e) => setSize({
+                    width: e.currentTarget.naturalWidth,
+                    height: e.currentTarget.naturalHeight
+                  }),
+                  className: "block max-w-none select-none"
+                }
+              ),
+              size !== null && blocks.map((block) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                TextBlockOverlay,
+                {
+                  block,
+                  imageWidth: size.width,
+                  imageHeight: size.height,
+                  selected: block.id === selectedBlockId,
+                  scale: transform.scale,
+                  onClick: () => onSelectBlock?.(block.id),
+                  onUpdate: onUpdateBlock
+                },
+                block.id
+              ))
+            ]
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute bottom-3 left-3 rounded-sm bg-surface-dark/70 px-2 py-1 text-xs text-on-dark", children: [
+          Math.round(transform.scale * 100),
+          "%"
+        ] })
+      ]
     }
   );
 }
@@ -16543,10 +16748,10 @@ function statusColor(status) {
     case "running":
       return "bg-info border-info-border animate-pulse";
     case "failed":
-      return "bg-red-600 border-red-400";
+      return "bg-error border-error-border";
     case "interrupted":
     case "stale":
-      return "bg-block-uncertain border-block-uncertain";
+      return "bg-warning border-warning-border";
     default:
       return "bg-surface-strong border-hairline";
   }
@@ -16851,19 +17056,37 @@ function SourceList({ block }) {
 function getApi() {
   return window.api;
 }
-const INITIAL_STATE$1 = {
+const usePipelineStore = create((set, get) => ({
   running: false,
   currentSlideId: null,
   stageStatuses: {},
   pendingGate: null,
-  error: null
-};
-const usePipelineStore = create((set) => ({
-  ...INITIAL_STATE$1,
+  error: null,
   async startPipeline(workspacePath, from, opts) {
-    set({ running: true, error: null });
+    set({ running: true, error: null, stageStatuses: {}, pendingGate: null });
+    const unsubscribe = getApi().onPipelineProgress((event) => {
+      const { stageStatuses } = get();
+      set({
+        stageStatuses: {
+          ...stageStatuses,
+          [event.stage]: event.status
+        },
+        ...event.gate ? { pendingGate: event.gate } : {},
+        ...event.error ? { error: { code: event.error.code, message: event.error.message } } : {}
+      });
+    });
     try {
-      await getApi().slide.run(workspacePath, from, opts);
+      const result = await getApi().slide.run(workspacePath, from, opts);
+      if (result.gate === "accept-clean" || result.gate === "accept-pptx") {
+        set({ pendingGate: result.gate });
+      } else if (result.gate) {
+        set({
+          error: {
+            code: `PIPELINE_GATE_${result.gate.toUpperCase()}`,
+            message: result.message
+          }
+        });
+      }
     } catch (error) {
       set({
         error: {
@@ -16872,6 +17095,7 @@ const usePipelineStore = create((set) => ({
         }
       });
     } finally {
+      unsubscribe();
       set({ running: false });
     }
   },
@@ -16879,7 +17103,13 @@ const usePipelineStore = create((set) => ({
     set({ pendingGate: null });
   },
   reset() {
-    set({ ...INITIAL_STATE$1, stageStatuses: {} });
+    set({
+      running: false,
+      currentSlideId: null,
+      stageStatuses: {},
+      pendingGate: null,
+      error: null
+    });
   }
 }));
 const INITIAL_STATE = {
@@ -16966,6 +17196,7 @@ function SlidePage() {
   const acceptGate = usePipelineStore((s) => s.acceptGate);
   const [sidebarTab, setSidebarTab] = reactExports.useState("properties");
   const [compareMode, setCompareMode] = reactExports.useState(false);
+  const [saveResult, setSaveResult] = reactExports.useState(null);
   reactExports.useEffect(() => {
     if (workspacePath === null) return;
     void loadSlide(workspacePath);
@@ -16975,7 +17206,7 @@ function SlidePage() {
     function handleKeyDown(e) {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        if (dirty) void saveReview();
+        if (dirty) void handleSave();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -16989,15 +17220,33 @@ function SlidePage() {
     },
     [updateBlock]
   );
+  async function handleSave() {
+    try {
+      const result = await saveReview();
+      setSaveResult({
+        ok: result.valid,
+        message: result.valid ? "保存成功" : `保存完成，${result.errors} 个错误 / ${result.warnings} 个警告`
+      });
+      setTimeout(() => setSaveResult(null), 3e3);
+    } catch (err) {
+      setSaveResult({
+        ok: false,
+        message: `保存失败：${err instanceof Error ? err.message : String(err)}`
+      });
+    }
+  }
   const handleRunPipeline = reactExports.useCallback(
     (from) => {
       if (!workspacePath) return;
       void startPipeline(workspacePath, from, {
         confirmApi: true,
         confirmUpload: true
+      }).then(() => {
+        void refreshStatus();
       });
+      setSidebarTab("pipeline");
     },
-    [workspacePath, startPipeline]
+    [workspacePath, startPipeline, refreshStatus]
   );
   const handleAccept = reactExports.useCallback(
     async (note) => {
@@ -17025,7 +17274,7 @@ function SlidePage() {
         "button",
         {
           type: "button",
-          className: "text-sm text-body hover:text-ink",
+          className: "rounded-sm border border-hairline px-2.5 py-1 text-xs text-body transition active:border-border-strong",
           onClick: () => setView("deck"),
           children: "← 返回"
         }
@@ -17037,8 +17286,8 @@ function SlidePage() {
           {
             type: "button",
             className: cn(
-              "rounded-sm border px-2 py-1 text-xs",
-              compareMode ? "border-info-border bg-surface-soft" : "border-hairline"
+              "rounded-sm border px-2 py-1 text-xs transition",
+              compareMode ? "border-info-border bg-info/10 text-info" : "border-hairline text-body"
             ),
             onClick: () => setCompareMode(!compareMode),
             children: "对比"
@@ -17054,31 +17303,45 @@ function SlidePage() {
               if (e.target.value) handleRunPipeline(e.target.value);
             },
             children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", disabled: true, children: "运行 Pipeline…" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "init", children: "从 init 开始" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", disabled: true, children: pipelineRunning ? "Pipeline 执行中…" : "运行 Pipeline…" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "ocr", children: "从 OCR 开始" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "review", children: "从 review 开始" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "mask", children: "从 mask 开始" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "clean", children: "从 clean 开始" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "review", children: "从候选合并开始" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "assist-review", children: "从 AI 复核开始" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "validate-review", children: "从校验开始" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "mask", children: "从 Mask 开始" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "clean", children: "从 Clean 开始" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "pptx", children: "从 PPTX 开始" })
             ]
           }
         ),
-        dirty && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-block-uncertain", children: "未保存" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
+        dirty && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-warning", children: "未保存" }),
+        saveResult && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            className: cn(
+              "text-xs",
+              saveResult.ok ? "text-success" : "text-error"
+            ),
+            children: saveResult.message
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs(
           "button",
           {
             type: "button",
-            onClick: () => void saveReview(),
+            onClick: () => void handleSave(),
             disabled: !dirty,
-            className: "rounded-lg bg-primary px-3 py-1 text-sm text-on-primary disabled:opacity-40",
-            children: "保存"
+            className: "rounded-lg bg-primary px-3 py-1 text-sm text-on-primary transition active:bg-primary-active disabled:opacity-40",
+            children: [
+              "保存",
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-1 text-xs text-on-primary/60", children: "⌘S" })
+            ]
           }
         )
       ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-h-0 flex-1", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "min-w-0 flex-1", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "relative min-w-0 flex-1", children: [
         loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center text-sm text-muted", children: "加载中…" }) : compareMode && sourceImageUrl && cleanPlateUrl ? /* @__PURE__ */ jsxRuntimeExports.jsx(
           SliderCompare,
           {
@@ -17095,7 +17358,7 @@ function SlidePage() {
             onUpdateBlock: handleBlockUpdate
           }
         ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center text-sm text-muted", children: "暂无源图" }),
-        pendingGate && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-4 left-4 right-84 z-20", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        pendingGate && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-4 left-4 right-4 z-20", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
           AcceptPanel,
           {
             gate: pendingGate,
@@ -17116,7 +17379,7 @@ function SlidePage() {
             type: "button",
             className: cn(
               "flex-1 py-2 text-xs transition-colors",
-              sidebarTab === tab ? "border-b-2 border-info font-medium text-ink" : "text-muted hover:text-body"
+              sidebarTab === tab ? "border-b-2 border-primary font-medium text-ink" : "text-muted"
             ),
             onClick: () => setSidebarTab(tab),
             children: label
@@ -17148,7 +17411,7 @@ function SlidePage() {
                 running: pipelineRunning
               }
             ),
-            pipelineError && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mx-4 rounded-sm bg-red-50 p-2 text-xs text-red-600", children: [
+            pipelineError && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mx-4 rounded-sm bg-error-light p-2 text-xs text-error", children: [
               pipelineError.code,
               ": ",
               pipelineError.message

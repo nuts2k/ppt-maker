@@ -1,5 +1,5 @@
-import "dotenv/config";
 import { resolve, dirname, join, basename, relative, isAbsolute } from "node:path";
+import { config } from "dotenv";
 import { ipcMain, dialog, app, BrowserWindow } from "electron";
 import { randomUUID, createHash } from "node:crypto";
 import { readFile, mkdir, mkdtemp, copyFile, rename, rm, writeFile, stat, readdir, access } from "node:fs/promises";
@@ -215,7 +215,7 @@ async function createSlideWorkspace(options) {
       ],
       error: null
     };
-    const config = {
+    const config2 = {
       schemaVersion: SCHEMA_VERSION,
       slideId,
       aspectRatio: "16:9",
@@ -242,7 +242,7 @@ async function createSlideWorkspace(options) {
     };
     await writeJsonAtomic(
       resolveWorkspacePath(temporaryWorkspace, "config.json"),
-      SlideWorkspaceConfigSchema.parse(config)
+      SlideWorkspaceConfigSchema.parse(config2)
     );
     await writeJsonAtomic(
       resolveWorkspacePath(temporaryWorkspace, "manifest.json"),
@@ -261,7 +261,7 @@ async function createSlideWorkspace(options) {
       }
       throw error;
     }
-    return { path: workspacePath, manifest, config };
+    return { path: workspacePath, manifest, config: config2 };
   } catch (error) {
     await rm(temporaryWorkspace, { recursive: true, force: true }).catch(
       () => void 0
@@ -276,19 +276,19 @@ async function loadSlideWorkspace(workspacePath) {
       await readFile(resolveWorkspacePath(path, "manifest.json"), "utf8")
     )
   );
-  const config = SlideWorkspaceConfigSchema.parse(
+  const config2 = SlideWorkspaceConfigSchema.parse(
     JSON.parse(
       await readFile(resolveWorkspacePath(path, manifest.configPath), "utf8")
     )
   );
-  if (manifest.slideId !== config.slideId) {
+  if (manifest.slideId !== config2.slideId) {
     throw new FoundationError(
       "INVALID_WORKSPACE",
       "manifest.json 与 config.json 的 slideId 不一致",
-      { manifestSlideId: manifest.slideId, configSlideId: config.slideId }
+      { manifestSlideId: manifest.slideId, configSlideId: config2.slideId }
     );
   }
-  return { path, manifest, config };
+  return { path, manifest, config: config2 };
 }
 async function writeWorkspaceManifest(workspacePath, manifest) {
   await writeJsonAtomic(
@@ -4696,6 +4696,7 @@ async function runSlideRunFrom(from, options) {
       continue;
     }
     const workspace = await loadSlideWorkspace(options.workspacePath);
+    options.onStageStart?.(stage);
     try {
       if (stage === "ocr") {
         await runSlideOcr({ workspacePath: options.workspacePath });
@@ -4774,6 +4775,9 @@ async function runSlideRunFrom(from, options) {
           };
         }
       }
+      if (executed[executed.length - 1] === stage) {
+        options.onStageComplete?.(stage);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return {
@@ -4793,7 +4797,10 @@ async function runSlideRunFrom(from, options) {
     message: "已执行到 report，流水线完成"
   };
 }
-function registerSlideHandlers(_mainWindow) {
+function sendProgress(win, event) {
+  win.webContents.send("pipeline:progress", event);
+}
+function registerSlideHandlers(mainWindow) {
   ipcMain.handle(
     "slide:load-review",
     async (_event, workspacePath) => {
@@ -4832,17 +4839,55 @@ function registerSlideHandlers(_mainWindow) {
   ipcMain.handle(
     "slide:run",
     async (_event, workspacePath, from, opts) => {
-      const result = await runSlideRunFrom(from, {
-        workspacePath: resolve(workspacePath),
-        ...opts?.confirmApi === true ? { confirmApi: true } : {},
-        ...opts?.confirmUpload === true ? { confirmUpload: true } : {}
-      });
-      return {
-        executed: result.executed,
-        gate: result.gate,
-        message: result.message,
-        nextCommand: result.nextCommand
-      };
+      const slideId = workspacePath.split("/").pop() ?? "unknown";
+      try {
+        const result = await runSlideRunFrom(from, {
+          workspacePath: resolve(workspacePath),
+          ...opts?.confirmApi === true ? { confirmApi: true } : {},
+          ...opts?.confirmUpload === true ? { confirmUpload: true } : {},
+          onStageStart(stage) {
+            sendProgress(mainWindow, {
+              slideId,
+              stage,
+              status: "running"
+            });
+          },
+          onStageComplete(stage) {
+            sendProgress(mainWindow, {
+              slideId,
+              stage,
+              status: "completed"
+            });
+          }
+        });
+        const acceptGate = result.gate === "manual" && result.stoppedAt && (result.stoppedAt === "accept-clean" || result.stoppedAt === "accept-pptx") ? result.stoppedAt : void 0;
+        if (acceptGate) {
+          sendProgress(mainWindow, {
+            slideId,
+            stage: acceptGate,
+            status: "running",
+            gate: acceptGate
+          });
+        }
+        return {
+          executed: result.executed,
+          stoppedAt: result.stoppedAt,
+          gate: acceptGate ?? result.gate,
+          message: result.message,
+          nextCommand: result.nextCommand
+        };
+      } catch (error) {
+        sendProgress(mainWindow, {
+          slideId,
+          stage: from,
+          status: "failed",
+          error: {
+            code: "PIPELINE_RUN_FAILED",
+            message: error instanceof Error ? error.message : String(error)
+          }
+        });
+        throw error;
+      }
     }
   );
   ipcMain.handle(
@@ -4945,6 +4990,9 @@ function registerSystemHandlers(_mainWindow) {
     }
   );
 }
+const projectRoot = resolve(app.getAppPath(), "../..");
+process.chdir(projectRoot);
+config({ path: resolve(projectRoot, ".env") });
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1280,
@@ -4962,7 +5010,7 @@ function createWindow() {
   });
   registerSystemHandlers();
   registerDeckHandlers();
-  registerSlideHandlers();
+  registerSlideHandlers(mainWindow);
   const rendererUrl = process.env.ELECTRON_RENDERER_URL;
   if (rendererUrl) {
     mainWindow.loadURL(rendererUrl);

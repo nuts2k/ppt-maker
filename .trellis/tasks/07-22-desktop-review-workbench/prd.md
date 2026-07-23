@@ -1,123 +1,119 @@
-# M4 桌面复核工作台
+# M4 桌面复核工作台 V2
+
+> V2 重构（2026-07-23）：第一版实现的用户体验被判定不合格并推倒重规划。本 PRD 为 V2 的唯一权威需求文档，已吸收 V1 全部仍然有效的需求。
 
 ## 目标
 
-把 M1–M3 建立的结构化文件校正流程（编辑 JSON → CLI 命令）升级为高效的可视化校正体验。开发者通过桌面应用完成多页 PPT 的复核、校正和导出，无需直接编辑 JSON 文件或手动运行 CLI 命令。
+把 M1–M3 建立的结构化文件校正流程升级为**批量优先的可视化控制台**：机器批量跑 pipeline，人顺着待办队列复核。用户在任何时刻、不做任何点击就能回答四个问题——做了什么、做到哪里、每页处理到什么程度、有没有出错。
 
 ## 用户画像
 
 开发者本人（单人本地使用），macOS + PowerPoint for Mac。
 
+## V1 缺陷诊断（重构动因，证据已确认）
+
+1. **无操作历史**：pipeline 结果只存内存 store，切页/重跑即清空（`apps/desktop/src/renderer/stores/pipeline-store.ts:31`）。
+2. **状态词不含阶段名**：卡片徽标只显示"已完成/进行中"，阶段名藏在 tooltip（`SlideCard.tsx:98`）；OCR 完成与全部完成视觉无差别。
+3. **无每页阶段进度可视化**：总览只有页头一行汇总数字。
+4. **错误不可见**：错误只在单页侧边栏 Pipeline 标签短暂显示；manifest `attempts` 中持久化的 `error{code,message}` 完全未被利用。
+5. **F4.6 deck 级批量执行未实现**：`main/ipc/deck.ts` 无 `deck:run`，用户必须逐页打开、从 `<select>` 下拉框触发。
+6. **Pipeline 状态全局单例且不落盘**：跑 A 页时切到 B 页显示错乱；重启全丢。
+
+## 已确认决策
+
+| # | 决策 | 内容 |
+|---|------|------|
+| D1 | 工作流形态 | **批量优先·控制台**。Deck 总览升级为控制中心：一键处理全部，后台逐页串行；需人工介入的页进入待办队列 |
+| D2 | 重构范围 | **保留画布内核**（ReviewCanvas / TextBlockOverlay / TextEditor / SliderCompare 交互逻辑）；重写单页壳层（工具栏、侧边栏、验收流程）与整个 Deck 层 |
+| D3 | 进度深度 | **阶段级 + 实时计时**，不改造 `packages/core` 与 `apps/cli` 内部；阶段内子进度为后续优化 |
+| D4 | 日志持久化 | 活动日志按 deck 追加写入 Electron userData 目录（jsonl），跨重启保留；不向 deck 工作区写额外文件 |
+
 ## 核心工作流
 
-1. **打开 Deck** — 选择已有 deck 工作区或通过目录创建新 deck
-2. **页面总览** — 缩略图列表查看所有页面及其阶段状态
-3. **页面复核** — 在画布上叠加文字框，所见即所得地编辑文字内容、分类、位置和样式
-4. **Pipeline 执行** — 从 UI 触发 OCR → assist-review → mask → clean → pptx 流程，阶段级进度反馈
-5. **人工验收** — accept-clean（滑块擦除对比原图/clean plate）和 accept-pptx（内联确认面板）
-6. **导出** — 多页合并为单一 PPTX
+1. **打开/创建 Deck** → 进入控制台，立即看到每页阶段轨道与全局摘要
+2. **一键处理全部** → main 进程逐页串行执行，卡片实时更新（当前阶段 + 已用时长），总进度条显示第 N/M 页
+3. **待办队列驱动复核** → 停在人工门的页自动分组入队（复核校验未通过 / 待验收 clean / 待验收 pptx / 失败），点击直达对应处理界面
+4. **单页复核** → 画布编辑文字块（V1 内核）、滑块对比验收 clean、确认面板验收 pptx，完成后可就地继续该页 pipeline
+5. **导出** → 前置状态汇总（几页原生/占位）、strict 开关、结果反馈
 
 ## 功能需求
 
-### F1 Deck 管理
+### F1 Deck 管理（沿袭 V1）
 
 - F1.1 打开已有 deck 工作区（选择目录）
-- F1.2 从图片目录创建新 deck（等同 `deck init --images <dir>`）
+- F1.2 从图片目录创建新 deck（等同 `deck init --images <dir>`，自动生成工作区子目录名）
 - F1.3 添加页面（等同 `deck add-slide`）
 - F1.4 移除页面（等同 `deck remove-slide`，软删除）
-- F1.5 页面缩略图列表，显示每页当前阶段状态
 
-### F2 页面复核画布
+### F2 Deck 控制台（V2 核心，全新）
 
-- F2.1 原图上叠加半透明文字框，按 `text-blocks.json` 中的 `bboxPx` 定位
-- F2.2 点击选中文字框，显示属性面板（text、lines、classification、includeInMask、style、reviewStatus）
-- F2.3 双击文字框进入文字编辑模式，修改 text 和 lines
-- F2.4 拖拽调整文字框位置（更新 bboxPx）
-- F2.5 拖拽文字框边缘调整大小（更新 bboxPx width/height）
-- F2.6 右键菜单快速切换 classification（layout_text / object_integrated_symbol / uncertain）
-- F2.7 切换 includeInMask 状态
-- F2.8 低置信度队列：高亮 reviewStatus === "unreviewed" 且 classification === "uncertain" 的块，支持逐个导航
-- F2.9 候选来源查看：选中文字框时显示 sources 列表（offline_ocr / cloud_vision / reference_text / manual）
-- F2.10 画布缩放和平移
+- F2.1 **批量执行**：一键"处理全部页面"，main 进程 DeckRunner 逐页串行调 `runSlideRunFrom`（confirmApi / confirmUpload 由用户在启动时显式勾选，默认开启并明示含义）；跳过已完成页与已移除页
+- F2.2 **总进度**：执行时显示"第 N/M 页 · 页名 · 当前阶段 · 本阶段已用时"；空闲时显示全局摘要（已完成 / 待人工 / 失败 / 未开始）
+- F2.3 **卡片阶段轨道**：每张卡片显示 10 阶段点状轨道（含状态色）+ 当前阶段中文名 + 状态；running 时显示实时计时
+- F2.4 **停止控制**：批量执行可请求停止，当前页跑完当前阶段后停止，UI 明示"停止中"
+- F2.5 **待办队列面板**：按门类型分组（需复核校验 validation-failed / 待验收 clean / 待验收 pptx / 失败 error），每项显示页名、原因、进入时间；点击直达对应页面与对应面板
+- F2.6 **错误可见**：失败页卡片直接显示错误 code + message（从 manifest `attempts` 读取，重启后仍可见）；点击可看完整信息与重试入口
+- F2.7 **活动日志面板**：操作流水（时间 · 页 · 阶段/操作 · 结果 · 耗时），含批量执行、单页执行、验收、导出、失败事件；按 deck 落盘 userData jsonl，跨重启按日期分组展示
+- F2.8 单页启动：卡片上可对单页直接"处理此页"，与批量共用同一 DeckRunner（串行排队）
 
-### F3 原图/Clean Plate 对比
+### F3 单页复核（画布内核保留，壳层重写）
 
-- F3.1 滑块擦除对比：单视图内垂直分割滑块，左半原图右半 clean plate
-- F3.2 滑块可自由拖动
-- F3.3 同步显示自动检查结果（文字残留、容器完整性等）
+- F3.1 画布：文字框叠加 / 选中 / 双击编辑 / 拖拽移动缩放 / 右键分类 / includeInMask / 缩放平移（V1 内核，行为不变）
+- F3.2 属性面板、候选来源、低置信度队列（V1 功能保留，视觉按 DESIGN.md 重做）
+- F3.3 工具栏重做：去掉 `<select>` 触发；"运行"为明确主按钮，从阶段重跑为次级菜单；保存状态、脏标记、执行状态清晰可见
+- F3.4 单页阶段轨道常驻可见（不再藏在侧边栏标签页里），失败阶段展示错误详情
+- F3.5 验收 clean：滑块擦除对比 + 自动检查结果 + 核查清单 + 接受/拒绝；拒绝可直接从 mask/clean 重跑
+- F3.6 验收 pptx：自动检查结果 + 核查清单 + 确认；验收记录写入 manifest（与 CLI 一致）
+- F3.7 页间导航：上一页/下一页 + 待办队列内"处理下一项"
 
-### F4 Pipeline 执行
+### F4 导出（沿袭 V1 + 反馈强化）
 
-- F4.1 从 UI 一键触发完整 pipeline（等同 `slide run --from init --confirm-api --confirm-upload`）
-- F4.2 从指定阶段重跑（等同 `slide run --from <stage>`）
-- F4.3 阶段级进度显示：每个阶段显示 pending / running / completed / failed 状态
-- F4.4 执行过程中 UI 不阻塞，可切换查看其他页面
-- F4.5 错误展示：失败阶段显示错误信息（code + message）
-- F4.6 deck 级批量执行（等同 `deck run`），逐页串行，进度实时更新
+- F4.1 导出按钮（等同 `deck export -o <path>`），保存对话框选路径
+- F4.2 strict 模式开关（要求所有页通过 accept-pptx）
+- F4.3 导出前摘要：明示将有几页原生、几页占位；导出后结果与文件路径反馈，写入活动日志
 
-### F5 人工验收门
+### F5 系统状态（沿袭 V1）
 
-- F5.1 accept-clean：pipeline 到达 accept-clean 阶段时暂停，在页面内显示内联确认面板
-  - 展示自动检查结果
-  - 核查清单（文字残留、容器完整性、非文字区域误改）
-  - 接受/拒绝操作
-- F5.2 accept-pptx：展示 PPTX 自动检查结果，核查清单，确认后记录接受
-- F5.3 验收记录写入 workspace manifest（与 CLI 一致）
+- F5.1 环境检查（等同 `doctor`）：微软雅黑、Apple Vision 可用性；启动时提示，不阻止打开但导出前警告
 
-### F6 导出
+## 技术决策（沿袭 V1 技术栈）
 
-- F6.1 导出按钮（等同 `deck export -o <path>`）
-- F6.2 strict 模式开关（要求所有页通过 accept-pptx）
-- F6.3 导出结果展示（原生页数 / 占位页数）
-- F6.4 文件保存对话框选择输出路径
-
-### F7 系统状态
-
-- F7.1 环境检查（等同 `doctor`）：微软雅黑可用性、Apple Vision 可用性
-- F7.2 环境问题在启动时提示，不阻止打开但在导出前警告
-
-## 技术决策
-
-| 领域 | 选择 | 理由 |
-|------|------|------|
-| 桌面框架 | Electron | 复用 Node.js 生态，直接 import 现有业务函数 |
-| 前端框架 | React | 画布交互和状态管理生态成熟 |
-| 构建工具 | electron-vite | Vite HMR + Electron 三入口开箱即用 |
-| 状态管理 | Zustand | 轻量 TS 友好，slice 模式适合 deck→slide 树形数据 |
-| CSS | Tailwind CSS | 单人项目快速迭代 |
-| UI 组件库 | shadcn/ui | 源码级可控，Radix 基础，配合 Tailwind |
-| 桥接方式 | 直接复用 | Electron main 进程 import 业务函数，renderer 通过 IPC 调用 |
-| 视觉设计 | DESIGN.md | 遵从项目 DESIGN.md 设计系统 |
+Electron + React + electron-vite + Zustand + Tailwind CSS，main 进程直接 import 业务函数（`packages/core` + `apps/cli/src`），renderer 经 IPC 调用。视觉全部遵从 DESIGN.md。
 
 ## 产品约束
 
-- 仅 macOS，不考虑 Windows/Linux。
-- 单人本地使用，无账号、无云同步、无多人协作。
-- 所有数据操作必须通过现有业务函数（`packages/core` + `apps/cli/src`），UI 不绕过复核、版本和恢复契约。
-- 人工门不可自动跳过，必须在 UI 中显式确认。
-- 16:9 固定比例。
-- 微软雅黑为唯一字体。
+- 仅 macOS；单人本地使用；无账号/云同步/协作。
+- 所有数据操作必须通过现有业务函数，UI 不绕过复核、版本和恢复契约；**不修改 `packages/core` 与 `apps/cli` 内部实现**（D3）。
+- 人工门不可自动跳过，必须在 UI 显式确认。
+- 16:9 固定比例；微软雅黑唯一字体。
+- deck 工作区内不新增 UI 专属文件（D4：日志写 userData）。
 
 ## 验收标准
 
-- [ ] 可从 UI 打开已有 deck 工作区，看到页面缩略图列表和阶段状态
-- [ ] 可从 UI 创建新 deck（选择图片目录）
-- [ ] 页面复核画布：文字框叠加、选中、编辑文字、拖拽位置/大小、切换分类和 includeInMask
-- [ ] 低置信度队列可逐块导航
-- [ ] 滑块擦除对比原图和 clean plate
-- [ ] 可从 UI 触发完整 pipeline 和按阶段重跑，阶段级进度实时显示
-- [ ] accept-clean 和 accept-pptx 内联确认面板可用，验收记录正确写入
-- [ ] 可从 UI 导出多页 PPTX（含 strict 模式）
-- [ ] 环境检查在启动时执行并提示问题
-- [ ] UI 操作产生的 workspace 数据与 CLI 完全兼容（CLI 可读取 UI 修改的数据，反之亦然）
-- [ ] TypeScript 类型检查通过
-- [ ] 所有前端视觉遵从 DESIGN.md 设计系统
+**体验层（V2 重构的核心判据）**
+
+- [ ] 打开 deck 后不做任何点击/悬停即可回答：共几页、每页处理到哪个阶段、哪些页失败及失败原因
+- [ ] 批量执行中不做任何操作即可看到：当前第几页、哪个阶段、本阶段已用时长；卡片轨道实时推进
+- [ ] 任何失败页的错误 code + message 在控制台可见，应用重启后仍可见
+- [ ] 停在人工门的页自动出现在待办队列，点击一次即到达能完成该操作的界面
+- [ ] 活动日志跨重启保留，能回答"昨天对哪页做了什么、结果如何"
+- [ ] 批量执行可停止，停止过程有状态反馈
+
+**功能层**
+
+- [ ] 一键批量执行贯通：全新 deck 从 init 跑到各页 accept-clean 门，逐页验收后可继续跑至 accept-pptx，最终导出
+- [ ] 单页复核画布全部 V1 交互正常（叠加/选中/编辑/拖拽/分类/includeInMask/低置信度队列/缩放平移）
+- [ ] accept-clean、accept-pptx 验收记录正确写入 manifest，CLI 可读
+- [ ] 导出含 strict 模式，结果反馈原生/占位页数
+- [ ] UI 产生的 workspace 数据与 CLI 完全双向兼容
+- [ ] TypeScript 类型检查、format、build 通过
+- [ ] 所有前端视觉遵从 DESIGN.md（颜色/排版/圆角/间距 token 对应）
 
 ## 非目标
 
-- 账号、云同步、多人协作
-- 普通用户级新手引导
+- 账号、云同步、多人协作；普通用户新手引导
 - 内容策划和图片生成（M5）
-- 页面并行执行优化
-- 参考文案批量匹配
+- 页面并行执行（保持逐页串行）
+- 阶段内子进度 / 日志流（D3 排除，后续优化）
+- 修改 `packages/core`、`apps/cli` 业务逻辑
 - Windows/Linux 支持

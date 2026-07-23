@@ -1,1 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "质量门命令集（format:check/typecheck/test/build）与 Node 24 验证要求"}
+{"file": "DESIGN.md", "reason": "视觉合规检查基准：token 对应、无新增 hover、display 字重 ≤500、状态色仅用文档内色板"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "检查错误透传是否保留稳定错误码，UI 不得吞错或改写 code"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "检查 IPC payload 类型是否单点定义、renderer 是否存在对原始 payload 的本地强转"}
