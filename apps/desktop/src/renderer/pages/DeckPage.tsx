@@ -25,8 +25,11 @@ export function DeckPage(): React.JSX.Element {
   async function handleCreate(): Promise<void> {
     const imagesDir = await window.api.system.selectDirectory();
     if (!imagesDir) return;
-    const workspacePath = await window.api.system.selectDirectory();
-    if (!workspacePath) return;
+    const parentDir = await window.api.system.selectDirectory();
+    if (!parentDir) return;
+    const name = imagesDir.split("/").pop() ?? "deck";
+    const ts = new Date().toISOString().slice(0, 10);
+    const workspacePath = `${parentDir}/${name}-${ts}`;
     await createDeck(imagesDir, workspacePath);
   }
 
