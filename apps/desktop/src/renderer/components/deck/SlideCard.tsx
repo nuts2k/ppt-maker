@@ -18,11 +18,11 @@ const PENDING_STYLE: StatusStyle = {
 };
 
 const STAGE_STATUS_STYLE: Record<string, StatusStyle> = {
-  completed: { label: "已完成", className: "bg-green-50 text-success" },
-  running: { label: "进行中", className: "bg-blue-50 text-info" },
-  failed: { label: "失败", className: "bg-red-50 text-red-600" },
-  interrupted: { label: "已中断", className: "bg-amber-50 text-amber-600" },
-  stale: { label: "已过期", className: "bg-amber-50 text-amber-600" },
+  completed: { label: "已完成", className: "bg-success/10 text-success" },
+  running: { label: "进行中", className: "bg-info/10 text-info" },
+  failed: { label: "失败", className: "bg-error-light text-error" },
+  interrupted: { label: "已中断", className: "bg-warning-light text-warning" },
+  stale: { label: "已过期", className: "bg-warning-light text-warning" },
   pending: PENDING_STYLE,
 };
 

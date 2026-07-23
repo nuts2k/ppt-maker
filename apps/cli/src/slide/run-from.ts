@@ -28,6 +28,8 @@ export interface RunFromOptions {
   readonly workspacePath: string;
   readonly confirmApi?: boolean;
   readonly confirmUpload?: boolean;
+  readonly onStageStart?: (stage: string) => void;
+  readonly onStageComplete?: (stage: string) => void;
 }
 
 export interface RunFromResult {
@@ -69,6 +71,7 @@ export async function runSlideRunFrom(
       continue;
     }
     const workspace = await loadSlideWorkspace(options.workspacePath);
+    options.onStageStart?.(stage);
 
     try {
       if (stage === "ocr") {
@@ -157,6 +160,9 @@ export async function runSlideRunFrom(
                 : "请在 PowerPoint for Mac 检查后运行 accept-pptx",
           };
         }
+      }
+      if (executed[executed.length - 1] === stage) {
+        options.onStageComplete?.(stage);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

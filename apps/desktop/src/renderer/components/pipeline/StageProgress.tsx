@@ -25,10 +25,10 @@ function statusColor(status: string | undefined): string {
     case "running":
       return "bg-info border-info-border animate-pulse";
     case "failed":
-      return "bg-red-600 border-red-400";
+      return "bg-error border-error-border";
     case "interrupted":
     case "stale":
-      return "bg-block-uncertain border-block-uncertain";
+      return "bg-warning border-warning-border";
     default:
       return "bg-surface-strong border-hairline";
   }

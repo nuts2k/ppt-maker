@@ -16,6 +16,7 @@ const config: Config = {
         "surface-soft": "#f8fafc",
         "surface-strong": "#e0e2e6",
         "surface-dark": "#181d26",
+        "surface-dark-elevated": "#1d1f25",
         link: "#1b61c9",
         "link-active": "#1a3866",
         info: "#254fad",
@@ -24,6 +25,12 @@ const config: Config = {
         "success-border": "#39bf45",
         "on-primary": "#ffffff",
         "on-dark": "#ffffff",
+        error: "#8b1a1a",
+        "error-light": "#fef2f2",
+        "error-border": "#dc4545",
+        warning: "#7c4a00",
+        "warning-light": "#fefce8",
+        "warning-border": "#d97706",
         "block-layout": "#16a34a",
         "block-object": "#9ca3af",
         "block-uncertain": "#f59e0b",
@@ -37,6 +44,7 @@ const config: Config = {
       fontFamily: {
         sans: [
           "Inter",
+          "system-ui",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",

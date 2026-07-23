@@ -1,9 +1,14 @@
-import "dotenv/config";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+import { config as loadDotenv } from "dotenv";
 import { app, BrowserWindow } from "electron";
 import { registerDeckHandlers } from "./ipc/deck.js";
 import { registerSlideHandlers } from "./ipc/slide.js";
 import { registerSystemHandlers } from "./ipc/system.js";
+
+// Electron cwd 是 apps/desktop/，CLI 函数需要项目根目录
+const projectRoot = resolve(app.getAppPath(), "../..");
+process.chdir(projectRoot);
+loadDotenv({ path: resolve(projectRoot, ".env") });
 
 function createWindow(): BrowserWindow {
   const mainWindow = new BrowserWindow({

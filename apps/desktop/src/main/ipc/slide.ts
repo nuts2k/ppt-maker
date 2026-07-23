@@ -12,11 +12,16 @@ import {
 import { type BrowserWindow, ipcMain } from "electron";
 import type {
   AcceptOptions,
+  PipelineProgressEvent,
   SlideRunOptions,
   SlideRunResult,
 } from "./channels.js";
 
-export function registerSlideHandlers(_mainWindow: BrowserWindow): void {
+function sendProgress(win: BrowserWindow, event: PipelineProgressEvent): void {
+  win.webContents.send("pipeline:progress", event);
+}
+
+export function registerSlideHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(
     "slide:load-review",
     async (
@@ -70,17 +75,65 @@ export function registerSlideHandlers(_mainWindow: BrowserWindow): void {
       from: string,
       opts?: SlideRunOptions,
     ): Promise<SlideRunResult> => {
-      const result = await runSlideRunFrom(from, {
-        workspacePath: resolve(workspacePath),
-        ...(opts?.confirmApi === true ? { confirmApi: true } : {}),
-        ...(opts?.confirmUpload === true ? { confirmUpload: true } : {}),
-      });
-      return {
-        executed: result.executed,
-        gate: result.gate,
-        message: result.message,
-        nextCommand: result.nextCommand,
-      };
+      const slideId = workspacePath.split("/").pop() ?? "unknown";
+
+      try {
+        const result = await runSlideRunFrom(from, {
+          workspacePath: resolve(workspacePath),
+          ...(opts?.confirmApi === true ? { confirmApi: true } : {}),
+          ...(opts?.confirmUpload === true ? { confirmUpload: true } : {}),
+          onStageStart(stage) {
+            sendProgress(mainWindow, {
+              slideId,
+              stage: stage as PipelineProgressEvent["stage"],
+              status: "running",
+            });
+          },
+          onStageComplete(stage) {
+            sendProgress(mainWindow, {
+              slideId,
+              stage: stage as PipelineProgressEvent["stage"],
+              status: "completed",
+            });
+          },
+        });
+
+        const acceptGate =
+          result.gate === "manual" &&
+          result.stoppedAt &&
+          (result.stoppedAt === "accept-clean" ||
+            result.stoppedAt === "accept-pptx")
+            ? (result.stoppedAt as "accept-clean" | "accept-pptx")
+            : undefined;
+
+        if (acceptGate) {
+          sendProgress(mainWindow, {
+            slideId,
+            stage: acceptGate as PipelineProgressEvent["stage"],
+            status: "running",
+            gate: acceptGate,
+          });
+        }
+
+        return {
+          executed: result.executed,
+          stoppedAt: result.stoppedAt,
+          gate: acceptGate ?? result.gate,
+          message: result.message,
+          nextCommand: result.nextCommand,
+        };
+      } catch (error) {
+        sendProgress(mainWindow, {
+          slideId,
+          stage: from as PipelineProgressEvent["stage"],
+          status: "failed",
+          error: {
+            code: "PIPELINE_RUN_FAILED",
+            message: error instanceof Error ? error.message : String(error),
+          },
+        });
+        throw error;
+      }
     },
   );
 

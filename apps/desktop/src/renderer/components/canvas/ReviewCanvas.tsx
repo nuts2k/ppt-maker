@@ -16,6 +16,7 @@ export function ReviewCanvas({
   blocks,
   selectedBlockId,
   onSelectBlock,
+  onUpdateBlock,
 }: ReviewCanvasProps): React.JSX.Element {
   const [size, setSize] = useState<{ width: number; height: number } | null>(
     null,
@@ -68,10 +69,16 @@ export function ReviewCanvas({
               block={block}
               imageWidth={size.width}
               imageHeight={size.height}
-              selected={selectedBlockId === block.id}
+              selected={block.id === selectedBlockId}
+              scale={transform.scale}
               onClick={() => onSelectBlock?.(block.id)}
+              onUpdate={onUpdateBlock}
             />
           ))}
+      </div>
+
+      <div className="absolute bottom-3 left-3 rounded-sm bg-surface-dark/70 px-2 py-1 text-xs text-on-dark">
+        {Math.round(transform.scale * 100)}%
       </div>
     </div>
   );

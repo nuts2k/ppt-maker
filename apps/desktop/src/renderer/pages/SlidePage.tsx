@@ -50,6 +50,10 @@ export function SlidePage(): React.JSX.Element {
 
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("properties");
   const [compareMode, setCompareMode] = useState(false);
+  const [saveResult, setSaveResult] = useState<{
+    ok: boolean;
+    message: string;
+  } | null>(null);
 
   useEffect(() => {
     if (workspacePath === null) return;
@@ -57,12 +61,11 @@ export function SlidePage(): React.JSX.Element {
     return () => reset();
   }, [workspacePath, loadSlide, reset]);
 
-  // Cmd+S 保存快捷键
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        if (dirty) void saveReview();
+        if (dirty) void handleSave();
       }
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -79,15 +82,36 @@ export function SlidePage(): React.JSX.Element {
     [updateBlock],
   );
 
+  async function handleSave(): Promise<void> {
+    try {
+      const result = await saveReview();
+      setSaveResult({
+        ok: result.valid,
+        message: result.valid
+          ? "保存成功"
+          : `保存完成，${result.errors} 个错误 / ${result.warnings} 个警告`,
+      });
+      setTimeout(() => setSaveResult(null), 3000);
+    } catch (err) {
+      setSaveResult({
+        ok: false,
+        message: `保存失败：${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
+  }
+
   const handleRunPipeline = useCallback(
     (from: string) => {
       if (!workspacePath) return;
       void startPipeline(workspacePath, from, {
         confirmApi: true,
         confirmUpload: true,
+      }).then(() => {
+        void refreshStatus();
       });
+      setSidebarTab("pipeline");
     },
-    [workspacePath, startPipeline],
+    [workspacePath, startPipeline, refreshStatus],
   );
 
   const handleAccept = useCallback(
@@ -119,11 +143,11 @@ export function SlidePage(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      {/* 页内工具栏 */}
+      {/* 工具栏 */}
       <div className="flex h-10 shrink-0 items-center gap-3 border-b border-hairline bg-canvas px-4">
         <button
           type="button"
-          className="text-sm text-body hover:text-ink"
+          className="rounded-sm border border-hairline px-2.5 py-1 text-xs text-body transition active:border-border-strong"
           onClick={() => setView("deck")}
         >
           ← 返回
@@ -137,10 +161,10 @@ export function SlidePage(): React.JSX.Element {
             <button
               type="button"
               className={cn(
-                "rounded-sm border px-2 py-1 text-xs",
+                "rounded-sm border px-2 py-1 text-xs transition",
                 compareMode
-                  ? "border-info-border bg-surface-soft"
-                  : "border-hairline",
+                  ? "border-info-border bg-info/10 text-info"
+                  : "border-hairline text-body",
               )}
               onClick={() => setCompareMode(!compareMode)}
             >
@@ -148,7 +172,6 @@ export function SlidePage(): React.JSX.Element {
             </button>
           )}
 
-          {/* Pipeline 触发 */}
           <select
             className="rounded-sm border border-hairline bg-canvas px-2 py-1 text-xs text-ink"
             disabled={pipelineRunning}
@@ -158,33 +181,43 @@ export function SlidePage(): React.JSX.Element {
             }}
           >
             <option value="" disabled>
-              运行 Pipeline…
+              {pipelineRunning ? "Pipeline 执行中…" : "运行 Pipeline…"}
             </option>
-            <option value="init">从 init 开始</option>
             <option value="ocr">从 OCR 开始</option>
-            <option value="review">从 review 开始</option>
-            <option value="mask">从 mask 开始</option>
-            <option value="clean">从 clean 开始</option>
+            <option value="review">从候选合并开始</option>
+            <option value="assist-review">从 AI 复核开始</option>
+            <option value="validate-review">从校验开始</option>
+            <option value="mask">从 Mask 开始</option>
+            <option value="clean">从 Clean 开始</option>
             <option value="pptx">从 PPTX 开始</option>
           </select>
 
-          {dirty && (
-            <span className="text-xs text-block-uncertain">未保存</span>
+          {dirty && <span className="text-xs text-warning">未保存</span>}
+          {saveResult && (
+            <span
+              className={cn(
+                "text-xs",
+                saveResult.ok ? "text-success" : "text-error",
+              )}
+            >
+              {saveResult.message}
+            </span>
           )}
           <button
             type="button"
-            onClick={() => void saveReview()}
+            onClick={() => void handleSave()}
             disabled={!dirty}
-            className="rounded-lg bg-primary px-3 py-1 text-sm text-on-primary disabled:opacity-40"
+            className="rounded-lg bg-primary px-3 py-1 text-sm text-on-primary transition active:bg-primary-active disabled:opacity-40"
           >
             保存
+            <span className="ml-1 text-xs text-on-primary/60">⌘S</span>
           </button>
         </div>
       </div>
 
       <div className="flex min-h-0 flex-1">
         {/* 画布区域 */}
-        <main className="min-w-0 flex-1">
+        <main className="relative min-w-0 flex-1">
           {loading ? (
             <div className="flex h-full items-center justify-center text-sm text-muted">
               加载中…
@@ -208,9 +241,8 @@ export function SlidePage(): React.JSX.Element {
             </div>
           )}
 
-          {/* 验收面板 */}
           {pendingGate && (
-            <div className="absolute bottom-4 left-4 right-84 z-20">
+            <div className="absolute bottom-4 left-4 right-4 z-20">
               <AcceptPanel
                 gate={pendingGate}
                 onAccept={(note) => void handleAccept(note)}
@@ -237,8 +269,8 @@ export function SlidePage(): React.JSX.Element {
                 className={cn(
                   "flex-1 py-2 text-xs transition-colors",
                   sidebarTab === tab
-                    ? "border-b-2 border-info font-medium text-ink"
-                    : "text-muted hover:text-body",
+                    ? "border-b-2 border-primary font-medium text-ink"
+                    : "text-muted",
                 )}
                 onClick={() => setSidebarTab(tab)}
               >
@@ -268,7 +300,7 @@ export function SlidePage(): React.JSX.Element {
                   running={pipelineRunning}
                 />
                 {pipelineError && (
-                  <div className="mx-4 rounded-sm bg-red-50 p-2 text-xs text-red-600">
+                  <div className="mx-4 rounded-sm bg-error-light p-2 text-xs text-error">
                     {pipelineError.code}: {pipelineError.message}
                   </div>
                 )}

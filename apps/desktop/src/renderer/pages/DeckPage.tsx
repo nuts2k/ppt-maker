@@ -13,7 +13,10 @@ export function DeckPage(): React.JSX.Element {
   const summary = useDeckStore((s) => s.summary);
 
   const [exporting, setExporting] = useState(false);
-  const [exportResult, setExportResult] = useState<string | null>(null);
+  const [exportResult, setExportResult] = useState<{
+    ok: boolean;
+    message: string;
+  } | null>(null);
   const [strict, setStrict] = useState(false);
 
   async function handleOpen(): Promise<void> {
@@ -25,8 +28,7 @@ export function DeckPage(): React.JSX.Element {
   async function handleCreate(): Promise<void> {
     const imagesDir = await window.api.system.selectDirectory();
     if (!imagesDir) return;
-    const parentDir = await window.api.system.selectDirectory();
-    if (!parentDir) return;
+    const parentDir = imagesDir.split("/").slice(0, -1).join("/");
     const name = imagesDir.split("/").pop() ?? "deck";
     const ts = new Date().toISOString().slice(0, 10);
     const workspacePath = `${parentDir}/${name}-${ts}`;
@@ -50,14 +52,16 @@ export function DeckPage(): React.JSX.Element {
     setExportResult(null);
     try {
       const result = await window.api.deck.export(deckPath, outputPath, strict);
-      setExportResult(
-        `导出成功：${result.nativeSlides} 页原生 + ${result.placeholderSlides} 页占位 → ${result.outputPath}`,
-      );
+      setExportResult({
+        ok: true,
+        message: `导出成功：${result.nativeSlides} 页原生 + ${result.placeholderSlides} 页占位 → ${result.outputPath}`,
+      });
       void refreshStatus();
     } catch (err) {
-      setExportResult(
-        `导出失败：${err instanceof Error ? err.message : String(err)}`,
-      );
+      setExportResult({
+        ok: false,
+        message: `导出失败：${err instanceof Error ? err.message : String(err)}`,
+      });
     } finally {
       setExporting(false);
     }
@@ -65,19 +69,21 @@ export function DeckPage(): React.JSX.Element {
 
   if (!deckPath) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-8 px-6">
+      <div className="flex h-full flex-col items-center justify-center gap-10 px-6">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold text-ink">PPT Maker</h2>
-          <p className="mt-2 text-sm text-muted">
-            打开一个已有 Deck，或从图片目录创建新的 Deck
+          <h2 className="text-2xl font-medium text-ink">PPT Maker</h2>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed text-body">
+            可视化复核 PPT 中的文字检测结果，运行去字和重建
+            Pipeline，导出为可编辑 PPTX。
           </p>
         </div>
-        <div className="flex gap-3">
+
+        <div className="flex flex-col gap-3">
           <button
             type="button"
             onClick={() => void handleOpen()}
             disabled={loading}
-            className="rounded-lg border border-hairline bg-canvas px-5 py-2.5 text-sm font-medium text-ink transition hover:border-border-strong disabled:opacity-50"
+            className="rounded-lg bg-primary px-6 py-3 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-50"
           >
             打开已有 Deck
           </button>
@@ -85,12 +91,28 @@ export function DeckPage(): React.JSX.Element {
             type="button"
             onClick={() => void handleCreate()}
             disabled={loading}
-            className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary transition hover:bg-primary-active disabled:opacity-50"
+            className="rounded-lg border border-hairline bg-canvas px-6 py-3 text-sm font-medium text-ink transition active:border-border-strong disabled:opacity-50"
           >
-            创建新 Deck
+            从图片目录创建
           </button>
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <div className="max-w-xs text-center text-xs leading-relaxed text-muted">
+          <p>
+            <strong className="font-medium text-body">打开</strong> —
+            选择一个已有的 Deck 工作区目录
+          </p>
+          <p className="mt-1">
+            <strong className="font-medium text-body">创建</strong> — 选择包含
+            PPT 截图的图片目录，自动在同级目录创建工作区
+          </p>
+        </div>
+
+        {error && (
+          <p className="rounded-sm bg-error-light px-4 py-2 text-sm text-error">
+            {error}
+          </p>
+        )}
       </div>
     );
   }
@@ -111,7 +133,7 @@ export function DeckPage(): React.JSX.Element {
             type="button"
             onClick={() => void refreshStatus()}
             disabled={loading}
-            className="rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition hover:border-border-strong disabled:opacity-50"
+            className="rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-50"
           >
             刷新
           </button>
@@ -119,36 +141,45 @@ export function DeckPage(): React.JSX.Element {
             type="button"
             onClick={() => void handleAddSlide()}
             disabled={loading}
-            className="rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition hover:border-border-strong disabled:opacity-50"
+            className="rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-50"
           >
             添加页面
           </button>
-          <label className="flex items-center gap-1.5 text-xs text-muted">
+          <label
+            className="flex items-center gap-1.5 text-xs text-muted"
+            title="要求所有页面通过 accept-pptx 验收后才允许导出"
+          >
             <input
               type="checkbox"
               checked={strict}
               onChange={(e) => setStrict(e.target.checked)}
             />
-            Strict
+            严格模式
           </label>
           <button
             type="button"
             onClick={() => void handleExport()}
             disabled={loading || exporting}
-            className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-on-primary transition hover:bg-primary-active disabled:opacity-50"
+            className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-50"
           >
             {exporting ? "导出中…" : "导出 PPTX"}
           </button>
         </div>
       </div>
       {error && (
-        <p className="border-b border-hairline bg-red-50 px-6 py-2 text-sm text-red-600">
+        <p className="border-b border-hairline bg-error-light px-6 py-2 text-sm text-error">
           {error}
         </p>
       )}
       {exportResult && (
-        <p className="border-b border-hairline bg-surface-soft px-6 py-2 text-sm text-body">
-          {exportResult}
+        <p
+          className={`border-b border-hairline px-6 py-2 text-sm ${
+            exportResult.ok
+              ? "bg-success/10 text-success"
+              : "bg-error-light text-error"
+          }`}
+        >
+          {exportResult.message}
         </p>
       )}
       <div className="flex-1 overflow-auto p-6">

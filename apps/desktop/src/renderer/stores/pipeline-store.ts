@@ -5,41 +5,57 @@ type StageStatus = "pending" | "running" | "completed" | "failed";
 type PendingGate = "accept-clean" | "accept-pptx" | null;
 
 interface PipelineState {
-  // pipeline 是否正在执行
   running: boolean;
   currentSlideId: string | null;
-  // 各阶段状态映射，键为 stage 名
   stageStatuses: Record<string, StageStatus>;
-  // 需要人工确认的门禁（去字底板 / PPTX），null 表示无待处理门禁
   pendingGate: PendingGate;
   error: { code: string; message: string } | null;
 
-  // 从指定阶段启动 pipeline；进度事件监听在后续阶段接入
   startPipeline(
     workspacePath: string,
     from: string,
     opts?: { confirmApi?: boolean; confirmUpload?: boolean },
   ): Promise<void>;
-  // 清除待处理门禁
   acceptGate(): void;
   reset(): void;
 }
 
-const INITIAL_STATE = {
+export const usePipelineStore = create<PipelineState>((set, get) => ({
   running: false,
   currentSlideId: null,
-  stageStatuses: {} as Record<string, StageStatus>,
-  pendingGate: null as PendingGate,
-  error: null as { code: string; message: string } | null,
-} as const;
-
-export const usePipelineStore = create<PipelineState>((set) => ({
-  ...INITIAL_STATE,
+  stageStatuses: {},
+  pendingGate: null,
+  error: null,
 
   async startPipeline(workspacePath, from, opts) {
-    set({ running: true, error: null });
+    set({ running: true, error: null, stageStatuses: {}, pendingGate: null });
+
+    const unsubscribe = getApi().onPipelineProgress((event) => {
+      const { stageStatuses } = get();
+      set({
+        stageStatuses: {
+          ...stageStatuses,
+          [event.stage]: event.status,
+        },
+        ...(event.gate ? { pendingGate: event.gate } : {}),
+        ...(event.error
+          ? { error: { code: event.error.code, message: event.error.message } }
+          : {}),
+      });
+    });
+
     try {
-      await getApi().slide.run(workspacePath, from, opts);
+      const result = await getApi().slide.run(workspacePath, from, opts);
+      if (result.gate === "accept-clean" || result.gate === "accept-pptx") {
+        set({ pendingGate: result.gate });
+      } else if (result.gate) {
+        set({
+          error: {
+            code: `PIPELINE_GATE_${result.gate.toUpperCase()}`,
+            message: result.message,
+          },
+        });
+      }
     } catch (error) {
       set({
         error: {
@@ -48,6 +64,7 @@ export const usePipelineStore = create<PipelineState>((set) => ({
         },
       });
     } finally {
+      unsubscribe();
       set({ running: false });
     }
   },
@@ -57,6 +74,12 @@ export const usePipelineStore = create<PipelineState>((set) => ({
   },
 
   reset() {
-    set({ ...INITIAL_STATE, stageStatuses: {} });
+    set({
+      running: false,
+      currentSlideId: null,
+      stageStatuses: {},
+      pendingGate: null,
+      error: null,
+    });
   },
 }));

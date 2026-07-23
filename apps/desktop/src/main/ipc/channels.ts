@@ -51,6 +51,7 @@ export interface PipelineProgressEvent {
 
 export interface SlideRunResult {
   readonly executed: readonly string[];
+  readonly stoppedAt: string | null;
   readonly gate: string | null;
   readonly message: string;
   readonly nextCommand: string | null;
