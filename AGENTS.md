@@ -23,6 +23,12 @@
 - 变量名、函数名、类型名等代码标识符使用英文。
 - 不发送非必要的过程性说明。
 
+## 前端设计规范
+
+- 所有前端界面的视觉设计必须遵从 [DESIGN.md](/Users/kelin/Work/ppt-maker/DESIGN.md)。
+- 包括但不限于：颜色、排版、圆角、间距、组件样式和响应式行为。
+- 实现前端代码前必须先读取 DESIGN.md，确保设计一致性。
+
 ## 代码搜索规则
 
 - **代码语义探索优先 CodeGraph**：当目标是理解代码实现、调用链、影响面、符号关系、handler/service/store/router 追踪时，优先使用 CodeGraph MCP（`codegraph_context` / `codegraph_trace` / `codegraph_impact` / `codegraph_search`）。若 CodeGraph 未初始化、不可用或结果不足，再回退到 `mcp__fast-context__fast_context_search`。

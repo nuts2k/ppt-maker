@@ -5,7 +5,7 @@
   "type": "module",
   "packageManager": "pnpm@10.32.0",
   "engines": {
-    "node": ">=24 <25",
+    "node": ">=24",
     "pnpm": ">=10 <11"
   },
   "scripts": {
@@ -17,6 +17,7 @@
     "format:check": "biome check apps/*/src apps/*/test packages/*/src packages/*/test",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
+    "desktop": "pnpm --filter @ppt-maker/desktop dev",
     "ppt-maker": "node apps/cli/dist/index.js",
     "ppt-maker:dev": "tsx --conditions=development apps/cli/src/index.ts",
     "probe:ocr": "node apps/cli/dist/index.js probe ocr",
