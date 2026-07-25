@@ -23,6 +23,7 @@ These guides help you **ask the right questions before coding**.
 |-------|---------|-------------|
 | [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
 | [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
+| [静默失败诊断指南](./silent-failure-thinking-guide.md) | 定位「点了没反应」类问题的真实失败点 | 用户报告点击无反馈、卡住、跑没跑不清楚时 |
 
 ---
 
@@ -50,6 +51,16 @@ These guides help you **ask the right questions before coding**.
 - [ ] Multiple branches update the same derived state from `kind` / `action`
 
 → Read [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md)
+
+### 当用户报告「点了没反应」
+
+- [ ] 先看活动日志时间戳：**毫秒级完成 ≠ 成功**，多半意味着什么都没做
+- [ ] 对照磁盘产物与界面显示：产物齐全却说缺产物 → 读取侧问题
+- [ ] 「重跑」类入口是否先失效了目标阶段？状态仍是 `completed` 会被幂等跳过
+- [ ] 阶段收尾是否同时写了 `assets` / `stages` / `attempts`？
+- [ ] 修好之后再问一句：这个操作现在生效了，误触它的代价是什么？
+
+→ 读 [静默失败诊断指南](./silent-failure-thinking-guide.md)
 
 ### When Verifying AI Cross-Review Results
 

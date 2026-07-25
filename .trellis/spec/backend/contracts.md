@@ -259,3 +259,105 @@ await writeWorkspaceManifest(workspacePath, completedManifest);
 ### 5. Tests Required
 
 - 候选合并/冲突/人工值保留、validate-review 各类违规、mask 算法（CCL/膨胀/多边形/分割）与像素统计基线、glyphHints 软先验收窄、clean fake editor 全链路（成功/失败/脱敏/多尝试/完整性拒绝）、pptx 门禁与自动检查、accept 哈希锚定与 stale、变更粒度失效矩阵、run --from 停止点、report 汇总规则、合成 fixture 五类元素端到端覆盖。
+
+## 场景：阶段落库与强制重跑契约（M4 E4 端到端走查验证）
+
+### 1. Scope / Trigger
+
+- 触发条件：新增或修改任一阶段的收尾落库、`run --from` 的跳过规则、阶段复用判据，或任何「让已完成阶段重做」的路径。
+- 已由真实代码验证：`report` 阶段漏写状态导致恒 pending（缺陷 6）、人工拒绝验收无法触发重跑（缺陷 5）。两者均在无 GUI 的单元测试中未被发现，直到真实 deck 端到端走查才暴露。
+
+### 2. Signatures
+
+```ts
+// apps/cli/src/slide/invalidate.ts
+export async function invalidateSlideStage(options: {
+  readonly workspacePath: string;
+  readonly stage: SlideStage;
+  readonly reason: string;          // 非空，落入 invalidationReason
+}): Promise<{ readonly invalidated: readonly SlideStage[] }>;
+
+// desktop IPC（channels.ts / preload / main）
+"slide:invalidate-stage"(workspacePath: string, stage: RunStage, reason: string)
+  => Promise<{ invalidated: string[] }>
+```
+
+### 3. Contracts
+
+**每个阶段的收尾必须同时写三样，缺一不可**：
+
+| 写入项 | 内容 | 漏写的后果 |
+|---|---|---|
+| `assets` | 产物资产 | 下游找不到产物 |
+| `stages` | `status: "completed"` + `lastSuccessfulAttemptId` + `completedInputFingerprint` | **阶段恒为 pending**：每次 run 都重跑、每次都成功、每次都不改状态，UI 上是「点了没反应」 |
+| `attempts` | 递增编号的 attempt 记录 | 耐久层错误与耗时统计读不到东西 |
+
+`report` 曾只写 `assets`，是全流水线唯一的例外，即上述缺陷 6。纯本地、毫秒级、无中断窗口的阶段（如 `report`）可直接写 `completed`，不必走「先 running 再 replace」的两段式；有外部调用或耗时的阶段必须两段式，否则中断后无记录。
+
+**「跳过」与「重做」由同一个判据决定，两处都只认 `completed`**：
+
+- `isStageReusable(state, fingerprint)` = `status === "completed" && completedInputFingerprint === fingerprint`（阶段函数内部的产物复用）
+- `run-from.ts` 各阶段守卫 = `stageState(...)?.status !== "completed"`（编排层的跳过）
+
+因此**只要状态还是 `completed`，任何形式的「重跑」都会被静默跳过**——执行器一路滑到下一个人工闸门原地返回，日志上表现为 run 在毫秒内 `run-start → page-done` 且**没有任何 `stage-start`**。
+
+**两条失效路径，语义不同，不可互相替代**：
+
+| 路径 | 触发者 | 判据 | 实现 |
+|---|---|---|---|
+| 产物过期 | 上游输入变化 | 指纹不匹配 | 各阶段 run 内部自动调用 `invalidateStageAndDownstream` |
+| **人工判定不合格** | 用户拒绝验收 / 显式指定起点重跑 | **无判据可推导**——输入一字未改 | 必须显式调用 `invalidateSlideStage` |
+
+第二条路径靠指纹永远推不出来。缺了它，「拒绝并重跑」「从阶段 X 重跑」这类入口全部失效。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 错误 |
+|---|---|
+| `reason` 为空或全空白 | `INVALID_STAGE_STATE`「阶段失效原因不能为空」 |
+| 工作区缺少目标阶段状态 | `INVALID_WORKSPACE` |
+| 目标阶段或下游为 `pending` | 不报错，保持 `pending`（无产物可作废） |
+
+### 5. Good / Base / Bad Cases
+
+- Good：`clean` 为 completed → `invalidateSlideStage(stage: "clean")` → `clean` 及已完成下游转 `stale`，上游 `mask` 保持 `completed`，随后 `run --from clean` 真正重新调用 API。
+- Base：目标阶段本就是 `pending` → 返回空 `invalidated`，不写盘噪声。
+- Bad：跳过失效直接 `run --from clean` → 守卫与 `isStageReusable` 双双放行复用 → 毫秒空转，用户反复点击无任何反馈。
+
+### 6. Tests Required
+
+- **断言必须落在 manifest 状态上，不能只断言函数返回值**。`slide-run-report.test.ts` 原有 5 个用例全部只检查 `report` 内容，无一碰 `manifest.stages`，这正是缺陷 6 能存活到端到端走查的原因。
+- 失效后 `isStageReusable` 必须为 `false`（指纹不变，仅凭状态变化就要拒绝复用）；上游不被牵连；`pending` 不被改写成 `stale`；`reason` 为空报错。
+- 重跑递增 attempt 编号而非覆盖。
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+// 阶段收尾只写 assets —— 状态恒为 pending
+await writeWorkspaceManifest(workspace.path, {
+  ...manifest,
+  updatedAt: report.generatedAt,
+  assets: [...manifest.assets.filter((a) => a.id !== REPORT_ASSET_ID), asset],
+});
+
+// 拒绝验收后直接重跑 —— 阶段仍是 completed，被幂等跳过
+startRun("clean");
+```
+
+#### Correct
+
+```ts
+await writeWorkspaceManifest(workspace.path, {
+  ...manifest,
+  updatedAt: report.generatedAt,
+  assets: [...],
+  stages: replaceStageState(manifest.stages, completedState),
+  attempts: [...manifest.attempts, completedAttempt],
+});
+
+// 先失效再重跑；失效写盘失败则不启动 run，否则退化成空转
+await invalidateSlideStage({ workspacePath, stage, reason: "人工要求从该阶段重跑" });
+startRun(stage);
+```
