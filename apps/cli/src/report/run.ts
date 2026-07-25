@@ -17,11 +17,14 @@ import {
   type SlideWorkspaceManifest,
   TextReviewDocumentSchema,
   type WorkspaceAsset,
+  type WorkspaceStageAttempt,
+  type WorkspaceStageState,
 } from "@ppt-maker/core";
 import {
   createWorkspaceAsset,
   loadSlideWorkspace,
   resolveWorkspacePath,
+  sha256Values,
   writeJsonAtomic,
   writeWorkspaceManifest,
 } from "../slide/workspace.js";
@@ -29,6 +32,17 @@ import {
 const REVIEW_OUTPUT_PATH = "stages/review/text-blocks.json";
 const REPORT_PATH = "stages/report/report.json";
 const REPORT_ASSET_ID = "asset-report";
+/** 报告结构版本，随 SlideReport 字段变更递增；落入 attempt.providerVersion */
+const REPORT_VERSION = "m1-report-v1";
+
+function replaceStageState(
+  states: readonly WorkspaceStageState[],
+  replacement: WorkspaceStageState,
+): WorkspaceStageState[] {
+  return states.map((state) =>
+    state.stage === replacement.stage ? replacement : state,
+  );
+}
 
 export interface RunSlideReportOptions {
   readonly workspacePath: string;
@@ -113,6 +127,40 @@ export async function runSlideReport(
     (value) => ArtifactAcceptanceSchema.parse(value),
   );
 
+  /*
+   * 本阶段的落库状态。
+   *
+   * 此前这里只写 assets、完全没碰 stages/attempts，report 于是永远停在 pending：
+   * 每次 run 都从 report 起跑、每次都成功、每次都不改状态，界面上就是「点了没反应」，
+   * 用户只能反复点。补齐后与其余阶段一致。
+   *
+   * report 是毫秒级的纯本地汇总，没有中断窗口值得记录，因此直接写 completed，
+   * 不走「先 running 再 replace」的两段式——那会为一次瞬时操作多写一遍盘。
+   */
+  const startedAt = new Date().toISOString();
+  const attemptNumber =
+    manifest.attempts.filter((attempt) => attempt.stage === "report").length +
+    1;
+  const attemptId = `report-${String(attemptNumber).padStart(3, "0")}`;
+  // report 无外部产物可做指纹，输入即上游各阶段的完成态
+  const inputFingerprint = sha256Values(
+    manifest.stages
+      .filter((state) => state.stage !== "report")
+      .map(
+        (state) =>
+          `${state.stage}:${state.status}:${state.lastSuccessfulAttemptId ?? ""}`,
+      ),
+  );
+  const previousState = manifest.stages.find(
+    (state) => state.stage === "report",
+  );
+  if (previousState === undefined) {
+    throw new FoundationError(
+      "INVALID_WORKSPACE",
+      "工作区缺少 report 阶段状态",
+    );
+  }
+
   const providerCalls: SlideReport["providerCalls"] = [];
   for (const asset of manifest.assets.filter(
     (candidate) => candidate.role === "provider_record",
@@ -164,12 +212,24 @@ export async function runSlideReport(
     layoutText.length > 0 &&
     reviewedLayoutText.length === layoutText.length;
 
+  const completedState: WorkspaceStageState = {
+    ...previousState,
+    status: "completed",
+    latestAttemptId: attemptId,
+    lastSuccessfulAttemptId: attemptId,
+    completedInputFingerprint: inputFingerprint,
+    invalidatedAt: null,
+    invalidationReason: null,
+  };
+  const nextStages = replaceStageState(manifest.stages, completedState);
+
   const report: SlideReport = SlideReportSchema.parse({
     schemaVersion: SCHEMA_VERSION,
     slideId: manifest.slideId,
     generatedAt: new Date().toISOString(),
     overallStatus: overallComplete ? "complete" : "incomplete",
-    stages: manifest.stages.map((state) => ({
+    // 用落库后的状态，否则报告会把自己记成 pending
+    stages: nextStages.map((state) => ({
       stage: state.stage,
       status: state.status,
     })),
@@ -241,9 +301,23 @@ export async function runSlideReport(
     role: "report",
     createdAt: report.generatedAt,
     producedBy: "report",
-    attemptId: "report-001",
+    attemptId,
     image: null,
   });
+  const completedAttempt: WorkspaceStageAttempt = {
+    schemaVersion: SCHEMA_VERSION,
+    id: attemptId,
+    stage: "report",
+    number: attemptNumber,
+    status: "completed",
+    inputFingerprint,
+    startedAt,
+    endedAt: report.generatedAt,
+    provider: "ppt-maker-cli",
+    providerVersion: REPORT_VERSION,
+    assetIds: [asset.id],
+    error: null,
+  };
   await writeWorkspaceManifest(workspace.path, {
     ...manifest,
     updatedAt: report.generatedAt,
@@ -253,6 +327,8 @@ export async function runSlideReport(
       ),
       asset,
     ],
+    stages: nextStages,
+    attempts: [...manifest.attempts, completedAttempt],
   });
 
   return { reportPath, report };

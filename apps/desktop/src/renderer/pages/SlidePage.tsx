@@ -1,6 +1,6 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
 import type { RunStage } from "@shared/stages";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReviewCanvas } from "@/components/canvas/ReviewCanvas";
 import { SliderCompare } from "@/components/compare/SliderCompare";
 import { ConfidenceQueue } from "@/components/sidebar/ConfidenceQueue";
@@ -55,6 +55,7 @@ export function SlidePage(): React.JSX.Element {
   const refreshSlide = useDeckStore((s) => s.refreshSlide);
 
   const loadSlide = useSlideStore((s) => s.loadSlide);
+  const reloadImages = useSlideStore((s) => s.reloadImages);
   const saveReview = useSlideStore((s) => s.saveReview);
   const updateBlock = useSlideStore((s) => s.updateBlock);
   const markAllReviewed = useSlideStore((s) => s.markAllReviewed);
@@ -115,6 +116,20 @@ export function SlidePage(): React.JSX.Element {
     void loadSlide(workspacePath);
     return () => reset();
   }, [workspacePath, loadSlide, reset]);
+
+  /**
+   * 本页执行结束（pageBusy 由 true 落回 false）时重载产物图。
+   *
+   * 闸门走 run-store 事件、图片走 loadSlide 的一次性快照，两条链路不同步：
+   * 进页时 clean 尚未产出，跑完后 workspacePath 未变，加载 effect 不会重跑，
+   * 于是 accept-clean 闸门已经就位而底板仍是 null。拒绝验收后重跑 clean
+   * 拿到新底板，同样依赖这里刷新。
+   */
+  const prevPageBusy = useRef(false);
+  useEffect(() => {
+    if (prevPageBusy.current && !pageBusy) void reloadImages();
+    prevPageBusy.current = pageBusy;
+  }, [pageBusy, reloadImages]);
 
   /**
    * 闸门变化时切换视图态。签名含 source，因此"拒绝重跑 → 再次停在同一闸门"也会
@@ -217,15 +232,40 @@ export function SlidePage(): React.JSX.Element {
     [workspacePath, acceptGate, slideId, clearSessionResult, refreshSlide],
   );
 
-  /** 拒绝验收 = 从产出该产物的阶段重跑；会话层闸门先清掉，验收布局立即退出 */
-  const handleRejectRerun = useCallback(
+  /**
+   * 从指定阶段重跑（阶段轨道徽章、工具栏、拒绝验收三个入口共用）。
+   *
+   * 必须先把该阶段及下游标为 stale 再启动。显式指定起点表达的是「这一步的产物
+   * 不合格，重做」，但此时输入指纹一字未变、阶段仍是 completed，run 会按断点续跑
+   * 的幂等规则整段跳过，一路滑到下一个人工闸门原地返回——界面上就是点了毫无反应，
+   * 点多少次都一样。失效写盘失败则不启动 run，否则又退化成那个空转。
+   *
+   * 无参的「运行此页」不走这里：它本就是断点续跑，跳过已完成阶段是正确行为。
+   */
+  const rerunFrom = useCallback(
     (stage: RunStage) => {
-      if (slideId === null) return;
-      clearSessionResult(slideId);
-      setViewMode("canvas");
-      startRun(stage);
+      if (slideId === null || workspacePath === null) return;
+      void (async (): Promise<void> => {
+        try {
+          await window.api.slide.invalidateStage(
+            workspacePath,
+            stage,
+            "人工要求从该阶段重跑",
+          );
+        } catch (err) {
+          setNotice({
+            ok: false,
+            message: `重跑准备失败：${err instanceof Error ? err.message : String(err)}`,
+          });
+          return;
+        }
+        clearSessionResult(slideId);
+        setViewMode("canvas");
+        await refreshSlide(slideId);
+        startRun(stage);
+      })();
     },
-    [slideId, clearSessionResult, startRun],
+    [slideId, workspacePath, clearSessionResult, refreshSlide, startRun],
   );
 
   const handleNextTodo = useCallback(() => {
@@ -273,14 +313,14 @@ export function SlidePage(): React.JSX.Element {
         onSave={() => void handleSave()}
         onMarkAllReviewed={() => markAllReviewed()}
         onRunSlide={() => startRun()}
-        onRerunFrom={(stage) => startRun(stage)}
+        onRerunFrom={rerunFrom}
         onNextTodo={handleNextTodo}
       />
 
       <StageRail
         slide={slide}
         disabled={pageBusy}
-        onRerunFrom={(stage) => startRun(stage)}
+        onRerunFrom={rerunFrom}
         sessionError={sessionResult?.error ?? null}
       />
 
@@ -329,7 +369,7 @@ export function SlidePage(): React.JSX.Element {
               submitting={submitting}
               disabled={pageBusy}
               onAccept={(note) => void handleAccept(note)}
-              onRejectRerun={handleRejectRerun}
+              onRejectRerun={rerunFrom}
             />
           ) : viewMode === "compare" &&
             sourceImageUrl !== null &&

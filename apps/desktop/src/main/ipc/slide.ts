@@ -2,8 +2,10 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { runAcceptClean } from "@cli/clean/accept.js";
 import { runAcceptPptx } from "@cli/pptx/accept.js";
+import { invalidateSlideStage } from "@cli/slide/invalidate.js";
 import { loadSlideWorkspace } from "@cli/slide/workspace.js";
 import {
+  type SlideStage,
   type TextReviewDocument,
   TextReviewDocumentSchema,
   validateTextReviewDocument,
@@ -185,6 +187,23 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
       } catch {
         return null;
       }
+    },
+  );
+
+  ipcMain.handle(
+    "slide:invalidate-stage",
+    async (
+      _event,
+      workspacePath: string,
+      stage: SlideStage,
+      reason: string,
+    ): Promise<{ invalidated: string[] }> => {
+      const result = await invalidateSlideStage({
+        workspacePath: resolve(workspacePath),
+        stage,
+        reason,
+      });
+      return { invalidated: [...result.invalidated] };
     },
   );
 }

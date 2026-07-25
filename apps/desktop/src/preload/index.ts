@@ -12,6 +12,7 @@ import type {
   DoctorReport,
   IpcApi,
 } from "../main/ipc/channels.js";
+import type { RunStage } from "../shared/stages.js";
 
 const api: IpcApi = {
   deck: {
@@ -67,6 +68,17 @@ const api: IpcApi = {
       ipcRenderer.invoke("slide:accept-pptx", workspacePath, opts),
     loadImage: (workspacePath: string, role: string): Promise<string | null> =>
       ipcRenderer.invoke("slide:load-image", workspacePath, role),
+    invalidateStage: (
+      workspacePath: string,
+      stage: RunStage,
+      reason: string,
+    ): Promise<{ invalidated: string[] }> =>
+      ipcRenderer.invoke(
+        "slide:invalidate-stage",
+        workspacePath,
+        stage,
+        reason,
+      ),
   },
   activity: {
     list: (deckPath: string, limit?: number): Promise<ActivityRecord[]> =>

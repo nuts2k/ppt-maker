@@ -211,6 +211,12 @@ export interface IpcApi {
       opts?: AcceptOptions,
     ): Promise<{ acceptedPath: string; autoCheckSummary: string }>;
     loadImage(workspacePath: string, role: string): Promise<string | null>;
+    /** 拒绝验收：把该阶段及下游标为 stale，让随后的 run 强制重做 */
+    invalidateStage(
+      workspacePath: string,
+      stage: RunStage,
+      reason: string,
+    ): Promise<{ invalidated: string[] }>;
   };
   activity: {
     list(deckPath: string, limit?: number): Promise<ActivityRecord[]>;

@@ -2079,14 +2079,14 @@ function requireReactDomClient_production() {
     } catch (e) {
       passiveBrowserEventsSupported = false;
     }
-  var root2 = null, startText = null, fallbackText = null;
+  var root2 = null, startText = null, fallbackText2 = null;
   function getData() {
-    if (fallbackText) return fallbackText;
+    if (fallbackText2) return fallbackText2;
     var start, startValue = startText, startLength = startValue.length, end, endValue = "value" in root2 ? root2.value : root2.textContent, endLength = endValue.length;
     for (start = 0; start < startLength && startValue[start] === endValue[start]; start++) ;
     var minEnd = startLength - start;
     for (end = 1; end <= minEnd && startValue[startLength - end] === endValue[endLength - end]; end++) ;
-    return fallbackText = endValue.slice(start, 1 < end ? 1 - end : void 0);
+    return fallbackText2 = endValue.slice(start, 1 < end ? 1 - end : void 0);
   }
   function getEventCharCode(nativeEvent) {
     var keyCode = nativeEvent.keyCode;
@@ -2335,7 +2335,7 @@ function requireReactDomClient_production() {
   }
   function getFallbackBeforeInputChars(domEventName, nativeEvent) {
     if (isComposing)
-      return "compositionend" === domEventName || !canUseCompositionEvent && isFallbackCompositionEnd(domEventName, nativeEvent) ? (domEventName = getData(), fallbackText = startText = root2 = null, isComposing = false, domEventName) : null;
+      return "compositionend" === domEventName || !canUseCompositionEvent && isFallbackCompositionEnd(domEventName, nativeEvent) ? (domEventName = getData(), fallbackText2 = startText = root2 = null, isComposing = false, domEventName) : null;
     switch (domEventName) {
       case "paste":
         return null;
@@ -12453,934 +12453,69 @@ function requireClient() {
   return client.exports;
 }
 var clientExports = requireClient();
-const createStoreImpl = (createState) => {
-  let state;
-  const listeners = /* @__PURE__ */ new Set();
-  const setState = (partial, replace) => {
-    const nextState = typeof partial === "function" ? partial(state) : partial;
-    if (!Object.is(nextState, state)) {
-      const previousState = state;
-      state = (replace != null ? replace : typeof nextState !== "object" || nextState === null) ? nextState : Object.assign({}, state, nextState);
-      listeners.forEach((listener) => listener(state, previousState));
-    }
-  };
-  const getState = () => state;
-  const getInitialState = () => initialState;
-  const subscribe = (listener) => {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  };
-  const api = { setState, getState, getInitialState, subscribe };
-  const initialState = state = createState(setState, getState, api);
-  return api;
-};
-const createStore = ((createState) => createState ? createStoreImpl(createState) : createStoreImpl);
-const identity = (arg) => arg;
-function useStore(api, selector = identity) {
-  const slice = React.useSyncExternalStore(
-    api.subscribe,
-    React.useCallback(() => selector(api.getState()), [api, selector]),
-    React.useCallback(() => selector(api.getInitialState()), [api, selector])
-  );
-  React.useDebugValue(slice);
-  return slice;
-}
-const createImpl = (createState) => {
-  const api = createStore(createState);
-  const useBoundStore = (selector) => useStore(api, selector);
-  Object.assign(useBoundStore, api);
-  return useBoundStore;
-};
-const create = ((createState) => createState ? createImpl(createState) : createImpl);
-function applyDetailedResult(result) {
-  return {
-    deckPath: result.deckPath,
-    name: result.name,
-    deckId: result.deckId,
-    slides: [...result.slides],
-    summary: result.summary
-  };
-}
-function replaceSlide(slides, next) {
-  const index = slides.findIndex((slide) => slide.slideId === next.slideId);
-  if (index < 0) return slides;
-  const merged = [...slides];
-  merged[index] = next;
-  return merged;
-}
-function findSlideById(slides, slideId) {
-  return slides.find((slide) => slide.slideId === slideId);
-}
-function filterActiveSlides(slides) {
-  return slides.filter((slide) => !slide.removed);
-}
-const useDeckStore = create((set, get) => ({
-  deckPath: null,
-  name: null,
-  deckId: null,
-  slides: [],
-  summary: null,
-  loading: false,
-  error: null,
-  async openDeck(path) {
-    set({ loading: true, error: null });
-    try {
-      const opened = await window.api.deck.open(path);
-      const detailed = await window.api.deck.statusDetailed(opened.deckPath);
-      set({ ...applyDetailedResult(detailed), loading: false });
-    } catch (err) {
-      set({ loading: false, error: toMessage$2(err) });
-      throw err;
-    }
-  },
-  async createDeck(imagesDir, workspacePath, name) {
-    set({ loading: true, error: null });
-    try {
-      const created = await window.api.deck.create(
-        imagesDir,
-        workspacePath,
-        name
-      );
-      const detailed = await window.api.deck.statusDetailed(created.deckPath);
-      set({ ...applyDetailedResult(detailed), loading: false });
-    } catch (err) {
-      set({ loading: false, error: toMessage$2(err) });
-      throw err;
-    }
-  },
-  async refreshStatus() {
-    const { deckPath } = get();
-    if (!deckPath) return;
-    set({ loading: true, error: null });
-    try {
-      const detailed = await window.api.deck.statusDetailed(deckPath);
-      set({ ...applyDetailedResult(detailed), loading: false });
-    } catch (err) {
-      set({ loading: false, error: toMessage$2(err) });
-      throw err;
-    }
-  },
-  /**
-   * 单页增量刷新（page-done 后调用）。
-   *
-   * 权衡：当前 IPC 只有 deck 级 `status-detailed`，没有单页接口（阶段 A 已定型，
-   * 本阶段不改 main）。因此仍整体拉取，但**只替换该页对象**并且不置 loading——
-   * 其余页保持原引用，批量执行中卡片不会整片重渲染、也不会闪加载态。
-   * 目标页不在返回结果中（例如刚被移除）时退化为整体套用。
-   */
-  async refreshSlide(slideId) {
-    const { deckPath } = get();
-    if (!deckPath) return;
-    try {
-      const detailed = await window.api.deck.statusDetailed(deckPath);
-      const next = findSlideById(detailed.slides, slideId);
-      if (!next) {
-        set(applyDetailedResult(detailed));
-        return;
-      }
-      set((state) => ({
-        slides: replaceSlide(state.slides, next),
-        // 摘要是 deck 级聚合，随同一次请求一并更新，避免与卡片状态脱节
-        summary: detailed.summary
-      }));
-    } catch (err) {
-      set({ error: toMessage$2(err) });
-      throw err;
-    }
-  },
-  async addSlide(imagePath) {
-    const { deckPath, refreshStatus } = get();
-    if (!deckPath) return;
-    set({ loading: true, error: null });
-    try {
-      await window.api.deck.addSlide(deckPath, imagePath);
-      await refreshStatus();
-    } catch (err) {
-      set({ loading: false, error: toMessage$2(err) });
-      throw err;
-    }
-  },
-  async removeSlide(pageLabel) {
-    const { deckPath, refreshStatus } = get();
-    if (!deckPath) return;
-    set({ loading: true, error: null });
-    try {
-      await window.api.deck.removeSlide(deckPath, pageLabel);
-      await refreshStatus();
-    } catch (err) {
-      set({ loading: false, error: toMessage$2(err) });
-      throw err;
-    }
-  },
-  reset() {
-    set({
-      deckPath: null,
-      name: null,
-      deckId: null,
-      slides: [],
-      summary: null,
-      loading: false,
-      error: null
-    });
-  },
-  getSlide(slideId) {
-    return findSlideById(get().slides, slideId);
-  },
-  activeSlides() {
-    return filterActiveSlides(get().slides);
-  }
-}));
-function toMessage$2(err) {
-  return err instanceof Error ? err.message : String(err);
-}
-function AppShell({ children }) {
-  const name = useDeckStore((s) => s.name);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-screen flex-col bg-canvas text-ink", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "header",
-      {
-        className: "flex h-11 shrink-0 items-end justify-center border-b border-hairline pb-2",
-        style: { WebkitAppRegion: "drag" },
-        children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-medium text-muted", children: name ?? "PPT Maker" })
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "min-h-0 flex-1", children })
-  ] });
-}
-const RUN_STAGE_SEQUENCE = [
-  "ocr",
-  "review",
-  "assist-review",
-  "validate-review",
-  "mask",
-  "clean",
-  "accept-clean",
-  "pptx",
-  "accept-pptx",
-  "report"
+const CRITICAL_CHECK_IDS = [
+  "platform",
+  "swift",
+  "powerpoint",
+  "font-microsoft-yahei"
 ];
-const STAGE_LABELS = {
-  ocr: "文字识别",
-  review: "生成复核稿",
-  "assist-review": "AI 辅助复核",
-  "validate-review": "复核校验",
-  mask: "生成遮罩",
-  clean: "生成干净底图",
-  "accept-clean": "验收底图",
-  pptx: "生成 PPTX",
-  "accept-pptx": "验收 PPTX",
-  report: "生成报告"
+const EXPORT_CHECK_IDS = [
+  "powerpoint",
+  "font-microsoft-yahei"
+];
+const CHECK_DOT_CLASS = {
+  pass: "bg-success",
+  warn: "bg-signature-mustard",
+  fail: "bg-signature-coral"
 };
-function stageLabel(stage) {
-  return STAGE_LABELS[stage] ?? stage;
-}
-function isRunStage(value) {
-  return RUN_STAGE_SEQUENCE.includes(value);
-}
-function runEventToActivity(event, ctx) {
-  switch (event.kind) {
-    case "run-start":
-      return build({
-        kind: "run-start",
-        result: "info",
-        detail: `开始执行 ${event.total} 页`
-      });
-    case "page-start":
-      return build({
-        kind: "page-start",
-        result: "info",
-        detail: `开始处理 ${event.pageLabel}`,
-        slideId: event.slideId,
-        pageLabel: event.pageLabel
-      });
-    case "stage-start":
-      return null;
-    case "stage-complete": {
-      const label = ctx.pageLabelOf(event.slideId) ?? event.slideId;
-      return build({
-        at: event.at,
-        kind: "stage-complete",
-        result: "success",
-        detail: `${label} · ${stageLabel(event.stage)} 完成`,
-        slideId: event.slideId,
-        pageLabel: label,
-        stage: event.stage,
-        durationMs: event.durationMs
-      });
-    }
-    case "page-done": {
-      const label = ctx.pageLabelOf(event.slideId) ?? event.slideId;
-      const failed = event.error !== null || event.gate === "error";
-      const result = failed ? "failure" : event.gate !== null ? "gate" : "success";
-      return build({
-        kind: "page-done",
-        result,
-        detail: `${label} · ${event.message}`,
-        slideId: event.slideId,
-        pageLabel: label,
-        stage: event.stoppedAt
-      });
-    }
-    case "run-stopping":
-      return build({
-        kind: "run-stop",
-        result: "info",
-        detail: "已请求停止，当前页完成后结束"
-      });
-    case "run-done": {
-      const { completed, gated, failed } = event.summary;
-      return build({
-        kind: "run-done",
-        result: failed > 0 ? "failure" : "info",
-        detail: `执行结束：完成 ${completed}，待人工 ${gated}，失败 ${failed}`
-      });
-    }
+function doctorChipView(report, failed) {
+  if (report === null) {
+    return failed ? { label: "环境未知", className: "bg-surface-strong text-muted" } : null;
   }
-}
-function build(input) {
-  return {
-    at: input.at ?? (/* @__PURE__ */ new Date()).toISOString(),
-    kind: input.kind,
-    slideId: input.slideId ?? null,
-    pageLabel: input.pageLabel ?? null,
-    stage: input.stage ?? null,
-    result: input.result,
-    durationMs: input.durationMs ?? null,
-    detail: input.detail
-  };
-}
-const useActivityStore = create((set) => ({
-  records: [],
-  loading: false,
-  error: null,
-  async load(deckPath, limit) {
-    set({ loading: true, error: null });
-    try {
-      const records = await window.api.activity.list(deckPath, limit);
-      set({ records, loading: false });
-    } catch (err) {
-      set({ loading: false, error: toMessage$1(err) });
-      throw err;
-    }
-  },
-  append(record) {
-    set((state) => ({ records: [record, ...state.records] }));
-  },
-  reset() {
-    set({ records: [], loading: false, error: null });
-  }
-}));
-function toMessage$1(err) {
-  return err instanceof Error ? err.message : String(err);
-}
-function getApi() {
-  return window.api;
-}
-function createRunSnapshot() {
-  return {
-    status: "idle",
-    total: 0,
-    doneCount: 0,
-    currentSlideId: null,
-    currentPageLabel: null,
-    currentIndex: 0,
-    currentStage: null,
-    stageStartedAt: null,
-    liveStages: {},
-    sessionResults: {},
-    lastSummary: null
-  };
-}
-function applyRunEvent(snapshot, event, nowMs) {
-  switch (event.kind) {
-    case "run-start":
-      return {
-        ...createRunSnapshot(),
-        status: "running",
-        total: event.total
-      };
-    case "page-start":
-      return {
-        ...snapshot,
-        status: snapshot.status === "idle" ? "running" : snapshot.status,
-        total: event.total,
-        currentSlideId: event.slideId,
-        currentPageLabel: event.pageLabel,
-        currentIndex: event.index,
-        currentStage: null,
-        stageStartedAt: null
-      };
-    case "stage-start":
-      return {
-        ...snapshot,
-        currentSlideId: event.slideId,
-        currentStage: event.stage,
-        stageStartedAt: nowMs,
-        liveStages: withLiveStage(
-          snapshot.liveStages,
-          event.slideId,
-          event.stage,
-          "running"
-        )
-      };
-    case "stage-complete":
-      return {
-        ...snapshot,
-        currentStage: null,
-        stageStartedAt: null,
-        liveStages: withLiveStage(
-          snapshot.liveStages,
-          event.slideId,
-          event.stage,
-          "completed"
-        )
-      };
-    case "page-done":
-      return {
-        ...snapshot,
-        doneCount: snapshot.doneCount + 1,
-        currentSlideId: null,
-        currentPageLabel: null,
-        currentStage: null,
-        stageStartedAt: null,
-        sessionResults: {
-          ...snapshot.sessionResults,
-          [event.slideId]: {
-            slideId: event.slideId,
-            gate: event.gate,
-            stoppedAt: event.stoppedAt,
-            message: event.message,
-            error: event.error
-          }
-        }
-      };
-    case "run-stopping":
-      return { ...snapshot, status: "stopping" };
-    case "run-done":
-      return {
-        ...snapshot,
-        status: "idle",
-        currentSlideId: null,
-        currentPageLabel: null,
-        currentIndex: 0,
-        currentStage: null,
-        stageStartedAt: null,
-        lastSummary: event.summary
-      };
-  }
-}
-function withLiveStage(liveStages, slideId, stage, status) {
-  const current = liveStages[slideId] ?? {};
-  return {
-    ...liveStages,
-    [slideId]: { ...current, [stage]: status }
-  };
-}
-let tickerHandle = null;
-function startTicker() {
-  if (tickerHandle !== null) return;
-  tickerHandle = setInterval(() => {
-    useRunStore.setState((state) => ({ tick: state.tick + 1 }));
-  }, 1e3);
-}
-function stopTicker() {
-  if (tickerHandle === null) return;
-  clearInterval(tickerHandle);
-  tickerHandle = null;
-}
-function toMessage(err) {
-  return err instanceof Error ? err.message : String(err);
-}
-function buildStartOptions(slideIds, from, opts) {
-  return {
-    ...slideIds !== null ? { slideIds } : {},
-    ...from !== void 0 ? { from } : {},
-    ...opts?.confirmApi !== void 0 ? { confirmApi: opts.confirmApi } : {},
-    ...opts?.confirmUpload !== void 0 ? { confirmUpload: opts.confirmUpload } : {}
-  };
-}
-const useRunStore = create((set, get) => ({
-  ...createRunSnapshot(),
-  tick: 0,
-  startError: null,
-  subscribe(onEvent) {
-    const detach = getApi().onDeckRunProgress((event) => {
-      const state = get();
-      const next = applyRunEvent(
-        {
-          status: state.status,
-          total: state.total,
-          doneCount: state.doneCount,
-          currentSlideId: state.currentSlideId,
-          currentPageLabel: state.currentPageLabel,
-          currentIndex: state.currentIndex,
-          currentStage: state.currentStage,
-          stageStartedAt: state.stageStartedAt,
-          liveStages: state.liveStages,
-          sessionResults: state.sessionResults,
-          lastSummary: state.lastSummary
-        },
-        event,
-        Date.now()
-      );
-      set(next);
-      if (next.status === "idle") {
-        stopTicker();
-      } else {
-        startTicker();
-      }
-      onEvent?.(event);
-    });
-    return () => {
-      detach();
-      stopTicker();
+  const { fail, warn } = report.summary;
+  if (fail > 0) {
+    return {
+      label: `环境异常 ${fail} 项`,
+      className: "bg-signature-coral text-on-primary"
     };
-  },
-  async runAll(deckPath, opts) {
-    await requestStart(set, deckPath, buildStartOptions(null, void 0, opts));
-  },
-  async runSlide(deckPath, slideId, from, opts) {
-    await requestStart(set, deckPath, buildStartOptions([slideId], from, opts));
-  },
-  async stop() {
-    try {
-      await getApi().deck.runStop();
-    } catch (err) {
-      set({ startError: toMessage(err) });
-    }
-  },
-  clearSessionResult(slideId) {
-    set((state) => {
-      if (state.sessionResults[slideId] === void 0) return state;
-      const next = { ...state.sessionResults };
-      delete next[slideId];
-      return { sessionResults: next };
-    });
-  },
-  reset() {
-    stopTicker();
-    set({ ...createRunSnapshot(), tick: 0, startError: null });
   }
-}));
-async function requestStart(set, deckPath, options) {
-  set({ startError: null });
-  try {
-    const result = await getApi().deck.runStart(deckPath, options);
-    if (!result.accepted) {
-      set({ startError: result.message });
-    }
-  } catch (err) {
-    set({ startError: toMessage(err) });
-  }
-}
-function useRunBridge() {
-  reactExports.useEffect(() => {
-    const detach = useRunStore.getState().subscribe((event) => {
-      const deck = useDeckStore.getState();
-      const activity = useActivityStore.getState();
-      const record = runEventToActivity(event, {
-        pageLabelOf: (slideId) => deck.getSlide(slideId)?.pageLabel ?? null
-      });
-      if (record !== null) activity.append(record);
-      if (event.kind === "page-done") {
-        void deck.refreshSlide(event.slideId).catch(() => void 0);
-        return;
-      }
-      if (event.kind === "run-done") {
-        void deck.refreshStatus().catch(() => void 0);
-        if (deck.deckPath !== null) {
-          void activity.load(deck.deckPath).catch(() => void 0);
-        }
-      }
-    });
-    return detach;
-  }, []);
-}
-const useUIStore = create((set) => ({
-  currentView: "console",
-  selectedSlideId: null,
-  selectedBlockId: null,
-  queuePanelOpen: true,
-  activityPanelOpen: false,
-  setView(view) {
-    set({ currentView: view });
-  },
-  selectSlide(slideId) {
-    set({ selectedSlideId: slideId, selectedBlockId: null });
-  },
-  selectBlock(blockId) {
-    set({ selectedBlockId: blockId });
-  },
-  openSlide(slideId) {
-    set({
-      currentView: "slide",
-      selectedSlideId: slideId,
-      selectedBlockId: null
-    });
-  },
-  backToConsole() {
-    set({ currentView: "console", selectedBlockId: null });
-  },
-  toggleQueuePanel(open) {
-    set((state) => ({ queuePanelOpen: open ?? !state.queuePanelOpen }));
-  },
-  toggleActivityPanel(open) {
-    set((state) => ({ activityPanelOpen: open ?? !state.activityPanelOpen }));
-  }
-}));
-const PENDING_STYLE = {
-  label: "未开始",
-  className: "bg-surface-strong text-muted"
-};
-const STAGE_STATUS_STYLE = {
-  completed: { label: "已完成", className: "bg-success/10 text-success" },
-  running: { label: "进行中", className: "bg-info/10 text-info" },
-  failed: { label: "失败", className: "bg-error-light text-error" },
-  interrupted: { label: "已中断", className: "bg-warning-light text-warning" },
-  stale: { label: "已过期", className: "bg-warning-light text-warning" },
-  pending: PENDING_STYLE
-};
-function SlideCard({ slide }) {
-  const openSlide = useUIStore((s) => s.openSlide);
-  const [thumbnail, setThumbnail] = reactExports.useState(null);
-  reactExports.useEffect(() => {
-    let cancelled = false;
-    void window.api.slide.loadImage(slide.absWorkspacePath, "source_image").then((dataUrl) => {
-      if (!cancelled) setThumbnail(dataUrl);
-    }).catch(() => {
-      if (!cancelled) setThumbnail(null);
-    });
-    return () => {
-      cancelled = true;
+  if (warn > 0) {
+    return {
+      label: `环境警告 ${warn} 项`,
+      className: "bg-signature-mustard text-ink"
     };
-  }, [slide.absWorkspacePath]);
-  const statusStyle = STAGE_STATUS_STYLE[slide.stageStatus] ?? PENDING_STYLE;
-  const pageName = slide.pageLabel;
-  function handleClick() {
-    openSlide(slide.slideId);
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "button",
-    {
-      type: "button",
-      onClick: handleClick,
-      className: `group flex flex-col overflow-hidden rounded-md border border-hairline bg-canvas text-left transition hover:border-border-strong hover:shadow-sm ${slide.removed ? "opacity-50" : ""}`,
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative aspect-video w-full overflow-hidden bg-surface-soft", children: [
-          thumbnail ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "img",
-            {
-              src: thumbnail,
-              alt: pageName,
-              className: "h-full w-full object-contain"
-            }
-          ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full w-full items-center justify-center text-xs text-muted", children: "无预览" }),
-          slide.removed && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "absolute left-2 top-2 rounded-xs bg-surface-dark px-1.5 py-0.5 text-[10px] font-medium text-on-dark", children: "已移除" })
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-2 px-3 py-2", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "span",
-            {
-              className: "truncate text-sm font-medium text-ink",
-              title: pageName,
-              children: pageName
-            }
-          ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx(
-            "span",
-            {
-              className: `shrink-0 rounded-xs px-1.5 py-0.5 text-[10px] font-medium ${statusStyle.className}`,
-              title: `${slide.currentStage} · ${slide.stageStatus}`,
-              children: statusStyle.label
-            }
-          )
-        ] })
-      ]
-    }
+  return { label: "环境正常", className: "bg-success/10 text-success" };
+}
+function pendingChecks(report, ids) {
+  return report.checks.filter(
+    (check) => ids.includes(check.id) && check.status !== "pass"
   );
 }
-function SlideGrid() {
-  const slides = useDeckStore((s) => s.slides);
-  if (slides.length === 0) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center text-sm text-muted", children: "当前 Deck 还没有任何页面" });
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4", children: slides.map((slide) => /* @__PURE__ */ jsxRuntimeExports.jsx(SlideCard, { slide }, slide.slideId)) });
+function worstLevel(items) {
+  return items.some((item) => item.status === "fail") ? "fail" : "warn";
 }
-function DeckPage() {
-  const deckPath = useDeckStore((s) => s.deckPath);
-  const loading = useDeckStore((s) => s.loading);
-  const error = useDeckStore((s) => s.error);
-  const openDeck = useDeckStore((s) => s.openDeck);
-  const createDeck = useDeckStore((s) => s.createDeck);
-  const refreshStatus = useDeckStore((s) => s.refreshStatus);
-  const addSlide = useDeckStore((s) => s.addSlide);
-  const summary = useDeckStore((s) => s.summary);
-  const [exporting, setExporting] = reactExports.useState(false);
-  const [exportResult, setExportResult] = reactExports.useState(null);
-  const [strict, setStrict] = reactExports.useState(false);
-  async function handleOpen() {
-    const dir = await window.api.system.selectDirectory();
-    if (!dir) return;
-    await openDeck(dir);
-  }
-  async function handleCreate() {
-    const imagesDir = await window.api.system.selectDirectory();
-    if (!imagesDir) return;
-    const parentDir = imagesDir.split("/").slice(0, -1).join("/");
-    const name = imagesDir.split("/").pop() ?? "deck";
-    const ts = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    const workspacePath = `${parentDir}/${name}-${ts}`;
-    await createDeck(imagesDir, workspacePath);
-  }
-  async function handleAddSlide() {
-    if (!deckPath) return;
-    const imagePath = await window.api.system.selectFile([
-      { name: "图片", extensions: ["png", "jpg", "jpeg"] }
-    ]);
-    if (!imagePath) return;
-    await addSlide(imagePath);
-  }
-  async function handleExport() {
-    if (!deckPath) return;
-    const outputPath = await window.api.system.saveFileDialog("output.pptx");
-    if (!outputPath) return;
-    setExporting(true);
-    setExportResult(null);
-    try {
-      const result = await window.api.deck.export(deckPath, outputPath, strict);
-      setExportResult({
-        ok: true,
-        message: `导出成功：${result.nativeSlides} 页原生 + ${result.placeholderSlides} 页占位 → ${result.outputPath}`
-      });
-      void refreshStatus();
-    } catch (err) {
-      setExportResult({
-        ok: false,
-        message: `导出失败：${err instanceof Error ? err.message : String(err)}`
-      });
-    } finally {
-      setExporting(false);
-    }
-  }
-  if (!deckPath) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full flex-col items-center justify-center gap-10 px-6", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-2xl font-medium text-ink", children: "PPT Maker" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mt-3 max-w-sm text-sm leading-relaxed text-body", children: "可视化复核 PPT 中的文字检测结果，运行去字和重建 Pipeline，导出为可编辑 PPTX。" })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            type: "button",
-            onClick: () => void handleOpen(),
-            disabled: loading,
-            className: "rounded-lg bg-primary px-6 py-3 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-50",
-            children: "打开已有 Deck"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            type: "button",
-            onClick: () => void handleCreate(),
-            disabled: loading,
-            className: "rounded-lg border border-hairline bg-canvas px-6 py-3 text-sm font-medium text-ink transition active:border-border-strong disabled:opacity-50",
-            children: "从图片目录创建"
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "max-w-xs text-center text-xs leading-relaxed text-muted", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { className: "font-medium text-body", children: "打开" }),
-          " — 选择一个已有的 Deck 工作区目录"
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "mt-1", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { className: "font-medium text-body", children: "创建" }),
-          " — 选择包含 PPT 截图的图片目录，自动在同级目录创建工作区"
-        ] })
-      ] }),
-      error && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-sm bg-error-light px-4 py-2 text-sm text-error", children: error })
-    ] });
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full flex-col", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between border-b border-hairline px-6 py-3", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center gap-3 text-sm text-muted", children: summary && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-        "共 ",
-        summary.total,
-        " 页 · 已完成 ",
-        summary.completed,
-        " · 进行中",
-        " ",
-        summary.inProgress,
-        " · 未开始 ",
-        summary.notStarted
-      ] }) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            type: "button",
-            onClick: () => void refreshStatus(),
-            disabled: loading,
-            className: "rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-50",
-            children: "刷新"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            type: "button",
-            onClick: () => void handleAddSlide(),
-            disabled: loading,
-            className: "rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-50",
-            children: "添加页面"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "label",
-          {
-            className: "flex items-center gap-1.5 text-xs text-muted",
-            title: "要求所有页面通过 accept-pptx 验收后才允许导出",
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx(
-                "input",
-                {
-                  type: "checkbox",
-                  checked: strict,
-                  onChange: (e) => setStrict(e.target.checked)
-                }
-              ),
-              "严格模式"
-            ]
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            type: "button",
-            onClick: () => void handleExport(),
-            disabled: loading || exporting,
-            className: "rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-50",
-            children: exporting ? "导出中…" : "导出 PPTX"
-          }
-        )
-      ] })
-    ] }),
-    error && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "border-b border-hairline bg-error-light px-6 py-2 text-sm text-error", children: error }),
-    exportResult && /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "p",
-      {
-        className: `border-b border-hairline px-6 py-2 text-sm ${exportResult.ok ? "bg-success/10 text-success" : "bg-error-light text-error"}`,
-        children: exportResult.message
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1 overflow-auto p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx(SlideGrid, {}) })
-  ] });
-}
-const MIN_SCALE = 0.1;
-const MAX_SCALE = 5;
-const ZOOM_SENSITIVITY = 15e-4;
-function clampScale(scale) {
-  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
-}
-function computeFit(container, content) {
-  if (container === null || content === null || content.width === 0) {
-    return { scale: 1, offsetX: 0, offsetY: 0 };
-  }
-  const { clientWidth, clientHeight } = container;
-  const scale = clampScale(
-    Math.min(clientWidth / content.width, clientHeight / content.height)
-  );
-  const offsetX = (clientWidth - content.width * scale) / 2;
-  const offsetY = (clientHeight - content.height * scale) / 2;
-  return { scale, offsetX, offsetY };
-}
-function useCanvasTransform(content) {
-  const containerRef = reactExports.useRef(null);
-  const [transform, setTransform] = reactExports.useState({
-    scale: 1,
-    offsetX: 0,
-    offsetY: 0
-  });
-  const panRef = reactExports.useRef(null);
-  const resetView = reactExports.useCallback(() => {
-    setTransform(computeFit(containerRef.current, content ?? null));
-  }, [content]);
-  reactExports.useEffect(() => {
-    resetView();
-  }, [resetView]);
-  const onWheel = reactExports.useCallback((e) => {
-    e.preventDefault();
-    if (e.ctrlKey || e.metaKey) {
-      const container = containerRef.current;
-      if (container === null) {
-        return;
-      }
-      const rect = container.getBoundingClientRect();
-      const px = e.clientX - rect.left;
-      const py = e.clientY - rect.top;
-      setTransform((prev) => {
-        const nextScale = clampScale(
-          prev.scale * (1 - e.deltaY * ZOOM_SENSITIVITY)
-        );
-        const ratio = nextScale / prev.scale;
-        return {
-          scale: nextScale,
-          offsetX: px - (px - prev.offsetX) * ratio,
-          offsetY: py - (py - prev.offsetY) * ratio
-        };
-      });
-      return;
-    }
-    setTransform((prev) => ({
-      ...prev,
-      offsetX: prev.offsetX - e.deltaX,
-      offsetY: prev.offsetY - e.deltaY
-    }));
-  }, []);
-  const onPointerDown = reactExports.useCallback(
-    (e) => {
-      if (e.button !== 1) {
-        return;
-      }
-      e.preventDefault();
-      e.currentTarget.setPointerCapture(e.pointerId);
-      panRef.current = {
-        active: true,
-        startX: e.clientX,
-        startY: e.clientY,
-        originX: transform.offsetX,
-        originY: transform.offsetY
-      };
-    },
-    [transform.offsetX, transform.offsetY]
-  );
-  const onPointerMove = reactExports.useCallback((e) => {
-    const pan = panRef.current;
-    if (pan === null || !pan.active) {
-      return;
-    }
-    setTransform((prev) => ({
-      ...prev,
-      offsetX: pan.originX + (e.clientX - pan.startX),
-      offsetY: pan.originY + (e.clientY - pan.startY)
-    }));
-  }, []);
-  const onPointerUp = reactExports.useCallback((e) => {
-    if (panRef.current?.active) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-      panRef.current = null;
-    }
-  }, []);
+function startupNotice(report) {
+  if (report === null) return null;
+  const items = pendingChecks(report, CRITICAL_CHECK_IDS);
+  if (items.length === 0) return null;
+  const level = worstLevel(items);
   return {
-    transform,
-    containerRef,
-    onWheel,
-    onPointerDown,
-    onPointerMove,
-    onPointerUp,
-    resetView
+    level,
+    title: level === "fail" ? `环境检查发现 ${items.length} 项异常` : `环境检查发现 ${items.length} 项警告`,
+    hint: "不影响打开与复核，但相关阶段可能失败；导出前请先处理。",
+    items
+  };
+}
+function exportNotice(report) {
+  if (report === null) return null;
+  const items = pendingChecks(report, EXPORT_CHECK_IDS);
+  if (items.length === 0) return null;
+  return {
+    level: worstLevel(items),
+    title: `${items.length} 项环境检查未通过，仍要导出吗？`,
+    hint: "导出的 PPTX 可能出现字体回退，或无法在本机 PowerPoint 中确认效果。",
+    items
   };
 }
 function r(e) {
@@ -16651,6 +15786,1891 @@ const twMerge = /* @__PURE__ */ createTailwindMerge(getDefaultConfig);
 function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
+const createStoreImpl = (createState) => {
+  let state;
+  const listeners = /* @__PURE__ */ new Set();
+  const setState = (partial, replace) => {
+    const nextState = typeof partial === "function" ? partial(state) : partial;
+    if (!Object.is(nextState, state)) {
+      const previousState = state;
+      state = (replace != null ? replace : typeof nextState !== "object" || nextState === null) ? nextState : Object.assign({}, state, nextState);
+      listeners.forEach((listener) => listener(state, previousState));
+    }
+  };
+  const getState = () => state;
+  const getInitialState = () => initialState;
+  const subscribe = (listener) => {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  };
+  const api = { setState, getState, getInitialState, subscribe };
+  const initialState = state = createState(setState, getState, api);
+  return api;
+};
+const createStore = ((createState) => createState ? createStoreImpl(createState) : createStoreImpl);
+const identity = (arg) => arg;
+function useStore(api, selector = identity) {
+  const slice = React.useSyncExternalStore(
+    api.subscribe,
+    React.useCallback(() => selector(api.getState()), [api, selector]),
+    React.useCallback(() => selector(api.getInitialState()), [api, selector])
+  );
+  React.useDebugValue(slice);
+  return slice;
+}
+const createImpl = (createState) => {
+  const api = createStore(createState);
+  const useBoundStore = (selector) => useStore(api, selector);
+  Object.assign(useBoundStore, api);
+  return useBoundStore;
+};
+const create = ((createState) => createState ? createImpl(createState) : createImpl);
+function applyDetailedResult(result) {
+  return {
+    deckPath: result.deckPath,
+    name: result.name,
+    deckId: result.deckId,
+    slides: [...result.slides],
+    summary: result.summary
+  };
+}
+function replaceSlide(slides, next) {
+  const index = slides.findIndex((slide) => slide.slideId === next.slideId);
+  if (index < 0) return slides;
+  const merged = [...slides];
+  merged[index] = next;
+  return merged;
+}
+function findSlideById(slides, slideId) {
+  return slides.find((slide) => slide.slideId === slideId);
+}
+function filterActiveSlides(slides) {
+  return slides.filter((slide) => !slide.removed);
+}
+const useDeckStore = create((set, get) => ({
+  deckPath: null,
+  name: null,
+  deckId: null,
+  slides: [],
+  summary: null,
+  loading: false,
+  error: null,
+  async openDeck(path) {
+    set({ loading: true, error: null });
+    try {
+      const opened = await window.api.deck.open(path);
+      const detailed = await window.api.deck.statusDetailed(opened.deckPath);
+      set({ ...applyDetailedResult(detailed), loading: false });
+    } catch (err) {
+      set({ loading: false, error: toMessage$2(err) });
+      throw err;
+    }
+  },
+  async createDeck(imagesDir, workspacePath, name) {
+    set({ loading: true, error: null });
+    try {
+      const created = await window.api.deck.create(
+        imagesDir,
+        workspacePath,
+        name
+      );
+      const detailed = await window.api.deck.statusDetailed(created.deckPath);
+      set({ ...applyDetailedResult(detailed), loading: false });
+    } catch (err) {
+      set({ loading: false, error: toMessage$2(err) });
+      throw err;
+    }
+  },
+  async refreshStatus() {
+    const { deckPath } = get();
+    if (!deckPath) return;
+    set({ loading: true, error: null });
+    try {
+      const detailed = await window.api.deck.statusDetailed(deckPath);
+      set({ ...applyDetailedResult(detailed), loading: false });
+    } catch (err) {
+      set({ loading: false, error: toMessage$2(err) });
+      throw err;
+    }
+  },
+  /**
+   * 单页增量刷新（page-done 后调用）。
+   *
+   * 权衡：当前 IPC 只有 deck 级 `status-detailed`，没有单页接口（阶段 A 已定型，
+   * 本阶段不改 main）。因此仍整体拉取，但**只替换该页对象**并且不置 loading——
+   * 其余页保持原引用，批量执行中卡片不会整片重渲染、也不会闪加载态。
+   * 目标页不在返回结果中（例如刚被移除）时退化为整体套用。
+   */
+  async refreshSlide(slideId) {
+    const { deckPath } = get();
+    if (!deckPath) return;
+    try {
+      const detailed = await window.api.deck.statusDetailed(deckPath);
+      const next = findSlideById(detailed.slides, slideId);
+      if (!next) {
+        set(applyDetailedResult(detailed));
+        return;
+      }
+      set((state) => ({
+        slides: replaceSlide(state.slides, next),
+        // 摘要是 deck 级聚合，随同一次请求一并更新，避免与卡片状态脱节
+        summary: detailed.summary
+      }));
+    } catch (err) {
+      set({ error: toMessage$2(err) });
+      throw err;
+    }
+  },
+  async addSlide(imagePath) {
+    const { deckPath, refreshStatus } = get();
+    if (!deckPath) return;
+    set({ loading: true, error: null });
+    try {
+      await window.api.deck.addSlide(deckPath, imagePath);
+      await refreshStatus();
+    } catch (err) {
+      set({ loading: false, error: toMessage$2(err) });
+      throw err;
+    }
+  },
+  async removeSlide(pageLabel) {
+    const { deckPath, refreshStatus } = get();
+    if (!deckPath) return;
+    set({ loading: true, error: null });
+    try {
+      await window.api.deck.removeSlide(deckPath, pageLabel);
+      await refreshStatus();
+    } catch (err) {
+      set({ loading: false, error: toMessage$2(err) });
+      throw err;
+    }
+  },
+  reset() {
+    set({
+      deckPath: null,
+      name: null,
+      deckId: null,
+      slides: [],
+      summary: null,
+      loading: false,
+      error: null
+    });
+  },
+  getSlide(slideId) {
+    return findSlideById(get().slides, slideId);
+  },
+  activeSlides() {
+    return filterActiveSlides(get().slides);
+  }
+}));
+function toMessage$2(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+function getApi() {
+  return window.api;
+}
+function createRunSnapshot() {
+  return {
+    status: "idle",
+    total: 0,
+    doneCount: 0,
+    currentSlideId: null,
+    currentPageLabel: null,
+    currentIndex: 0,
+    currentStage: null,
+    stageStartedAt: null,
+    liveStages: {},
+    sessionResults: {},
+    lastSummary: null
+  };
+}
+function applyRunEvent(snapshot, event, nowMs) {
+  switch (event.kind) {
+    case "run-start":
+      return {
+        ...createRunSnapshot(),
+        status: "running",
+        total: event.total
+      };
+    case "page-start":
+      return {
+        ...snapshot,
+        status: snapshot.status === "idle" ? "running" : snapshot.status,
+        total: event.total,
+        currentSlideId: event.slideId,
+        currentPageLabel: event.pageLabel,
+        currentIndex: event.index,
+        currentStage: null,
+        stageStartedAt: null
+      };
+    case "stage-start":
+      return {
+        ...snapshot,
+        currentSlideId: event.slideId,
+        currentStage: event.stage,
+        stageStartedAt: nowMs,
+        liveStages: withLiveStage(
+          snapshot.liveStages,
+          event.slideId,
+          event.stage,
+          "running"
+        )
+      };
+    case "stage-complete":
+      return {
+        ...snapshot,
+        currentStage: null,
+        stageStartedAt: null,
+        liveStages: withLiveStage(
+          snapshot.liveStages,
+          event.slideId,
+          event.stage,
+          "completed"
+        )
+      };
+    case "page-done":
+      return {
+        ...snapshot,
+        doneCount: snapshot.doneCount + 1,
+        currentSlideId: null,
+        currentPageLabel: null,
+        currentStage: null,
+        stageStartedAt: null,
+        sessionResults: {
+          ...snapshot.sessionResults,
+          [event.slideId]: {
+            slideId: event.slideId,
+            gate: event.gate,
+            stoppedAt: event.stoppedAt,
+            message: event.message,
+            error: event.error
+          }
+        }
+      };
+    case "run-stopping":
+      return { ...snapshot, status: "stopping" };
+    case "run-done":
+      return {
+        ...snapshot,
+        status: "idle",
+        currentSlideId: null,
+        currentPageLabel: null,
+        currentIndex: 0,
+        currentStage: null,
+        stageStartedAt: null,
+        lastSummary: event.summary
+      };
+  }
+}
+function withLiveStage(liveStages, slideId, stage, status) {
+  const current = liveStages[slideId] ?? {};
+  return {
+    ...liveStages,
+    [slideId]: { ...current, [stage]: status }
+  };
+}
+let tickerHandle = null;
+function startTicker() {
+  if (tickerHandle !== null) return;
+  tickerHandle = setInterval(() => {
+    useRunStore.setState((state) => ({ tick: state.tick + 1 }));
+  }, 1e3);
+}
+function stopTicker() {
+  if (tickerHandle === null) return;
+  clearInterval(tickerHandle);
+  tickerHandle = null;
+}
+function toMessage$1(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+function buildStartOptions(slideIds, from, opts) {
+  return {
+    ...slideIds !== null ? { slideIds } : {},
+    ...from !== void 0 ? { from } : {},
+    ...opts?.confirmApi !== void 0 ? { confirmApi: opts.confirmApi } : {},
+    ...opts?.confirmUpload !== void 0 ? { confirmUpload: opts.confirmUpload } : {}
+  };
+}
+const useRunStore = create((set, get) => ({
+  ...createRunSnapshot(),
+  tick: 0,
+  startError: null,
+  subscribe(onEvent) {
+    const detach = getApi().onDeckRunProgress((event) => {
+      const state = get();
+      const next = applyRunEvent(
+        {
+          status: state.status,
+          total: state.total,
+          doneCount: state.doneCount,
+          currentSlideId: state.currentSlideId,
+          currentPageLabel: state.currentPageLabel,
+          currentIndex: state.currentIndex,
+          currentStage: state.currentStage,
+          stageStartedAt: state.stageStartedAt,
+          liveStages: state.liveStages,
+          sessionResults: state.sessionResults,
+          lastSummary: state.lastSummary
+        },
+        event,
+        Date.now()
+      );
+      set(next);
+      if (next.status === "idle") {
+        stopTicker();
+      } else {
+        startTicker();
+      }
+      onEvent?.(event);
+    });
+    return () => {
+      detach();
+      stopTicker();
+    };
+  },
+  async runAll(deckPath, opts) {
+    await requestStart(set, deckPath, buildStartOptions(null, void 0, opts));
+  },
+  async runSlide(deckPath, slideId, from, opts) {
+    await requestStart(set, deckPath, buildStartOptions([slideId], from, opts));
+  },
+  async stop() {
+    try {
+      await getApi().deck.runStop();
+    } catch (err) {
+      set({ startError: toMessage$1(err) });
+    }
+  },
+  clearSessionResult(slideId) {
+    set((state) => {
+      if (state.sessionResults[slideId] === void 0) return state;
+      const next = { ...state.sessionResults };
+      delete next[slideId];
+      return { sessionResults: next };
+    });
+  },
+  reset() {
+    stopTicker();
+    set({ ...createRunSnapshot(), tick: 0, startError: null });
+  }
+}));
+async function requestStart(set, deckPath, options) {
+  set({ startError: null });
+  try {
+    const result = await getApi().deck.runStart(deckPath, options);
+    if (!result.accepted) {
+      set({ startError: result.message });
+    }
+  } catch (err) {
+    set({ startError: toMessage$1(err) });
+  }
+}
+function DoctorChip({
+  report,
+  failed
+}) {
+  const [open, setOpen] = reactExports.useState(false);
+  const rootRef = reactExports.useRef(null);
+  reactExports.useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event) {
+      const node = rootRef.current;
+      if (node && !node.contains(event.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
+  const chip = doctorChipView(report, failed);
+  if (chip === null) return null;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative shrink-0", ref: rootRef, children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        type: "button",
+        onClick: () => setOpen((value) => !value),
+        className: cn(
+          "rounded-xs px-2 py-0.5 text-sm font-medium transition",
+          chip.className
+        ),
+        children: chip.label
+      }
+    ),
+    open && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute right-0 top-full z-20 mt-2 w-80 rounded-md border border-hairline bg-canvas p-4", children: report ? /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-3", children: report.checks.map((check) => /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
+        {
+          className: cn(
+            "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+            CHECK_DOT_CLASS[check.status]
+          )
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-w-0", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-ink", children: check.label }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm leading-relaxed text-body", children: check.message })
+      ] })
+    ] }, check.id)) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-body", children: "环境检查未能完成，请确认依赖是否可用。" }) })
+  ] });
+}
+function DoctorNoticeBar({
+  notice,
+  actions
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: cn(
+        "flex items-start gap-4 border-t border-hairline px-6 py-3",
+        notice.level === "fail" ? "bg-signature-coral/10" : "bg-signature-mustard/10"
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-1 flex-col gap-1.5", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-ink", children: notice.title }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-1", children: notice.items.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "flex items-start gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: cn(
+                  "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                  CHECK_DOT_CLASS[item.status]
+                )
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "min-w-0 text-sm text-body", children: [
+              item.label,
+              "：",
+              item.message
+            ] })
+          ] }, item.id)) }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted", children: notice.hint })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex shrink-0 items-center gap-3", children: actions })
+      ]
+    }
+  );
+}
+const BUTTON_PRIMARY$3 = "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
+const BUTTON_SECONDARY$3 = "rounded-lg border border-hairline bg-canvas px-4 py-2 text-sm text-ink transition active:border-border-strong";
+function TopNav() {
+  const deckPath = useDeckStore((s) => s.deckPath);
+  const name = useDeckStore((s) => s.name);
+  const runStatus = useRunStore((s) => s.status);
+  const [report, setReport] = reactExports.useState(null);
+  const [doctorFailed, setDoctorFailed] = reactExports.useState(false);
+  const [noticeDismissed, setNoticeDismissed] = reactExports.useState(false);
+  const [strict, setStrict] = reactExports.useState(false);
+  const [exporting, setExporting] = reactExports.useState(false);
+  const [exportResult, setExportResult] = reactExports.useState(null);
+  const [exportConfirm, setExportConfirm] = reactExports.useState(null);
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await window.api.system.doctor();
+        if (!cancelled) setReport(result);
+      } catch {
+        if (!cancelled) setDoctorFailed(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const running = runStatus !== "idle";
+  const exportDisabled = !deckPath || exporting || running;
+  async function runExport() {
+    if (!deckPath) return;
+    const outputPath = await window.api.system.saveFileDialog("output.pptx");
+    if (!outputPath) return;
+    setExporting(true);
+    setExportResult(null);
+    try {
+      const result = await window.api.deck.export(deckPath, outputPath, strict);
+      setExportResult({
+        ok: true,
+        message: `导出成功：${result.nativeSlides} 页原生 + ${result.placeholderSlides} 页占位 → ${result.outputPath}`
+      });
+      void useDeckStore.getState().refreshStatus();
+    } catch (err) {
+      setExportResult({
+        ok: false,
+        message: `导出失败：${err instanceof Error ? err.message : String(err)}`
+      });
+    } finally {
+      setExporting(false);
+    }
+  }
+  function handleExportClick() {
+    if (!deckPath) return;
+    const notice2 = exportNotice(report);
+    if (notice2 !== null) {
+      setExportConfirm(notice2);
+      return;
+    }
+    void runExport();
+  }
+  function handleConfirmExport() {
+    setExportConfirm(null);
+    void runExport();
+  }
+  const notice = noticeDismissed ? null : startupNotice(report);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "shrink-0 border-b border-hairline bg-canvas", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: "flex h-16 items-center gap-6 pl-20 pr-6",
+        style: { WebkitAppRegion: "drag" },
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "shrink-0 text-base font-medium text-ink", children: "PPT Maker" }),
+          deckPath ? /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-1 flex-col", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate text-lg font-medium text-ink", children: name ?? "未命名 Deck" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: "truncate text-sm font-medium text-muted",
+                title: deckPath,
+                children: deckPath
+              }
+            )
+          ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex-1" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "div",
+            {
+              className: "flex shrink-0 items-center gap-4",
+              style: { WebkitAppRegion: "no-drag" },
+              children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(DoctorChip, { report, failed: doctorFailed }),
+                deckPath !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                  "label",
+                  {
+                    className: "flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted",
+                    title: "要求所有页面通过 accept-pptx 验收后才允许导出",
+                    children: [
+                      /* @__PURE__ */ jsxRuntimeExports.jsx(
+                        "input",
+                        {
+                          type: "checkbox",
+                          checked: strict,
+                          onChange: (e) => setStrict(e.target.checked)
+                        }
+                      ),
+                      "严格模式"
+                    ]
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: handleExportClick,
+                    disabled: exportDisabled,
+                    title: running ? "执行中不可导出" : void 0,
+                    className: cn("shrink-0", BUTTON_PRIMARY$3),
+                    children: exporting ? "导出中…" : "导出 PPTX"
+                  }
+                )
+              ]
+            }
+          )
+        ]
+      }
+    ),
+    notice && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      DoctorNoticeBar,
+      {
+        notice,
+        actions: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: () => setNoticeDismissed(true),
+            className: BUTTON_SECONDARY$3,
+            children: "知道了"
+          }
+        )
+      }
+    ),
+    exportConfirm && /* @__PURE__ */ jsxRuntimeExports.jsx(
+      DoctorNoticeBar,
+      {
+        notice: exportConfirm,
+        actions: /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: handleConfirmExport,
+              className: BUTTON_PRIMARY$3,
+              children: "仍要导出"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => setExportConfirm(null),
+              className: BUTTON_SECONDARY$3,
+              children: "取消"
+            }
+          )
+        ] })
+      }
+    ),
+    exportResult && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: cn(
+          "flex items-center gap-4 border-t border-hairline px-6 py-2 text-sm",
+          exportResult.ok ? "bg-success/10 text-success" : "bg-signature-coral/10 text-signature-coral"
+        ),
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              className: "min-w-0 flex-1 truncate",
+              title: exportResult.message,
+              children: exportResult.message
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => setExportResult(null),
+              className: "shrink-0 rounded-xs px-2 py-0.5 text-sm font-medium transition active:bg-surface-strong",
+              children: "关闭"
+            }
+          )
+        ]
+      }
+    )
+  ] });
+}
+function AppShell({ children }) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-screen flex-col bg-canvas text-ink", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(TopNav, {}),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "min-h-0 flex-1", children })
+  ] });
+}
+const useActivityStore = create((set) => ({
+  records: [],
+  loading: false,
+  error: null,
+  async load(deckPath, limit) {
+    set({ loading: true, error: null });
+    try {
+      const records = await window.api.activity.list(deckPath, limit);
+      set({ records, loading: false });
+    } catch (err) {
+      set({ loading: false, error: toMessage(err) });
+      throw err;
+    }
+  },
+  append(record) {
+    set((state) => ({ records: [record, ...state.records] }));
+  },
+  reset() {
+    set({ records: [], loading: false, error: null });
+  }
+}));
+function toMessage(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+const RUN_STAGE_SEQUENCE = [
+  "ocr",
+  "review",
+  "assist-review",
+  "validate-review",
+  "mask",
+  "clean",
+  "accept-clean",
+  "pptx",
+  "accept-pptx",
+  "report"
+];
+const STAGE_LABELS = {
+  ocr: "文字识别",
+  review: "生成复核稿",
+  "assist-review": "AI 辅助复核",
+  "validate-review": "复核校验",
+  mask: "生成遮罩",
+  clean: "生成干净底图",
+  "accept-clean": "验收底图",
+  pptx: "生成 PPTX",
+  "accept-pptx": "验收 PPTX",
+  report: "生成报告"
+};
+function stageLabel(stage) {
+  return STAGE_LABELS[stage] ?? stage;
+}
+const UNKNOWN_DATE = "未知日期";
+const KIND_LABELS = {
+  "run-start": "开始批量执行",
+  "run-stop": "请求停止",
+  "run-done": "批量执行结束",
+  "page-start": "开始处理页面",
+  "stage-complete": "阶段完成",
+  "page-done": "页面处理结束",
+  "accept-clean": "验收底图",
+  "accept-pptx": "验收 PPTX",
+  export: "导出 PPTX"
+};
+function groupByDate(records) {
+  const buckets = /* @__PURE__ */ new Map();
+  for (const record of records) {
+    const key = localDateKey(record.at);
+    const bucket = buckets.get(key);
+    if (bucket === void 0) {
+      buckets.set(key, [record]);
+    } else {
+      bucket.push(record);
+    }
+  }
+  const groups = [];
+  for (const [date, items] of buckets) {
+    items.sort((a, b) => timestamp(b) - timestamp(a));
+    groups.push({ date, records: items });
+  }
+  groups.sort((a, b) => {
+    if (a.date === b.date) return 0;
+    if (a.date === UNKNOWN_DATE) return 1;
+    if (b.date === UNKNOWN_DATE) return -1;
+    return a.date < b.date ? 1 : -1;
+  });
+  return groups;
+}
+function runEventToActivity(event, ctx) {
+  switch (event.kind) {
+    case "run-start":
+      return build({
+        kind: "run-start",
+        result: "info",
+        detail: `开始执行 ${event.total} 页`
+      });
+    case "page-start":
+      return build({
+        kind: "page-start",
+        result: "info",
+        detail: `开始处理 ${event.pageLabel}`,
+        slideId: event.slideId,
+        pageLabel: event.pageLabel
+      });
+    case "stage-start":
+      return null;
+    case "stage-complete": {
+      const label = ctx.pageLabelOf(event.slideId) ?? event.slideId;
+      return build({
+        at: event.at,
+        kind: "stage-complete",
+        result: "success",
+        detail: `${label} · ${stageLabel(event.stage)} 完成`,
+        slideId: event.slideId,
+        pageLabel: label,
+        stage: event.stage,
+        durationMs: event.durationMs
+      });
+    }
+    case "page-done": {
+      const label = ctx.pageLabelOf(event.slideId) ?? event.slideId;
+      const failed = event.error !== null || event.gate === "error";
+      const result = failed ? "failure" : event.gate !== null ? "gate" : "success";
+      return build({
+        kind: "page-done",
+        result,
+        detail: `${label} · ${event.message}`,
+        slideId: event.slideId,
+        pageLabel: label,
+        stage: event.stoppedAt
+      });
+    }
+    case "run-stopping":
+      return build({
+        kind: "run-stop",
+        result: "info",
+        detail: "已请求停止，当前页完成后结束"
+      });
+    case "run-done": {
+      const { completed, gated, failed } = event.summary;
+      return build({
+        kind: "run-done",
+        result: failed > 0 ? "failure" : "info",
+        detail: `执行结束：完成 ${completed}，待人工 ${gated}，失败 ${failed}`
+      });
+    }
+  }
+}
+function describeActivity(record) {
+  const parts = [];
+  const body = record.detail.trim();
+  parts.push(body !== "" ? body : fallbackText(record));
+  if (record.durationMs !== null) {
+    parts.push(`用时 ${formatDuration(record.durationMs)}`);
+  }
+  return parts.join(" · ");
+}
+function formatDuration(durationMs) {
+  const ms = Math.max(0, Math.round(durationMs));
+  if (ms < 1e3) return `${ms}ms`;
+  if (ms < 6e4) return `${(ms / 1e3).toFixed(1)}s`;
+  const minutes = Math.floor(ms / 6e4);
+  const seconds = Math.round(ms % 6e4 / 1e3);
+  return `${minutes}m${seconds}s`;
+}
+function fallbackText(record) {
+  const parts = [];
+  if (record.pageLabel !== null && record.pageLabel !== "") {
+    parts.push(record.pageLabel);
+  }
+  if (record.stage !== null && record.stage !== "") {
+    parts.push(stageLabel(record.stage));
+  }
+  parts.push(KIND_LABELS[record.kind] ?? record.kind);
+  return parts.join(" · ");
+}
+function build(input) {
+  return {
+    at: input.at ?? (/* @__PURE__ */ new Date()).toISOString(),
+    kind: input.kind,
+    slideId: input.slideId ?? null,
+    pageLabel: input.pageLabel ?? null,
+    stage: input.stage ?? null,
+    result: input.result,
+    durationMs: input.durationMs ?? null,
+    detail: input.detail
+  };
+}
+function localDateKey(at) {
+  const time = Date.parse(at);
+  if (Number.isNaN(time)) return UNKNOWN_DATE;
+  const date = new Date(time);
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+function timestamp(record) {
+  const time = Date.parse(record.at);
+  return Number.isNaN(time) ? 0 : time;
+}
+function dispatchRunEvent(event, deps) {
+  const record = runEventToActivity(event, {
+    pageLabelOf: deps.pageLabelOf
+  });
+  if (record !== null) deps.appendActivity(record);
+  if (event.kind === "page-done") {
+    void deps.refreshSlide(event.slideId).catch(() => void 0);
+    return;
+  }
+  if (event.kind === "run-done") {
+    void deps.refreshDeck().catch(() => void 0);
+    void deps.reloadActivity().catch(() => void 0);
+  }
+}
+function useRunBridge() {
+  reactExports.useEffect(() => {
+    const detach = useRunStore.getState().subscribe((event) => {
+      const deck = useDeckStore.getState();
+      const activity = useActivityStore.getState();
+      dispatchRunEvent(event, {
+        pageLabelOf: (slideId) => deck.getSlide(slideId)?.pageLabel ?? null,
+        appendActivity: activity.append,
+        refreshSlide: deck.refreshSlide,
+        refreshDeck: deck.refreshStatus,
+        reloadActivity: async () => {
+          if (deck.deckPath === null) return;
+          await activity.load(deck.deckPath);
+        }
+      });
+    });
+    return detach;
+  }, []);
+}
+const useUIStore = create((set) => ({
+  currentView: "console",
+  selectedSlideId: null,
+  selectedBlockId: null,
+  queuePanelOpen: true,
+  activityPanelOpen: false,
+  setView(view) {
+    set({ currentView: view });
+  },
+  selectSlide(slideId) {
+    set({ selectedSlideId: slideId, selectedBlockId: null });
+  },
+  selectBlock(blockId) {
+    set({ selectedBlockId: blockId });
+  },
+  openSlide(slideId) {
+    set({
+      currentView: "slide",
+      selectedSlideId: slideId,
+      selectedBlockId: null
+    });
+  },
+  backToConsole() {
+    set({ currentView: "console", selectedBlockId: null });
+  },
+  toggleQueuePanel(open) {
+    set((state) => ({ queuePanelOpen: open ?? !state.queuePanelOpen }));
+  },
+  toggleActivityPanel(open) {
+    set((state) => ({ activityPanelOpen: open ?? !state.activityPanelOpen }));
+  }
+}));
+function ActivityPanel({
+  className
+}) {
+  const open = useUIStore((s) => s.activityPanelOpen);
+  const toggle = useUIStore((s) => s.toggleActivityPanel);
+  const records = useActivityStore((s) => s.records);
+  const loading = useActivityStore((s) => s.loading);
+  const groups = reactExports.useMemo(
+    () => groupByDate(records).map((group) => ({
+      date: group.date,
+      rows: group.records.map((record, index) => ({
+        key: `${record.at}-${record.kind}-${index}`,
+        record
+      }))
+    })),
+    [records]
+  );
+  if (!open) {
+    const latest = records[0];
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        className: cn(
+          "flex h-10 shrink-0 items-center gap-3 border-t border-hairline bg-canvas px-6",
+          className
+        ),
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "shrink-0 text-sm font-medium text-muted", children: "活动日志" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1 truncate text-sm text-muted", children: latest ? describeActivity(latest) : "暂无记录" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              "aria-label": "展开活动日志",
+              onClick: () => toggle(true),
+              className: "shrink-0 rounded-sm border border-hairline px-2 py-0.5 text-sm text-muted transition active:border-border-strong",
+              children: "⌃"
+            }
+          )
+        ]
+      }
+    );
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: cn(
+        "h-64 shrink-0 overflow-y-auto border-t border-hairline bg-canvas",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "sticky top-0 z-10 flex h-10 items-center gap-3 border-b border-hairline bg-canvas px-6", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-base font-medium text-ink", children: "活动日志" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex-1 text-sm font-medium text-muted", children: [
+            records.length,
+            " 条"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              "aria-label": "收起活动日志",
+              onClick: () => toggle(false),
+              className: "shrink-0 rounded-sm border border-hairline px-2 py-0.5 text-sm text-muted transition active:border-border-strong",
+              children: "⌄"
+            }
+          )
+        ] }),
+        records.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-[calc(100%-40px)] items-center justify-center text-sm font-medium text-muted", children: loading ? "加载中…" : "暂无活动记录" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col gap-4 px-6 py-3", children: groups.map((group) => /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "flex flex-col gap-1", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "shrink-0 text-sm font-medium text-muted", children: group.date }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "flex-1 border-t border-hairline" })
+          ] }),
+          group.rows.map((row) => /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityRow, { record: row.record }, row.key))
+        ] }, group.date)) })
+      ]
+    }
+  );
+}
+function ActivityRow({
+  record
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-stretch gap-3 py-0.5", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "span",
+      {
+        className: cn("w-0.5 shrink-0 rounded-xs", RESULT_BAR[record.result])
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "w-20 shrink-0 text-sm font-medium tabular-nums text-muted", children: formatTime(record.at) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1 text-sm text-body", children: describeActivity(record) })
+  ] });
+}
+const RESULT_BAR = {
+  success: "bg-success",
+  failure: "bg-signature-coral",
+  gate: "bg-signature-mustard",
+  info: "bg-surface-strong"
+};
+function formatTime(at) {
+  const time = Date.parse(at);
+  if (Number.isNaN(time)) return "--:--:--";
+  const date = new Date(time);
+  const hh = `${date.getHours()}`.padStart(2, "0");
+  const mm = `${date.getMinutes()}`.padStart(2, "0");
+  const ss = `${date.getSeconds()}`.padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
+}
+function DeckEmptyState({
+  className
+}) {
+  const loading = useDeckStore((s) => s.loading);
+  const error = useDeckStore((s) => s.error);
+  const openDeck = useDeckStore((s) => s.openDeck);
+  const createDeck = useDeckStore((s) => s.createDeck);
+  async function handleOpen() {
+    const dir = await window.api.system.selectDirectory();
+    if (!dir) return;
+    try {
+      await openDeck(dir);
+    } catch {
+    }
+  }
+  async function handleCreate() {
+    const imagesDir = await window.api.system.selectDirectory();
+    if (!imagesDir) return;
+    const parentDir = imagesDir.split("/").slice(0, -1).join("/");
+    const name = imagesDir.split("/").pop() ?? "deck";
+    const ts = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+    try {
+      await createDeck(imagesDir, `${parentDir}/${name}-${ts}`);
+    } catch {
+    }
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      className: cn(
+        "flex h-full flex-col items-center justify-center gap-10 px-6",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col items-center gap-4 text-center", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "text-display-md font-normal text-ink", children: "PPT Maker" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "max-w-md text-sm leading-relaxed text-body", children: "可视化复核 PPT 中的文字检测结果，批量运行去字与重建流水线，导出为可编辑 PPTX。" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => void handleOpen(),
+              disabled: loading,
+              className: "rounded-lg bg-primary px-6 py-4 text-base font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40",
+              children: "打开已有 Deck"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => void handleCreate(),
+              disabled: loading,
+              className: "rounded-lg border border-hairline bg-canvas px-6 py-4 text-base font-medium text-ink transition active:border-border-strong disabled:opacity-40",
+              children: "从图片目录创建"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex max-w-sm flex-col gap-1 text-center text-sm font-medium leading-relaxed text-muted", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { className: "font-medium text-body", children: "打开" }),
+            " — 选择一个已有的 Deck 工作区目录"
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { className: "font-medium text-body", children: "创建" }),
+            " — 选择包含 PPT 截图的图片目录，自动在同级创建工作区"
+          ] })
+        ] }),
+        error !== null && error !== "" && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral", children: error })
+      ]
+    }
+  );
+}
+const KNOWN_STATUSES = /* @__PURE__ */ new Set([
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "interrupted",
+  "stale"
+]);
+const STAGE_DOT_CLASS = {
+  completed: "bg-success border-success",
+  running: "bg-info border-info animate-pulse",
+  failed: "bg-signature-coral border-signature-coral",
+  interrupted: "bg-signature-coral border-signature-coral",
+  stale: "bg-signature-mustard border-signature-mustard",
+  pending: "bg-surface-strong border-hairline"
+};
+const STAGE_STATUS_TEXT = {
+  completed: "已完成",
+  running: "执行中",
+  failed: "失败",
+  interrupted: "已中断",
+  stale: "已失效",
+  pending: "待执行"
+};
+function normalize(status) {
+  if (status !== void 0 && KNOWN_STATUSES.has(status)) {
+    return status;
+  }
+  return "pending";
+}
+function deriveStageViews(slide, live) {
+  const merged = /* @__PURE__ */ new Map();
+  for (const detail of slide.stages) {
+    merged.set(detail.stage, normalize(detail.status));
+  }
+  for (const [stage, status] of Object.entries(live ?? {})) {
+    if (status !== void 0) merged.set(stage, status);
+  }
+  return RUN_STAGE_SEQUENCE.map((stage) => ({
+    stage,
+    label: STAGE_LABELS[stage],
+    status: merged.get(stage) ?? "pending"
+  }));
+}
+function currentStageView(views) {
+  return views.find((view) => view.status === "running") ?? views.find((view) => view.status !== "completed") ?? null;
+}
+function completedStageCount(views) {
+  return views.filter((view) => view.status === "completed").length;
+}
+function hasFailingStage(views) {
+  return views.some(
+    (view) => view.status === "failed" || view.status === "interrupted" || view.status === "stale"
+  );
+}
+function formatElapsed(elapsedMs) {
+  const seconds = Math.max(0, Math.floor(elapsedMs / 1e3));
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.floor(seconds / 60)}m${seconds % 60}s`;
+}
+function elapsedSince(startedAt, now) {
+  if (startedAt === null) return null;
+  return formatElapsed(now - startedAt);
+}
+const BUTTON_PRIMARY$2 = "rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
+const BUTTON_SECONDARY$2 = "rounded-lg border border-hairline bg-canvas px-4 py-2.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
+function RunControlBar({
+  className
+}) {
+  const status = useRunStore((s) => s.status);
+  const total = useRunStore((s) => s.total);
+  const doneCount = useRunStore((s) => s.doneCount);
+  const currentIndex = useRunStore((s) => s.currentIndex);
+  const currentPageLabel = useRunStore((s) => s.currentPageLabel);
+  const currentStage = useRunStore((s) => s.currentStage);
+  const stageStartedAt = useRunStore((s) => s.stageStartedAt);
+  const lastSummary = useRunStore((s) => s.lastSummary);
+  const startError = useRunStore((s) => s.startError);
+  useRunStore((s) => s.tick);
+  const deckPath = useDeckStore((s) => s.deckPath);
+  const summary = useDeckStore((s) => s.summary);
+  const running = status !== "idle";
+  const canStart = !running && deckPath !== null && (summary?.active ?? 0) > 0;
+  const percent = total > 0 ? Math.min(100, doneCount / total * 100) : 0;
+  function handleRunAll() {
+    if (deckPath === null) return;
+    void useRunStore.getState().runAll(deckPath, { confirmApi: true, confirmUpload: true });
+  }
+  function handleStop() {
+    void useRunStore.getState().stop();
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: cn("flex flex-col gap-2", className), children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-4 rounded-lg border border-hairline bg-surface-soft px-6 py-4", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-w-0 flex-1 flex-col gap-2", children: running ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            role: "progressbar",
+            "aria-label": "总进度",
+            "aria-valuemin": 0,
+            "aria-valuemax": total,
+            "aria-valuenow": doneCount,
+            className: "h-1.5 w-full overflow-hidden rounded-xs bg-surface-strong",
+            children: total > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "div",
+              {
+                className: "h-full rounded-xs bg-info transition-[width]",
+                style: { width: `${percent}%` }
+              }
+            )
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate text-sm font-medium text-muted", children: buildRunningText({
+          stopping: status === "stopping",
+          currentIndex,
+          total,
+          pageLabel: currentPageLabel,
+          stage: currentStage,
+          elapsed: elapsedSince(stageStartedAt, Date.now())
+        }) })
+      ] }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate text-sm text-body", children: buildSummaryText(summary) }),
+        lastSummary !== null && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate text-sm font-medium text-muted", children: `上轮：完成 ${lastSummary.completed} · 待人工 ${lastSummary.gated} · 失败 ${lastSummary.failed}` })
+      ] }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex shrink-0 items-center gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: handleRunAll,
+            disabled: !canStart,
+            className: BUTTON_PRIMARY$2,
+            children: "处理全部"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: handleStop,
+            disabled: status !== "running",
+            className: BUTTON_SECONDARY$2,
+            children: "停止"
+          }
+        )
+      ] })
+    ] }),
+    startError !== null && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-sm bg-signature-coral/10 px-3 py-2 text-sm font-medium text-signature-coral", children: startError })
+  ] });
+}
+function buildSummaryText(summary) {
+  if (summary === null) return "尚未打开 Deck";
+  return `共 ${summary.active} 页 · 已完成 ${summary.completed} · 进行中 ${summary.inProgress} · 未开始 ${summary.notStarted}`;
+}
+function buildRunningText(params) {
+  const parts = [];
+  if (params.stopping) parts.push("正在停止 · 当前页完成后结束");
+  if (params.currentIndex > 0) {
+    parts.push(`第 ${params.currentIndex}/${params.total} 页`);
+  }
+  if (params.pageLabel !== null) parts.push(params.pageLabel);
+  if (params.stage !== null) parts.push(stageLabel(params.stage));
+  if (params.elapsed !== null) parts.push(`已用 ${params.elapsed}`);
+  return parts.length > 0 ? parts.join(" · ") : "正在启动…";
+}
+function StageTrack({
+  views,
+  size = "sm",
+  onStageClick
+}) {
+  const dotSize = size === "md" ? "h-3 w-3" : "h-2 w-2";
+  const dotBase = cn("shrink-0 rounded-full border", dotSize);
+  return (
+    // 用原生 ul/li 承担 list/listitem 语义，避免在可交互点位上叠加 role 造成语义覆盖
+    /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex w-full items-center", children: views.map((view, index) => {
+      const tooltip = `${view.label} · ${STAGE_STATUS_TEXT[view.status]}`;
+      const dotClass = cn(dotBase, STAGE_DOT_CLASS[view.status]);
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "li",
+        {
+          className: cn("flex items-center", index > 0 && "flex-1"),
+          children: [
+            index > 0 && // 连接线只是视觉，屏幕阅读器读点位即可
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { "aria-hidden": "true", className: "h-px flex-1 bg-hairline" }),
+            onStageClick ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                title: tooltip,
+                "aria-label": tooltip,
+                onClick: () => {
+                  onStageClick(view.stage);
+                },
+                className: cn(dotClass, "transition active:opacity-60")
+              }
+            ) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { title: tooltip, className: dotClass })
+          ]
+        },
+        view.stage
+      );
+    }) })
+  );
+}
+function SlideCard({ slide }) {
+  const [thumbnail, setThumbnail] = reactExports.useState(null);
+  const [thumbnailState, setThumbnailState] = reactExports.useState("loading");
+  const liveStages = useRunStore((s) => s.liveStages[slide.slideId]);
+  const runStatus = useRunStore((s) => s.status);
+  const currentSlideId = useRunStore((s) => s.currentSlideId);
+  const currentStage = useRunStore((s) => s.currentStage);
+  const stageStartedAt = useRunStore((s) => s.stageStartedAt);
+  useRunStore((s) => s.tick);
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    setThumbnailState("loading");
+    void window.api.slide.loadImage(slide.absWorkspacePath, "source_image").then((dataUrl) => {
+      if (cancelled) return;
+      setThumbnail(dataUrl);
+      setThumbnailState(dataUrl ? "ready" : "empty");
+    }).catch(() => {
+      if (cancelled) return;
+      setThumbnail(null);
+      setThumbnailState("empty");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [slide.absWorkspacePath]);
+  const views = reactExports.useMemo(
+    () => deriveStageViews(slide, liveStages),
+    [slide, liveStages]
+  );
+  const isRunningThisSlide = slide.slideId === currentSlideId && runStatus !== "idle";
+  const doneCount = completedStageCount(views);
+  const current = currentStageView(views);
+  const failed = slide.lastError !== null || hasFailingStage(views);
+  const statusText = buildStatusText({
+    isRunningThisSlide,
+    runningStageLabel: currentStage !== null ? stageLabel(currentStage) : current?.label ?? "",
+    elapsed: elapsedSince(stageStartedAt, Date.now()),
+    doneCount,
+    total: views.length,
+    current
+  });
+  const errorText = failed ? slide.lastError !== null ? `${slide.lastError.code}: ${slide.lastError.message}` : `阶段「${current?.label ?? slide.currentStage}」执行失败，需重跑` : null;
+  function handleOpen() {
+    useUIStore.getState().openSlide(slide.slideId);
+  }
+  function handleKeyDown(event) {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    handleOpen();
+  }
+  return (
+    // 卡片内部可能出现按钮（阶段点位），外层用 button 会构成非法嵌套，
+    // 因此用 div + role="button" 自行补齐键盘可达性。
+    // biome-ignore lint/a11y/useSemanticElements: 见上，语义按钮会导致 button 嵌套
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        role: "button",
+        tabIndex: 0,
+        "aria-label": `打开 ${slide.pageLabel}`,
+        onClick: handleOpen,
+        onKeyDown: handleKeyDown,
+        className: cn(
+          "flex flex-col gap-3 rounded-md border border-hairline bg-canvas p-4 text-left transition active:border-border-strong",
+          isRunningThisSlide && "border-info",
+          slide.removed && "opacity-50"
+        ),
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative aspect-video w-full overflow-hidden rounded-sm bg-surface-soft", children: [
+            thumbnailState === "ready" && thumbnail ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "img",
+              {
+                src: thumbnail,
+                alt: slide.pageLabel,
+                className: "h-full w-full object-contain"
+              }
+            ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full w-full items-center justify-center text-sm text-muted", children: thumbnailState === "loading" ? "加载中…" : "无预览" }),
+            slide.removed && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "absolute left-2 top-2 rounded-xs bg-surface-dark px-1.5 py-0.5 text-sm font-medium text-on-dark", children: "已移除" })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              className: "truncate text-base font-medium text-ink",
+              title: slide.pageLabel,
+              children: slide.pageLabel
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(StageTrack, { views, size: "sm" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-muted", children: statusText }),
+          errorText !== null && /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              title: errorText,
+              className: "line-clamp-2 rounded-sm bg-signature-coral px-2 py-1 text-sm font-medium text-on-primary",
+              children: errorText
+            }
+          )
+        ]
+      }
+    )
+  );
+}
+function buildStatusText(params) {
+  const { isRunningThisSlide, runningStageLabel, elapsed, doneCount, total } = params;
+  if (isRunningThisSlide) {
+    const parts = ["执行中", runningStageLabel];
+    if (elapsed !== null) parts.push(`已用 ${elapsed}`);
+    return parts.filter((part) => part !== "").join(" · ");
+  }
+  if (params.current === null) {
+    return `已完成 · ${doneCount}/${total}`;
+  }
+  const { label, status } = params.current;
+  return `${label} · ${STAGE_STATUS_TEXT[status]} · ${doneCount}/${total}`;
+}
+function SlideCardGrid() {
+  const slides = useDeckStore((s) => s.slides);
+  const activeSlides = reactExports.useMemo(
+    () => slides.filter((slide) => !slide.removed),
+    [slides]
+  );
+  if (activeSlides.length === 0) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex w-full items-center justify-center py-12 text-sm text-muted", children: "当前 Deck 还没有任何页面" });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4", children: activeSlides.map((slide) => /* @__PURE__ */ jsxRuntimeExports.jsx(SlideCard, { slide }, slide.slideId)) });
+}
+const ACCEPT_STAGE_PRIORITY = [
+  "accept-pptx",
+  "accept-clean"
+];
+const PRODUCED_STAGE = {
+  "accept-clean": "clean",
+  "accept-pptx": "pptx"
+};
+const REJECT_RERUN_STAGES = {
+  "accept-clean": ["mask", "clean"],
+  "accept-pptx": ["pptx"]
+};
+const MANUAL_GATE = "manual";
+function isAcceptStage(value) {
+  return value === "accept-clean" || value === "accept-pptx";
+}
+function stageStatusOf(slide, stage) {
+  return slide.stages.find((detail) => detail.stage === stage)?.status;
+}
+function awaitingAcceptance(slide, acceptStage) {
+  return stageStatusOf(slide, PRODUCED_STAGE[acceptStage]) === "completed" && stageStatusOf(slide, acceptStage) !== "completed";
+}
+function deriveAcceptGate(slide, sessionResult) {
+  if (sessionResult?.gate === MANUAL_GATE && isAcceptStage(sessionResult.stoppedAt)) {
+    return { stage: sessionResult.stoppedAt, source: "session" };
+  }
+  for (const stage of ACCEPT_STAGE_PRIORITY) {
+    if (awaitingAcceptance(slide, stage)) {
+      return { stage, source: "durable" };
+    }
+  }
+  return null;
+}
+const GROUP_ORDER = [
+  "failed",
+  "revalidate",
+  "accept-pptx",
+  "accept-clean"
+];
+const GROUP_LABELS = {
+  failed: "失败/需重跑",
+  revalidate: "需复核校验",
+  "accept-pptx": "待验收 PPTX",
+  "accept-clean": "待验收底图"
+};
+const FAILING_STAGE_STATUSES = /* @__PURE__ */ new Set([
+  "failed",
+  "interrupted",
+  "stale"
+]);
+const FAILING_STATUS_TEXT = {
+  failed: "执行失败",
+  interrupted: "执行中断",
+  stale: "上游已变更，需重跑"
+};
+const VALIDATION_FAILED_GATE = "validation-failed";
+const pageLabelCollator$1 = new Intl.Collator("en", { numeric: true });
+function failedReason(slide) {
+  if (slide.lastError !== null) {
+    return `${slide.lastError.code}: ${slide.lastError.message}`;
+  }
+  const text = FAILING_STATUS_TEXT[slide.stageStatus] ?? "需重跑";
+  return `阶段「${stageLabel(slide.currentStage)}」${text}`;
+}
+function deriveSlideItem(slide, sessionResult) {
+  const base = { slideId: slide.slideId, pageLabel: slide.pageLabel };
+  if (FAILING_STAGE_STATUSES.has(slide.stageStatus)) {
+    return {
+      ...base,
+      group: "failed",
+      reason: failedReason(slide),
+      stage: slide.lastError?.stage ?? slide.currentStage
+    };
+  }
+  if (sessionResult?.gate === VALIDATION_FAILED_GATE) {
+    return {
+      ...base,
+      group: "revalidate",
+      reason: "复核校验未通过，需修正文字块后重跑",
+      stage: "validate-review"
+    };
+  }
+  if (awaitingAcceptance(slide, "accept-pptx")) {
+    return {
+      ...base,
+      group: "accept-pptx",
+      reason: "PPTX 已生成，等待人工验收",
+      stage: "accept-pptx"
+    };
+  }
+  if (awaitingAcceptance(slide, "accept-clean")) {
+    return {
+      ...base,
+      group: "accept-clean",
+      reason: "干净底图已生成，等待人工验收",
+      stage: "accept-clean"
+    };
+  }
+  return null;
+}
+function deriveTodoQueue(slides, sessionResults) {
+  const items = [];
+  for (const slide of slides) {
+    if (slide.removed) continue;
+    const item = deriveSlideItem(slide, sessionResults[slide.slideId]);
+    if (item !== null) items.push(item);
+  }
+  const groups = [];
+  for (const group of GROUP_ORDER) {
+    const groupItems = items.filter((item) => item.group === group).sort(
+      (left, right) => pageLabelCollator$1.compare(left.pageLabel, right.pageLabel)
+    );
+    if (groupItems.length > 0) {
+      groups.push({ group, label: GROUP_LABELS[group], items: groupItems });
+    }
+  }
+  return { groups, total: items.length };
+}
+function flattenTodoQueue(queue) {
+  return queue.groups.flatMap((group) => group.items);
+}
+function nextTodoItem(queue, currentSlideId) {
+  const items = flattenTodoQueue(queue);
+  if (items.length === 0) return null;
+  const position = currentSlideId === null ? -1 : items.findIndex((item) => item.slideId === currentSlideId);
+  if (position < 0) return items[0] ?? null;
+  for (let step = 1; step <= items.length; step += 1) {
+    const candidate = items[(position + step) % items.length];
+    if (candidate !== void 0 && candidate.slideId !== currentSlideId) {
+      return candidate;
+    }
+  }
+  return null;
+}
+const GROUP_ACCENT = {
+  failed: "bg-signature-coral",
+  revalidate: "bg-signature-mustard",
+  "accept-pptx": null,
+  "accept-clean": null
+};
+const ACCEPT_GROUPS = ["accept-pptx", "accept-clean"];
+const ICON_BUTTON = "rounded-sm border border-hairline px-1.5 py-1 text-sm text-ink transition active:border-border-strong";
+const COUNT_BADGE = "shrink-0 rounded-xs bg-surface-strong px-1.5 py-0.5 text-sm font-medium text-ink";
+function TodoQueuePanel({
+  className
+}) {
+  const open = useUIStore((s) => s.queuePanelOpen);
+  const toggleQueuePanel = useUIStore((s) => s.toggleQueuePanel);
+  const slides = useDeckStore((s) => s.slides);
+  const sessionResults = useRunStore((s) => s.sessionResults);
+  const queue = reactExports.useMemo(
+    () => deriveTodoQueue(slides, sessionResults),
+    [slides, sessionResults]
+  );
+  function handleToggle() {
+    toggleQueuePanel();
+  }
+  if (!open) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "aside",
+      {
+        className: cn(
+          "flex w-10 shrink-0 flex-col items-center gap-2 border-l border-hairline bg-canvas py-4",
+          className
+        ),
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              "aria-label": "展开待办队列",
+              onClick: handleToggle,
+              className: ICON_BUTTON,
+              children: "‹"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: COUNT_BADGE, children: queue.total })
+        ]
+      }
+    );
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "aside",
+    {
+      className: cn(
+        "flex w-60 shrink-0 flex-col border-l border-hairline bg-canvas",
+        className
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 px-4 py-4", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "min-w-0 flex-1 truncate text-base font-medium text-ink", children: "待办队列" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: COUNT_BADGE, children: queue.total }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              "aria-label": "收起待办队列",
+              onClick: handleToggle,
+              className: ICON_BUTTON,
+              children: "›"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4", children: queue.total === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "px-2 py-8 text-center text-sm font-medium text-muted", children: "暂无待办 · 全部页面已推进到位" }) : queue.groups.map((group) => /* @__PURE__ */ jsxRuntimeExports.jsx(QueueGroup, { group }, group.group)) })
+      ]
+    }
+  );
+}
+function QueueGroup({ group }) {
+  const accent = GROUP_ACCENT[group.group];
+  const isAcceptGroup = ACCEPT_GROUPS.includes(group.group);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "section",
+    {
+      className: cn(
+        "flex flex-col gap-2",
+        isAcceptGroup && "rounded-md bg-signature-cream p-6"
+      ),
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "min-w-0 flex-1 truncate text-sm font-medium tracking-[0.16px] text-muted", children: group.label }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: COUNT_BADGE, children: group.items.length })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-1", children: group.items.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(QueueItem, { item, accent }) }, item.slideId)) })
+      ]
+    }
+  );
+}
+function QueueItem({
+  item,
+  accent
+}) {
+  function handleClick() {
+    useUIStore.getState().openSlide(item.slideId);
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "button",
+    {
+      type: "button",
+      onClick: handleClick,
+      className: "flex w-full gap-2 rounded-sm px-2 py-2 text-left transition active:bg-surface-strong",
+      children: [
+        accent !== null && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            "aria-hidden": "true",
+            className: cn("w-0.5 shrink-0 self-stretch rounded-xs", accent)
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex min-w-0 flex-1 flex-col gap-1", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate text-sm text-ink", children: item.pageLabel }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "span",
+            {
+              title: item.reason,
+              className: "line-clamp-2 text-sm font-medium text-muted",
+              children: item.reason
+            }
+          )
+        ] })
+      ]
+    }
+  );
+}
+function ConsolePage() {
+  const deckPath = useDeckStore((s) => s.deckPath);
+  const slides = useDeckStore((s) => s.slides);
+  const loading = useDeckStore((s) => s.loading);
+  const error = useDeckStore((s) => s.error);
+  const addSlide = useDeckStore((s) => s.addSlide);
+  const refreshStatus = useDeckStore((s) => s.refreshStatus);
+  const loadActivity = useActivityStore((s) => s.load);
+  const resetActivity = useActivityStore((s) => s.reset);
+  reactExports.useEffect(() => {
+    if (deckPath === null) {
+      resetActivity();
+      return;
+    }
+    void loadActivity(deckPath).catch(() => {
+    });
+  }, [deckPath, loadActivity, resetActivity]);
+  const activeCount = reactExports.useMemo(
+    () => slides.filter((slide) => !slide.removed).length,
+    [slides]
+  );
+  async function handleAddSlide() {
+    if (deckPath === null) return;
+    const imagePath = await window.api.system.selectFile([
+      { name: "图片", extensions: ["png", "jpg", "jpeg"] }
+    ]);
+    if (imagePath === null) return;
+    await addSlide(imagePath).catch(() => {
+    });
+  }
+  if (deckPath === null) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx(DeckEmptyState, {});
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full min-h-0 flex-col", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-h-0 flex-1", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-1 flex-col", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "shrink-0 px-6 pt-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx(RunControlBar, {}) }),
+        error !== null && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "mx-6 mt-4 rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral", children: error }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex shrink-0 items-center justify-between px-6 pb-2 pt-6", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("h2", { className: "text-base font-medium text-ink", children: [
+            "页面",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-2 text-sm font-medium text-muted", children: activeCount })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => void refreshStatus(),
+                disabled: loading,
+                className: "rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40",
+                children: "刷新"
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => void handleAddSlide(),
+                disabled: loading,
+                className: "rounded-lg border border-hairline bg-canvas px-3 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40",
+                children: "添加页面"
+              }
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "min-h-0 flex-1 overflow-y-auto px-6 pb-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx(SlideCardGrid, {}) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(TodoQueuePanel, {})
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ActivityPanel, {})
+  ] });
+}
+const MIN_SCALE = 0.1;
+const MAX_SCALE = 5;
+const ZOOM_SENSITIVITY = 15e-4;
+function clampScale(scale) {
+  return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
+}
+function computeFit(container, content) {
+  if (container === null || content === null || content.width === 0) {
+    return { scale: 1, offsetX: 0, offsetY: 0 };
+  }
+  const { clientWidth, clientHeight } = container;
+  const scale = clampScale(
+    Math.min(clientWidth / content.width, clientHeight / content.height)
+  );
+  const offsetX = (clientWidth - content.width * scale) / 2;
+  const offsetY = (clientHeight - content.height * scale) / 2;
+  return { scale, offsetX, offsetY };
+}
+function useCanvasTransform(content) {
+  const containerRef = reactExports.useRef(null);
+  const [transform, setTransform] = reactExports.useState({
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0
+  });
+  const panRef = reactExports.useRef(null);
+  const resetView = reactExports.useCallback(() => {
+    setTransform(computeFit(containerRef.current, content ?? null));
+  }, [content]);
+  reactExports.useEffect(() => {
+    resetView();
+  }, [resetView]);
+  const onWheel = reactExports.useCallback((e) => {
+    e.preventDefault();
+    if (e.ctrlKey || e.metaKey) {
+      const container = containerRef.current;
+      if (container === null) {
+        return;
+      }
+      const rect = container.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      setTransform((prev) => {
+        const nextScale = clampScale(
+          prev.scale * (1 - e.deltaY * ZOOM_SENSITIVITY)
+        );
+        const ratio = nextScale / prev.scale;
+        return {
+          scale: nextScale,
+          offsetX: px - (px - prev.offsetX) * ratio,
+          offsetY: py - (py - prev.offsetY) * ratio
+        };
+      });
+      return;
+    }
+    setTransform((prev) => ({
+      ...prev,
+      offsetX: prev.offsetX - e.deltaX,
+      offsetY: prev.offsetY - e.deltaY
+    }));
+  }, []);
+  const onPointerDown = reactExports.useCallback(
+    (e) => {
+      if (e.button !== 1) {
+        return;
+      }
+      e.preventDefault();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      panRef.current = {
+        active: true,
+        startX: e.clientX,
+        startY: e.clientY,
+        originX: transform.offsetX,
+        originY: transform.offsetY
+      };
+    },
+    [transform.offsetX, transform.offsetY]
+  );
+  const onPointerMove = reactExports.useCallback((e) => {
+    const pan = panRef.current;
+    if (pan === null || !pan.active) {
+      return;
+    }
+    setTransform((prev) => ({
+      ...prev,
+      offsetX: pan.originX + (e.clientX - pan.startX),
+      offsetY: pan.originY + (e.clientY - pan.startY)
+    }));
+  }, []);
+  const onPointerUp = reactExports.useCallback((e) => {
+    if (panRef.current?.active) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      panRef.current = null;
+    }
+  }, []);
+  return {
+    transform,
+    containerRef,
+    onWheel,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    resetView
+  };
+}
 const CURSOR_MAP = {
   nw: "nwse-resize",
   ne: "nesw-resize",
@@ -16740,6 +17760,7 @@ function TextBlockHandle({
     }
   );
 }
+const EDITOR_CLASS = "absolute inset-0 resize-none border-none bg-canvas/90 p-1 text-[10px] text-ink outline-none focus:ring-1 focus:ring-info-border";
 function TextEditor({
   text,
   onCommit,
@@ -16772,7 +17793,7 @@ function TextEditor({
     "textarea",
     {
       ref,
-      className: "absolute inset-0 resize-none border-none bg-canvas/90 p-1 text-xs text-ink outline-none focus:ring-1 focus:ring-info-border",
+      className: EDITOR_CLASS,
       defaultValue: text,
       onKeyDown: handleKeyDown,
       onBlur: handleBlur
@@ -16780,9 +17801,9 @@ function TextEditor({
   );
 }
 const CLASSIFICATION_BORDER = {
-  layout_text: "border-block-layout",
-  object_integrated_symbol: "border-block-object",
-  uncertain: "border-block-uncertain"
+  layout_text: "border-success-border",
+  object_integrated_symbol: "border-border-strong",
+  uncertain: "border-signature-mustard"
 };
 const HANDLE_POSITIONS = ["nw", "ne", "sw", "se", "n", "s", "e", "w"];
 function TextBlockOverlay({
@@ -16840,44 +17861,53 @@ function TextBlockOverlay({
   const handleTextCancel = reactExports.useCallback(() => {
     setEditing(false);
   }, []);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      role: "button",
-      tabIndex: 0,
-      style,
-      onClick,
-      onDoubleClick: handleDoubleClick,
-      onKeyDown: (e) => {
-        if (e.key === "Enter") onClick();
-      },
-      className: cn(
-        "absolute box-border overflow-visible border-2 text-left transition-colors",
-        selected ? "border-info-border bg-info/10" : CLASSIFICATION_BORDER[block.classification],
-        !selected && unreviewed && "border-dashed"
-      ),
-      children: [
-        editing ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-          TextEditor,
-          {
-            text: block.text,
-            onCommit: handleTextCommit,
-            onCancel: handleTextCancel
-          }
-        ) : /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "block truncate p-0.5 text-[10px] leading-tight text-ink", children: block.text }),
-        selected && onUpdate && !editing && /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: HANDLE_POSITIONS.map((pos) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-          TextBlockHandle,
-          {
-            position: pos,
-            scale,
-            onDragStart: handleDragStart,
-            onDrag: handleDrag,
-            onDragEnd: handleDragEnd
-          },
-          pos
-        )) })
-      ]
-    }
+  return (
+    // 块内会渲染 8 个拖拽手柄按钮与编辑态 textarea，外层用 <button> 构成非法嵌套，
+    // 因此沿用 SlideCard 的做法：div + role="button" 自行补齐键盘可达性。
+    // biome-ignore lint/a11y/useSemanticElements: 见上，语义按钮会导致 button 嵌套
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        role: "button",
+        tabIndex: 0,
+        style,
+        onClick,
+        onDoubleClick: handleDoubleClick,
+        onKeyDown: (e) => {
+          if (e.key === "Enter") onClick();
+        },
+        className: cn(
+          "absolute box-border overflow-visible border-2 text-left transition-colors",
+          selected ? "border-info-border bg-info/10" : CLASSIFICATION_BORDER[block.classification],
+          !selected && unreviewed && "border-dashed"
+        ),
+        children: [
+          editing ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+            TextEditor,
+            {
+              text: block.text,
+              onCommit: handleTextCommit,
+              onCancel: handleTextCancel
+            }
+          ) : (
+            // 10px 低于 DESIGN.md 最小字号（legal 13.12px）：这是贴在原图 bbox 上的标注，
+            // 尺寸由识别框决定，用界面字号会溢出小块。属画布标注层，不参与界面排版。
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "block truncate p-0.5 text-[10px] leading-tight text-ink", children: block.text })
+          ),
+          selected && onUpdate && !editing && HANDLE_POSITIONS.map((pos) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            TextBlockHandle,
+            {
+              position: pos,
+              scale,
+              onDragStart: handleDragStart,
+              onDrag: handleDrag,
+              onDragEnd: handleDragEnd
+            },
+            pos
+          ))
+        ]
+      }
+    )
   );
 }
 function ReviewCanvas({
@@ -16949,7 +17979,7 @@ function ReviewCanvas({
             ]
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute bottom-3 left-3 rounded-sm bg-surface-dark/70 px-2 py-1 text-xs text-on-dark", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute bottom-3 left-3 rounded-sm bg-surface-dark/70 px-2 py-1 text-sm text-on-dark", children: [
           Math.round(transform.scale * 100),
           "%"
         ] })
@@ -17048,161 +18078,13 @@ function SliderCompare({
             ) })
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-3 left-3 rounded-sm bg-primary/70 px-2 py-0.5 text-xs text-on-primary", children: "原图" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-3 right-3 rounded-sm bg-primary/70 px-2 py-0.5 text-xs text-on-primary", children: "Clean Plate" })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-3 left-3 rounded-sm bg-primary/70 px-2 py-0.5 text-sm text-on-primary", children: "原图" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-3 right-3 rounded-sm bg-primary/70 px-2 py-0.5 text-sm text-on-primary", children: "Clean Plate" })
       ]
     }
   );
 }
-const GATE_TITLES = {
-  "accept-clean": "验收 Clean Plate",
-  "accept-pptx": "验收 PPTX"
-};
-const CLEAN_CHECKLIST = [
-  "文字残留已检查",
-  "容器完整性已确认",
-  "非文字区域未被误改"
-];
-const PPTX_CHECKLIST = [
-  "已在 PowerPoint for Mac 中打开确认",
-  "文本框可编辑",
-  "字体为微软雅黑",
-  "16:9 比例正确"
-];
-function AcceptPanel({
-  gate,
-  autoCheckSummary,
-  onAccept,
-  onReject
-}) {
-  const [note, setNote] = reactExports.useState("");
-  const checklist = gate === "accept-clean" ? CLEAN_CHECKLIST : PPTX_CHECKLIST;
-  const [checked, setChecked] = reactExports.useState(
-    new Array(checklist.length).fill(false)
-  );
-  const allChecked = checked.every(Boolean);
-  const toggleCheck = reactExports.useCallback((index) => {
-    setChecked((prev) => {
-      const next = [...prev];
-      next[index] = !next[index];
-      return next;
-    });
-  }, []);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "rounded-md border border-hairline bg-surface-soft p-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "mb-3 text-sm font-medium text-ink", children: GATE_TITLES[gate] }),
-    autoCheckSummary && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-3 rounded-sm bg-canvas p-2 text-xs text-body", children: [
-      "自动检查：",
-      autoCheckSummary
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-3 flex flex-col gap-1.5", children: checklist.map((item, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex items-center gap-2 text-sm", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "input",
-        {
-          type: "checkbox",
-          checked: checked[index] ?? false,
-          onChange: () => toggleCheck(index),
-          className: "rounded"
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-body", children: item })
-    ] }, item)) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx(
-      "textarea",
-      {
-        className: "mb-3 w-full rounded-sm border border-hairline bg-canvas px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-info-border focus:outline-none",
-        rows: 2,
-        placeholder: "备注（可选）",
-        value: note,
-        onChange: (e) => setNote(e.target.value)
-      }
-    ),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          type: "button",
-          className: "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary disabled:opacity-40",
-          disabled: !allChecked,
-          onClick: () => onAccept(note),
-          children: "接受"
-        }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          type: "button",
-          className: "rounded-lg border border-hairline bg-canvas px-4 py-2 text-sm font-medium text-ink",
-          onClick: onReject,
-          children: "拒绝"
-        }
-      )
-    ] })
-  ] });
-}
-const STAGE_ORDER = RUN_STAGE_SEQUENCE.map((key) => ({
-  key,
-  label: STAGE_LABELS[key]
-}));
-function statusColor(status) {
-  switch (status) {
-    case "completed":
-      return "bg-success border-success-border";
-    case "running":
-      return "bg-info border-info-border animate-pulse";
-    case "failed":
-      return "bg-error border-error-border";
-    case "interrupted":
-    case "stale":
-      return "bg-warning border-warning-border";
-    default:
-      return "bg-surface-strong border-hairline";
-  }
-}
-function statusLabel(status) {
-  switch (status) {
-    case "completed":
-      return "完成";
-    case "running":
-      return "执行中";
-    case "failed":
-      return "失败";
-    case "interrupted":
-      return "中断";
-    case "stale":
-      return "过期";
-    case "pending":
-      return "待执行";
-    default:
-      return "待执行";
-  }
-}
-function StageProgress({
-  stageStatuses,
-  running
-}) {
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1 p-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "mb-2 text-xs font-medium text-muted", children: [
-      "Pipeline 阶段 ",
-      running && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-info", children: "（执行中）" })
-    ] }),
-    STAGE_ORDER.map((stage) => {
-      const status = stageStatuses[stage.key];
-      return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: cn(
-              "h-2.5 w-2.5 shrink-0 rounded-full border",
-              statusColor(status)
-            )
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "flex-1 text-sm text-body", children: stage.label }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-muted", children: statusLabel(status) })
-      ] }, stage.key);
-    })
-  ] });
-}
+const NAV_BUTTON = "rounded-sm border border-hairline px-2.5 py-1 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
 function ConfidenceQueue({
   blocks,
   selectedBlockId,
@@ -17221,79 +18103,74 @@ function ConfidenceQueue({
   const navigateTo = reactExports.useCallback(
     (index) => {
       const block = queue[index];
-      if (block) {
-        onSelect(block.id);
-      }
+      if (block) onSelect(block.id);
     },
     [queue, onSelect]
   );
   if (queue.length === 0) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center text-sm text-success", children: "所有待定块已处理完毕" });
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "px-4 py-8 text-center text-sm font-medium text-success", children: "所有待定块已处理完毕" });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2 p-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-xs font-medium text-muted", children: [
-        "低置信度队列 (",
-        queue.length,
-        ")"
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 p-6", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "min-w-0 flex-1 text-sm font-medium tracking-[0.16px] text-muted", children: [
+        "低置信度队列 ",
+        queue.length
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-1", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            type: "button",
-            className: "rounded-sm border border-hairline px-2 py-1 text-xs disabled:opacity-30",
-            disabled: currentIndex <= 0,
-            onClick: () => navigateTo(currentIndex - 1),
-            children: "上一个"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            type: "button",
-            className: "rounded-sm border border-hairline px-2 py-1 text-xs disabled:opacity-30",
-            disabled: currentIndex >= queue.length - 1,
-            onClick: () => navigateTo(currentIndex + 1),
-            children: "下一个"
-          }
-        )
-      ] })
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          type: "button",
+          className: NAV_BUTTON,
+          disabled: currentIndex <= 0,
+          onClick: () => navigateTo(currentIndex - 1),
+          children: "上一个"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          type: "button",
+          className: NAV_BUTTON,
+          disabled: currentIndex >= queue.length - 1,
+          onClick: () => navigateTo(currentIndex + 1),
+          children: "下一个"
+        }
+      )
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col gap-1", children: queue.map((block, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-1", children: queue.map((block, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "button",
       {
         type: "button",
-        className: `rounded-sm border px-3 py-2 text-left text-sm transition-colors ${block.id === selectedBlockId ? "border-info-border bg-surface-soft" : "border-hairline hover:bg-surface-soft"}`,
-        onClick: () => {
-          onSelect(block.id);
-        },
+        onClick: () => onSelect(block.id),
+        className: cn(
+          "flex w-full flex-col gap-1 rounded-sm border px-4 py-2 text-left transition",
+          block.id === selectedBlockId ? "border-border-strong bg-surface-strong" : "border-hairline active:border-border-strong"
+        ),
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium text-ink", children: block.id }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs text-muted", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-baseline gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1 truncate text-sm font-medium text-ink", children: block.text || "（空文本）" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "shrink-0 text-sm font-medium text-muted", children: [
               "#",
               index + 1
             ] })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-0.5 truncate text-xs text-body", children: block.text })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate text-sm text-muted", title: block.id, children: block.id })
         ]
-      },
-      block.id
-    )) })
+      }
+    ) }, block.id)) })
   ] });
 }
 const CLASSIFICATION_OPTIONS = [
-  {
-    value: "layout_text",
-    label: "版式文字"
-  },
-  {
-    value: "object_integrated_symbol",
-    label: "对象符号"
-  },
+  { value: "layout_text", label: "版式文字" },
+  { value: "object_integrated_symbol", label: "对象符号" },
   { value: "uncertain", label: "待定" }
 ];
+const REVIEW_STATUS_TEXT = {
+  unreviewed: "未复核",
+  reviewed: "已复核",
+  accepted_with_risk: "风险接受"
+};
+const FIELD_LABEL = "text-sm font-medium tracking-[0.16px] text-muted";
 function PropertyPanel({
   block,
   onUpdate
@@ -17309,6 +18186,9 @@ function PropertyPanel({
   const handleIncludeInMaskToggle = reactExports.useCallback(() => {
     if (blockId) onUpdate(blockId, { includeInMask: !blockIncludeInMask });
   }, [blockId, blockIncludeInMask, onUpdate]);
+  const handleMarkReviewed = reactExports.useCallback(() => {
+    if (blockId) onUpdate(blockId, { reviewStatus: "reviewed" });
+  }, [blockId, onUpdate]);
   const handleTextChange = reactExports.useCallback(
     (e) => {
       if (!blockId) return;
@@ -17319,34 +18199,30 @@ function PropertyPanel({
     [blockId, onUpdate]
   );
   if (!block) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center text-sm text-muted", children: "选中文字框以编辑属性" });
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "px-4 py-8 text-center text-sm font-medium text-muted", children: "选中文字框以编辑属性" });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-4 p-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-1 text-xs font-medium text-muted", children: "ID" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-sm text-body", children: block.id })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-1 text-xs font-medium text-muted", children: "文字内容" }),
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-6 p-6", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "文字内容" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "textarea",
         {
-          className: "w-full rounded-sm border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:border-info-border focus:outline-none",
+          className: "w-full rounded-sm border border-hairline bg-canvas px-4 py-3 text-sm leading-relaxed text-ink focus:border-info-border focus:outline-none",
           rows: 4,
           value: block.text,
           onChange: handleTextChange
         }
       )
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-1 text-xs font-medium text-muted", children: "分类" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "分类" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col gap-1", children: CLASSIFICATION_OPTIONS.map((opt) => /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
           type: "button",
           className: cn(
-            "rounded-sm border px-3 py-1.5 text-left text-sm transition-colors",
-            block.classification === opt.value ? "border-info-border bg-surface-soft font-medium" : "border-hairline hover:bg-surface-soft"
+            "rounded-sm border px-4 py-2 text-left text-sm transition",
+            block.classification === opt.value ? "border-border-strong bg-surface-strong font-medium text-ink" : "border-hairline text-body active:border-border-strong"
           ),
           onClick: () => handleClassificationChange(opt.value),
           children: opt.label
@@ -17354,41 +18230,50 @@ function PropertyPanel({
         opt.value
       )) })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-sm", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "input",
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex cursor-pointer items-center gap-3 text-sm text-body", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            id: "include-in-mask",
+            type: "checkbox",
+            checked: block.includeInMask,
+            onChange: handleIncludeInMaskToggle,
+            className: "h-4 w-4 shrink-0 accent-primary"
+          }
+        ),
+        "参与 Mask（该块文字将被抹除）"
+      ] }),
+      block.includeInMask && block.classification !== "layout_text" && // 约束提示用签名色底 + ink 文字：mustard 作为前景色在白底上对比度不足
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "rounded-xs bg-signature-mustard px-2 py-0.5 text-sm font-medium text-ink", children: "仅「版式文字」可参与 Mask，校验会报错" })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "复核状态" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-body", children: REVIEW_STATUS_TEXT[block.reviewStatus] ?? block.reviewStatus }),
+      block.reviewStatus === "unreviewed" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
         {
-          id: "include-in-mask",
-          type: "checkbox",
-          checked: block.includeInMask,
-          onChange: handleIncludeInMaskToggle,
-          className: "rounded"
+          type: "button",
+          onClick: handleMarkReviewed,
+          className: "rounded-sm border border-hairline px-4 py-2 text-sm font-medium text-ink transition active:border-border-strong",
+          children: "标记已复核"
         }
-      ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("label", { htmlFor: "include-in-mask", children: "参与 Mask" }),
-      block.includeInMask && block.classification !== "layout_text" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-block-uncertain", children: "仅 layout_text 可参与 mask" })
+      )
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-1 text-xs font-medium text-muted", children: "复核状态" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-sm text-body", children: [
-        block.reviewStatus === "unreviewed" && "未复核",
-        block.reviewStatus === "reviewed" && "已复核",
-        block.reviewStatus === "accepted_with_risk" && "风险接受"
-      ] })
-    ] }),
-    block.style.fontSizePx !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-1 text-xs font-medium text-muted", children: "字号" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-sm text-body", children: [
+    block.style.fontSizePx !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "字号" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm text-body", children: [
         block.style.fontSizePx,
         "px"
       ] })
     ] }),
-    block.style.colorHex !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-1 text-xs font-medium text-muted", children: "颜色" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-sm text-body", children: [
+    block.style.colorHex !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "颜色" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-2 text-sm text-body", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
+          "span",
           {
+            "aria-hidden": "true",
             className: "h-4 w-4 rounded-xs border border-hairline",
             style: { backgroundColor: block.style.colorHex }
           }
@@ -17396,26 +18281,30 @@ function PropertyPanel({
         block.style.colorHex
       ] })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mb-1 text-xs font-medium text-muted", children: "位置" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-2 text-xs text-body", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          "X: ",
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "位置（源图像素）" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-2 text-sm text-body", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+          "X ",
           Math.round(block.bboxPx.x)
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          "Y: ",
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+          "Y ",
           Math.round(block.bboxPx.y)
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          "W: ",
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+          "宽 ",
           Math.round(block.bboxPx.width)
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-          "H: ",
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+          "高 ",
           Math.round(block.bboxPx.height)
         ] })
       ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2 border-t border-hairline pt-4", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "块 ID" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "break-all text-sm text-muted", children: block.id })
     ] })
   ] });
 }
@@ -17427,33 +18316,560 @@ const SOURCE_LABELS = {
 };
 function SourceList({ block }) {
   if (!block) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center text-muted text-sm", children: "选中文字框以查看来源" });
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "px-4 py-8 text-center text-sm font-medium text-muted", children: "选中文字框以查看候选来源" });
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2 p-4", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-xs font-medium text-muted", children: [
-      "候选来源 (",
-      block.sources.length,
-      ")"
+  if (block.sources.length === 0) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "px-4 py-8 text-center text-sm font-medium text-muted", children: "该文字块没有候选来源记录" });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 p-6", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-sm font-medium tracking-[0.16px] text-muted", children: [
+      "候选来源 ",
+      block.sources.length
     ] }),
-    block.sources.map((source) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
+    /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-2", children: block.sources.map((source) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "li",
       {
-        className: "rounded-sm border border-hairline p-3",
+        className: "flex flex-col gap-1 rounded-sm border border-hairline p-4",
         children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-medium text-body", children: SOURCE_LABELS[source.kind] ?? source.kind }),
-            source.confidence !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs text-muted", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1 truncate text-sm font-medium text-ink", children: SOURCE_LABELS[source.kind] ?? source.kind }),
+            source.confidence !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "shrink-0 text-sm font-medium text-muted", children: [
               (source.confidence * 100).toFixed(0),
               "%"
             ] })
           ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-1 text-sm text-ink", children: source.text }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-0.5 text-xs text-muted", children: source.provider })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm leading-relaxed text-body", children: source.text }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "truncate text-sm text-muted", title: source.provider, children: source.provider })
         ]
       },
       `${source.kind}-${source.provider}-${source.text}`
-    ))
+    )) })
   ] });
+}
+const CLEAN_CHECKLIST = [
+  { key: "noTextResidue", label: "文字已完全去除，无残影或重影" },
+  { key: "containersIntact", label: "容器/边框等版式元素完整未破坏" },
+  { key: "noOutsideEdits", label: "非文字区域未被误改" },
+  { key: "sizeCorrect", label: "尺寸与源图一致（16:9）" }
+];
+const PPTX_CHECKLIST = [
+  { key: "opensInPowerPoint", label: "已在 PowerPoint for Mac 中打开确认" },
+  { key: "aspect16by9", label: "16:9 比例正确" },
+  { key: "textEditable", label: "文本框可编辑" },
+  { key: "fontMicrosoftYaHei", label: "字体为微软雅黑" },
+  { key: "layoutFaithful", label: "版式与源图一致" }
+];
+const GATE_TITLE = {
+  "accept-clean": "验收干净底图",
+  "accept-pptx": "验收 PPTX"
+};
+const GATE_HINT = {
+  "accept-clean": "拖动滑块对比原图与去字底板，确认文字已去净且版式未被破坏后再接受。",
+  "accept-pptx": "在 PowerPoint for Mac 中打开生成的 PPTX 逐项确认后再接受；拒绝将重新生成。"
+};
+const BUTTON_PRIMARY$1 = "rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
+const BUTTON_SECONDARY$1 = "rounded-lg border border-hairline bg-canvas px-4 py-2.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
+function AcceptFlow({
+  gate,
+  sourceImageUrl,
+  cleanPlateUrl,
+  submitting,
+  disabled,
+  onAccept,
+  onRejectRerun
+}) {
+  const checklist = reactExports.useMemo(
+    () => gate.stage === "accept-clean" ? CLEAN_CHECKLIST : PPTX_CHECKLIST,
+    [gate.stage]
+  );
+  const [note, setNote] = reactExports.useState("");
+  const [checked, setChecked] = reactExports.useState({});
+  const toggle = reactExports.useCallback((key) => {
+    setChecked((prev) => ({ ...prev, [key]: prev[key] !== true }));
+  }, []);
+  const allChecked = checklist.every((entry) => checked[entry.key] === true);
+  const actionsDisabled = disabled || submitting;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full min-h-0", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-w-0 flex-1 items-center justify-center overflow-auto bg-surface-strong p-6", children: gate.stage === "accept-clean" ? sourceImageUrl !== null && cleanPlateUrl !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-5xl overflow-hidden rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      SliderCompare,
+      {
+        sourceImageUrl,
+        cleanPlateUrl
+      }
+    ) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-muted", children: "缺少原图或去字底板，无法对比；请先重跑 clean 阶段" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex max-w-xl flex-col gap-4 rounded-md bg-canvas p-8", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-medium text-ink", children: "PPTX 已生成" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm leading-relaxed text-body", children: [
+        "产物位于该页工作区 ",
+        /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: "stages/pptx/" }),
+        " 下。请在 PowerPoint for Mac 中打开后逐项核对右侧清单；确认无误再接受，验收记录会写入 manifest 并可被 CLI ",
+        /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: "deck status" }),
+        " 读取。"
+      ] }),
+      cleanPlateUrl !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("figure", { className: "flex flex-col gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "img",
+          {
+            src: cleanPlateUrl,
+            alt: "该页干净底图",
+            className: "w-full rounded-sm border border-hairline"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("figcaption", { className: "text-sm font-medium text-muted", children: "该页干净底图 —— PPTX 以此为背景，文字为可编辑文本框" })
+      ] })
+    ] }) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("aside", { className: "flex w-96 shrink-0 flex-col gap-6 overflow-y-auto border-l border-hairline bg-surface-soft p-8", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-lg font-medium text-ink", children: GATE_TITLE[gate.stage] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm leading-relaxed text-body", children: GATE_HINT[gate.stage] }),
+        gate.source === "durable" && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-muted", children: "该页在此前的执行中已停在此闸门，状态由工作区恢复" })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-3", children: checklist.map((entry) => /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-body", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "input",
+          {
+            type: "checkbox",
+            checked: checked[entry.key] === true,
+            disabled: actionsDisabled,
+            onChange: () => toggle(entry.key),
+            className: "mt-0.5 h-4 w-4 shrink-0 accent-primary"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0", children: entry.label })
+      ] }) }, entry.key)) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex flex-col gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-muted", children: "备注（可选）" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            rows: 3,
+            value: note,
+            disabled: actionsDisabled,
+            onChange: (event) => setNote(event.target.value),
+            placeholder: "记录验收判断依据，会随验收记录写入 manifest",
+            className: "w-full rounded-sm border border-hairline bg-canvas px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-info-border focus:outline-none disabled:opacity-40"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: () => onAccept(note),
+            disabled: actionsDisabled || !allChecked,
+            title: allChecked ? void 0 : "需逐项确认后才能接受",
+            className: BUTTON_PRIMARY$1,
+            children: submitting ? "提交中…" : "接受并继续"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-muted", children: "不通过？从以下阶段重跑" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: REJECT_RERUN_STAGES[gate.stage].map((stage) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              type: "button",
+              onClick: () => onRejectRerun(stage),
+              disabled: actionsDisabled,
+              className: BUTTON_SECONDARY$1,
+              children: [
+                "重跑「",
+                STAGE_LABELS[stage],
+                "」"
+              ]
+            },
+            stage
+          )) })
+        ] })
+      ] })
+    ] })
+  ] });
+}
+const BUTTON_PRIMARY = "shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
+const BUTTON_SECONDARY = "shrink-0 rounded-lg border border-hairline bg-canvas px-4 py-2 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
+const BUTTON_COMPACT = "shrink-0 rounded-sm border border-hairline bg-canvas px-2.5 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
+function SlideToolbar({
+  slideId,
+  pageLabel,
+  navigation: navigation2,
+  viewMode,
+  canCompare,
+  hasAcceptGate,
+  dirty,
+  unreviewedCount,
+  pageBusy,
+  nextTodo,
+  onBack,
+  onNavigate,
+  onViewModeChange,
+  onSave,
+  onMarkAllReviewed,
+  onRunSlide,
+  onRerunFrom,
+  onNextTodo
+}) {
+  const [menuOpen, setMenuOpen] = reactExports.useState(false);
+  const menuRef = reactExports.useRef(null);
+  const currentSlideId = useRunStore((s) => s.currentSlideId);
+  const currentStage = useRunStore((s) => s.currentStage);
+  const stageStartedAt = useRunStore((s) => s.stageStartedAt);
+  useRunStore((s) => s.tick);
+  const showProgress = pageBusy && currentSlideId === slideId;
+  const elapsed = showProgress ? elapsedSince(stageStartedAt, Date.now()) : null;
+  reactExports.useEffect(() => {
+    if (!menuOpen) return;
+    function onPointerDown(event) {
+      const node = menuRef.current;
+      if (node && !node.contains(event.target)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [menuOpen]);
+  const viewModes = [
+    { mode: "canvas", label: "画布", available: true },
+    { mode: "compare", label: "对比", available: canCompare },
+    { mode: "accept", label: "验收", available: hasAcceptGate }
+  ];
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex shrink-0 flex-wrap items-center gap-3 border-b border-hairline bg-canvas px-6 py-3", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: onBack, className: BUTTON_COMPACT, children: "← 控制台" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 items-baseline gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
+        {
+          className: "truncate text-lg font-medium text-ink",
+          title: pageLabel,
+          children: pageLabel
+        }
+      ),
+      navigation2.total > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "shrink-0 text-sm font-medium text-muted", children: [
+        "第 ",
+        navigation2.index,
+        "/",
+        navigation2.total,
+        " 页"
+      ] })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex shrink-0 items-center gap-1", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          type: "button",
+          "aria-label": "上一页",
+          disabled: navigation2.prev === null,
+          onClick: () => {
+            if (navigation2.prev !== null) onNavigate(navigation2.prev.slideId);
+          },
+          className: BUTTON_COMPACT,
+          children: "←"
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          type: "button",
+          "aria-label": "下一页",
+          disabled: navigation2.next === null,
+          onClick: () => {
+            if (navigation2.next !== null) onNavigate(navigation2.next.slideId);
+          },
+          className: BUTTON_COMPACT,
+          children: "→"
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex shrink-0 items-center gap-1 rounded-sm border border-hairline p-0.5", children: viewModes.filter((entry) => entry.available).map((entry) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
+      {
+        type: "button",
+        onClick: () => onViewModeChange(entry.mode),
+        className: cn(
+          "rounded-xs px-2.5 py-1 text-sm transition",
+          viewMode === entry.mode ? "bg-surface-strong font-medium text-ink" : "text-muted active:bg-surface-soft"
+        ),
+        children: entry.label
+      },
+      entry.mode
+    )) }),
+    showProgress && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "min-w-0 shrink truncate text-sm font-medium text-info", children: [
+      "执行中",
+      currentStage !== null && ` · ${stageLabel(currentStage)}`,
+      elapsed !== null && ` · 已用 ${elapsed}`
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ml-auto flex shrink-0 items-center gap-3", children: [
+      nextTodo !== null && /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          type: "button",
+          onClick: onNextTodo,
+          title: `${nextTodo.pageLabel} · ${nextTodo.reason}`,
+          className: BUTTON_SECONDARY,
+          children: "处理下一项"
+        }
+      ),
+      unreviewedCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "button",
+        {
+          type: "button",
+          onClick: onMarkAllReviewed,
+          title: "把本页所有未复核块标为已复核；未复核块会让 mask 阶段失败",
+          className: BUTTON_SECONDARY,
+          children: [
+            "全部标为已复核",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-1 text-sm text-muted", children: unreviewedCount })
+          ]
+        }
+      ),
+      dirty && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            "aria-hidden": "true",
+            className: "h-2 w-2 rounded-full bg-signature-mustard"
+          }
+        ),
+        "未保存"
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "button",
+        {
+          type: "button",
+          onClick: onSave,
+          disabled: !dirty,
+          title: "保存复核文档（⌘S）",
+          className: BUTTON_SECONDARY,
+          children: [
+            "保存",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-1 text-sm text-muted", children: "⌘S" })
+          ]
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "relative shrink-0", ref: menuRef, children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: () => setMenuOpen((open) => !open),
+            disabled: pageBusy,
+            className: BUTTON_SECONDARY,
+            children: "从阶段重跑 ▾"
+          }
+        ),
+        menuOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-0 top-full z-30 mt-2 w-56 rounded-md border border-hairline bg-canvas p-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "px-2 pb-2 text-sm font-medium text-muted", children: "选择起始阶段（该阶段及其后续会重做）" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col", children: RUN_STAGE_SEQUENCE.map((stage) => /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: () => {
+                setMenuOpen(false);
+                onRerunFrom(stage);
+              },
+              className: "w-full rounded-sm px-2 py-1.5 text-left text-sm text-ink transition active:bg-surface-soft",
+              children: STAGE_LABELS[stage]
+            }
+          ) }, stage)) })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "button",
+        {
+          type: "button",
+          onClick: onRunSlide,
+          disabled: pageBusy,
+          title: "从第一个未完成阶段继续执行此页",
+          className: BUTTON_PRIMARY,
+          children: "运行此页"
+        }
+      )
+    ] })
+  ] });
+}
+const CONFIRM_TIMEOUT_MS = 5e3;
+function StageRail({
+  slide,
+  onRerunFrom,
+  disabled,
+  sessionError
+}) {
+  const [detailOpen, setDetailOpen] = reactExports.useState(false);
+  const [pendingStage, setPendingStage] = reactExports.useState(null);
+  const railRef = reactExports.useRef(null);
+  const liveStages = useRunStore((s) => s.liveStages[slide.slideId]);
+  const runStatus = useRunStore((s) => s.status);
+  const currentSlideId = useRunStore((s) => s.currentSlideId);
+  const stageStartedAt = useRunStore((s) => s.stageStartedAt);
+  useRunStore((s) => s.tick);
+  const views = reactExports.useMemo(
+    () => deriveStageViews(slide, liveStages),
+    [slide, liveStages]
+  );
+  const isRunningThisSlide = slide.slideId === currentSlideId && runStatus !== "idle";
+  const current = currentStageView(views);
+  const doneCount = completedStageCount(views);
+  const elapsed = isRunningThisSlide ? elapsedSince(stageStartedAt, Date.now()) : null;
+  reactExports.useEffect(() => {
+    if (pendingStage === null) return;
+    if (disabled) {
+      setPendingStage(null);
+      return;
+    }
+    const timer = window.setTimeout(
+      () => setPendingStage(null),
+      CONFIRM_TIMEOUT_MS
+    );
+    function handlePointerDown(event) {
+      const target = event.target;
+      if (target instanceof Node && railRef.current?.contains(target) === true) {
+        return;
+      }
+      setPendingStage(null);
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [pendingStage, disabled]);
+  const error = slide.lastError ?? sessionError;
+  const errorStage = slide.lastError?.stage ?? views.find((view) => view.status === "failed")?.stage ?? null;
+  function handleStageClick(stage) {
+    if (disabled) return;
+    const status = views.find((view) => view.stage === stage)?.status;
+    if (status !== "completed") {
+      setPendingStage(null);
+      onRerunFrom(stage);
+      return;
+    }
+    if (pendingStage !== stage) {
+      setPendingStage(stage);
+      return;
+    }
+    setPendingStage(null);
+    onRerunFrom(stage);
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      ref: railRef,
+      className: "flex shrink-0 flex-col gap-3 border-b border-hairline bg-surface-soft px-6 py-4",
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline gap-3", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "shrink-0 text-base font-medium text-ink", children: isRunningThisSlide ? `执行中 · ${current?.label ?? ""}` : current === null ? "全部阶段已完成" : `${current.label} · ${STAGE_STATUS_TEXT[current.status]}` }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "shrink-0 text-sm font-medium text-muted", children: [
+            doneCount,
+            "/",
+            views.length,
+            elapsed !== null && ` · 已用 ${elapsed}`
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "shrink-0 text-sm font-medium text-muted", children: disabled ? "执行中不可重跑" : "点击阶段点位可从该阶段重跑，已完成阶段需确认" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          StageTrack,
+          {
+            views,
+            size: "md",
+            ...disabled ? {} : { onStageClick: handleStageClick }
+          }
+        ),
+        pendingStage !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "rounded-sm bg-signature-mustard px-4 py-2 text-sm font-medium text-ink", children: [
+          "重跑「",
+          views.find((view) => view.stage === pendingStage)?.label,
+          "」将作废该阶段及之后所有产物，再点一次该阶段确认"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex w-full items-start", children: views.map((view, index) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "li",
+          {
+            className: cn(
+              "flex min-w-0 items-start",
+              index > 0 && "flex-1 justify-end"
+            ),
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                className: cn(
+                  "truncate text-sm",
+                  view.status === "running" ? "font-medium text-info" : view.status === "completed" ? "text-muted" : "font-medium text-muted"
+                ),
+                title: `${view.label} · ${STAGE_STATUS_TEXT[view.status]}`,
+                children: view.label
+              }
+            )
+          },
+          view.stage
+        )) }),
+        error !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2 rounded-sm bg-signature-coral px-4 py-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-3", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "span",
+              {
+                "aria-hidden": "true",
+                className: cn(
+                  "h-2 w-2 shrink-0 rounded-full border",
+                  STAGE_DOT_CLASS.failed,
+                  "border-on-primary"
+                )
+              }
+            ),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "min-w-0 flex-1 truncate text-sm font-medium text-on-primary", children: [
+              errorStage !== null && `${errorStage} · `,
+              error.code,
+              ": ",
+              error.message
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => setDetailOpen((open) => !open),
+                className: "shrink-0 rounded-xs border border-on-primary/40 px-2 py-0.5 text-sm font-medium text-on-primary transition active:border-on-primary",
+                children: detailOpen ? "收起" : "详情"
+              }
+            )
+          ] }),
+          detailOpen && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1 border-t border-on-primary/30 pt-2 text-sm text-on-primary", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "whitespace-pre-wrap break-words", children: error.message }),
+            slide.lastError !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "font-medium", children: [
+              "发生于 ",
+              slide.lastError.at
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "font-medium", children: "修正后点击上方对应阶段点位即可从该阶段重跑" })
+          ] })
+        ] })
+      ]
+    }
+  );
+}
+function countUnreviewed(blocks) {
+  return blocks.filter((block) => block.reviewStatus === "unreviewed").length;
+}
+function markAllBlocksReviewed(blocks) {
+  const changed = countUnreviewed(blocks);
+  if (changed === 0) return { blocks, changed: 0 };
+  return {
+    blocks: blocks.map(
+      (block) => block.reviewStatus === "unreviewed" ? { ...block, reviewStatus: "reviewed" } : block
+    ),
+    changed
+  };
+}
+const pageLabelCollator = new Intl.Collator("en", { numeric: true });
+function orderedActiveSlides(slides) {
+  return slides.filter((slide) => !slide.removed).slice().sort(
+    (left, right) => pageLabelCollator.compare(left.pageLabel, right.pageLabel)
+  );
+}
+function adjacentSlides(slides, slideId) {
+  const ordered = orderedActiveSlides(slides);
+  const position = slideId === null ? -1 : ordered.findIndex((slide) => slide.slideId === slideId);
+  if (position < 0) {
+    return { prev: null, next: null, index: 0, total: ordered.length };
+  }
+  return {
+    prev: ordered[position - 1] ?? null,
+    next: ordered[position + 1] ?? null,
+    index: position + 1,
+    total: ordered.length
+  };
 }
 const INITIAL_STATE = {
   slideId: null,
@@ -17483,6 +18899,17 @@ const useSlideStore = create((set, get) => ({
       loading: false
     });
   },
+  async reloadImages() {
+    const { workspacePath } = get();
+    if (workspacePath === null) return;
+    const api = getApi();
+    const [sourceImageUrl, cleanPlateUrl] = await Promise.all([
+      api.slide.loadImage(workspacePath, "source_image"),
+      api.slide.loadImage(workspacePath, "clean_plate")
+    ]);
+    if (get().workspacePath !== workspacePath) return;
+    set({ sourceImageUrl, cleanPlateUrl });
+  },
   updateBlock(blockId, patch) {
     const { reviewDocument } = get();
     if (reviewDocument === null) {
@@ -17495,6 +18922,17 @@ const useSlideStore = create((set, get) => ({
       reviewDocument: { ...reviewDocument, blocks },
       dirty: true
     });
+  },
+  markAllReviewed() {
+    const { reviewDocument } = get();
+    if (reviewDocument === null) return 0;
+    const { blocks, changed } = markAllBlocksReviewed(reviewDocument.blocks);
+    if (changed === 0) return 0;
+    set({
+      reviewDocument: { ...reviewDocument, blocks: [...blocks] },
+      dirty: true
+    });
+    return changed;
   },
   async saveReview() {
     const { workspacePath, reviewDocument } = get();
@@ -17512,23 +18950,25 @@ const useSlideStore = create((set, get) => ({
     set({ ...INITIAL_STATE });
   }
 }));
-const ACCEPT_STAGES = ["accept-clean", "accept-pptx"];
-function isAcceptStage(value) {
-  return value !== null && ACCEPT_STAGES.includes(value);
-}
+const SIDEBAR_TABS = [
+  ["properties", "属性"],
+  ["sources", "来源"],
+  ["queue", "低置信度"]
+];
 function SlidePage() {
   const selectedSlideId = useUIStore((s) => s.selectedSlideId);
   const selectedBlockId = useUIStore((s) => s.selectedBlockId);
   const selectBlock = useUIStore((s) => s.selectBlock);
+  const openSlide = useUIStore((s) => s.openSlide);
   const backToConsole = useUIStore((s) => s.backToConsole);
   const slides = useDeckStore((s) => s.slides);
   const deckPath = useDeckStore((s) => s.deckPath);
   const refreshSlide = useDeckStore((s) => s.refreshSlide);
-  const slide = slides.find((s) => s.slideId === selectedSlideId);
-  const workspacePath = slide?.absWorkspacePath ?? null;
   const loadSlide = useSlideStore((s) => s.loadSlide);
+  const reloadImages = useSlideStore((s) => s.reloadImages);
   const saveReview = useSlideStore((s) => s.saveReview);
   const updateBlock = useSlideStore((s) => s.updateBlock);
+  const markAllReviewed = useSlideStore((s) => s.markAllReviewed);
   const reset = useSlideStore((s) => s.reset);
   const reviewDocument = useSlideStore((s) => s.reviewDocument);
   const sourceImageUrl = useSlideStore((s) => s.sourceImageUrl);
@@ -17536,218 +18976,267 @@ function SlidePage() {
   const dirty = useSlideStore((s) => s.dirty);
   const loading = useSlideStore((s) => s.loading);
   const runStatus = useRunStore((s) => s.status);
-  const liveStages = useRunStore((s) => s.liveStages);
+  const currentSlideId = useRunStore((s) => s.currentSlideId);
   const sessionResults = useRunStore((s) => s.sessionResults);
   const startError = useRunStore((s) => s.startError);
   const runSlide = useRunStore((s) => s.runSlide);
   const clearSessionResult = useRunStore((s) => s.clearSessionResult);
-  const pipelineRunning = runStatus !== "idle";
+  const slide = reactExports.useMemo(
+    () => slides.find((entry) => entry.slideId === selectedSlideId) ?? null,
+    [slides, selectedSlideId]
+  );
   const slideId = slide?.slideId ?? null;
-  const stageStatuses = reactExports.useMemo(() => {
-    const merged = {};
-    for (const detail of slide?.stages ?? []) {
-      merged[detail.stage] = detail.status;
-    }
-    const live = slideId === null ? void 0 : liveStages[slideId];
-    for (const [stage, status] of Object.entries(live ?? {})) {
-      merged[stage] = status;
-    }
-    return merged;
-  }, [slide, liveStages, slideId]);
+  const workspacePath = slide?.absWorkspacePath ?? null;
   const sessionResult = slideId === null ? void 0 : sessionResults[slideId];
-  const pendingGate = sessionResult?.gate === "manual" && isAcceptStage(sessionResult.stoppedAt) ? sessionResult.stoppedAt : null;
-  const pipelineError = sessionResult?.error ?? (startError === null ? null : { code: "RUN_START_REJECTED", message: startError });
+  const acceptGate = reactExports.useMemo(
+    () => slide === null ? null : deriveAcceptGate(slide, sessionResult),
+    [slide, sessionResult]
+  );
+  const navigation2 = reactExports.useMemo(
+    () => adjacentSlides(slides, slideId),
+    [slides, slideId]
+  );
+  const nextTodo = reactExports.useMemo(
+    () => nextTodoItem(deriveTodoQueue(slides, sessionResults), slideId),
+    [slides, sessionResults, slideId]
+  );
+  const [viewMode, setViewMode] = reactExports.useState("canvas");
   const [sidebarTab, setSidebarTab] = reactExports.useState("properties");
-  const [compareMode, setCompareMode] = reactExports.useState(false);
-  const [saveResult, setSaveResult] = reactExports.useState(null);
+  const [submitting, setSubmitting] = reactExports.useState(false);
+  const [notice, setNotice] = reactExports.useState(null);
+  const canCompare = sourceImageUrl !== null && cleanPlateUrl !== null;
+  const pageBusy = runStatus !== "idle" && currentSlideId === slideId;
   reactExports.useEffect(() => {
     if (workspacePath === null) return;
     void loadSlide(workspacePath);
     return () => reset();
   }, [workspacePath, loadSlide, reset]);
+  const prevPageBusy = reactExports.useRef(false);
   reactExports.useEffect(() => {
-    function handleKeyDown(e) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        if (dirty) void handleSave();
-      }
+    if (prevPageBusy.current && !pageBusy) void reloadImages();
+    prevPageBusy.current = pageBusy;
+  }, [pageBusy, reloadImages]);
+  const gateSignature = acceptGate === null || slideId === null ? null : `${slideId}:${acceptGate.stage}:${acceptGate.source}`;
+  reactExports.useEffect(() => {
+    if (gateSignature === null) {
+      setViewMode((mode) => mode === "accept" ? "canvas" : mode);
+      return;
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dirty, saveReview]);
+    setViewMode("accept");
+  }, [gateSignature]);
   const blocks = reviewDocument?.blocks ?? [];
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId) ?? null;
+  const unreviewedCount = countUnreviewed(blocks);
   const handleBlockUpdate = reactExports.useCallback(
     (blockId, patch) => {
       updateBlock(blockId, patch);
     },
     [updateBlock]
   );
-  async function handleSave() {
+  const handleSave = reactExports.useCallback(async () => {
     try {
       const result = await saveReview();
-      setSaveResult({
+      setNotice({
         ok: result.valid,
-        message: result.valid ? "保存成功" : `保存完成，${result.errors} 个错误 / ${result.warnings} 个警告`
+        message: result.valid ? "保存成功" : `保存完成，但校验有 ${result.errors} 个错误 / ${result.warnings} 个警告`
       });
-      setTimeout(() => setSaveResult(null), 3e3);
     } catch (err) {
-      setSaveResult({
+      setNotice({
         ok: false,
         message: `保存失败：${err instanceof Error ? err.message : String(err)}`
       });
     }
-  }
-  const handleRunPipeline = reactExports.useCallback(
+  }, [saveReview]);
+  reactExports.useEffect(() => {
+    function handleKeyDown(event) {
+      if ((event.metaKey || event.ctrlKey) && event.key === "s") {
+        event.preventDefault();
+        if (dirty) void handleSave();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dirty, handleSave]);
+  const startRun = reactExports.useCallback(
     (from) => {
-      if (deckPath === null || slideId === null || !isRunStage(from)) return;
+      if (deckPath === null || slideId === null) return;
+      setNotice(null);
       void runSlide(deckPath, slideId, from, {
         confirmApi: true,
         confirmUpload: true
       });
-      setSidebarTab("pipeline");
     },
     [deckPath, slideId, runSlide]
   );
   const handleAccept = reactExports.useCallback(
     async (note) => {
-      if (!workspacePath || !pendingGate || slideId === null) return;
-      const api = window.api;
-      if (pendingGate === "accept-clean") {
-        await api.slide.acceptClean(workspacePath, { note });
-      } else {
-        await api.slide.acceptPptx(workspacePath, { note });
+      if (workspacePath === null || acceptGate === null || slideId === null) {
+        return;
       }
-      clearSessionResult(slideId);
-      void refreshSlide(slideId);
+      setSubmitting(true);
+      try {
+        const api = window.api;
+        const result = acceptGate.stage === "accept-clean" ? await api.slide.acceptClean(workspacePath, { note }) : await api.slide.acceptPptx(workspacePath, { note });
+        clearSessionResult(slideId);
+        await refreshSlide(slideId);
+        setNotice({
+          ok: true,
+          message: `验收完成 · ${result.autoCheckSummary}`
+        });
+      } catch (err) {
+        setNotice({
+          ok: false,
+          message: `验收失败：${err instanceof Error ? err.message : String(err)}`
+        });
+      } finally {
+        setSubmitting(false);
+      }
     },
-    [workspacePath, pendingGate, slideId, clearSessionResult, refreshSlide]
+    [workspacePath, acceptGate, slideId, clearSessionResult, refreshSlide]
   );
-  const handleReject = reactExports.useCallback(() => {
-    if (slideId !== null) clearSessionResult(slideId);
-  }, [slideId, clearSessionResult]);
-  if (workspacePath === null) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center text-sm text-muted", children: "未选中任何页面" });
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full flex-col", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-10 shrink-0 items-center gap-3 border-b border-hairline bg-canvas px-4", children: [
+  const rerunFrom = reactExports.useCallback(
+    (stage) => {
+      if (slideId === null || workspacePath === null) return;
+      void (async () => {
+        try {
+          await window.api.slide.invalidateStage(
+            workspacePath,
+            stage,
+            "人工要求从该阶段重跑"
+          );
+        } catch (err) {
+          setNotice({
+            ok: false,
+            message: `重跑准备失败：${err instanceof Error ? err.message : String(err)}`
+          });
+          return;
+        }
+        clearSessionResult(slideId);
+        setViewMode("canvas");
+        await refreshSlide(slideId);
+        startRun(stage);
+      })();
+    },
+    [slideId, workspacePath, clearSessionResult, refreshSlide, startRun]
+  );
+  const handleNextTodo = reactExports.useCallback(() => {
+    if (nextTodo === null) return;
+    openSlide(nextTodo.slideId);
+  }, [nextTodo, openSlide]);
+  if (slide === null || workspacePath === null) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full flex-col items-center justify-center gap-4", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-muted", children: "未选中任何页面，或该页已被移除" }),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
           type: "button",
-          className: "rounded-sm border border-hairline px-2.5 py-1 text-xs text-body transition active:border-border-strong",
           onClick: backToConsole,
-          children: "← 返回"
+          className: "rounded-lg border border-hairline bg-canvas px-4 py-2 text-sm text-ink transition active:border-border-strong",
+          children: "返回控制台"
+        }
+      )
+    ] });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full min-h-0 flex-col", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      SlideToolbar,
+      {
+        slideId: slide.slideId,
+        pageLabel: slide.pageLabel,
+        navigation: navigation2,
+        viewMode,
+        canCompare,
+        hasAcceptGate: acceptGate !== null,
+        dirty,
+        unreviewedCount,
+        pageBusy,
+        nextTodo: nextTodo === null ? null : { pageLabel: nextTodo.pageLabel, reason: nextTodo.reason },
+        onBack: backToConsole,
+        onNavigate: openSlide,
+        onViewModeChange: setViewMode,
+        onSave: () => void handleSave(),
+        onMarkAllReviewed: () => markAllReviewed(),
+        onRunSlide: () => startRun(),
+        onRerunFrom: rerunFrom,
+        onNextTodo: handleNextTodo
+      }
+    ),
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      StageRail,
+      {
+        slide,
+        disabled: pageBusy,
+        onRerunFrom: rerunFrom,
+        sessionError: sessionResult?.error ?? null
+      }
+    ),
+    (notice !== null || startError !== null) && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex shrink-0 flex-col gap-1 px-6 pt-3", children: [
+      notice !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "p",
+        {
+          className: cn(
+            "flex items-center gap-3 rounded-sm px-4 py-2 text-sm font-medium",
+            notice.ok ? "bg-success/10 text-success" : "bg-signature-coral/10 text-signature-coral"
+          ),
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1", title: notice.message, children: notice.message }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => setNotice(null),
+                className: "shrink-0 rounded-xs px-2 py-0.5 transition active:bg-surface-strong",
+                children: "关闭"
+              }
+            )
+          ]
         }
       ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-ink", children: slide?.pageLabel ?? selectedSlideId }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ml-auto flex items-center gap-2", children: [
-        sourceImageUrl && cleanPlateUrl && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            type: "button",
-            className: cn(
-              "rounded-sm border px-2 py-1 text-xs transition",
-              compareMode ? "border-info-border bg-info/10 text-info" : "border-hairline text-body"
-            ),
-            onClick: () => setCompareMode(!compareMode),
-            children: "对比"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "select",
-          {
-            className: "rounded-sm border border-hairline bg-canvas px-2 py-1 text-xs text-ink",
-            disabled: pipelineRunning,
-            value: "",
-            onChange: (e) => {
-              if (e.target.value) handleRunPipeline(e.target.value);
-            },
-            children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "", disabled: true, children: pipelineRunning ? "Pipeline 执行中…" : "运行 Pipeline…" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "ocr", children: "从 OCR 开始" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "review", children: "从候选合并开始" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "assist-review", children: "从 AI 复核开始" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "validate-review", children: "从校验开始" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "mask", children: "从 Mask 开始" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "clean", children: "从 Clean 开始" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("option", { value: "pptx", children: "从 PPTX 开始" })
-            ]
-          }
-        ),
-        dirty && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs text-warning", children: "未保存" }),
-        saveResult && /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            className: cn(
-              "text-xs",
-              saveResult.ok ? "text-success" : "text-error"
-            ),
-            children: saveResult.message
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs(
-          "button",
-          {
-            type: "button",
-            onClick: () => void handleSave(),
-            disabled: !dirty,
-            className: "rounded-lg bg-primary px-3 py-1 text-sm text-on-primary transition active:bg-primary-active disabled:opacity-40",
-            children: [
-              "保存",
-              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-1 text-xs text-on-primary/60", children: "⌘S" })
-            ]
-          }
-        )
-      ] })
+      startError !== null && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral", children: startError })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-h-0 flex-1", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("main", { className: "relative min-w-0 flex-1", children: [
-        loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center text-sm text-muted", children: "加载中…" }) : compareMode && sourceImageUrl && cleanPlateUrl ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-          SliderCompare,
-          {
-            sourceImageUrl,
-            cleanPlateUrl
-          }
-        ) : sourceImageUrl ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-          ReviewCanvas,
-          {
-            imageUrl: sourceImageUrl,
-            blocks,
-            selectedBlockId,
-            onSelectBlock: selectBlock,
-            onUpdateBlock: handleBlockUpdate
-          }
-        ) : /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center text-sm text-muted", children: "暂无源图" }),
-        pendingGate && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute bottom-4 left-4 right-4 z-20", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-          AcceptPanel,
-          {
-            gate: pendingGate,
-            onAccept: (note) => void handleAccept(note),
-            onReject: handleReject
-          }
-        ) })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("aside", { className: "flex w-80 shrink-0 flex-col border-l border-hairline bg-surface-soft", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex shrink-0 border-b border-hairline", children: [
-          ["properties", "属性"],
-          ["sources", "来源"],
-          ["queue", "队列"],
-          ["pipeline", "Pipeline"]
-        ].map(([tab, label]) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "relative min-w-0 flex-1", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "flex h-full items-center justify-center text-sm font-medium text-muted", children: "加载中…" }) : viewMode === "accept" && acceptGate !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        AcceptFlow,
+        {
+          gate: acceptGate,
+          sourceImageUrl,
+          cleanPlateUrl,
+          submitting,
+          disabled: pageBusy,
+          onAccept: (note) => void handleAccept(note),
+          onRejectRerun: rerunFrom
+        }
+      ) : viewMode === "compare" && sourceImageUrl !== null && cleanPlateUrl !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center overflow-auto bg-surface-strong p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-5xl overflow-hidden rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        SliderCompare,
+        {
+          sourceImageUrl,
+          cleanPlateUrl
+        }
+      ) }) }) : sourceImageUrl !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        ReviewCanvas,
+        {
+          imageUrl: sourceImageUrl,
+          blocks,
+          selectedBlockId,
+          onSelectBlock: selectBlock,
+          onUpdateBlock: handleBlockUpdate
+        }
+      ) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "flex h-full items-center justify-center text-sm font-medium text-muted", children: "暂无源图，请先执行「文字识别」阶段" }) }),
+      viewMode !== "accept" && /* @__PURE__ */ jsxRuntimeExports.jsxs("aside", { className: "flex w-80 shrink-0 flex-col border-l border-hairline bg-surface-soft", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex shrink-0 border-b border-hairline", children: SIDEBAR_TABS.map(([tab, label]) => /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
             type: "button",
             className: cn(
-              "flex-1 py-2 text-xs transition-colors",
-              sidebarTab === tab ? "border-b-2 border-primary font-medium text-ink" : "text-muted"
+              "flex-1 py-3 text-sm transition",
+              sidebarTab === tab ? "border-b-2 border-primary font-medium text-ink" : "text-muted active:bg-surface-strong"
             ),
             onClick: () => setSidebarTab(tab),
             children: label
           },
           tab
         )) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex-1 overflow-y-auto", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-h-0 flex-1 overflow-y-auto", children: [
           sidebarTab === "properties" && /* @__PURE__ */ jsxRuntimeExports.jsx(
             PropertyPanel,
             {
@@ -17763,21 +19252,7 @@ function SlidePage() {
               selectedBlockId,
               onSelect: selectBlock
             }
-          ),
-          sidebarTab === "pipeline" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx(
-              StageProgress,
-              {
-                stageStatuses,
-                running: pipelineRunning
-              }
-            ),
-            pipelineError && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mx-4 rounded-sm bg-error-light p-2 text-xs text-error", children: [
-              pipelineError.code,
-              ": ",
-              pipelineError.message
-            ] })
-          ] })
+          )
         ] })
       ] })
     ] })
@@ -17785,8 +19260,13 @@ function SlidePage() {
 }
 function App() {
   const currentView = useUIStore((s) => s.currentView);
+  const selectedSlideId = useUIStore((s) => s.selectedSlideId);
   useRunBridge();
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(AppShell, { children: currentView === "slide" ? /* @__PURE__ */ jsxRuntimeExports.jsx(SlidePage, {}) : /* @__PURE__ */ jsxRuntimeExports.jsx(DeckPage, {}) });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(AppShell, { children: currentView === "slide" ? (
+    // key 绑定页 id：换页即重挂载，视图态/侧边栏页签/临时提示自然回到初始值，
+    // 不必在 SlidePage 里写"切页重置"的 effect
+    /* @__PURE__ */ jsxRuntimeExports.jsx(SlidePage, {}, selectedSlideId ?? "none")
+  ) : /* @__PURE__ */ jsxRuntimeExports.jsx(ConsolePage, {}) });
 }
 const root = document.getElementById("root");
 if (root) {

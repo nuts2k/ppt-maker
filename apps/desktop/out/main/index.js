@@ -1039,7 +1039,7 @@ const PPTX_PATH = "stages/pptx/slide.pptx";
 const CHECK_PATH = "stages/pptx/check.json";
 const RECORD_PATH$1 = "stages/pptx/record.json";
 const PPTX_SYNTHESIS_VERSION = "pptx-synthesis-v7";
-function replaceStageState$7(states, replacement) {
+function replaceStageState$8(states, replacement) {
   return states.map(
     (state) => state.stage === replacement.stage ? replacement : state
   );
@@ -1234,7 +1234,7 @@ async function runSlidePptx(options) {
   const runningManifest = {
     ...workspace.manifest,
     updatedAt: startedAt,
-    stages: replaceStageState$7(invalidatedStates, runningState),
+    stages: replaceStageState$8(invalidatedStates, runningState),
     attempts: [...workspace.manifest.attempts, runningAttempt]
   };
   await writeWorkspaceManifest(workspace.path, runningManifest);
@@ -1352,7 +1352,7 @@ async function runSlidePptx(options) {
         ...runningManifest.assets.filter((asset) => !newAssetIds.has(asset.id)),
         ...newAssets
       ],
-      stages: replaceStageState$7(runningManifest.stages, completedState),
+      stages: replaceStageState$8(runningManifest.stages, completedState),
       attempts: replaceAttempt$5(runningManifest.attempts, completedAttempt)
     });
     return {
@@ -1372,7 +1372,7 @@ async function runSlidePptx(options) {
     await writeWorkspaceManifest(workspace.path, {
       ...runningManifest,
       updatedAt: endedAt,
-      stages: replaceStageState$7(runningManifest.stages, {
+      stages: replaceStageState$8(runningManifest.stages, {
         ...runningState,
         status: "failed"
       }),
@@ -1773,11 +1773,16 @@ function deriveStageDetails(manifest) {
   });
 }
 function computeResumeStage(manifest) {
+  let pendingTransient = null;
   for (const stage of RUN_STAGE_SEQUENCE) {
-    if (TRANSIENT.has(stage)) continue;
-    if (manifestStatus(manifest, stage) !== "completed") {
-      return stage;
+    if (TRANSIENT.has(stage)) {
+      pendingTransient ??= stage;
+      continue;
     }
+    if (manifestStatus(manifest, stage) !== "completed") {
+      return pendingTransient ?? stage;
+    }
+    pendingTransient = null;
   }
   return null;
 }
@@ -2014,7 +2019,7 @@ const DEFAULT_CHECKLIST$1 = {
   noOutsideEdits: true,
   sizeCorrect: true
 };
-function replaceStageState$6(states, replacement) {
+function replaceStageState$7(states, replacement) {
   return states.map(
     (state) => state.stage === replacement.stage ? replacement : state
   );
@@ -2130,7 +2135,7 @@ async function runAcceptClean(options) {
       ),
       acceptanceAsset
     ],
-    stages: replaceStageState$6(workspace.manifest.stages, completedState),
+    stages: replaceStageState$7(workspace.manifest.stages, completedState),
     attempts: [...workspace.manifest.attempts, attempt]
   };
   await writeWorkspaceManifest(workspace.path, nextManifest);
@@ -2150,7 +2155,7 @@ const DEFAULT_CHECKLIST = {
   fontMicrosoftYaHei: true,
   layoutFaithful: true
 };
-function replaceStageState$5(states, replacement) {
+function replaceStageState$6(states, replacement) {
   return states.map(
     (state) => state.stage === replacement.stage ? replacement : state
   );
@@ -2266,7 +2271,7 @@ async function runAcceptPptx(options) {
       ),
       acceptanceAsset
     ],
-    stages: replaceStageState$5(workspace.manifest.stages, completedState),
+    stages: replaceStageState$6(workspace.manifest.stages, completedState),
     attempts: [...workspace.manifest.attempts, attempt]
   };
   await writeWorkspaceManifest(workspace.path, nextManifest);
@@ -2277,6 +2282,28 @@ async function runAcceptPptx(options) {
     autoCheckSummary
   };
 }
+async function invalidateSlideStage(options) {
+  const workspace = await loadSlideWorkspace(options.workspacePath);
+  const before = new Map(
+    workspace.manifest.stages.map((state) => [state.stage, state.status])
+  );
+  const stages = invalidateStageAndDownstream(
+    workspace.manifest.stages,
+    options.stage,
+    options.reason,
+    (/* @__PURE__ */ new Date()).toISOString()
+  );
+  await writeWorkspaceManifest(workspace.path, {
+    ...workspace.manifest,
+    stages
+  });
+  return {
+    invalidated: stages.filter(
+      (state) => state.status === "stale" && before.get(state.stage) !== "stale"
+    ).map((state) => state.stage)
+  };
+}
+const REVIEW_RELATIVE_PATH = ["stages", "review", "text-blocks.json"];
 function registerSlideHandlers(activityLog) {
   async function log(workspacePath, kind, stage, result, detail) {
     const context = await resolveDeckContext(workspacePath);
@@ -2298,7 +2325,7 @@ function registerSlideHandlers(activityLog) {
     "slide:load-review",
     async (_event, workspacePath) => {
       const ws = resolve(workspacePath);
-      const reviewPath = join(ws, "review", "text-blocks.json");
+      const reviewPath = join(ws, ...REVIEW_RELATIVE_PATH);
       try {
         const raw = await readFile(reviewPath, "utf-8");
         return TextReviewDocumentSchema.parse(JSON.parse(raw));
@@ -2312,7 +2339,7 @@ function registerSlideHandlers(activityLog) {
     async (_event, workspacePath, document) => {
       const ws = resolve(workspacePath);
       const parsed = TextReviewDocumentSchema.parse(document);
-      const reviewPath = join(ws, "review", "text-blocks.json");
+      const reviewPath = join(ws, ...REVIEW_RELATIVE_PATH);
       const { writeFile: writeFile2 } = await import("node:fs/promises");
       await writeFile2(reviewPath, JSON.stringify(parsed, null, 2), "utf-8");
       const workspace = await loadSlideWorkspace(ws);
@@ -2408,6 +2435,17 @@ function registerSlideHandlers(activityLog) {
       } catch {
         return null;
       }
+    }
+  );
+  ipcMain.handle(
+    "slide:invalidate-stage",
+    async (_event, workspacePath, stage, reason) => {
+      const result = await invalidateSlideStage({
+        workspacePath: resolve(workspacePath),
+        stage,
+        reason
+      });
+      return { invalidated: [...result.invalidated] };
     }
   );
 }
@@ -3060,7 +3098,7 @@ async function computeCleanPlateChecks(input) {
   return { checks, diffPng };
 }
 const REVIEW_OUTPUT_PATH$4 = "stages/review/text-blocks.json";
-function replaceStageState$4(states, replacement) {
+function replaceStageState$5(states, replacement) {
   return states.map(
     (state) => state.stage === replacement.stage ? replacement : state
   );
@@ -3223,7 +3261,7 @@ async function runSlideClean(options) {
   const runningManifest = {
     ...workspace.manifest,
     updatedAt: startedAt,
-    stages: replaceStageState$4(invalidatedStates, runningState),
+    stages: replaceStageState$5(invalidatedStates, runningState),
     attempts: [...workspace.manifest.attempts, runningAttempt]
   };
   await writeWorkspaceManifest(workspace.path, runningManifest);
@@ -3405,7 +3443,7 @@ async function runSlideClean(options) {
       ...runningManifest,
       updatedAt: endedAt,
       assets: [...runningManifest.assets, ...assets],
-      stages: replaceStageState$4(runningManifest.stages, completedState),
+      stages: replaceStageState$5(runningManifest.stages, completedState),
       attempts: replaceAttempt$4(runningManifest.attempts, completedAttempt)
     });
     return {
@@ -3469,7 +3507,7 @@ async function runSlideClean(options) {
       ...runningManifest,
       updatedAt: endedAt,
       assets: [...runningManifest.assets, providerAsset],
-      stages: replaceStageState$4(runningManifest.stages, {
+      stages: replaceStageState$5(runningManifest.stages, {
         ...runningState,
         status: "failed"
       }),
@@ -3483,7 +3521,7 @@ const MASK_PATH = "stages/mask/mask.png";
 const PREVIEW_PATH = "stages/mask/preview.png";
 const OVERLAY_PATH = "stages/mask/overlay.png";
 const RECORD_PATH = "stages/mask/record.json";
-function replaceStageState$3(states, replacement) {
+function replaceStageState$4(states, replacement) {
   return states.map(
     (state) => state.stage === replacement.stage ? replacement : state
   );
@@ -3752,7 +3790,7 @@ async function runSlideMask(options) {
   const runningManifest = {
     ...workspace.manifest,
     updatedAt: startedAt,
-    stages: replaceStageState$3(invalidatedStates, runningState),
+    stages: replaceStageState$4(invalidatedStates, runningState),
     attempts: [...workspace.manifest.attempts, runningAttempt]
   };
   await writeWorkspaceManifest(workspace.path, runningManifest);
@@ -3887,7 +3925,7 @@ async function runSlideMask(options) {
         ...runningManifest.assets.filter((asset) => !newAssetIds.has(asset.id)),
         ...newAssets
       ],
-      stages: replaceStageState$3(runningManifest.stages, completedState),
+      stages: replaceStageState$4(runningManifest.stages, completedState),
       attempts: replaceAttempt$3(runningManifest.attempts, completedAttempt)
     });
     return {
@@ -3907,7 +3945,7 @@ async function runSlideMask(options) {
     await writeWorkspaceManifest(workspace.path, {
       ...runningManifest,
       updatedAt: endedAt,
-      stages: replaceStageState$3(runningManifest.stages, {
+      stages: replaceStageState$4(runningManifest.stages, {
         ...runningState,
         status: "failed"
       }),
@@ -3919,6 +3957,12 @@ async function runSlideMask(options) {
 const REVIEW_OUTPUT_PATH$2 = "stages/review/text-blocks.json";
 const REPORT_PATH = "stages/report/report.json";
 const REPORT_ASSET_ID = "asset-report";
+const REPORT_VERSION = "m1-report-v1";
+function replaceStageState$3(states, replacement) {
+  return states.map(
+    (state) => state.stage === replacement.stage ? replacement : state
+  );
+}
 function stageStatus(manifest, stage) {
   return manifest.stages.find((state) => state.stage === stage)?.status ?? "missing";
 }
@@ -3982,6 +4026,23 @@ async function runSlideReport(options) {
     manifest.assets.find((asset2) => asset2.role === "pptx_acceptance"),
     (value) => ArtifactAcceptanceSchema.parse(value)
   );
+  const startedAt = (/* @__PURE__ */ new Date()).toISOString();
+  const attemptNumber = manifest.attempts.filter((attempt) => attempt.stage === "report").length + 1;
+  const attemptId = `report-${String(attemptNumber).padStart(3, "0")}`;
+  const inputFingerprint = sha256Values(
+    manifest.stages.filter((state) => state.stage !== "report").map(
+      (state) => `${state.stage}:${state.status}:${state.lastSuccessfulAttemptId ?? ""}`
+    )
+  );
+  const previousState = manifest.stages.find(
+    (state) => state.stage === "report"
+  );
+  if (previousState === void 0) {
+    throw new FoundationError(
+      "INVALID_WORKSPACE",
+      "工作区缺少 report 阶段状态"
+    );
+  }
   const providerCalls = [];
   for (const asset2 of manifest.assets.filter(
     (candidate) => candidate.role === "provider_record"
@@ -4019,12 +4080,23 @@ async function runSlideReport(options) {
   const reviewStartedAt = review.reviewStartedAt;
   const reviewToPptxAcceptMs = reviewStartedAt !== null && pptxAcceptedAt !== null && !pptxAcceptStale ? Math.max(0, Date.parse(pptxAcceptedAt) - Date.parse(reviewStartedAt)) : null;
   const overallComplete = stageStatus(manifest, "accept-pptx") === "completed" && stageStatus(manifest, "accept-clean") === "completed" && pptxCheck?.status === "passed" && layoutText.length > 0 && reviewedLayoutText.length === layoutText.length;
+  const completedState = {
+    ...previousState,
+    status: "completed",
+    latestAttemptId: attemptId,
+    lastSuccessfulAttemptId: attemptId,
+    completedInputFingerprint: inputFingerprint,
+    invalidatedAt: null,
+    invalidationReason: null
+  };
+  const nextStages = replaceStageState$3(manifest.stages, completedState);
   const report = SlideReportSchema.parse({
     schemaVersion: SCHEMA_VERSION,
     slideId: manifest.slideId,
     generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
     overallStatus: overallComplete ? "complete" : "incomplete",
-    stages: manifest.stages.map((state) => ({
+    // 用落库后的状态，否则报告会把自己记成 pending
+    stages: nextStages.map((state) => ({
       stage: state.stage,
       status: state.status
     })),
@@ -4083,9 +4155,23 @@ async function runSlideReport(options) {
     role: "report",
     createdAt: report.generatedAt,
     producedBy: "report",
-    attemptId: "report-001",
+    attemptId,
     image: null
   });
+  const completedAttempt = {
+    schemaVersion: SCHEMA_VERSION,
+    id: attemptId,
+    stage: "report",
+    number: attemptNumber,
+    status: "completed",
+    inputFingerprint,
+    startedAt,
+    endedAt: report.generatedAt,
+    provider: "ppt-maker-cli",
+    providerVersion: REPORT_VERSION,
+    assetIds: [asset.id],
+    error: null
+  };
   await writeWorkspaceManifest(workspace.path, {
     ...manifest,
     updatedAt: report.generatedAt,
@@ -4094,7 +4180,9 @@ async function runSlideReport(options) {
         (candidate) => candidate.id !== REPORT_ASSET_ID
       ),
       asset
-    ]
+    ],
+    stages: nextStages,
+    attempts: [...manifest.attempts, completedAttempt]
   });
   return { reportPath, report };
 }

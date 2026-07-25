@@ -16,7 +16,13 @@ const api = {
     saveReview: (workspacePath, document) => ipcRenderer.invoke("slide:save-review", workspacePath, document),
     acceptClean: (workspacePath, opts) => ipcRenderer.invoke("slide:accept-clean", workspacePath, opts),
     acceptPptx: (workspacePath, opts) => ipcRenderer.invoke("slide:accept-pptx", workspacePath, opts),
-    loadImage: (workspacePath, role) => ipcRenderer.invoke("slide:load-image", workspacePath, role)
+    loadImage: (workspacePath, role) => ipcRenderer.invoke("slide:load-image", workspacePath, role),
+    invalidateStage: (workspacePath, stage, reason) => ipcRenderer.invoke(
+      "slide:invalidate-stage",
+      workspacePath,
+      stage,
+      reason
+    )
   },
   activity: {
     list: (deckPath, limit) => ipcRenderer.invoke("activity:list", deckPath, limit)

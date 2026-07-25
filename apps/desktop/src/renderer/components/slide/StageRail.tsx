@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StageTrack } from "@/components/console/StageTrack";
 import {
   completedStageCount,
@@ -24,6 +24,9 @@ import type { RunStage } from "../../../shared/stages.js";
  * 保证同一状态在两处颜色语义一致。
  */
 
+/** 待确认态自动取消的等待时间 */
+const CONFIRM_TIMEOUT_MS = 5000;
+
 interface StageRailProps {
   readonly slide: SlideDetail;
   /** 从指定阶段重跑；执行中由调用方置 disabled */
@@ -43,6 +46,8 @@ export function StageRail({
   sessionError,
 }: StageRailProps): React.JSX.Element {
   const [detailOpen, setDetailOpen] = useState(false);
+  const [pendingStage, setPendingStage] = useState<RunStage | null>(null);
+  const railRef = useRef<HTMLDivElement>(null);
 
   // 逐字段订阅：selector 返回新对象会让轨道随任意 store 变更整体重渲染
   const liveStages = useRunStore((s) => s.liveStages[slide.slideId]);
@@ -65,6 +70,34 @@ export function StageRail({
     ? elapsedSince(stageStartedAt, Date.now())
     : null;
 
+  // 待确认态的退出路径：5 秒无操作、点到轨道之外、或本页转入执行中
+  useEffect(() => {
+    if (pendingStage === null) return;
+    if (disabled) {
+      setPendingStage(null);
+      return;
+    }
+    const timer = window.setTimeout(
+      () => setPendingStage(null),
+      CONFIRM_TIMEOUT_MS,
+    );
+    function handlePointerDown(event: PointerEvent): void {
+      const target = event.target;
+      if (
+        target instanceof Node &&
+        railRef.current?.contains(target) === true
+      ) {
+        return;
+      }
+      setPendingStage(null);
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.clearTimeout(timer);
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [pendingStage, disabled]);
+
   // 耐久层错误优先：它带阶段与时间，且重启后仍然存在
   const error = slide.lastError ?? sessionError;
   const errorStage =
@@ -72,13 +105,37 @@ export function StageRail({
     views.find((view) => view.status === "failed")?.stage ??
     null;
 
+  /**
+   * 已完成阶段需点两次才重跑。
+   *
+   * 重跑会作废该阶段及其全部下游产物，clean 这类阶段还要重新调用付费 API；而 10 个
+   * 点位横贯整个顶栏，误触的命中面积与代价完全不成比例。pending/failed 阶段没有
+   * 产物可作废，单击直达。
+   *
+   * 曾经误触是无害的——因为重跑压根不生效（run 把已完成阶段幂等跳过），那正是
+   * 「点了没反应」那个缺陷；修好之后误触才第一次有了真实后果。
+   */
   function handleStageClick(stage: RunStage): void {
     if (disabled) return;
+    const status = views.find((view) => view.stage === stage)?.status;
+    if (status !== "completed") {
+      setPendingStage(null);
+      onRerunFrom(stage);
+      return;
+    }
+    if (pendingStage !== stage) {
+      setPendingStage(stage);
+      return;
+    }
+    setPendingStage(null);
     onRerunFrom(stage);
   }
 
   return (
-    <div className="flex shrink-0 flex-col gap-3 border-b border-hairline bg-surface-soft px-6 py-4">
+    <div
+      ref={railRef}
+      className="flex shrink-0 flex-col gap-3 border-b border-hairline bg-surface-soft px-6 py-4"
+    >
       <div className="flex items-baseline gap-3">
         <span className="shrink-0 text-base font-medium text-ink">
           {isRunningThisSlide
@@ -93,7 +150,9 @@ export function StageRail({
         </span>
         <span className="min-w-0 flex-1" />
         <span className="shrink-0 text-sm font-medium text-muted">
-          {disabled ? "执行中不可重跑" : "点击阶段点位可从该阶段重跑"}
+          {disabled
+            ? "执行中不可重跑"
+            : "点击阶段点位可从该阶段重跑，已完成阶段需确认"}
         </span>
       </div>
 
@@ -103,6 +162,13 @@ export function StageRail({
         size="md"
         {...(disabled ? {} : { onStageClick: handleStageClick })}
       />
+
+      {pendingStage !== null && (
+        <p className="rounded-sm bg-signature-mustard px-4 py-2 text-sm font-medium text-ink">
+          重跑「{views.find((view) => view.stage === pendingStage)?.label}
+          」将作废该阶段及之后所有产物，再点一次该阶段确认
+        </p>
+      )}
 
       {/* 阶段名与点位一一对齐：首尾贴边、中间均分，与轨道的 flex-1 连接线同构 */}
       <ul className="flex w-full items-start">

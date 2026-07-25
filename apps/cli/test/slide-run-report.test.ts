@@ -303,6 +303,55 @@ describe("slide report", () => {
     expect(report.classification.layoutText).toBe(1);
   });
 
+  it("落库 report 阶段状态与 attempt", async () => {
+    // 缺陷回归：此前 runSlideReport 只写 assets，完全没碰 stages/attempts，
+    // report 状态恒为 pending —— 每次 run 都从 report 起跑、每次都成功、
+    // 每次都不改状态，界面上表现为「点了没反应」，用户只能反复点。
+    // 本文件既有的用例全部只断言 report 内容，这正是该缺陷能存活的原因。
+    const { workspacePath } = await setupThroughPptx();
+    await runAcceptPptx({ workspacePath, acceptedBy: "dev" });
+    const { report } = await runSlideReport({ workspacePath });
+
+    const workspace = await loadSlideWorkspace(workspacePath);
+    const state = workspace.manifest.stages.find(
+      (candidate) => candidate.stage === "report",
+    );
+    expect(state?.status).toBe("completed");
+    expect(state?.lastSuccessfulAttemptId).toBe("report-001");
+    expect(state?.completedInputFingerprint).not.toBeNull();
+
+    const attempts = workspace.manifest.attempts.filter(
+      (attempt) => attempt.stage === "report",
+    );
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]?.status).toBe("completed");
+
+    // 报告自身也须记为 completed，否则它把自己写成 pending
+    expect(
+      report.stages.find((entry) => entry.stage === "report")?.status,
+    ).toBe("completed");
+  });
+
+  it("重跑 report 递增 attempt 编号而非覆盖", async () => {
+    const { workspacePath } = await setupThroughPptx();
+    await runAcceptPptx({ workspacePath, acceptedBy: "dev" });
+    await runSlideReport({ workspacePath });
+    await runSlideReport({ workspacePath });
+
+    const workspace = await loadSlideWorkspace(workspacePath);
+    const attempts = workspace.manifest.attempts.filter(
+      (attempt) => attempt.stage === "report",
+    );
+    expect(attempts.map((attempt) => attempt.id)).toEqual([
+      "report-001",
+      "report-002",
+    ]);
+    const state = workspace.manifest.stages.find(
+      (candidate) => candidate.stage === "report",
+    );
+    expect(state?.latestAttemptId).toBe("report-002");
+  });
+
   it("PPTX 自动检查失败不汇总为 complete", async () => {
     const { workspacePath } = await setupThroughPptx();
     await runAcceptPptx({ workspacePath, acceptedBy: "dev" });

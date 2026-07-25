@@ -18,6 +18,15 @@ interface SlideState {
 
   // 并行加载复核文档、源图、去字底板
   loadSlide(workspacePath: string): Promise<void>;
+  /**
+   * 只重载底图与去字底板，不触碰 reviewDocument / dirty。
+   *
+   * 去字底板由 clean 阶段产出，进页时通常还不存在，而 loadSlide 只在切页时触发，
+   * 于是 accept-clean 闸门拿到的永远是进页那一刻的快照（表现为对比区提示
+   * "缺少原图或去字底板"）。不复用 loadSlide 是因为它会重置复核文档，
+   * 会吞掉用户尚未保存的改动。
+   */
+  reloadImages(): Promise<void>;
   // 局部更新指定 block 字段并标记 dirty
   updateBlock(blockId: string, patch: Partial<TextReviewBlock>): void;
   /**
@@ -62,6 +71,19 @@ export const useSlideStore = create<SlideState>((set, get) => ({
       dirty: false,
       loading: false,
     });
+  },
+
+  async reloadImages() {
+    const { workspacePath } = get();
+    if (workspacePath === null) return;
+    const api = getApi();
+    const [sourceImageUrl, cleanPlateUrl] = await Promise.all([
+      api.slide.loadImage(workspacePath, "source_image"),
+      api.slide.loadImage(workspacePath, "clean_plate"),
+    ]);
+    // 加载期间可能已切页，此时写回会把上一页的图贴到新页上
+    if (get().workspacePath !== workspacePath) return;
+    set({ sourceImageUrl, cleanPlateUrl });
   },
 
   updateBlock(blockId, patch) {
