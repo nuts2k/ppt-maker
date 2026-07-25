@@ -73,13 +73,33 @@
 
 ## 阶段 D：单页复核（SlidePage 壳层重写）
 
-- [ ] D1 SlideToolbar：运行此页 / 从阶段重跑菜单 / 保存与脏标记 / 页间导航
-- [ ] D2 StageRail 常驻 + 失败阶段错误详情
-- [ ] D3 AcceptFlow：accept-clean（SliderCompare + 清单 + 接受/拒绝重跑）、accept-pptx（清单 + 确认）
-- [ ] D4 侧边栏三块视觉重做（属性 / 来源 / 低置信度队列），画布内核接入回归
-- [ ] D5 队列"处理下一项"导航闭环
+- [x] D1 SlideToolbar：运行此页 / 从阶段重跑菜单 / 保存与脏标记 / 页间导航
+- [x] D2 StageRail 常驻 + 失败阶段错误详情
+- [x] D3 AcceptFlow：accept-clean（SliderCompare + 清单 + 接受/拒绝重跑）、accept-pptx（清单 + 确认）
+- [x] D4 侧边栏三块视觉重做（属性 / 来源 / 低置信度队列），画布内核接入回归
+- [x] D5 队列"处理下一项"导航闭环
 
-验证：画布全部 V1 交互回归（选中/双击编辑/拖拽/右键分类/includeInMask/缩放平移）；验收记录写入 manifest 后用 CLI `deck status` 核对。
+验证：`pnpm typecheck` / `pnpm test`（125 项）/ `pnpm build` 三项全绿；`biome check` 无新增报错。**dev 模式画布交互回归与 CLI `deck status` 核对待人工执行**（选中/双击编辑/拖拽/右键分类/includeInMask/缩放平移；验收记录写入 manifest 后用 CLI 核对）。
+
+**实施补充（阶段 D 实际产出，供后续阶段对齐）**
+
+- **验收闸门判定改为两层合并**（关键修正）：新增 `renderer/lib/accept-gate.ts` 的 `deriveAcceptGate(slide, sessionResult)` —— 会话层 `gate === "manual"` 且 `stoppedAt` 是验收阶段时优先采用，否则回落耐久层（产出阶段 completed 且验收阶段未 completed）。V1 与阶段 B 的过渡实现只认会话层，**重启后待办队列里的"待验收"项点进去是一片画布、无从验收**，队列的"点一次到达"承诺形同失效。`todo-queue` 已改为复用同一 `awaitingAcceptance`，杜绝"队列说待验收、页面打不开验收面板"的语义漂移。优先级同队列：`accept-pptx > accept-clean`。
+- **新增纯逻辑模块**（均相对 `.js` 导入、不触碰 `window`，可被 vitest 直接消费）：`lib/accept-gate.ts`（13 测试）、`lib/slide-nav.ts`（7 测试，`orderedActiveSlides` / `adjacentSlides`，页序与队列同为 `Intl.Collator` 数字序，**不做环形导航**——首尾禁用按钮）、`stores/todo-queue.ts` 追加 `flattenTodoQueue` / `nextTodoItem`（6 测试，**环形扫描**：走到末尾回绕队首，因为处理完的项会离队而前面的组可能还没做完）。测试增至 125 个（新增 26）。
+- **计时订阅下沉**：`SlideToolbar` 与 `StageRail` 各自订阅 `run-store.tick`，SlidePage 只订阅非计时字段。若由页面透传耗时，整页——包括画布——会每秒重渲染。新增任何展示耗时的组件都要照此办理（与阶段 C 同一纪律）。
+- **切页状态重置改用 `key`**：`App.tsx` 以 `<SlidePage key={selectedSlideId} />` 触发重挂载，视图态/侧边栏页签/临时提示自然回到初始值。原先写成 `useEffect(..., [slideId])` 会被 biome `useExhaustiveDependencies` 判为多余依赖（effect 体内并未读取 slideId），这是 React 惯用解法而非绕过 lint。
+- **视图态三选一**：`canvas` / `compare` / `accept` 共用同一壳层，验收布局自带右栏清单，此时隐藏复核侧边栏以免双侧栏。闸门签名 `slideId:stage:source` 变化时自动切入验收——含 `source` 是为了「拒绝重跑 → 再次停在同一闸门」能重新进入；用户手动切回画布后签名不变，不会被强行拉回。
+- **重复入队防护**：`pageBusy = runStatus !== "idle" && currentSlideId === slideId` 时禁用「运行此页」「从阶段重跑」与验收动作。DeckRunner 的 `queue.some` 去重只覆盖**排队中**的页，正在执行的项已 shift 出队列，再次入队会让同一页跑两遍。其它页执行中时本页仍可入队（DeckRunner 支持同 deck 追加）。
+- **StageRail**：复用 `StageTrack size="md"` 与 `STAGE_DOT_CLASS` 唯一色表，点位可点即「从该阶段重跑」，下方一行阶段中文名与点位对齐（轨道横跨整页宽，10 个标签有余量）。错误条合并耐久层 `slide.lastError`（优先，带阶段与时间戳）与会话层 `sessionResult.error`（兜底：`PIPELINE_RUN_FAILED` 这类前置失败没有 manifest 记录）。
+- **AcceptFlow 清单与 CLI 对齐**：条目 key 直接取 CLI `runAcceptClean` / `runAcceptPptx` 的 `DEFAULT_CHECKLIST`（clean 4 项、pptx 5 项，V1 的 clean 清单漏了 `sizeCorrect`）。拒绝验收 = 从产出阶段重跑，clean 提供 mask/clean 两档、pptx 一档（`REJECT_RERUN_STAGES`）。
+- **删除**：`components/pipeline/AcceptPanel.tsx`、`components/pipeline/StageProgress.tsx`（被 AcceptFlow / StageRail 取代），连带删掉 `stage-view.ts` 的 `mergeStageStatuses`（它是"兼容 StageProgress"的适配器，唯一消费者消失后即死代码）及其测试。
+- **侧边栏视觉**：去掉 `pipeline` 页签（StageRail 已常驻），三块统一 14px 字号（不再使用文档外的 12px）、去掉全部 `hover:` 样式（DESIGN.md 只定义 Default / Active-Pressed）、选中态改用背景色调切换（对齐 `pricing-tier-card-featured` 的做法），输入控件 `rounded-sm` + hairline。`includeInMask` 的约束提示改为 mustard 底 + ink 文字——mustard 作为白底前景色对比度不足。
+- 阶段 B 遗留的 `SlidePage.tsx` `useExhaustiveDependencies`（Cmd+S 过期闭包）已随工具栏重写修复：`handleSave` 用 `useCallback` 包装并进入 effect 依赖。
+
+**遗留**
+
+- `biome check` 仍有 2 处 V1 报错，均在画布内核 `TextBlockOverlay.tsx`（`useSemanticElements` / `noUselessFragments`），按计划留待阶段 E2。阶段 D 未新增任何报错。
+- **验收清单未逐项落库**：IPC `AcceptOptions` 只有 `acceptedBy` / `note`（阶段 A 定型），CLI 侧 `checklist` 落为默认全 true。UI 强制全勾才允许提交，语义等价，但要真实反映"用户勾了哪几项"需扩展 IPC 契约（channels + slide.ts + preload），不在本阶段范围。
+- **验收前无自动检查数值**：`autoCheckSummary` 由 CLI 在 accept 执行时返回，验收**前**读不到（manifest 的 check report 未经 `status-detailed` 暴露）。当前在验收提交后以页面级反馈条展示。若要前置展示需新增只读 IPC。
 
 ## 阶段 E：收尾
 

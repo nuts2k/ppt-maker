@@ -7,7 +7,6 @@ import {
   elapsedSince,
   formatElapsed,
   hasFailingStage,
-  mergeStageStatuses,
 } from "../src/renderer/lib/stage-view.js";
 import type { LiveStageMap } from "../src/renderer/stores/run-types.js";
 import { RUN_STAGE_SEQUENCE, type RunStage } from "../src/shared/stages.js";
@@ -59,17 +58,6 @@ describe("deriveStageViews", () => {
   it("附带中文阶段名，卡片与轨道无需再查表", () => {
     const views = deriveStageViews(makeStages({}), undefined);
     expect(views[0]?.label).toBe("文字识别");
-  });
-});
-
-describe("mergeStageStatuses", () => {
-  it("产出扁平 map，键为阶段名", () => {
-    const merged = mergeStageStatuses(makeStages({ ocr: "completed" }), {
-      review: "running",
-    });
-    expect(merged.ocr).toBe("completed");
-    expect(merged.review).toBe("running");
-    expect(Object.keys(merged)).toHaveLength(RUN_STAGE_SEQUENCE.length);
   });
 });
 

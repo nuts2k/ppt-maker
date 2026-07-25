@@ -1,41 +1,57 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
-import { isRunStage } from "@shared/stages";
+import type { RunStage } from "@shared/stages";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ReviewCanvas } from "@/components/canvas/ReviewCanvas";
 import { SliderCompare } from "@/components/compare/SliderCompare";
-import { AcceptPanel } from "@/components/pipeline/AcceptPanel";
-import { StageProgress } from "@/components/pipeline/StageProgress";
 import { ConfidenceQueue } from "@/components/sidebar/ConfidenceQueue";
 import { PropertyPanel } from "@/components/sidebar/PropertyPanel";
 import { SourceList } from "@/components/sidebar/SourceList";
+import { AcceptFlow } from "@/components/slide/AcceptFlow";
+import {
+  SlideToolbar,
+  type SlideViewMode,
+} from "@/components/slide/SlideToolbar";
+import { StageRail } from "@/components/slide/StageRail";
+import { deriveAcceptGate } from "@/lib/accept-gate";
+import { adjacentSlides } from "@/lib/slide-nav";
 import { cn } from "@/lib/utils";
 import { useDeckStore } from "@/stores/deck-store";
 import { useRunStore } from "@/stores/run-store";
 import { useSlideStore } from "@/stores/slide-store";
+import { deriveTodoQueue, nextTodoItem } from "@/stores/todo-queue";
 import { useUIStore } from "@/stores/ui-store";
 
-type SidebarTab = "properties" | "sources" | "queue" | "pipeline";
+/**
+ * 单页复核（design.md 3.3 SlidePage）—— 壳层重写，画布内核（ReviewCanvas /
+ * TextBlockOverlay / TextEditor / SliderCompare / useCanvasTransform）行为不变。
+ *
+ * 三个视图态共用同一壳层：`canvas`（编辑文字块）、`compare`（滑块擦除对比）、
+ * `accept`（人工验收布局）。验收闸门由 `deriveAcceptGate` 从**耐久层 + 会话层**推导——
+ * 这是待办队列"点一次到达能完成该操作的界面"的前提：V1 只认会话层，应用重启后
+ * 队列里的待验收项点进来是一片画布，无从验收。
+ *
+ * 本页只订阅非计时字段，耗时展示下沉到 SlideToolbar / StageRail 各自订阅 1s ticker，
+ * 否则画布会跟着每秒重渲染。
+ */
 
-/** 人工闸门对应的验收阶段 */
-const ACCEPT_STAGES = ["accept-clean", "accept-pptx"] as const;
-type AcceptStage = (typeof ACCEPT_STAGES)[number];
+type SidebarTab = "properties" | "sources" | "queue";
 
-function isAcceptStage(value: string | null): value is AcceptStage {
-  return value !== null && (ACCEPT_STAGES as readonly string[]).includes(value);
-}
+const SIDEBAR_TABS: ReadonlyArray<readonly [SidebarTab, string]> = [
+  ["properties", "属性"],
+  ["sources", "来源"],
+  ["queue", "低置信度"],
+];
 
 export function SlidePage(): React.JSX.Element {
   const selectedSlideId = useUIStore((s) => s.selectedSlideId);
   const selectedBlockId = useUIStore((s) => s.selectedBlockId);
   const selectBlock = useUIStore((s) => s.selectBlock);
+  const openSlide = useUIStore((s) => s.openSlide);
   const backToConsole = useUIStore((s) => s.backToConsole);
+
   const slides = useDeckStore((s) => s.slides);
   const deckPath = useDeckStore((s) => s.deckPath);
   const refreshSlide = useDeckStore((s) => s.refreshSlide);
-
-  const slide = slides.find((s) => s.slideId === selectedSlideId);
-  // SlideDetail 已提供绝对路径，renderer 不再与 deckPath 拼接
-  const workspacePath = slide?.absWorkspacePath ?? null;
 
   const loadSlide = useSlideStore((s) => s.loadSlide);
   const saveReview = useSlideStore((s) => s.saveReview);
@@ -47,46 +63,50 @@ export function SlidePage(): React.JSX.Element {
   const dirty = useSlideStore((s) => s.dirty);
   const loading = useSlideStore((s) => s.loading);
 
+  // 只取非计时字段：tick 的订阅在 SlideToolbar / StageRail 内部
   const runStatus = useRunStore((s) => s.status);
-  const liveStages = useRunStore((s) => s.liveStages);
+  const currentSlideId = useRunStore((s) => s.currentSlideId);
   const sessionResults = useRunStore((s) => s.sessionResults);
   const startError = useRunStore((s) => s.startError);
   const runSlide = useRunStore((s) => s.runSlide);
   const clearSessionResult = useRunStore((s) => s.clearSessionResult);
 
-  const pipelineRunning = runStatus !== "idle";
+  const slide = useMemo(
+    () => slides.find((entry) => entry.slideId === selectedSlideId) ?? null,
+    [slides, selectedSlideId],
+  );
   const slideId = slide?.slideId ?? null;
-
-  // 阶段展示 = 耐久层（manifest）叠加本次 run 的实时状态
-  const stageStatuses = useMemo<Record<string, string>>(() => {
-    const merged: Record<string, string> = {};
-    for (const detail of slide?.stages ?? []) {
-      merged[detail.stage] = detail.status;
-    }
-    const live = slideId === null ? undefined : liveStages[slideId];
-    for (const [stage, status] of Object.entries(live ?? {})) {
-      merged[stage] = status;
-    }
-    return merged;
-  }, [slide, liveStages, slideId]);
+  // SlideDetail 已提供绝对路径，renderer 不再与 deckPath 拼接
+  const workspacePath = slide?.absWorkspacePath ?? null;
 
   const sessionResult = slideId === null ? undefined : sessionResults[slideId];
-  const pendingGate =
-    sessionResult?.gate === "manual" && isAcceptStage(sessionResult.stoppedAt)
-      ? sessionResult.stoppedAt
-      : null;
-  const pipelineError =
-    sessionResult?.error ??
-    (startError === null
-      ? null
-      : { code: "RUN_START_REJECTED", message: startError });
+  const acceptGate = useMemo(
+    () => (slide === null ? null : deriveAcceptGate(slide, sessionResult)),
+    [slide, sessionResult],
+  );
 
+  const navigation = useMemo(
+    () => adjacentSlides(slides, slideId),
+    [slides, slideId],
+  );
+
+  // 待办队列在本页只用于「处理下一项」；派生放组件内（selector 返回新对象会引发重渲染循环）
+  const nextTodo = useMemo(
+    () => nextTodoItem(deriveTodoQueue(slides, sessionResults), slideId),
+    [slides, sessionResults, slideId],
+  );
+
+  const [viewMode, setViewMode] = useState<SlideViewMode>("canvas");
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("properties");
-  const [compareMode, setCompareMode] = useState(false);
-  const [saveResult, setSaveResult] = useState<{
-    ok: boolean;
-    message: string;
+  const [submitting, setSubmitting] = useState(false);
+  const [notice, setNotice] = useState<{
+    readonly ok: boolean;
+    readonly message: string;
   } | null>(null);
+
+  const canCompare = sourceImageUrl !== null && cleanPlateUrl !== null;
+  // 本页正在执行：禁用执行类动作，避免同一页被重复入队跑两遍
+  const pageBusy = runStatus !== "idle" && currentSlideId === slideId;
 
   useEffect(() => {
     if (workspacePath === null) return;
@@ -94,16 +114,22 @@ export function SlidePage(): React.JSX.Element {
     return () => reset();
   }, [workspacePath, loadSlide, reset]);
 
+  /**
+   * 闸门变化时切换视图态。签名含 source，因此"拒绝重跑 → 再次停在同一闸门"也会
+   * 重新进入验收布局；用户手动切回画布后签名不变，不会被强行拉回。
+   */
+  const gateSignature =
+    acceptGate === null || slideId === null
+      ? null
+      : `${slideId}:${acceptGate.stage}:${acceptGate.source}`;
   useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent): void {
-      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-        e.preventDefault();
-        if (dirty) void handleSave();
-      }
+    if (gateSignature === null) {
+      // 闸门消失（已验收或产物失效）：验收布局已无意义，退回画布
+      setViewMode((mode) => (mode === "accept" ? "canvas" : mode));
+      return;
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [dirty, saveReview]);
+    setViewMode("accept");
+  }, [gateSignature]);
 
   const blocks = reviewDocument?.blocks ?? [];
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId) ?? null;
@@ -115,151 +141,203 @@ export function SlidePage(): React.JSX.Element {
     [updateBlock],
   );
 
-  async function handleSave(): Promise<void> {
+  const handleSave = useCallback(async (): Promise<void> => {
     try {
       const result = await saveReview();
-      setSaveResult({
+      setNotice({
         ok: result.valid,
         message: result.valid
           ? "保存成功"
-          : `保存完成，${result.errors} 个错误 / ${result.warnings} 个警告`,
+          : `保存完成，但校验有 ${result.errors} 个错误 / ${result.warnings} 个警告`,
       });
-      setTimeout(() => setSaveResult(null), 3000);
     } catch (err) {
-      setSaveResult({
+      setNotice({
         ok: false,
         message: `保存失败：${err instanceof Error ? err.message : String(err)}`,
       });
     }
-  }
+  }, [saveReview]);
 
-  // 执行统一交给 DeckRunner（单页也走同一队列），进度由 run-store 的事件驱动
-  const handleRunPipeline = useCallback(
-    (from: string) => {
-      if (deckPath === null || slideId === null || !isRunStage(from)) return;
+  // handleSave 进依赖，避免 V1 里 Cmd+S 捕获过期闭包（阶段 B 遗留的 lint 报错）
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if ((event.metaKey || event.ctrlKey) && event.key === "s") {
+        event.preventDefault();
+        if (dirty) void handleSave();
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [dirty, handleSave]);
+
+  /** 执行统一交给 DeckRunner（单页也走同一串行队列），进度由 run-store 事件驱动 */
+  const startRun = useCallback(
+    (from?: RunStage) => {
+      if (deckPath === null || slideId === null) return;
+      setNotice(null);
       void runSlide(deckPath, slideId, from, {
         confirmApi: true,
         confirmUpload: true,
       });
-      setSidebarTab("pipeline");
     },
     [deckPath, slideId, runSlide],
   );
 
   const handleAccept = useCallback(
-    async (note: string) => {
-      if (!workspacePath || !pendingGate || slideId === null) return;
-      const api = window.api;
-      if (pendingGate === "accept-clean") {
-        await api.slide.acceptClean(workspacePath, { note });
-      } else {
-        await api.slide.acceptPptx(workspacePath, { note });
+    async (note: string): Promise<void> => {
+      if (workspacePath === null || acceptGate === null || slideId === null) {
+        return;
       }
-      clearSessionResult(slideId);
-      void refreshSlide(slideId);
+      setSubmitting(true);
+      try {
+        const api = window.api;
+        const result =
+          acceptGate.stage === "accept-clean"
+            ? await api.slide.acceptClean(workspacePath, { note })
+            : await api.slide.acceptPptx(workspacePath, { note });
+        // 先清会话层闸门再刷耐久层，否则 deriveAcceptGate 仍会命中已完成的闸门
+        clearSessionResult(slideId);
+        await refreshSlide(slideId);
+        setNotice({
+          ok: true,
+          message: `验收完成 · ${result.autoCheckSummary}`,
+        });
+      } catch (err) {
+        setNotice({
+          ok: false,
+          message: `验收失败：${err instanceof Error ? err.message : String(err)}`,
+        });
+      } finally {
+        setSubmitting(false);
+      }
     },
-    [workspacePath, pendingGate, slideId, clearSessionResult, refreshSlide],
+    [workspacePath, acceptGate, slideId, clearSessionResult, refreshSlide],
   );
 
-  const handleReject = useCallback(() => {
-    if (slideId !== null) clearSessionResult(slideId);
-  }, [slideId, clearSessionResult]);
+  /** 拒绝验收 = 从产出该产物的阶段重跑；会话层闸门先清掉，验收布局立即退出 */
+  const handleRejectRerun = useCallback(
+    (stage: RunStage) => {
+      if (slideId === null) return;
+      clearSessionResult(slideId);
+      setViewMode("canvas");
+      startRun(stage);
+    },
+    [slideId, clearSessionResult, startRun],
+  );
 
-  if (workspacePath === null) {
+  const handleNextTodo = useCallback(() => {
+    if (nextTodo === null) return;
+    openSlide(nextTodo.slideId);
+  }, [nextTodo, openSlide]);
+
+  if (slide === null || workspacePath === null) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-muted">
-        未选中任何页面
+      <div className="flex h-full flex-col items-center justify-center gap-4">
+        <p className="text-sm font-medium text-muted">
+          未选中任何页面，或该页已被移除
+        </p>
+        <button
+          type="button"
+          onClick={backToConsole}
+          className="rounded-lg border border-hairline bg-canvas px-4 py-2 text-sm text-ink transition active:border-border-strong"
+        >
+          返回控制台
+        </button>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* 工具栏 */}
-      <div className="flex h-10 shrink-0 items-center gap-3 border-b border-hairline bg-canvas px-4">
-        <button
-          type="button"
-          className="rounded-sm border border-hairline px-2.5 py-1 text-xs text-body transition active:border-border-strong"
-          onClick={backToConsole}
-        >
-          ← 返回
-        </button>
-        <span className="text-sm font-medium text-ink">
-          {slide?.pageLabel ?? selectedSlideId}
-        </span>
+    <div className="flex h-full min-h-0 flex-col">
+      <SlideToolbar
+        slideId={slide.slideId}
+        pageLabel={slide.pageLabel}
+        navigation={navigation}
+        viewMode={viewMode}
+        canCompare={canCompare}
+        hasAcceptGate={acceptGate !== null}
+        dirty={dirty}
+        pageBusy={pageBusy}
+        nextTodo={
+          nextTodo === null
+            ? null
+            : { pageLabel: nextTodo.pageLabel, reason: nextTodo.reason }
+        }
+        onBack={backToConsole}
+        onNavigate={openSlide}
+        onViewModeChange={setViewMode}
+        onSave={() => void handleSave()}
+        onRunSlide={() => startRun()}
+        onRerunFrom={(stage) => startRun(stage)}
+        onNextTodo={handleNextTodo}
+      />
 
-        <div className="ml-auto flex items-center gap-2">
-          {sourceImageUrl && cleanPlateUrl && (
-            <button
-              type="button"
+      <StageRail
+        slide={slide}
+        disabled={pageBusy}
+        onRerunFrom={(stage) => startRun(stage)}
+        sessionError={sessionResult?.error ?? null}
+      />
+
+      {(notice !== null || startError !== null) && (
+        <div className="flex shrink-0 flex-col gap-1 px-6 pt-3">
+          {notice !== null && (
+            <p
               className={cn(
-                "rounded-sm border px-2 py-1 text-xs transition",
-                compareMode
-                  ? "border-info-border bg-info/10 text-info"
-                  : "border-hairline text-body",
-              )}
-              onClick={() => setCompareMode(!compareMode)}
-            >
-              对比
-            </button>
-          )}
-
-          <select
-            className="rounded-sm border border-hairline bg-canvas px-2 py-1 text-xs text-ink"
-            disabled={pipelineRunning}
-            value=""
-            onChange={(e) => {
-              if (e.target.value) handleRunPipeline(e.target.value);
-            }}
-          >
-            <option value="" disabled>
-              {pipelineRunning ? "Pipeline 执行中…" : "运行 Pipeline…"}
-            </option>
-            <option value="ocr">从 OCR 开始</option>
-            <option value="review">从候选合并开始</option>
-            <option value="assist-review">从 AI 复核开始</option>
-            <option value="validate-review">从校验开始</option>
-            <option value="mask">从 Mask 开始</option>
-            <option value="clean">从 Clean 开始</option>
-            <option value="pptx">从 PPTX 开始</option>
-          </select>
-
-          {dirty && <span className="text-xs text-warning">未保存</span>}
-          {saveResult && (
-            <span
-              className={cn(
-                "text-xs",
-                saveResult.ok ? "text-success" : "text-error",
+                "flex items-center gap-3 rounded-sm px-4 py-2 text-sm font-medium",
+                notice.ok
+                  ? "bg-success/10 text-success"
+                  : "bg-signature-coral/10 text-signature-coral",
               )}
             >
-              {saveResult.message}
-            </span>
+              <span className="min-w-0 flex-1" title={notice.message}>
+                {notice.message}
+              </span>
+              <button
+                type="button"
+                onClick={() => setNotice(null)}
+                className="shrink-0 rounded-xs px-2 py-0.5 transition active:bg-surface-strong"
+              >
+                关闭
+              </button>
+            </p>
           )}
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={!dirty}
-            className="rounded-lg bg-primary px-3 py-1 text-sm text-on-primary transition active:bg-primary-active disabled:opacity-40"
-          >
-            保存
-            <span className="ml-1 text-xs text-on-primary/60">⌘S</span>
-          </button>
+          {startError !== null && (
+            <p className="rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral">
+              {startError}
+            </p>
+          )}
         </div>
-      </div>
+      )}
 
       <div className="flex min-h-0 flex-1">
-        {/* 画布区域 */}
         <main className="relative min-w-0 flex-1">
           {loading ? (
-            <div className="flex h-full items-center justify-center text-sm text-muted">
+            <p className="flex h-full items-center justify-center text-sm font-medium text-muted">
               加载中…
-            </div>
-          ) : compareMode && sourceImageUrl && cleanPlateUrl ? (
-            <SliderCompare
+            </p>
+          ) : viewMode === "accept" && acceptGate !== null ? (
+            <AcceptFlow
+              gate={acceptGate}
               sourceImageUrl={sourceImageUrl}
               cleanPlateUrl={cleanPlateUrl}
+              submitting={submitting}
+              disabled={pageBusy}
+              onAccept={(note) => void handleAccept(note)}
+              onRejectRerun={handleRejectRerun}
             />
-          ) : sourceImageUrl ? (
+          ) : viewMode === "compare" &&
+            sourceImageUrl !== null &&
+            cleanPlateUrl !== null ? (
+            <div className="flex h-full items-center justify-center overflow-auto bg-surface-strong p-6">
+              <div className="w-full max-w-5xl overflow-hidden rounded-md">
+                <SliderCompare
+                  sourceImageUrl={sourceImageUrl}
+                  cleanPlateUrl={cleanPlateUrl}
+                />
+              </div>
+            </div>
+          ) : sourceImageUrl !== null ? (
             <ReviewCanvas
               imageUrl={sourceImageUrl}
               blocks={blocks}
@@ -268,78 +346,50 @@ export function SlidePage(): React.JSX.Element {
               onUpdateBlock={handleBlockUpdate}
             />
           ) : (
-            <div className="flex h-full items-center justify-center text-sm text-muted">
-              暂无源图
-            </div>
-          )}
-
-          {pendingGate && (
-            <div className="absolute bottom-4 left-4 right-4 z-20">
-              <AcceptPanel
-                gate={pendingGate}
-                onAccept={(note) => void handleAccept(note)}
-                onReject={handleReject}
-              />
-            </div>
+            <p className="flex h-full items-center justify-center text-sm font-medium text-muted">
+              暂无源图，请先执行「文字识别」阶段
+            </p>
           )}
         </main>
 
-        {/* 侧边栏 */}
-        <aside className="flex w-80 shrink-0 flex-col border-l border-hairline bg-surface-soft">
-          <div className="flex shrink-0 border-b border-hairline">
-            {(
-              [
-                ["properties", "属性"],
-                ["sources", "来源"],
-                ["queue", "队列"],
-                ["pipeline", "Pipeline"],
-              ] as const
-            ).map(([tab, label]) => (
-              <button
-                key={tab}
-                type="button"
-                className={cn(
-                  "flex-1 py-2 text-xs transition-colors",
-                  sidebarTab === tab
-                    ? "border-b-2 border-primary font-medium text-ink"
-                    : "text-muted",
-                )}
-                onClick={() => setSidebarTab(tab)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {sidebarTab === "properties" && (
-              <PropertyPanel
-                block={selectedBlock}
-                onUpdate={handleBlockUpdate}
-              />
-            )}
-            {sidebarTab === "sources" && <SourceList block={selectedBlock} />}
-            {sidebarTab === "queue" && (
-              <ConfidenceQueue
-                blocks={blocks}
-                selectedBlockId={selectedBlockId}
-                onSelect={selectBlock}
-              />
-            )}
-            {sidebarTab === "pipeline" && (
-              <div>
-                <StageProgress
-                  stageStatuses={stageStatuses}
-                  running={pipelineRunning}
+        {/* 验收布局自带右栏清单，此时隐藏复核侧边栏以免出现双侧栏 */}
+        {viewMode !== "accept" && (
+          <aside className="flex w-80 shrink-0 flex-col border-l border-hairline bg-surface-soft">
+            <div className="flex shrink-0 border-b border-hairline">
+              {SIDEBAR_TABS.map(([tab, label]) => (
+                <button
+                  key={tab}
+                  type="button"
+                  className={cn(
+                    "flex-1 py-3 text-sm transition",
+                    sidebarTab === tab
+                      ? "border-b-2 border-primary font-medium text-ink"
+                      : "text-muted active:bg-surface-strong",
+                  )}
+                  onClick={() => setSidebarTab(tab)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {sidebarTab === "properties" && (
+                <PropertyPanel
+                  block={selectedBlock}
+                  onUpdate={handleBlockUpdate}
                 />
-                {pipelineError && (
-                  <div className="mx-4 rounded-sm bg-error-light p-2 text-xs text-error">
-                    {pipelineError.code}: {pipelineError.message}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </aside>
+              )}
+              {sidebarTab === "sources" && <SourceList block={selectedBlock} />}
+              {sidebarTab === "queue" && (
+                <ConfidenceQueue
+                  blocks={blocks}
+                  selectedBlockId={selectedBlockId}
+                  onSelect={selectBlock}
+                />
+              )}
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );

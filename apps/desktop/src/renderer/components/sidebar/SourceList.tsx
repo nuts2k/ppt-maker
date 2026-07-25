@@ -1,49 +1,68 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
 
-interface SourceListProps {
-  block: TextReviewBlock | null;
-}
+/**
+ * 候选来源列表（PRD F3.2，视觉按 DESIGN.md 重做）。
+ *
+ * 每条候选是一张 `rounded-sm` hairline 卡片：来源名 + 置信度在同一行（caption），
+ * 文字内容为 `body-md`，provider 作为末行元信息。字号统一 14px，不使用文档外的 12px。
+ */
 
-const SOURCE_LABELS: Record<string, string> = {
+const SOURCE_LABELS: Readonly<Record<string, string>> = {
   offline_ocr: "离线 OCR",
   cloud_vision: "云端视觉",
   reference_text: "参考文案",
   manual: "手动",
 };
 
+interface SourceListProps {
+  block: TextReviewBlock | null;
+}
+
 export function SourceList({ block }: SourceListProps): React.JSX.Element {
   if (!block) {
     return (
-      <div className="flex h-full items-center justify-center text-muted text-sm">
-        选中文字框以查看来源
-      </div>
+      <p className="px-4 py-8 text-center text-sm font-medium text-muted">
+        选中文字框以查看候选来源
+      </p>
+    );
+  }
+
+  if (block.sources.length === 0) {
+    return (
+      <p className="px-4 py-8 text-center text-sm font-medium text-muted">
+        该文字块没有候选来源记录
+      </p>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2 p-4">
-      <h3 className="text-xs font-medium text-muted">
-        候选来源 ({block.sources.length})
+    <div className="flex flex-col gap-3 p-6">
+      <h3 className="text-sm font-medium tracking-[0.16px] text-muted">
+        候选来源 {block.sources.length}
       </h3>
-      {block.sources.map((source) => (
-        <div
-          key={`${source.kind}-${source.provider}-${source.text}`}
-          className="rounded-sm border border-hairline p-3"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-body">
-              {SOURCE_LABELS[source.kind] ?? source.kind}
-            </span>
-            {source.confidence !== null && (
-              <span className="text-xs text-muted">
-                {(source.confidence * 100).toFixed(0)}%
+      <ul className="flex flex-col gap-2">
+        {block.sources.map((source) => (
+          <li
+            key={`${source.kind}-${source.provider}-${source.text}`}
+            className="flex flex-col gap-1 rounded-sm border border-hairline p-4"
+          >
+            <div className="flex items-baseline gap-2">
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">
+                {SOURCE_LABELS[source.kind] ?? source.kind}
               </span>
-            )}
-          </div>
-          <div className="mt-1 text-sm text-ink">{source.text}</div>
-          <div className="mt-0.5 text-xs text-muted">{source.provider}</div>
-        </div>
-      ))}
+              {source.confidence !== null && (
+                <span className="shrink-0 text-sm font-medium text-muted">
+                  {(source.confidence * 100).toFixed(0)}%
+                </span>
+              )}
+            </div>
+            <p className="text-sm leading-relaxed text-body">{source.text}</p>
+            <p className="truncate text-sm text-muted" title={source.provider}>
+              {source.provider}
+            </p>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

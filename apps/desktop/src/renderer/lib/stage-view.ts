@@ -93,18 +93,6 @@ export function deriveStageViews(
   }));
 }
 
-/** 兼容旧接口（StageProgress）：合并后的扁平 map */
-export function mergeStageStatuses(
-  slide: Pick<SlideDetail, "stages">,
-  live: LiveStageMap | undefined,
-): Record<string, StageViewStatus> {
-  const result: Record<string, StageViewStatus> = {};
-  for (const view of deriveStageViews(slide, live)) {
-    result[view.stage] = view.status;
-  }
-  return result;
-}
-
 /**
  * 当前阶段：优先取正在执行的阶段；否则取第一个未完成阶段（= 断点续跑的起点）。
  * 全部完成时返回 null，调用方据此显示"已完成"。

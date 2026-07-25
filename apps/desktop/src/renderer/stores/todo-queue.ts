@@ -19,7 +19,8 @@
  */
 
 import type { SlideDetail } from "../../main/ipc/channels.js";
-import { type RunStage, stageLabel } from "../../shared/stages.js";
+import { stageLabel } from "../../shared/stages.js";
+import { awaitingAcceptance } from "../lib/accept-gate.js";
 import type { SessionRunResult } from "./run-types.js";
 
 export type TodoGroup =
@@ -84,25 +85,6 @@ const VALIDATION_FAILED_GATE = "validation-failed";
 /** pageLabel 自然序比较（page-2 < page-10） */
 const pageLabelCollator = new Intl.Collator("en", { numeric: true });
 
-function stageStatusOf(
-  slide: SlideDetail,
-  stage: RunStage,
-): string | undefined {
-  return slide.stages.find((detail) => detail.stage === stage)?.status;
-}
-
-/** 阶段已产出但对应人工验收阶段尚未完成 */
-function awaitingAcceptance(
-  slide: SlideDetail,
-  producedStage: RunStage,
-  acceptStage: RunStage,
-): boolean {
-  return (
-    stageStatusOf(slide, producedStage) === "completed" &&
-    stageStatusOf(slide, acceptStage) !== "completed"
-  );
-}
-
 function failedReason(slide: SlideDetail): string {
   if (slide.lastError !== null) {
     return `${slide.lastError.code}: ${slide.lastError.message}`;
@@ -136,7 +118,7 @@ function deriveSlideItem(
     };
   }
 
-  if (awaitingAcceptance(slide, "pptx", "accept-pptx")) {
+  if (awaitingAcceptance(slide, "accept-pptx")) {
     return {
       ...base,
       group: "accept-pptx",
@@ -145,7 +127,7 @@ function deriveSlideItem(
     };
   }
 
-  if (awaitingAcceptance(slide, "clean", "accept-clean")) {
+  if (awaitingAcceptance(slide, "accept-clean")) {
     return {
       ...base,
       group: "accept-clean",
@@ -181,4 +163,42 @@ export function deriveTodoQueue(
   }
 
   return { groups, total: items.length };
+}
+
+/** 按组顺序摊平成单一处理序列（「处理下一项」的遍历口径） */
+export function flattenTodoQueue(queue: TodoQueue): readonly TodoItem[] {
+  return queue.groups.flatMap((group) => group.items);
+}
+
+/**
+ * 「处理下一项」的目标项（PRD F3.7）。
+ *
+ * 语义：在摊平序列中从当前页之后往下找第一个**不同页**的待办；走到末尾则回绕到
+ * 序列开头继续找。回绕是刻意的——用户处理完一项后该项通常已离队，若不回绕，
+ * 处理最后一项后按钮会失效，而队列里其实还有前面的组没做完。
+ *
+ * 当前页不在队列中（例如刚验收完成）时直接返回队首。队列为空、或唯一待办就是
+ * 当前页时返回 null，调用方据此禁用按钮。
+ */
+export function nextTodoItem(
+  queue: TodoQueue,
+  currentSlideId: string | null,
+): TodoItem | null {
+  const items = flattenTodoQueue(queue);
+  if (items.length === 0) return null;
+
+  const position =
+    currentSlideId === null
+      ? -1
+      : items.findIndex((item) => item.slideId === currentSlideId);
+  if (position < 0) return items[0] ?? null;
+
+  // 从当前项之后开始环形扫描，跳过当前页自身
+  for (let step = 1; step <= items.length; step += 1) {
+    const candidate = items[(position + step) % items.length];
+    if (candidate !== undefined && candidate.slideId !== currentSlideId) {
+      return candidate;
+    }
+  }
+  return null;
 }

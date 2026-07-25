@@ -5,7 +5,11 @@ import type {
   SlideStageDetail,
 } from "../src/main/ipc/channels.js";
 import type { SessionRunResult } from "../src/renderer/stores/run-types.js";
-import { deriveTodoQueue } from "../src/renderer/stores/todo-queue.js";
+import {
+  deriveTodoQueue,
+  flattenTodoQueue,
+  nextTodoItem,
+} from "../src/renderer/stores/todo-queue.js";
 import { RUN_STAGE_SEQUENCE, type RunStage } from "../src/shared/stages.js";
 
 interface SlideFixture {
@@ -339,5 +343,80 @@ describe("deriveTodoQueue 过滤与排序", () => {
       "page-2",
       "page-10",
     ]);
+  });
+});
+
+describe("flattenTodoQueue / nextTodoItem（处理下一项）", () => {
+  /** 失败 page-01 → 待验收 PPTX page-03 → 待验收底图 page-04 三项队列 */
+  function mixedQueue() {
+    return deriveTodoQueue(
+      [
+        makeSlide({
+          pageLabel: "page-04",
+          currentStage: "clean",
+          completed: THROUGH_CLEAN,
+        }),
+        makeSlide({
+          pageLabel: "page-03",
+          currentStage: "pptx",
+          completed: THROUGH_PPTX,
+        }),
+        makeSlide({
+          pageLabel: "page-01",
+          currentStage: "ocr",
+          stageStatus: "failed",
+        }),
+      ],
+      {},
+    );
+  }
+
+  it("摊平顺序等于组顺序", () => {
+    expect(
+      flattenTodoQueue(mixedQueue()).map((item) => item.pageLabel),
+    ).toEqual(["page-01", "page-03", "page-04"]);
+  });
+
+  it("从当前页往后取下一项", () => {
+    expect(nextTodoItem(mixedQueue(), "slide-page-01")?.pageLabel).toBe(
+      "page-03",
+    );
+    expect(nextTodoItem(mixedQueue(), "slide-page-03")?.pageLabel).toBe(
+      "page-04",
+    );
+  });
+
+  it("走到末尾回绕到队首（前面的组可能还没处理完）", () => {
+    expect(nextTodoItem(mixedQueue(), "slide-page-04")?.pageLabel).toBe(
+      "page-01",
+    );
+  });
+
+  it("当前页不在队列中时返回队首", () => {
+    expect(nextTodoItem(mixedQueue(), "slide-page-99")?.pageLabel).toBe(
+      "page-01",
+    );
+    expect(nextTodoItem(mixedQueue(), null)?.pageLabel).toBe("page-01");
+  });
+
+  it("队列为空或唯一待办就是当前页时返回 null（调用方据此禁用按钮）", () => {
+    const empty = deriveTodoQueue(
+      [makeSlide({ pageLabel: "page-01", completed: ALL_DONE })],
+      {},
+    );
+    expect(nextTodoItem(empty, "slide-page-01")).toBeNull();
+
+    const single = deriveTodoQueue(
+      [
+        makeSlide({
+          pageLabel: "page-01",
+          currentStage: "clean",
+          completed: THROUGH_CLEAN,
+        }),
+      ],
+      {},
+    );
+    expect(nextTodoItem(single, "slide-page-01")).toBeNull();
+    expect(nextTodoItem(single, null)?.pageLabel).toBe("page-01");
   });
 });

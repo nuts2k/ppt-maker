@@ -2,22 +2,34 @@ import type { TextReviewBlock } from "@ppt-maker/core";
 import { useCallback } from "react";
 import { cn } from "@/lib/utils";
 
+/**
+ * 属性面板（PRD F3.2，视觉按 DESIGN.md 重做）。
+ *
+ * 交互逻辑与 V1 一致（分类、includeInMask、文字内容），仅调整视觉：
+ * - 字号统一到 `body-md` / `caption`（14px），不再使用文档外的 12px；
+ * - 无 hover 态（DESIGN.md 只定义 Default 与 Active/Pressed），选中靠背景色调切换表达；
+ * - 输入控件 `rounded-sm` + hairline 描边，与 `text-input` 规格一致。
+ */
+
+const CLASSIFICATION_OPTIONS = [
+  { value: "layout_text" as const, label: "版式文字" },
+  { value: "object_integrated_symbol" as const, label: "对象符号" },
+  { value: "uncertain" as const, label: "待定" },
+] as const;
+
+const REVIEW_STATUS_TEXT: Readonly<Record<string, string>> = {
+  unreviewed: "未复核",
+  reviewed: "已复核",
+  accepted_with_risk: "风险接受",
+};
+
+/** 分组标题：`caption`（14px / 500 / 0.16px） */
+const FIELD_LABEL = "text-sm font-medium tracking-[0.16px] text-muted";
+
 interface PropertyPanelProps {
   block: TextReviewBlock | null;
   onUpdate: (blockId: string, patch: Partial<TextReviewBlock>) => void;
 }
-
-const CLASSIFICATION_OPTIONS = [
-  {
-    value: "layout_text" as const,
-    label: "版式文字",
-  },
-  {
-    value: "object_integrated_symbol" as const,
-    label: "对象符号",
-  },
-  { value: "uncertain" as const, label: "待定" },
-] as const;
 
 export function PropertyPanel({
   block,
@@ -52,41 +64,36 @@ export function PropertyPanel({
 
   if (!block) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-muted">
+      <p className="px-4 py-8 text-center text-sm font-medium text-muted">
         选中文字框以编辑属性
-      </div>
+      </p>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4">
-      <div>
-        <div className="mb-1 text-xs font-medium text-muted">ID</div>
-        <div className="text-sm text-body">{block.id}</div>
-      </div>
-
-      <div>
-        <div className="mb-1 text-xs font-medium text-muted">文字内容</div>
+    <div className="flex flex-col gap-6 p-6">
+      <div className="flex flex-col gap-2">
+        <span className={FIELD_LABEL}>文字内容</span>
         <textarea
-          className="w-full rounded-sm border border-hairline bg-canvas px-3 py-2 text-sm text-ink focus:border-info-border focus:outline-none"
+          className="w-full rounded-sm border border-hairline bg-canvas px-4 py-3 text-sm leading-relaxed text-ink focus:border-info-border focus:outline-none"
           rows={4}
           value={block.text}
           onChange={handleTextChange}
         />
       </div>
 
-      <div>
-        <div className="mb-1 text-xs font-medium text-muted">分类</div>
+      <div className="flex flex-col gap-2">
+        <span className={FIELD_LABEL}>分类</span>
         <div className="flex flex-col gap-1">
           {CLASSIFICATION_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
               className={cn(
-                "rounded-sm border px-3 py-1.5 text-left text-sm transition-colors",
+                "rounded-sm border px-4 py-2 text-left text-sm transition",
                 block.classification === opt.value
-                  ? "border-info-border bg-surface-soft font-medium"
-                  : "border-hairline hover:bg-surface-soft",
+                  ? "border-border-strong bg-surface-strong font-medium text-ink"
+                  : "border-hairline text-body active:border-border-strong",
               )}
               onClick={() => handleClassificationChange(opt.value)}
             >
@@ -96,59 +103,66 @@ export function PropertyPanel({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 text-sm">
-        <input
-          id="include-in-mask"
-          type="checkbox"
-          checked={block.includeInMask}
-          onChange={handleIncludeInMaskToggle}
-          className="rounded"
-        />
-        <label htmlFor="include-in-mask">参与 Mask</label>
+      <div className="flex flex-col gap-2">
+        <label className="flex cursor-pointer items-center gap-3 text-sm text-body">
+          <input
+            id="include-in-mask"
+            type="checkbox"
+            checked={block.includeInMask}
+            onChange={handleIncludeInMaskToggle}
+            className="h-4 w-4 shrink-0 accent-primary"
+          />
+          参与 Mask（该块文字将被抹除）
+        </label>
         {block.includeInMask && block.classification !== "layout_text" && (
-          <span className="text-xs text-block-uncertain">
-            仅 layout_text 可参与 mask
+          // 约束提示用签名色底 + ink 文字：mustard 作为前景色在白底上对比度不足
+          <span className="rounded-xs bg-signature-mustard px-2 py-0.5 text-sm font-medium text-ink">
+            仅「版式文字」可参与 Mask，校验会报错
           </span>
         )}
       </div>
 
-      <div>
-        <div className="mb-1 text-xs font-medium text-muted">复核状态</div>
-        <div className="text-sm text-body">
-          {block.reviewStatus === "unreviewed" && "未复核"}
-          {block.reviewStatus === "reviewed" && "已复核"}
-          {block.reviewStatus === "accepted_with_risk" && "风险接受"}
-        </div>
+      <div className="flex flex-col gap-2">
+        <span className={FIELD_LABEL}>复核状态</span>
+        <span className="text-sm text-body">
+          {REVIEW_STATUS_TEXT[block.reviewStatus] ?? block.reviewStatus}
+        </span>
       </div>
 
       {block.style.fontSizePx !== null && (
-        <div>
-          <div className="mb-1 text-xs font-medium text-muted">字号</div>
-          <div className="text-sm text-body">{block.style.fontSizePx}px</div>
+        <div className="flex flex-col gap-2">
+          <span className={FIELD_LABEL}>字号</span>
+          <span className="text-sm text-body">{block.style.fontSizePx}px</span>
         </div>
       )}
 
       {block.style.colorHex !== null && (
-        <div>
-          <div className="mb-1 text-xs font-medium text-muted">颜色</div>
-          <div className="flex items-center gap-2 text-sm text-body">
-            <div
+        <div className="flex flex-col gap-2">
+          <span className={FIELD_LABEL}>颜色</span>
+          <span className="flex items-center gap-2 text-sm text-body">
+            <span
+              aria-hidden="true"
               className="h-4 w-4 rounded-xs border border-hairline"
               style={{ backgroundColor: block.style.colorHex }}
             />
             {block.style.colorHex}
-          </div>
+          </span>
         </div>
       )}
 
-      <div>
-        <div className="mb-1 text-xs font-medium text-muted">位置</div>
-        <div className="grid grid-cols-2 gap-2 text-xs text-body">
-          <div>X: {Math.round(block.bboxPx.x)}</div>
-          <div>Y: {Math.round(block.bboxPx.y)}</div>
-          <div>W: {Math.round(block.bboxPx.width)}</div>
-          <div>H: {Math.round(block.bboxPx.height)}</div>
+      <div className="flex flex-col gap-2">
+        <span className={FIELD_LABEL}>位置（源图像素）</span>
+        <div className="grid grid-cols-2 gap-2 text-sm text-body">
+          <span>X {Math.round(block.bboxPx.x)}</span>
+          <span>Y {Math.round(block.bboxPx.y)}</span>
+          <span>宽 {Math.round(block.bboxPx.width)}</span>
+          <span>高 {Math.round(block.bboxPx.height)}</span>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-2 border-t border-hairline pt-4">
+        <span className={FIELD_LABEL}>块 ID</span>
+        <span className="break-all text-sm text-muted">{block.id}</span>
       </div>
     </div>
   );
