@@ -25,6 +25,15 @@ const config: Config = {
         "success-border": "#39bf45",
         "on-primary": "#ffffff",
         "on-dark": "#ffffff",
+        // DESIGN.md 签名色面（品牌电压），同时充当状态语义色：
+        // failed/interrupted → coral；stale → mustard；待验收强调 → cream
+        "signature-coral": "#aa2d00",
+        "signature-forest": "#0a2e0e",
+        "signature-cream": "#f5e9d4",
+        "signature-peach": "#fcab79",
+        "signature-mint": "#a8d8c4",
+        "signature-yellow": "#f4d35e",
+        "signature-mustard": "#d9a441",
         error: "#8b1a1a",
         "error-light": "#fef2f2",
         "error-border": "#dc4545",

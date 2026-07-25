@@ -49,14 +49,27 @@
 
 ## 阶段 C：控制台（ConsolePage）
 
-- [ ] C1 AppShell / top-nav 重做（DESIGN.md top-nav 规格 + 导出主按钮 + doctor chip）
-- [ ] C2 RunControlBar：空闲摘要态 + 执行进度态 + 停止控制
-- [ ] C3 SlideCard 重做：阶段轨道 10 点 + 当前阶段中文名 + 计时 + 失败错误条；SlideCardGrid 布局
-- [ ] C4 TodoQueuePanel：四组分组、计数、点击直达
-- [ ] C5 ActivityPanel：折叠抽屉、日期分组
-- [ ] C6 空态（未打开 deck）与创建/打开流程衔接
+- [x] C1 AppShell / top-nav 重做（DESIGN.md top-nav 规格 + 导出主按钮 + doctor chip）
+- [x] C2 RunControlBar：空闲摘要态 + 执行进度态 + 停止控制
+- [x] C3 SlideCard 重做：阶段轨道 10 点 + 当前阶段中文名 + 计时 + 失败错误条；SlideCardGrid 布局
+- [x] C4 TodoQueuePanel：四组分组、计数、点击直达
+- [x] C5 ActivityPanel：折叠抽屉、日期分组
+- [x] C6 空态（未打开 deck）与创建/打开流程衔接
 
-验证：dev 模式真实 deck 全流程走查——打开、批量执行、卡片实时推进、停止、失败展示、重启后状态恢复。
+验证：`pnpm typecheck` / `pnpm test`（101 项）/ `pnpm build` 三项全绿；`biome check` 无新增报错。**dev 模式真实 deck 全流程走查待人工执行**（打开、批量执行、卡片实时推进、停止、失败展示、重启后状态恢复）。
+
+**实施补充（阶段 C 实际产出，供后续阶段对齐）**
+
+- 新增共享基元 `renderer/lib/stage-view.ts`（纯函数，17 个单测）：`deriveStageViews` 合并耐久层 + 会话层产出 10 阶段展示态、`currentStageView`（优先 running，其次第一个未完成 = 断点续跑起点）、`completedStageCount` / `hasFailingStage` / `formatElapsed` / `elapsedSince`，以及**状态色唯一表** `STAGE_DOT_CLASS` 与 `STAGE_STATUS_TEXT`。轨道、卡片、控制条、日志一律取该表，组件内禁止自行拼色。同样采用相对 `.js` 导入以便 vitest 解析。
+- `tailwind.config.ts` 补齐 DESIGN.md 签名色（coral / forest / cream / peach / mint / yellow / mustard）。此前配置缺失这些 token，是 V1 用 `error` / `warning` 等文档外颜色的根因。失败态一律 `signature-coral`、失效态 `signature-mustard`、待验收强调 `signature-cream`。
+- **拖拽区并入 TopNav**：原 AppShell 的 44px 空白标题栏 + 64px 导航共占 108px。改为导航条自身 `WebkitAppRegion: drag` + `pl-20` 让开红绿灯，交互簇显式 `no-drag`。后续在 TopNav 内新增可点元素必须放进该 no-drag 容器，否则点击会被拖拽吞掉。
+- **计时重渲染驱动**：SlideCard 与 RunControlBar 均须 `useRunStore((s) => s.tick)` 订阅 1s ticker，耗时由 `stageStartedAt` 实时算出而非存增量。新增任何展示耗时的组件都要照做。
+- **zustand 订阅纪律**：逐字段 selector，派生（队列分组、日期分组、活动页过滤）一律放组件内 `useMemo`。selector 内返回新数组/新对象会触发无限重渲染——`SlideCardGrid` 因此订阅 `slides` 后再 memo 过滤，而不是用 `activeSlides()`。
+- SlideCard 外层用 `div + role="button"`（而非 `<button>`）：阶段轨道在传入 `onStageClick` 时会渲染按钮，`button` 嵌套非法。阶段 D 的 StageRail 复用同一 `StageTrack`（`size="md"`）即可获得"从该阶段重跑"入口。
+- 活动日志的拉取集中在 `ConsolePage`（deckPath 变化时 load / 清空），`ActivityPanel` 只消费 store，避免折叠展开触发重复 IPC。
+- 删除 V1 残留：`pages/DeckPage.tsx`、`components/deck/SlideCard.tsx`、`components/deck/SlideGrid.tsx`（全仓 grep 确认无引用）。`App.tsx` 路由改为 `ConsolePage`。
+
+**遗留（未变，仍为 pre-existing）**：`biome check` 3 处 V1 报错——`TextBlockOverlay.tsx` 的 `noUselessFragments` / `useSemanticElements`（阶段 E2），`SlidePage.tsx` 的 `useExhaustiveDependencies`（阶段 D 随工具栏重写处理）。
 
 ## 阶段 D：单页复核（SlidePage 壳层重写）
 
