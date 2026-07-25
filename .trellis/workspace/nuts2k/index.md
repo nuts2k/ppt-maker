@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 1
-- **Last Active**: 2026-07-20
+- **Total Sessions**: 2
+- **Last Active**: 2026-07-25
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~40 | Active |
+| `journal-1.md` | ~108 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 2 | 2026-07-25 | M4 E4 端到端走查：修复四处静默失败并沉淀诊断路径 | `cc98634`, `2e04671`, `618f81e` | `main` |
 | 1 | 2026-07-20 | 完成 M0 项目骨架与技术基线 | `2698695` | `main` |
 <!-- @@@/auto:session-history -->
 

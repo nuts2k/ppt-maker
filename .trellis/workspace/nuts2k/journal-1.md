@@ -71,3 +71,38 @@ V1 桌面工作台被判定用户体验不合格（无批量执行、无进度/�
 - 从 implement.md **阶段 A**（main 进程 DeckRunner + ActivityLog + deck:status-detailed）开始，按 A→E 顺序推进，每阶段 commit
 - 上下文加载顺序：implement.jsonl → prd.md → design.md → implement.md（全部在任务目录内，不依赖任何本机记忆）
 - 验证需准备真实测试 deck（16:9 截图）；跑过 assist-review/clean 需 API 环境变量
+
+
+## Session 2: M4 E4 端到端走查：修复四处静默失败并沉淀诊断路径
+
+**Date**: 2026-07-25
+**Task**: M4 E4 端到端走查：修复四处静默失败并沉淀诊断路径
+**Branch**: `main`
+
+### Summary
+
+真实 deck 端到端走查 M4 桌面复核工作台，暴露并修复 4 个缺陷（连同上轮 3 个共 7 个），共同特征是失败被静默吞掉、界面表现均为「点了没反应」：(1) accept-clean 提示缺底板但产物齐全——loadSlide 只依赖 workspacePath，图是进页快照，闸门却走事件驱动，新增 reloadImages 在 pageBusy 边沿刷新并加切页竞态守卫；(2)「重跑」连点 6 次无反应——run-from 守卫与 isStageReusable 都只认 completed，显式重跑被当断点续跑跳过（日志显示每次 run 仅 2ms 且无 stage-start），根因是仓库 6 处失效调用清一色为「指纹变化」，缺「人工判定不合格」路径，新增 invalidateSlideStage 打通 slide:invalidate-stage 通道；(3) report 跑成功但收尾只写 assets、不写 stages/attempts，状态恒 pending——既有 5 个用例全部只断言报告内容、无一碰 manifest 状态，故存活至端到端走查；(4) 缺陷 2 修复的副作用：阶段点位误触从无害变为作废下游并重调付费 API，加已完成阶段二次确认。E4 五步全通过，两页 10 阶段 completed，导出原生 2 页、PowerPoint 确认无误。294 测试全绿。spec 沉淀：backend/contracts.md 新增「阶段落库与强制重跑契约」7 段式、新建 guides/silent-failure-thinking-guide.md、frontend/state-management.md 补一条 Common Mistakes。另记三项遗留未改：网关不遵守 size 参数（请求 2048x1152 实返 1672x940，size.ok 恒 false 是正确检测）、clean_plate asset 尺寸硬编码与磁盘不符、accept-clean 清单与自动检查一一对应且勾选不落库。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cc98634` | (see git log) |
+| `2e04671` | (see git log) |
+| `618f81e` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
