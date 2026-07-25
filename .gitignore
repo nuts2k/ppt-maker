@@ -19,3 +19,6 @@
 *.log
 .env
 .env.local
+
+# TypeScript incremental build metadata.
+*.tsbuildinfo

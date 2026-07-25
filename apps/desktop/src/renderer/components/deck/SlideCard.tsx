@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useUIStore } from "@/stores/ui-store";
-import type { DeckStatusSlide } from "../../../main/ipc/channels.js";
+import type { SlideDetail } from "../../../main/ipc/channels.js";
 
 interface SlideCardProps {
-  slide: DeckStatusSlide;
+  slide: SlideDetail;
 }
 
 // 阶段状态到徽标样式与文案的映射
@@ -26,21 +26,14 @@ const STAGE_STATUS_STYLE: Record<string, StatusStyle> = {
   pending: PENDING_STYLE,
 };
 
-// 从 workspacePath 提取页面名称（取路径最后一段）
-function pageNameFromPath(workspacePath: string): string {
-  const segments = workspacePath.split(/[\\/]/).filter(Boolean);
-  return segments[segments.length - 1] ?? workspacePath;
-}
-
 export function SlideCard({ slide }: SlideCardProps): React.JSX.Element {
-  const selectSlide = useUIStore((s) => s.selectSlide);
-  const setView = useUIStore((s) => s.setView);
+  const openSlide = useUIStore((s) => s.openSlide);
   const [thumbnail, setThumbnail] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     void window.api.slide
-      .loadImage(slide.workspacePath, "source_image")
+      .loadImage(slide.absWorkspacePath, "source_image")
       .then((dataUrl) => {
         if (!cancelled) setThumbnail(dataUrl);
       })
@@ -50,14 +43,14 @@ export function SlideCard({ slide }: SlideCardProps): React.JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [slide.workspacePath]);
+  }, [slide.absWorkspacePath]);
 
   const statusStyle = STAGE_STATUS_STYLE[slide.stageStatus] ?? PENDING_STYLE;
-  const pageName = pageNameFromPath(slide.workspacePath);
+  // pageLabel 由 main 侧给出（工作区目录名），renderer 不再自行解析路径
+  const pageName = slide.pageLabel;
 
   function handleClick(): void {
-    selectSlide(slide.slideId);
-    setView("slide");
+    openSlide(slide.slideId);
   }
 
   return (

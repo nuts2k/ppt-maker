@@ -1,17 +1,20 @@
 import { create } from "zustand";
-import type {
-  DeckStatusResult,
-  DeckStatusSlide,
-} from "../../main/ipc/channels.js";
-
-type DeckSummary = DeckStatusResult["summary"];
+import type { SlideDetail } from "../../main/ipc/channels.js";
+import {
+  applyDetailedResult,
+  type DeckSummary,
+  filterActiveSlides,
+  findSlideById,
+  replaceSlide,
+} from "./deck-merge.js";
 
 interface DeckState {
   // Deck 根目录路径，null 表示尚未打开任何 Deck
   deckPath: string | null;
   name: string | null;
   deckId: string | null;
-  slides: DeckStatusSlide[];
+  /** 逐页耐久状态（阶段轨道 / 最近失败 / 阶段耗时），来源 deck:status-detailed */
+  slides: readonly SlideDetail[];
   summary: DeckSummary | null;
   // 正在执行 IPC 请求时为 true，用于展示加载态
   loading: boolean;
@@ -24,20 +27,15 @@ interface DeckState {
     name?: string,
   ): Promise<void>;
   refreshStatus(): Promise<void>;
+  refreshSlide(slideId: string): Promise<void>;
   addSlide(imagePath: string): Promise<void>;
   removeSlide(pageLabel: string): Promise<void>;
   reset(): void;
-}
 
-// 将 IPC 返回的 Deck 状态写入 store
-function applyResult(result: DeckStatusResult): Partial<DeckState> {
-  return {
-    deckPath: result.deckPath,
-    name: result.name,
-    deckId: result.deckId,
-    slides: [...result.slides],
-    summary: result.summary,
-  };
+  /** 按 slideId 取页详情；SlideDetail 已含 absWorkspacePath / pageLabel，调用方无需拼路径 */
+  getSlide(slideId: string): SlideDetail | undefined;
+  /** 未被软删除的页，控制台与批量执行的展示口径 */
+  activeSlides(): readonly SlideDetail[];
 }
 
 export const useDeckStore = create<DeckState>((set, get) => ({
@@ -52,8 +50,10 @@ export const useDeckStore = create<DeckState>((set, get) => ({
   async openDeck(path) {
     set({ loading: true, error: null });
     try {
-      const result = await window.api.deck.open(path);
-      set({ ...applyResult(result), loading: false });
+      // 先 open 建立会话并校验目录合法，再取 detailed 填充阶段轨道
+      const opened = await window.api.deck.open(path);
+      const detailed = await window.api.deck.statusDetailed(opened.deckPath);
+      set({ ...applyDetailedResult(detailed), loading: false });
     } catch (err) {
       set({ loading: false, error: toMessage(err) });
       throw err;
@@ -63,12 +63,14 @@ export const useDeckStore = create<DeckState>((set, get) => ({
   async createDeck(imagesDir, workspacePath, name) {
     set({ loading: true, error: null });
     try {
-      const result = await window.api.deck.create(
+      // 实际 deck 路径由 main 生成（工作区子目录名），必须以返回值为准
+      const created = await window.api.deck.create(
         imagesDir,
         workspacePath,
         name,
       );
-      set({ ...applyResult(result), loading: false });
+      const detailed = await window.api.deck.statusDetailed(created.deckPath);
+      set({ ...applyDetailedResult(detailed), loading: false });
     } catch (err) {
       set({ loading: false, error: toMessage(err) });
       throw err;
@@ -80,10 +82,39 @@ export const useDeckStore = create<DeckState>((set, get) => ({
     if (!deckPath) return;
     set({ loading: true, error: null });
     try {
-      const result = await window.api.deck.status(deckPath);
-      set({ ...applyResult(result), loading: false });
+      const detailed = await window.api.deck.statusDetailed(deckPath);
+      set({ ...applyDetailedResult(detailed), loading: false });
     } catch (err) {
       set({ loading: false, error: toMessage(err) });
+      throw err;
+    }
+  },
+
+  /**
+   * 单页增量刷新（page-done 后调用）。
+   *
+   * 权衡：当前 IPC 只有 deck 级 `status-detailed`，没有单页接口（阶段 A 已定型，
+   * 本阶段不改 main）。因此仍整体拉取，但**只替换该页对象**并且不置 loading——
+   * 其余页保持原引用，批量执行中卡片不会整片重渲染、也不会闪加载态。
+   * 目标页不在返回结果中（例如刚被移除）时退化为整体套用。
+   */
+  async refreshSlide(slideId) {
+    const { deckPath } = get();
+    if (!deckPath) return;
+    try {
+      const detailed = await window.api.deck.statusDetailed(deckPath);
+      const next = findSlideById(detailed.slides, slideId);
+      if (!next) {
+        set(applyDetailedResult(detailed));
+        return;
+      }
+      set((state) => ({
+        slides: replaceSlide(state.slides, next),
+        // 摘要是 deck 级聚合，随同一次请求一并更新，避免与卡片状态脱节
+        summary: detailed.summary,
+      }));
+    } catch (err) {
+      set({ error: toMessage(err) });
       throw err;
     }
   },
@@ -125,7 +156,30 @@ export const useDeckStore = create<DeckState>((set, get) => ({
       error: null,
     });
   },
+
+  getSlide(slideId) {
+    return findSlideById(get().slides, slideId);
+  },
+
+  activeSlides() {
+    return filterActiveSlides(get().slides);
+  },
 }));
+
+/** 组件内订阅用选择器：`useDeckStore((s) => selectSlideById(s, id))` */
+export function selectSlideById(
+  state: DeckState,
+  slideId: string,
+): SlideDetail | undefined {
+  return findSlideById(state.slides, slideId);
+}
+
+/** 组件内订阅用选择器；返回新数组，需配合 useMemo 或浅比较使用 */
+export function selectActiveSlides(state: DeckState): readonly SlideDetail[] {
+  return filterActiveSlides(state.slides);
+}
+
+export type { DeckState };
 
 function toMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);

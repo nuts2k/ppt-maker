@@ -1,17 +1,11 @@
+import { RUN_STAGE_SEQUENCE, STAGE_LABELS } from "@shared/stages";
 import { cn } from "@/lib/utils";
 
-const STAGE_ORDER = [
-  { key: "init", label: "初始化" },
-  { key: "ocr", label: "OCR" },
-  { key: "review", label: "候选合并" },
-  { key: "assist-review", label: "AI 复核" },
-  { key: "mask", label: "Mask" },
-  { key: "clean", label: "Clean Plate" },
-  { key: "accept-clean", label: "验收 Clean" },
-  { key: "pptx", label: "PPTX" },
-  { key: "accept-pptx", label: "验收 PPTX" },
-  { key: "report", label: "报告" },
-] as const;
+// 轨道一律采用执行序列（含 validate-review、不含 init），与卡片轨道、活动日志同源
+const STAGE_ORDER = RUN_STAGE_SEQUENCE.map((key) => ({
+  key,
+  label: STAGE_LABELS[key],
+}));
 
 interface StageProgressProps {
   stageStatuses: Record<string, string>;

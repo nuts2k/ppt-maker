@@ -27,12 +27,25 @@
 
 ## 阶段 B：renderer 状态层
 
-- [ ] B1 删除 `pipeline-store`；新建 `run-store`（订阅 deck:run-progress，1s ticker 计时）
-- [ ] B2 `deck-store` 改造：status-detailed 数据结构；page-done 增量刷新
-- [ ] B3 新建 `activity-store`；`ui-store` 路由与队列面板态
-- [ ] B4 待办队列派生 selector（耐久层 + 会话层合并，见 design.md 3.2）
+- [x] B1 删除 `pipeline-store`；新建 `run-store`（订阅 deck:run-progress，1s ticker 计时）
+- [x] B2 `deck-store` 改造：status-detailed 数据结构；page-done 增量刷新
+- [x] B3 新建 `activity-store`；`ui-store` 路由与队列面板态
+- [x] B4 待办队列派生 selector（耐久层 + 会话层合并，见 design.md 3.2）
 
 验证：`pnpm typecheck`；store 单测（队列派生逻辑必测：failed/stale/待验收 clean/待验收 pptx 四组）。
+
+**实施补充（阶段 B 实际产出，供后续阶段对齐）**
+
+- **可测性约定**：纯逻辑模块（`run-reducer` / `run-bridge` / `deck-merge` / `todo-queue` / `activity-format` / `run-types`）一律用相对 `.js` 导入且不触碰 `window`，因此能同时被 vite（renderer）与 vitest + `tsconfig.node.json`（NodeNext）解析；zustand store 文件保留 `@/`、`@shared` alias 风格。测试只针对纯函数，不 import store。
+- **单一订阅**：`run-store` 是 `deck:run-progress` 的唯一订阅方，`subscribe(onEvent?)` 把事件扇出给其它 store；扇出规则在 `stores/run-bridge.ts`（纯函数，已单测），由 `hooks/useRunBridge.ts` 在 `App` 根挂载一次。`page-done` → `deck-store.refreshSlide`；`run-done` → deck 全量刷新 + `activity.load` 覆盖乐观追加。
+- `deck-store.refreshSlide` 权衡：main 无单页 detailed IPC（阶段 A 已定型），实现为拉全量后**只替换该页对象**且不置 loading，避免批量执行时卡片整片重渲染。
+- 待办队列：每页最多一项，优先级 `failed > revalidate > accept-pptx > accept-clean`；组内 `pageLabel` 用 `Intl.Collator` 数字序。`validation-failed` 仅存在于会话层，重启后由耐久层归入失败组（已在代码注释与测试中固化）。
+- `ui-store`：取消 V1 的 `welcome` 视图，改为 `console | slide`；新增 `openSlide` / `backToConsole` 与队列/活动面板展开态。**`DeckPage` 暂充当 console 视图**，阶段 C 由 `ConsolePage` 取代。
+- `SlidePage` 为过渡适配（阶段 D 重写）：改用 `run-store` 派生——`stageStatuses` = 耐久层 `slide.stages` 叠加本次 run 的 `liveStages`；闸门由 `sessionResults[slideId]` 推导；单页执行走 `runSlide`（与批量共用 DeckRunner 队列）。
+- `StageProgress` 轨道改用 `RUN_STAGE_SEQUENCE`（原为含 `init`、缺 `validate-review` 的旧序列），与卡片轨道、活动日志同源。
+- 测试增至 84 个（新增 56）：`run-reducer` 17、`activity-format` 16、`todo-queue` 13、`deck-store-merge` 5、`run-bridge` 5。`pnpm typecheck` / `pnpm test` / `pnpm build` 三项全绿。
+
+**遗留（未变，仍为 pre-existing）**：`pnpm format:check` 3 处 V1 lint 报错——`TextBlockOverlay.tsx` 的 `noUselessFragments` / `useSemanticElements`（阶段 E2），`SlidePage.tsx` 的 `useExhaustiveDependencies`（Cmd+S 过期闭包，阶段 D 随工具栏重写处理）。
 
 ## 阶段 C：控制台（ConsolePage）
 
@@ -69,6 +82,6 @@
 
 ## 遗留清理
 
-- [ ] 移除 `slide:run` 通道后确认 renderer 无残留调用
-- [ ] 删除 pipeline-store 及其引用
+- [x] 移除 `slide:run` 通道后确认 renderer 无残留调用
+- [x] 删除 pipeline-store 及其引用（阶段 B 收口，全仓 grep 已确认无残留）
 - [ ] `out/` 构建产物按现有仓库习惯处理（当前被 git 跟踪，保持现状，不在本任务内改变策略）

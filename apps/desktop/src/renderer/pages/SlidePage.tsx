@@ -1,5 +1,6 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
-import { useCallback, useEffect, useState } from "react";
+import { isRunStage } from "@shared/stages";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ReviewCanvas } from "@/components/canvas/ReviewCanvas";
 import { SliderCompare } from "@/components/compare/SliderCompare";
 import { AcceptPanel } from "@/components/pipeline/AcceptPanel";
@@ -9,27 +10,32 @@ import { PropertyPanel } from "@/components/sidebar/PropertyPanel";
 import { SourceList } from "@/components/sidebar/SourceList";
 import { cn } from "@/lib/utils";
 import { useDeckStore } from "@/stores/deck-store";
-import { usePipelineStore } from "@/stores/pipeline-store";
+import { useRunStore } from "@/stores/run-store";
 import { useSlideStore } from "@/stores/slide-store";
 import { useUIStore } from "@/stores/ui-store";
 
 type SidebarTab = "properties" | "sources" | "queue" | "pipeline";
 
+/** 人工闸门对应的验收阶段 */
+const ACCEPT_STAGES = ["accept-clean", "accept-pptx"] as const;
+type AcceptStage = (typeof ACCEPT_STAGES)[number];
+
+function isAcceptStage(value: string | null): value is AcceptStage {
+  return value !== null && (ACCEPT_STAGES as readonly string[]).includes(value);
+}
+
 export function SlidePage(): React.JSX.Element {
   const selectedSlideId = useUIStore((s) => s.selectedSlideId);
   const selectedBlockId = useUIStore((s) => s.selectedBlockId);
   const selectBlock = useUIStore((s) => s.selectBlock);
-  const setView = useUIStore((s) => s.setView);
+  const backToConsole = useUIStore((s) => s.backToConsole);
   const slides = useDeckStore((s) => s.slides);
   const deckPath = useDeckStore((s) => s.deckPath);
-  const refreshStatus = useDeckStore((s) => s.refreshStatus);
+  const refreshSlide = useDeckStore((s) => s.refreshSlide);
 
   const slide = slides.find((s) => s.slideId === selectedSlideId);
-  const workspacePath = slide
-    ? deckPath
-      ? `${deckPath}/${slide.workspacePath}`
-      : slide.workspacePath
-    : null;
+  // SlideDetail 已提供绝对路径，renderer 不再与 deckPath 拼接
+  const workspacePath = slide?.absWorkspacePath ?? null;
 
   const loadSlide = useSlideStore((s) => s.loadSlide);
   const saveReview = useSlideStore((s) => s.saveReview);
@@ -41,12 +47,39 @@ export function SlidePage(): React.JSX.Element {
   const dirty = useSlideStore((s) => s.dirty);
   const loading = useSlideStore((s) => s.loading);
 
-  const pipelineRunning = usePipelineStore((s) => s.running);
-  const stageStatuses = usePipelineStore((s) => s.stageStatuses);
-  const pendingGate = usePipelineStore((s) => s.pendingGate);
-  const pipelineError = usePipelineStore((s) => s.error);
-  const startPipeline = usePipelineStore((s) => s.startPipeline);
-  const acceptGate = usePipelineStore((s) => s.acceptGate);
+  const runStatus = useRunStore((s) => s.status);
+  const liveStages = useRunStore((s) => s.liveStages);
+  const sessionResults = useRunStore((s) => s.sessionResults);
+  const startError = useRunStore((s) => s.startError);
+  const runSlide = useRunStore((s) => s.runSlide);
+  const clearSessionResult = useRunStore((s) => s.clearSessionResult);
+
+  const pipelineRunning = runStatus !== "idle";
+  const slideId = slide?.slideId ?? null;
+
+  // 阶段展示 = 耐久层（manifest）叠加本次 run 的实时状态
+  const stageStatuses = useMemo<Record<string, string>>(() => {
+    const merged: Record<string, string> = {};
+    for (const detail of slide?.stages ?? []) {
+      merged[detail.stage] = detail.status;
+    }
+    const live = slideId === null ? undefined : liveStages[slideId];
+    for (const [stage, status] of Object.entries(live ?? {})) {
+      merged[stage] = status;
+    }
+    return merged;
+  }, [slide, liveStages, slideId]);
+
+  const sessionResult = slideId === null ? undefined : sessionResults[slideId];
+  const pendingGate =
+    sessionResult?.gate === "manual" && isAcceptStage(sessionResult.stoppedAt)
+      ? sessionResult.stoppedAt
+      : null;
+  const pipelineError =
+    sessionResult?.error ??
+    (startError === null
+      ? null
+      : { code: "RUN_START_REJECTED", message: startError });
 
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("properties");
   const [compareMode, setCompareMode] = useState(false);
@@ -100,38 +133,37 @@ export function SlidePage(): React.JSX.Element {
     }
   }
 
+  // 执行统一交给 DeckRunner（单页也走同一队列），进度由 run-store 的事件驱动
   const handleRunPipeline = useCallback(
     (from: string) => {
-      if (!workspacePath) return;
-      void startPipeline(workspacePath, from, {
+      if (deckPath === null || slideId === null || !isRunStage(from)) return;
+      void runSlide(deckPath, slideId, from, {
         confirmApi: true,
         confirmUpload: true,
-      }).then(() => {
-        void refreshStatus();
       });
       setSidebarTab("pipeline");
     },
-    [workspacePath, startPipeline, refreshStatus],
+    [deckPath, slideId, runSlide],
   );
 
   const handleAccept = useCallback(
     async (note: string) => {
-      if (!workspacePath || !pendingGate) return;
+      if (!workspacePath || !pendingGate || slideId === null) return;
       const api = window.api;
       if (pendingGate === "accept-clean") {
         await api.slide.acceptClean(workspacePath, { note });
       } else {
         await api.slide.acceptPptx(workspacePath, { note });
       }
-      acceptGate();
-      void refreshStatus();
+      clearSessionResult(slideId);
+      void refreshSlide(slideId);
     },
-    [workspacePath, pendingGate, acceptGate, refreshStatus],
+    [workspacePath, pendingGate, slideId, clearSessionResult, refreshSlide],
   );
 
   const handleReject = useCallback(() => {
-    acceptGate();
-  }, [acceptGate]);
+    if (slideId !== null) clearSessionResult(slideId);
+  }, [slideId, clearSessionResult]);
 
   if (workspacePath === null) {
     return (
@@ -148,12 +180,12 @@ export function SlidePage(): React.JSX.Element {
         <button
           type="button"
           className="rounded-sm border border-hairline px-2.5 py-1 text-xs text-body transition active:border-border-strong"
-          onClick={() => setView("deck")}
+          onClick={backToConsole}
         >
           ← 返回
         </button>
         <span className="text-sm font-medium text-ink">
-          {slide?.workspacePath.split("/").pop() ?? selectedSlideId}
+          {slide?.pageLabel ?? selectedSlideId}
         </span>
 
         <div className="ml-auto flex items-center gap-2">

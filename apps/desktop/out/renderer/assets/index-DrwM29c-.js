@@ -12492,7 +12492,7 @@ const createImpl = (createState) => {
   return useBoundStore;
 };
 const create = ((createState) => createState ? createImpl(createState) : createImpl);
-function applyResult(result) {
+function applyDetailedResult(result) {
   return {
     deckPath: result.deckPath,
     name: result.name,
@@ -12500,6 +12500,19 @@ function applyResult(result) {
     slides: [...result.slides],
     summary: result.summary
   };
+}
+function replaceSlide(slides, next) {
+  const index = slides.findIndex((slide) => slide.slideId === next.slideId);
+  if (index < 0) return slides;
+  const merged = [...slides];
+  merged[index] = next;
+  return merged;
+}
+function findSlideById(slides, slideId) {
+  return slides.find((slide) => slide.slideId === slideId);
+}
+function filterActiveSlides(slides) {
+  return slides.filter((slide) => !slide.removed);
 }
 const useDeckStore = create((set, get) => ({
   deckPath: null,
@@ -12512,24 +12525,26 @@ const useDeckStore = create((set, get) => ({
   async openDeck(path) {
     set({ loading: true, error: null });
     try {
-      const result = await window.api.deck.open(path);
-      set({ ...applyResult(result), loading: false });
+      const opened = await window.api.deck.open(path);
+      const detailed = await window.api.deck.statusDetailed(opened.deckPath);
+      set({ ...applyDetailedResult(detailed), loading: false });
     } catch (err) {
-      set({ loading: false, error: toMessage(err) });
+      set({ loading: false, error: toMessage$2(err) });
       throw err;
     }
   },
   async createDeck(imagesDir, workspacePath, name) {
     set({ loading: true, error: null });
     try {
-      const result = await window.api.deck.create(
+      const created = await window.api.deck.create(
         imagesDir,
         workspacePath,
         name
       );
-      set({ ...applyResult(result), loading: false });
+      const detailed = await window.api.deck.statusDetailed(created.deckPath);
+      set({ ...applyDetailedResult(detailed), loading: false });
     } catch (err) {
-      set({ loading: false, error: toMessage(err) });
+      set({ loading: false, error: toMessage$2(err) });
       throw err;
     }
   },
@@ -12538,10 +12553,38 @@ const useDeckStore = create((set, get) => ({
     if (!deckPath) return;
     set({ loading: true, error: null });
     try {
-      const result = await window.api.deck.status(deckPath);
-      set({ ...applyResult(result), loading: false });
+      const detailed = await window.api.deck.statusDetailed(deckPath);
+      set({ ...applyDetailedResult(detailed), loading: false });
     } catch (err) {
-      set({ loading: false, error: toMessage(err) });
+      set({ loading: false, error: toMessage$2(err) });
+      throw err;
+    }
+  },
+  /**
+   * 单页增量刷新（page-done 后调用）。
+   *
+   * 权衡：当前 IPC 只有 deck 级 `status-detailed`，没有单页接口（阶段 A 已定型，
+   * 本阶段不改 main）。因此仍整体拉取，但**只替换该页对象**并且不置 loading——
+   * 其余页保持原引用，批量执行中卡片不会整片重渲染、也不会闪加载态。
+   * 目标页不在返回结果中（例如刚被移除）时退化为整体套用。
+   */
+  async refreshSlide(slideId) {
+    const { deckPath } = get();
+    if (!deckPath) return;
+    try {
+      const detailed = await window.api.deck.statusDetailed(deckPath);
+      const next = findSlideById(detailed.slides, slideId);
+      if (!next) {
+        set(applyDetailedResult(detailed));
+        return;
+      }
+      set((state) => ({
+        slides: replaceSlide(state.slides, next),
+        // 摘要是 deck 级聚合，随同一次请求一并更新，避免与卡片状态脱节
+        summary: detailed.summary
+      }));
+    } catch (err) {
+      set({ error: toMessage$2(err) });
       throw err;
     }
   },
@@ -12553,7 +12596,7 @@ const useDeckStore = create((set, get) => ({
       await window.api.deck.addSlide(deckPath, imagePath);
       await refreshStatus();
     } catch (err) {
-      set({ loading: false, error: toMessage(err) });
+      set({ loading: false, error: toMessage$2(err) });
       throw err;
     }
   },
@@ -12565,7 +12608,7 @@ const useDeckStore = create((set, get) => ({
       await window.api.deck.removeSlide(deckPath, pageLabel);
       await refreshStatus();
     } catch (err) {
-      set({ loading: false, error: toMessage(err) });
+      set({ loading: false, error: toMessage$2(err) });
       throw err;
     }
   },
@@ -12579,9 +12622,15 @@ const useDeckStore = create((set, get) => ({
       loading: false,
       error: null
     });
+  },
+  getSlide(slideId) {
+    return findSlideById(get().slides, slideId);
+  },
+  activeSlides() {
+    return filterActiveSlides(get().slides);
   }
 }));
-function toMessage(err) {
+function toMessage$2(err) {
   return err instanceof Error ? err.message : String(err);
 }
 function AppShell({ children }) {
@@ -12598,10 +12647,361 @@ function AppShell({ children }) {
     /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "min-h-0 flex-1", children })
   ] });
 }
+const RUN_STAGE_SEQUENCE = [
+  "ocr",
+  "review",
+  "assist-review",
+  "validate-review",
+  "mask",
+  "clean",
+  "accept-clean",
+  "pptx",
+  "accept-pptx",
+  "report"
+];
+const STAGE_LABELS = {
+  ocr: "文字识别",
+  review: "生成复核稿",
+  "assist-review": "AI 辅助复核",
+  "validate-review": "复核校验",
+  mask: "生成遮罩",
+  clean: "生成干净底图",
+  "accept-clean": "验收底图",
+  pptx: "生成 PPTX",
+  "accept-pptx": "验收 PPTX",
+  report: "生成报告"
+};
+function stageLabel(stage) {
+  return STAGE_LABELS[stage] ?? stage;
+}
+function isRunStage(value) {
+  return RUN_STAGE_SEQUENCE.includes(value);
+}
+function runEventToActivity(event, ctx) {
+  switch (event.kind) {
+    case "run-start":
+      return build({
+        kind: "run-start",
+        result: "info",
+        detail: `开始执行 ${event.total} 页`
+      });
+    case "page-start":
+      return build({
+        kind: "page-start",
+        result: "info",
+        detail: `开始处理 ${event.pageLabel}`,
+        slideId: event.slideId,
+        pageLabel: event.pageLabel
+      });
+    case "stage-start":
+      return null;
+    case "stage-complete": {
+      const label = ctx.pageLabelOf(event.slideId) ?? event.slideId;
+      return build({
+        at: event.at,
+        kind: "stage-complete",
+        result: "success",
+        detail: `${label} · ${stageLabel(event.stage)} 完成`,
+        slideId: event.slideId,
+        pageLabel: label,
+        stage: event.stage,
+        durationMs: event.durationMs
+      });
+    }
+    case "page-done": {
+      const label = ctx.pageLabelOf(event.slideId) ?? event.slideId;
+      const failed = event.error !== null || event.gate === "error";
+      const result = failed ? "failure" : event.gate !== null ? "gate" : "success";
+      return build({
+        kind: "page-done",
+        result,
+        detail: `${label} · ${event.message}`,
+        slideId: event.slideId,
+        pageLabel: label,
+        stage: event.stoppedAt
+      });
+    }
+    case "run-stopping":
+      return build({
+        kind: "run-stop",
+        result: "info",
+        detail: "已请求停止，当前页完成后结束"
+      });
+    case "run-done": {
+      const { completed, gated, failed } = event.summary;
+      return build({
+        kind: "run-done",
+        result: failed > 0 ? "failure" : "info",
+        detail: `执行结束：完成 ${completed}，待人工 ${gated}，失败 ${failed}`
+      });
+    }
+  }
+}
+function build(input) {
+  return {
+    at: input.at ?? (/* @__PURE__ */ new Date()).toISOString(),
+    kind: input.kind,
+    slideId: input.slideId ?? null,
+    pageLabel: input.pageLabel ?? null,
+    stage: input.stage ?? null,
+    result: input.result,
+    durationMs: input.durationMs ?? null,
+    detail: input.detail
+  };
+}
+const useActivityStore = create((set) => ({
+  records: [],
+  loading: false,
+  error: null,
+  async load(deckPath, limit) {
+    set({ loading: true, error: null });
+    try {
+      const records = await window.api.activity.list(deckPath, limit);
+      set({ records, loading: false });
+    } catch (err) {
+      set({ loading: false, error: toMessage$1(err) });
+      throw err;
+    }
+  },
+  append(record) {
+    set((state) => ({ records: [record, ...state.records] }));
+  },
+  reset() {
+    set({ records: [], loading: false, error: null });
+  }
+}));
+function toMessage$1(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+function getApi() {
+  return window.api;
+}
+function createRunSnapshot() {
+  return {
+    status: "idle",
+    total: 0,
+    doneCount: 0,
+    currentSlideId: null,
+    currentPageLabel: null,
+    currentIndex: 0,
+    currentStage: null,
+    stageStartedAt: null,
+    liveStages: {},
+    sessionResults: {},
+    lastSummary: null
+  };
+}
+function applyRunEvent(snapshot, event, nowMs) {
+  switch (event.kind) {
+    case "run-start":
+      return {
+        ...createRunSnapshot(),
+        status: "running",
+        total: event.total
+      };
+    case "page-start":
+      return {
+        ...snapshot,
+        status: snapshot.status === "idle" ? "running" : snapshot.status,
+        total: event.total,
+        currentSlideId: event.slideId,
+        currentPageLabel: event.pageLabel,
+        currentIndex: event.index,
+        currentStage: null,
+        stageStartedAt: null
+      };
+    case "stage-start":
+      return {
+        ...snapshot,
+        currentSlideId: event.slideId,
+        currentStage: event.stage,
+        stageStartedAt: nowMs,
+        liveStages: withLiveStage(
+          snapshot.liveStages,
+          event.slideId,
+          event.stage,
+          "running"
+        )
+      };
+    case "stage-complete":
+      return {
+        ...snapshot,
+        currentStage: null,
+        stageStartedAt: null,
+        liveStages: withLiveStage(
+          snapshot.liveStages,
+          event.slideId,
+          event.stage,
+          "completed"
+        )
+      };
+    case "page-done":
+      return {
+        ...snapshot,
+        doneCount: snapshot.doneCount + 1,
+        currentSlideId: null,
+        currentPageLabel: null,
+        currentStage: null,
+        stageStartedAt: null,
+        sessionResults: {
+          ...snapshot.sessionResults,
+          [event.slideId]: {
+            slideId: event.slideId,
+            gate: event.gate,
+            stoppedAt: event.stoppedAt,
+            message: event.message,
+            error: event.error
+          }
+        }
+      };
+    case "run-stopping":
+      return { ...snapshot, status: "stopping" };
+    case "run-done":
+      return {
+        ...snapshot,
+        status: "idle",
+        currentSlideId: null,
+        currentPageLabel: null,
+        currentIndex: 0,
+        currentStage: null,
+        stageStartedAt: null,
+        lastSummary: event.summary
+      };
+  }
+}
+function withLiveStage(liveStages, slideId, stage, status) {
+  const current = liveStages[slideId] ?? {};
+  return {
+    ...liveStages,
+    [slideId]: { ...current, [stage]: status }
+  };
+}
+let tickerHandle = null;
+function startTicker() {
+  if (tickerHandle !== null) return;
+  tickerHandle = setInterval(() => {
+    useRunStore.setState((state) => ({ tick: state.tick + 1 }));
+  }, 1e3);
+}
+function stopTicker() {
+  if (tickerHandle === null) return;
+  clearInterval(tickerHandle);
+  tickerHandle = null;
+}
+function toMessage(err) {
+  return err instanceof Error ? err.message : String(err);
+}
+function buildStartOptions(slideIds, from, opts) {
+  return {
+    ...slideIds !== null ? { slideIds } : {},
+    ...from !== void 0 ? { from } : {},
+    ...opts?.confirmApi !== void 0 ? { confirmApi: opts.confirmApi } : {},
+    ...opts?.confirmUpload !== void 0 ? { confirmUpload: opts.confirmUpload } : {}
+  };
+}
+const useRunStore = create((set, get) => ({
+  ...createRunSnapshot(),
+  tick: 0,
+  startError: null,
+  subscribe(onEvent) {
+    const detach = getApi().onDeckRunProgress((event) => {
+      const state = get();
+      const next = applyRunEvent(
+        {
+          status: state.status,
+          total: state.total,
+          doneCount: state.doneCount,
+          currentSlideId: state.currentSlideId,
+          currentPageLabel: state.currentPageLabel,
+          currentIndex: state.currentIndex,
+          currentStage: state.currentStage,
+          stageStartedAt: state.stageStartedAt,
+          liveStages: state.liveStages,
+          sessionResults: state.sessionResults,
+          lastSummary: state.lastSummary
+        },
+        event,
+        Date.now()
+      );
+      set(next);
+      if (next.status === "idle") {
+        stopTicker();
+      } else {
+        startTicker();
+      }
+      onEvent?.(event);
+    });
+    return () => {
+      detach();
+      stopTicker();
+    };
+  },
+  async runAll(deckPath, opts) {
+    await requestStart(set, deckPath, buildStartOptions(null, void 0, opts));
+  },
+  async runSlide(deckPath, slideId, from, opts) {
+    await requestStart(set, deckPath, buildStartOptions([slideId], from, opts));
+  },
+  async stop() {
+    try {
+      await getApi().deck.runStop();
+    } catch (err) {
+      set({ startError: toMessage(err) });
+    }
+  },
+  clearSessionResult(slideId) {
+    set((state) => {
+      if (state.sessionResults[slideId] === void 0) return state;
+      const next = { ...state.sessionResults };
+      delete next[slideId];
+      return { sessionResults: next };
+    });
+  },
+  reset() {
+    stopTicker();
+    set({ ...createRunSnapshot(), tick: 0, startError: null });
+  }
+}));
+async function requestStart(set, deckPath, options) {
+  set({ startError: null });
+  try {
+    const result = await getApi().deck.runStart(deckPath, options);
+    if (!result.accepted) {
+      set({ startError: result.message });
+    }
+  } catch (err) {
+    set({ startError: toMessage(err) });
+  }
+}
+function useRunBridge() {
+  reactExports.useEffect(() => {
+    const detach = useRunStore.getState().subscribe((event) => {
+      const deck = useDeckStore.getState();
+      const activity = useActivityStore.getState();
+      const record = runEventToActivity(event, {
+        pageLabelOf: (slideId) => deck.getSlide(slideId)?.pageLabel ?? null
+      });
+      if (record !== null) activity.append(record);
+      if (event.kind === "page-done") {
+        void deck.refreshSlide(event.slideId).catch(() => void 0);
+        return;
+      }
+      if (event.kind === "run-done") {
+        void deck.refreshStatus().catch(() => void 0);
+        if (deck.deckPath !== null) {
+          void activity.load(deck.deckPath).catch(() => void 0);
+        }
+      }
+    });
+    return detach;
+  }, []);
+}
 const useUIStore = create((set) => ({
-  currentView: "welcome",
+  currentView: "console",
   selectedSlideId: null,
   selectedBlockId: null,
+  queuePanelOpen: true,
+  activityPanelOpen: false,
   setView(view) {
     set({ currentView: view });
   },
@@ -12610,6 +13010,22 @@ const useUIStore = create((set) => ({
   },
   selectBlock(blockId) {
     set({ selectedBlockId: blockId });
+  },
+  openSlide(slideId) {
+    set({
+      currentView: "slide",
+      selectedSlideId: slideId,
+      selectedBlockId: null
+    });
+  },
+  backToConsole() {
+    set({ currentView: "console", selectedBlockId: null });
+  },
+  toggleQueuePanel(open) {
+    set((state) => ({ queuePanelOpen: open ?? !state.queuePanelOpen }));
+  },
+  toggleActivityPanel(open) {
+    set((state) => ({ activityPanelOpen: open ?? !state.activityPanelOpen }));
   }
 }));
 const PENDING_STYLE = {
@@ -12624,17 +13040,12 @@ const STAGE_STATUS_STYLE = {
   stale: { label: "已过期", className: "bg-warning-light text-warning" },
   pending: PENDING_STYLE
 };
-function pageNameFromPath(workspacePath) {
-  const segments = workspacePath.split(/[\\/]/).filter(Boolean);
-  return segments[segments.length - 1] ?? workspacePath;
-}
 function SlideCard({ slide }) {
-  const selectSlide = useUIStore((s) => s.selectSlide);
-  const setView = useUIStore((s) => s.setView);
+  const openSlide = useUIStore((s) => s.openSlide);
   const [thumbnail, setThumbnail] = reactExports.useState(null);
   reactExports.useEffect(() => {
     let cancelled = false;
-    void window.api.slide.loadImage(slide.workspacePath, "source_image").then((dataUrl) => {
+    void window.api.slide.loadImage(slide.absWorkspacePath, "source_image").then((dataUrl) => {
       if (!cancelled) setThumbnail(dataUrl);
     }).catch(() => {
       if (!cancelled) setThumbnail(null);
@@ -12642,12 +13053,11 @@ function SlideCard({ slide }) {
     return () => {
       cancelled = true;
     };
-  }, [slide.workspacePath]);
+  }, [slide.absWorkspacePath]);
   const statusStyle = STAGE_STATUS_STYLE[slide.stageStatus] ?? PENDING_STYLE;
-  const pageName = pageNameFromPath(slide.workspacePath);
+  const pageName = slide.pageLabel;
   function handleClick() {
-    selectSlide(slide.slideId);
-    setView("slide");
+    openSlide(slide.slideId);
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "button",
@@ -16729,18 +17139,10 @@ function AcceptPanel({
     ] })
   ] });
 }
-const STAGE_ORDER = [
-  { key: "init", label: "初始化" },
-  { key: "ocr", label: "OCR" },
-  { key: "review", label: "候选合并" },
-  { key: "assist-review", label: "AI 复核" },
-  { key: "mask", label: "Mask" },
-  { key: "clean", label: "Clean Plate" },
-  { key: "accept-clean", label: "验收 Clean" },
-  { key: "pptx", label: "PPTX" },
-  { key: "accept-pptx", label: "验收 PPTX" },
-  { key: "report", label: "报告" }
-];
+const STAGE_ORDER = RUN_STAGE_SEQUENCE.map((key) => ({
+  key,
+  label: STAGE_LABELS[key]
+}));
 function statusColor(status) {
   switch (status) {
     case "completed":
@@ -17053,137 +17455,6 @@ function SourceList({ block }) {
     ))
   ] });
 }
-const RUN_STAGE_SEQUENCE = [
-  "ocr",
-  "review",
-  "assist-review",
-  "validate-review",
-  "mask",
-  "clean",
-  "accept-clean",
-  "pptx",
-  "accept-pptx",
-  "report"
-];
-function isRunStage(value) {
-  return RUN_STAGE_SEQUENCE.includes(value);
-}
-function getApi() {
-  return window.api;
-}
-const usePipelineStore = create((set, get) => ({
-  running: false,
-  currentSlideId: null,
-  stageStatuses: {},
-  pendingGate: null,
-  error: null,
-  async startPipeline(workspacePath, from, opts) {
-    const { deckPath, slides } = useDeckStore.getState();
-    const slide = slides.find((s) => workspacePath.endsWith(s.workspacePath));
-    if (deckPath === null || slide === void 0 || !isRunStage(from)) {
-      set({
-        error: {
-          code: "PIPELINE_TARGET_UNRESOLVED",
-          message: "无法定位待执行页面"
-        }
-      });
-      return;
-    }
-    set({
-      running: true,
-      error: null,
-      stageStatuses: {},
-      pendingGate: null,
-      currentSlideId: slide.slideId
-    });
-    await new Promise((resolvePromise) => {
-      const unsubscribe = getApi().onDeckRunProgress((event) => {
-        if (event.kind === "stage-start") {
-          set({
-            stageStatuses: { ...get().stageStatuses, [event.stage]: "running" }
-          });
-          return;
-        }
-        if (event.kind === "stage-complete") {
-          set({
-            stageStatuses: {
-              ...get().stageStatuses,
-              [event.stage]: "completed"
-            }
-          });
-          return;
-        }
-        if (event.kind === "page-done") {
-          if (event.gate === "manual" && event.stoppedAt !== null) {
-            if (event.stoppedAt === "accept-clean" || event.stoppedAt === "accept-pptx") {
-              set({ pendingGate: event.stoppedAt });
-            }
-          } else if (event.error !== null) {
-            set({
-              error: {
-                code: event.error.code,
-                message: event.error.message
-              }
-            });
-          } else if (event.gate !== null) {
-            set({
-              error: {
-                code: `PIPELINE_GATE_${event.gate.toUpperCase()}`,
-                message: event.message
-              }
-            });
-          }
-          return;
-        }
-        if (event.kind === "run-done") {
-          unsubscribe();
-          set({ running: false });
-          resolvePromise();
-        }
-      });
-      void getApi().deck.runStart(deckPath, {
-        slideIds: [slide.slideId],
-        from,
-        ...opts?.confirmApi === true ? { confirmApi: true } : {},
-        ...opts?.confirmUpload === true ? { confirmUpload: true } : {}
-      }).then((result) => {
-        if (!result.accepted) {
-          unsubscribe();
-          set({
-            running: false,
-            error: {
-              code: "PIPELINE_RUN_REJECTED",
-              message: result.message
-            }
-          });
-          resolvePromise();
-        }
-      }).catch((error) => {
-        unsubscribe();
-        set({
-          running: false,
-          error: {
-            code: "PIPELINE_RUN_FAILED",
-            message: error instanceof Error ? error.message : String(error)
-          }
-        });
-        resolvePromise();
-      });
-    });
-  },
-  acceptGate() {
-    set({ pendingGate: null });
-  },
-  reset() {
-    set({
-      running: false,
-      currentSlideId: null,
-      stageStatuses: {},
-      pendingGate: null,
-      error: null
-    });
-  }
-}));
 const INITIAL_STATE = {
   slideId: null,
   workspacePath: null,
@@ -17241,16 +17512,20 @@ const useSlideStore = create((set, get) => ({
     set({ ...INITIAL_STATE });
   }
 }));
+const ACCEPT_STAGES = ["accept-clean", "accept-pptx"];
+function isAcceptStage(value) {
+  return value !== null && ACCEPT_STAGES.includes(value);
+}
 function SlidePage() {
   const selectedSlideId = useUIStore((s) => s.selectedSlideId);
   const selectedBlockId = useUIStore((s) => s.selectedBlockId);
   const selectBlock = useUIStore((s) => s.selectBlock);
-  const setView = useUIStore((s) => s.setView);
+  const backToConsole = useUIStore((s) => s.backToConsole);
   const slides = useDeckStore((s) => s.slides);
   const deckPath = useDeckStore((s) => s.deckPath);
-  const refreshStatus = useDeckStore((s) => s.refreshStatus);
+  const refreshSlide = useDeckStore((s) => s.refreshSlide);
   const slide = slides.find((s) => s.slideId === selectedSlideId);
-  const workspacePath = slide ? deckPath ? `${deckPath}/${slide.workspacePath}` : slide.workspacePath : null;
+  const workspacePath = slide?.absWorkspacePath ?? null;
   const loadSlide = useSlideStore((s) => s.loadSlide);
   const saveReview = useSlideStore((s) => s.saveReview);
   const updateBlock = useSlideStore((s) => s.updateBlock);
@@ -17260,12 +17535,28 @@ function SlidePage() {
   const cleanPlateUrl = useSlideStore((s) => s.cleanPlateUrl);
   const dirty = useSlideStore((s) => s.dirty);
   const loading = useSlideStore((s) => s.loading);
-  const pipelineRunning = usePipelineStore((s) => s.running);
-  const stageStatuses = usePipelineStore((s) => s.stageStatuses);
-  const pendingGate = usePipelineStore((s) => s.pendingGate);
-  const pipelineError = usePipelineStore((s) => s.error);
-  const startPipeline = usePipelineStore((s) => s.startPipeline);
-  const acceptGate = usePipelineStore((s) => s.acceptGate);
+  const runStatus = useRunStore((s) => s.status);
+  const liveStages = useRunStore((s) => s.liveStages);
+  const sessionResults = useRunStore((s) => s.sessionResults);
+  const startError = useRunStore((s) => s.startError);
+  const runSlide = useRunStore((s) => s.runSlide);
+  const clearSessionResult = useRunStore((s) => s.clearSessionResult);
+  const pipelineRunning = runStatus !== "idle";
+  const slideId = slide?.slideId ?? null;
+  const stageStatuses = reactExports.useMemo(() => {
+    const merged = {};
+    for (const detail of slide?.stages ?? []) {
+      merged[detail.stage] = detail.status;
+    }
+    const live = slideId === null ? void 0 : liveStages[slideId];
+    for (const [stage, status] of Object.entries(live ?? {})) {
+      merged[stage] = status;
+    }
+    return merged;
+  }, [slide, liveStages, slideId]);
+  const sessionResult = slideId === null ? void 0 : sessionResults[slideId];
+  const pendingGate = sessionResult?.gate === "manual" && isAcceptStage(sessionResult.stoppedAt) ? sessionResult.stoppedAt : null;
+  const pipelineError = sessionResult?.error ?? (startError === null ? null : { code: "RUN_START_REJECTED", message: startError });
   const [sidebarTab, setSidebarTab] = reactExports.useState("properties");
   const [compareMode, setCompareMode] = reactExports.useState(false);
   const [saveResult, setSaveResult] = reactExports.useState(null);
@@ -17309,34 +17600,32 @@ function SlidePage() {
   }
   const handleRunPipeline = reactExports.useCallback(
     (from) => {
-      if (!workspacePath) return;
-      void startPipeline(workspacePath, from, {
+      if (deckPath === null || slideId === null || !isRunStage(from)) return;
+      void runSlide(deckPath, slideId, from, {
         confirmApi: true,
         confirmUpload: true
-      }).then(() => {
-        void refreshStatus();
       });
       setSidebarTab("pipeline");
     },
-    [workspacePath, startPipeline, refreshStatus]
+    [deckPath, slideId, runSlide]
   );
   const handleAccept = reactExports.useCallback(
     async (note) => {
-      if (!workspacePath || !pendingGate) return;
+      if (!workspacePath || !pendingGate || slideId === null) return;
       const api = window.api;
       if (pendingGate === "accept-clean") {
         await api.slide.acceptClean(workspacePath, { note });
       } else {
         await api.slide.acceptPptx(workspacePath, { note });
       }
-      acceptGate();
-      void refreshStatus();
+      clearSessionResult(slideId);
+      void refreshSlide(slideId);
     },
-    [workspacePath, pendingGate, acceptGate, refreshStatus]
+    [workspacePath, pendingGate, slideId, clearSessionResult, refreshSlide]
   );
   const handleReject = reactExports.useCallback(() => {
-    acceptGate();
-  }, [acceptGate]);
+    if (slideId !== null) clearSessionResult(slideId);
+  }, [slideId, clearSessionResult]);
   if (workspacePath === null) {
     return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center text-sm text-muted", children: "未选中任何页面" });
   }
@@ -17347,11 +17636,11 @@ function SlidePage() {
         {
           type: "button",
           className: "rounded-sm border border-hairline px-2.5 py-1 text-xs text-body transition active:border-border-strong",
-          onClick: () => setView("deck"),
+          onClick: backToConsole,
           children: "← 返回"
         }
       ),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-ink", children: slide?.workspacePath.split("/").pop() ?? selectedSlideId }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-ink", children: slide?.pageLabel ?? selectedSlideId }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "ml-auto flex items-center gap-2", children: [
         sourceImageUrl && cleanPlateUrl && /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
@@ -17496,6 +17785,7 @@ function SlidePage() {
 }
 function App() {
   const currentView = useUIStore((s) => s.currentView);
+  useRunBridge();
   return /* @__PURE__ */ jsxRuntimeExports.jsx(AppShell, { children: currentView === "slide" ? /* @__PURE__ */ jsxRuntimeExports.jsx(SlidePage, {}) : /* @__PURE__ */ jsxRuntimeExports.jsx(DeckPage, {}) });
 }
 const root = document.getElementById("root");
