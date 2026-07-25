@@ -40,6 +40,11 @@ interface SlideToolbarProps {
   readonly canCompare: boolean;
   readonly hasAcceptGate: boolean;
   readonly dirty: boolean;
+  /**
+   * 本页未复核块数。大于 0 时展示批量确认入口——mask 门禁要求参与抹字的块
+   * 全部已确认，而 assist-review 只自动确认高置信块，其余整页几十个需人工放行。
+   */
+  readonly unreviewedCount: number;
   /** 本页正在执行：禁用执行类动作，避免同一页被重复入队 */
   readonly pageBusy: boolean;
   /** 待办队列中的下一项；null 表示队列内已无其它页 */
@@ -52,6 +57,7 @@ interface SlideToolbarProps {
   readonly onNavigate: (slideId: string) => void;
   readonly onViewModeChange: (mode: SlideViewMode) => void;
   readonly onSave: () => void;
+  readonly onMarkAllReviewed: () => void;
   readonly onRunSlide: () => void;
   readonly onRerunFrom: (stage: RunStage) => void;
   readonly onNextTodo: () => void;
@@ -65,12 +71,14 @@ export function SlideToolbar({
   canCompare,
   hasAcceptGate,
   dirty,
+  unreviewedCount,
   pageBusy,
   nextTodo,
   onBack,
   onNavigate,
   onViewModeChange,
   onSave,
+  onMarkAllReviewed,
   onRunSlide,
   onRerunFrom,
   onNextTodo,
@@ -193,6 +201,23 @@ export function SlideToolbar({
             className={BUTTON_SECONDARY}
           >
             处理下一项
+          </button>
+        )}
+
+        {/*
+          未复核块会让 mask 阶段直接失败（「存在未复核却参与 mask 的文字块」），
+          且失败发生在流水线内部、界面上只表现为「跑了一下没反应」。
+          因此把剩余数量摆在工具栏上，并给出一键放行。
+        */}
+        {unreviewedCount > 0 && (
+          <button
+            type="button"
+            onClick={onMarkAllReviewed}
+            title="把本页所有未复核块标为已复核；未复核块会让 mask 阶段失败"
+            className={BUTTON_SECONDARY}
+          >
+            全部标为已复核
+            <span className="ml-1 text-sm text-muted">{unreviewedCount}</span>
           </button>
         )}
 

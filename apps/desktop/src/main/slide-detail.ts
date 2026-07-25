@@ -43,19 +43,33 @@ export function deriveStageDetails(
 }
 
 /**
- * 断点续跑起点：执行序列中第一个未完成的阶段。
+ * 断点续跑起点：执行序列中第一个未完成的阶段，**回退到它前面最近的瞬态阶段**。
  *
- * 无持久化状态的阶段不作为判据（否则每轮都会从 validate-review 重来）。
+ * 判据只看有持久化状态的阶段——瞬态阶段（`validate-review`）不写 manifest，
+ * 拿它当判据的话永远不是 completed，每页每轮都会被判成「从头开始」。
+ *
+ * 但起点不能直接跳过瞬态阶段，否则形成死锁：用户保存复核后
+ * `text-blocks.json` 的 sha 变了，mask 拒绝执行并要求「重新运行 validate-review」，
+ * 而续跑起点恒为 mask，永远不会回头校验——界面上表现为「点运行此页毫无反应」，
+ * 点多少次都一样。回退是安全的：validate-review 是纯离线、幂等的毫秒级校验。
+ *
  * 全部完成时返回 null，调用方据此把该页排除出批量队列。
  */
 export function computeResumeStage(
   manifest: SlideWorkspaceManifest,
 ): RunStage | null {
+  let pendingTransient: RunStage | null = null;
   for (const stage of RUN_STAGE_SEQUENCE) {
-    if (TRANSIENT.has(stage)) continue;
-    if (manifestStatus(manifest, stage) !== "completed") {
-      return stage;
+    if (TRANSIENT.has(stage)) {
+      // 记住它，等下游出现未完成阶段时作为回退起点
+      pendingTransient ??= stage;
+      continue;
     }
+    if (manifestStatus(manifest, stage) !== "completed") {
+      return pendingTransient ?? stage;
+    }
+    // 该阶段已完成，说明它前面的瞬态阶段当时也通过了，不必再回退到那里
+    pendingTransient = null;
   }
   return null;
 }

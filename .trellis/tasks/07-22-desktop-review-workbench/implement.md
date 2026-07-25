@@ -121,7 +121,32 @@
 - **biome 报错清零**：阶段 A 起挂账的 2 处 V1 报错已修 —— `noUselessFragments`（多余 fragment 包裹 `HANDLE_POSITIONS.map`，改为条件短路直出数组）、`useSemanticElements`（块内含 8 个手柄按钮与编辑态 textarea，`<button>` 会构成非法嵌套，按 `SlideCard` 同一模式加 `biome-ignore` 并说明）。
 - **E3 结果**：`pnpm format:check`（142 文件）/ `pnpm typecheck`（3 包）/ `pnpm test`（cli 78 + desktop 141 = 219）/ `pnpm build` 四项全绿。desktop 测试较阶段 D 增加 16 个（`doctor-view`）。
 
+**E4 走查中发现的三个缺陷（均为 M4 早期埋下，非 E 阶段引入，已修复）**
+
+E4 一开始就卡住，连续暴露三个问题。共同特征是**失败被静默吞掉**，界面上一律表现为「点了没反应」：
+
+1. **单页复核完全打不开**（`ipc/slide.ts`）：`slide:load-review` / `save-review` 把路径写成 `<ws>/review/text-blocks.json`，真实位置是 `<ws>/stages/review/text-blocks.json`。readFile 失败被 `catch { return null }` 吞掉 → 画布 0 个文字块、侧边栏三块全空、控制台无任何报错。已提成文件内常量 `REVIEW_RELATIVE_PATH` 并注明必须与 CLI 三处（`review.ts` / `assist-review.ts` / `validate-review.ts`）一致。注意 `slide:load-image` 无此问题——它读 `manifest.assets` 的 path，是数据驱动的，所以图片一直正常显示，更难联想到路径错误。
+2. **「标记已复核」这个动作在 UI 里从未实现**：renderer 全仓搜 `reviewStatus` 只有读、没有写。`assist-review` 只自动确认高置信块，其余需人工确认，但界面上无从操作 → `mask/run.ts:152` 门禁「存在未复核却参与 mask 的文字块」必然失败，整条流水线走不下去。补齐两档：PropertyPanel 单块「标记已复核」+ SlideToolbar 整页「全部标为已复核 N」。纯逻辑在 `lib/review-status.ts`（8 个单测），`accepted_with_risk` 不被批量覆盖（它带 `riskAcceptance` 记录，语义不同）。
+3. **断点续跑死锁**（`slide-detail.ts` 的 `computeResumeStage`）：原实现 `if (TRANSIENT.has(stage)) continue` 直接跳过 `validate-review`。用户保存复核后 `text-blocks.json` 的 sha 变化，mask 报「在校验后已改动，请重新运行 validate-review」，而续跑起点恒为 mask、永不回头校验——**点多少次「运行此页」都不动**。改为：判据仍只看持久阶段（避免每轮从头），但起点**回退到未完成阶段前最近的瞬态阶段**；下游已完成则不回退（说明当时校验通过过）。回退安全，validate-review 是纯离线幂等的毫秒级校验。
+   - 此改动打破了 3 个既有测试，它们恰好把死锁行为固化成断言（`.toBe("mask")` / `.not.toBe("validate-review")`）。已重写并在用例名与注释中写明死锁场景，防止被「修复」回去。
+
+**E4 遗留待查（下个会话接手点）**
+
+- **失败反馈链路存疑**（问题 C，未动）：mask 在前置校验就抛错，manifest 里 `attempts: []`，耐久层 `extractLastError` 读不到东西，错误只存在于会话层 `sessionResult.error`。三次失败用户全程只感觉到「不动」。需确认 StageRail 的错误条在这种「无 manifest 记录的前置失败」下是否真的渲染。
+- **画布滚轮 preventDefault 失效**（pre-existing，`useCanvasTransform.ts:88`）：React 18+ 把 wheel 注册为 passive listener，`e.preventDefault()` 被忽略并刷屏警告。缩放平移本身正常（`overflow-hidden` 兜住了），但 Cmd/Ctrl+滚轮拦不住浏览器页面级缩放。修法是改用原生 `addEventListener("wheel", h, { passive: false })`。属画布内核，M4 计划划了「不改交互逻辑」的红线，需确认后再动。
+- **路径常量重复 5 处**：`stages/review/text-blocks.json` 在 CLI 三处 + desktop 一处各自定义，正是缺陷 1 的根因。根治需提到 `@ppt-maker/core` 统一导出，会动 CLI 三个文件，未做。
+
+**E4 当前测试数据状态**
+
+- deck 工作区：`~/test/ppttest-2026-07-25`（2 页，源图来自 `~/test/ppttest/`，已裁/补白为 16:9）
+- `page-01`：60 块（53 layout_text + 7 uncertain 已全部分类完），阶段 `init/ocr/review/assist-review` completed，mask 及之后 pending
+- `page-02`：95 块，全部 layout_text
+- 本机 doctor：关键项全 pass，仅 `node v25.8.0` 偏离 Node 24 基线（基线项，不触发启动提示、不拦截导出）
+- `.env` 已配（根目录，网关 `gpt-image-2` 可用，探测 HTTP 200）
+
 **E4 待人工执行**（需 GUI、真实 PPT 截图与 API key，无法在无头环境完成）
+
+**新会话接手步骤**：`pnpm desktop` 启动 → 打开 `~/test/ppttest-2026-07-25` → 进 page-01 → 工具栏「全部标为已复核 40」→ **⌘S 保存**（不保存则磁盘仍是旧文件）→「运行此页」，此时应先跑 validate-review 刷新 sha 再进 mask。clean 阶段会真实调 `gpt-image-2` 上传图片，需确认上传。活动日志在 `~/Library/Application Support/@ppt-maker/desktop/activity/*.jsonl`，用它判断「不动」到底是卡住还是快速失败。
 
 1. 创建：从图片目录新建 deck，确认卡片网格与页数正确。
 2. 批量：「处理全部」跑完整流水线，观察卡片轨道实时推进、控制条计时、停止语义、失败页错误条。

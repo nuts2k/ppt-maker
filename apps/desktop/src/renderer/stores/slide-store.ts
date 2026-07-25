@@ -1,6 +1,7 @@
 import type { TextReviewBlock, TextReviewDocument } from "@ppt-maker/core";
 import { create } from "zustand";
 import { getApi } from "@/lib/ipc-client";
+import { markAllBlocksReviewed } from "@/lib/review-status";
 
 interface SlideState {
   // 当前 slide 的工作区路径与标识
@@ -19,6 +20,14 @@ interface SlideState {
   loadSlide(workspacePath: string): Promise<void>;
   // 局部更新指定 block 字段并标记 dirty
   updateBlock(blockId: string, patch: Partial<TextReviewBlock>): void;
+  /**
+   * 把所有未复核块一次性标为已复核，返回实际改动的数量。
+   *
+   * mask 门禁（CLI `mask/run.ts`）要求参与抹字的块必须已确认，而 assist-review
+   * 只会自动确认高置信块，其余需要人工逐个确认。整页几十个块时逐块点击不现实，
+   * 因此提供整页批量档；精确到单块的确认走 PropertyPanel。
+   */
+  markAllReviewed(): number;
   // 保存复核文档，成功后清除 dirty
   saveReview(): Promise<{ valid: boolean; errors: number; warnings: number }>;
   reset(): void;
@@ -67,6 +76,18 @@ export const useSlideStore = create<SlideState>((set, get) => ({
       reviewDocument: { ...reviewDocument, blocks },
       dirty: true,
     });
+  },
+
+  markAllReviewed() {
+    const { reviewDocument } = get();
+    if (reviewDocument === null) return 0;
+    const { blocks, changed } = markAllBlocksReviewed(reviewDocument.blocks);
+    if (changed === 0) return 0;
+    set({
+      reviewDocument: { ...reviewDocument, blocks: [...blocks] },
+      dirty: true,
+    });
+    return changed;
   },
 
   async saveReview() {

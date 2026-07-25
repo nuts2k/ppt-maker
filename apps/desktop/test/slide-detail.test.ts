@@ -96,26 +96,41 @@ describe("computeResumeStage", () => {
     expect(computeResumeStage(buildManifest(["init"]))).toBe("ocr");
   });
 
-  it("跳过已完成阶段，返回第一个未完成阶段", () => {
+  it("跳过已完成阶段，回退到未完成阶段前的 validate-review", () => {
     const manifest = buildManifest(["init", "ocr", "review", "assist-review"]);
-    expect(computeResumeStage(manifest)).toBe("mask");
+    expect(computeResumeStage(manifest)).toBe("validate-review");
   });
 
-  it("不把无持久化记录的 validate-review 当作断点判据", () => {
-    // validate-review 在 manifest 中不存在，若被当作判据会导致每轮都从它重来
-    const manifest = buildManifest(["init", "ocr", "review", "assist-review"]);
-    expect(computeResumeStage(manifest)).not.toBe("validate-review");
+  it("validate-review 不作为判据：缺记录不会让起点停在更早的阶段", () => {
+    // 它在 manifest 中永远没有记录，若拿它当「是否完成」的判据，
+    // 每页每轮都会被判成从头开始——判据只看持久阶段，起点才回退到它。
+    const manifest = buildManifest(["init", "ocr"]);
+    expect(computeResumeStage(manifest)).toBe("review");
+  });
+
+  it("下游已完成则不再回退：mask 完成说明当时的校验已通过", () => {
+    const manifest = buildManifest([
+      "init",
+      "ocr",
+      "review",
+      "assist-review",
+      "mask",
+    ]);
+    expect(computeResumeStage(manifest)).toBe("clean");
   });
 
   it("全部完成时返回 null（批量执行据此跳过该页）", () => {
     expect(computeResumeStage(buildManifest(ALL_STAGES))).toBeNull();
   });
 
-  it("失败阶段视为未完成，从该阶段续跑", () => {
+  it("失败阶段视为未完成，从其前置的 validate-review 续跑", () => {
+    // 回归防线：曾经这里直接返回 mask，用户保存复核后 text-blocks.json 的 sha
+    // 变化，mask 报「在校验后已改动，请重新运行 validate-review」，而起点恒为
+    // mask、永不回头校验 —— 点多少次「运行此页」都不动。
     const manifest = buildManifest(["init", "ocr", "review", "assist-review"], {
       mask: "failed",
     });
-    expect(computeResumeStage(manifest)).toBe("mask");
+    expect(computeResumeStage(manifest)).toBe("validate-review");
   });
 
   it("stale 阶段重新纳入执行范围", () => {

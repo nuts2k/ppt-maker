@@ -49,6 +49,10 @@ export function PropertyPanel({
     if (blockId) onUpdate(blockId, { includeInMask: !blockIncludeInMask });
   }, [blockId, blockIncludeInMask, onUpdate]);
 
+  const handleMarkReviewed = useCallback(() => {
+    if (blockId) onUpdate(blockId, { reviewStatus: "reviewed" });
+  }, [blockId, onUpdate]);
+
   const handleTextChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       if (!blockId) return;
@@ -127,6 +131,19 @@ export function PropertyPanel({
         <span className="text-sm text-body">
           {REVIEW_STATUS_TEXT[block.reviewStatus] ?? block.reviewStatus}
         </span>
+        {/*
+          未复核块无法通过 mask 门禁（CLI `mask/run.ts` 要求参与抹字的块已确认），
+          在此提供单块确认；整页批量确认在 SlideToolbar。
+        */}
+        {block.reviewStatus === "unreviewed" && (
+          <button
+            type="button"
+            onClick={handleMarkReviewed}
+            className="rounded-sm border border-hairline px-4 py-2 text-sm font-medium text-ink transition active:border-border-strong"
+          >
+            标记已复核
+          </button>
+        )}
       </div>
 
       {block.style.fontSizePx !== null && (

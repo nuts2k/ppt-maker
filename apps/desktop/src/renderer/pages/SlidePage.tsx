@@ -13,6 +13,7 @@ import {
 } from "@/components/slide/SlideToolbar";
 import { StageRail } from "@/components/slide/StageRail";
 import { deriveAcceptGate } from "@/lib/accept-gate";
+import { countUnreviewed } from "@/lib/review-status";
 import { adjacentSlides } from "@/lib/slide-nav";
 import { cn } from "@/lib/utils";
 import { useDeckStore } from "@/stores/deck-store";
@@ -56,6 +57,7 @@ export function SlidePage(): React.JSX.Element {
   const loadSlide = useSlideStore((s) => s.loadSlide);
   const saveReview = useSlideStore((s) => s.saveReview);
   const updateBlock = useSlideStore((s) => s.updateBlock);
+  const markAllReviewed = useSlideStore((s) => s.markAllReviewed);
   const reset = useSlideStore((s) => s.reset);
   const reviewDocument = useSlideStore((s) => s.reviewDocument);
   const sourceImageUrl = useSlideStore((s) => s.sourceImageUrl);
@@ -133,6 +135,7 @@ export function SlidePage(): React.JSX.Element {
 
   const blocks = reviewDocument?.blocks ?? [];
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId) ?? null;
+  const unreviewedCount = countUnreviewed(blocks);
 
   const handleBlockUpdate = useCallback(
     (blockId: string, patch: Partial<TextReviewBlock>) => {
@@ -257,6 +260,7 @@ export function SlidePage(): React.JSX.Element {
         canCompare={canCompare}
         hasAcceptGate={acceptGate !== null}
         dirty={dirty}
+        unreviewedCount={unreviewedCount}
         pageBusy={pageBusy}
         nextTodo={
           nextTodo === null
@@ -267,6 +271,7 @@ export function SlidePage(): React.JSX.Element {
         onNavigate={openSlide}
         onViewModeChange={setViewMode}
         onSave={() => void handleSave()}
+        onMarkAllReviewed={() => markAllReviewed()}
         onRunSlide={() => startRun()}
         onRerunFrom={(stage) => startRun(stage)}
         onNextTodo={handleNextTodo}

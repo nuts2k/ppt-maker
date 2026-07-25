@@ -13,6 +13,16 @@ import { type ActivityLog, buildActivityRecord } from "../activity-log.js";
 import { resolveDeckContext } from "../deck-context.js";
 import type { AcceptOptions, ActivityResult } from "./channels.js";
 
+/**
+ * 复核文档在工作区内的相对路径，必须与 CLI 的 `slide/review.ts`、
+ * `slide/assist-review.ts`、`slide/validate-review.ts` 三处保持一致。
+ *
+ * 曾经这里漏写 `stages/` 一层，`load-review` 的 readFile 失败后被 catch 吞成 null，
+ * 单页复核画布拿到 0 个文字块、侧边栏三块全空，而控制台没有任何报错——
+ * 表现为「点进去什么都没有」。改动此常量前先确认 CLI 侧写入路径。
+ */
+const REVIEW_RELATIVE_PATH = ["stages", "review", "text-blocks.json"] as const;
+
 export function registerSlideHandlers(activityLog: ActivityLog): void {
   async function log(
     workspacePath: string,
@@ -44,7 +54,7 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
       workspacePath: string,
     ): Promise<TextReviewDocument | null> => {
       const ws = resolve(workspacePath);
-      const reviewPath = join(ws, "review", "text-blocks.json");
+      const reviewPath = join(ws, ...REVIEW_RELATIVE_PATH);
       try {
         const raw = await readFile(reviewPath, "utf-8");
         return TextReviewDocumentSchema.parse(JSON.parse(raw));
@@ -63,7 +73,7 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
     ): Promise<{ valid: boolean; errors: number; warnings: number }> => {
       const ws = resolve(workspacePath);
       const parsed = TextReviewDocumentSchema.parse(document);
-      const reviewPath = join(ws, "review", "text-blocks.json");
+      const reviewPath = join(ws, ...REVIEW_RELATIVE_PATH);
       const { writeFile } = await import("node:fs/promises");
       await writeFile(reviewPath, JSON.stringify(parsed, null, 2), "utf-8");
 
