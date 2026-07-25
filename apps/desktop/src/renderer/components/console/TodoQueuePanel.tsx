@@ -38,7 +38,7 @@ const ICON_BUTTON =
   "rounded-sm border border-hairline px-1.5 py-1 text-sm text-ink transition active:border-border-strong";
 
 const COUNT_BADGE =
-  "shrink-0 rounded-xs bg-surface-strong px-1.5 py-0.5 text-xs font-medium text-ink";
+  "shrink-0 rounded-xs bg-surface-strong px-1.5 py-0.5 text-sm font-medium text-ink";
 
 export function TodoQueuePanel({
   className,

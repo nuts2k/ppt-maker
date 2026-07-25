@@ -1,42 +1,28 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  type DoctorNotice,
+  exportNotice,
+  startupNotice,
+} from "@/lib/doctor-view";
 import { cn } from "@/lib/utils";
 import { useDeckStore } from "@/stores/deck-store";
 import { useRunStore } from "@/stores/run-store";
 import type { DoctorReport } from "../../../main/ipc/channels.js";
+import { DoctorChip } from "./DoctorChip";
+import { DoctorNoticeBar } from "./DoctorNoticeBar";
 
 interface ExportResult {
   ok: boolean;
   message: string;
 }
 
-// doctor 单项状态 → 状态点颜色（沿用全局状态色约定）
-const CHECK_DOT_CLASS: Record<string, string> = {
-  pass: "bg-success",
-  warn: "bg-signature-mustard",
-  fail: "bg-signature-coral",
-};
+/** DESIGN.md `button-primary`：近黑底、12px 圆角；条内动作按钮比控制条主按钮略紧凑 */
+const BUTTON_PRIMARY =
+  "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
 
-interface ChipStyle {
-  label: string;
-  className: string;
-}
-
-function chipStyleOf(report: DoctorReport): ChipStyle {
-  const { fail, warn } = report.summary;
-  if (fail > 0) {
-    return {
-      label: `环境异常 ${fail} 项`,
-      className: "bg-signature-coral text-on-primary",
-    };
-  }
-  if (warn > 0) {
-    return {
-      label: `环境警告 ${warn} 项`,
-      className: "bg-signature-mustard text-ink",
-    };
-  }
-  return { label: "环境正常", className: "bg-success/10 text-success" };
-}
+/** DESIGN.md `button-secondary`：白底 + hairline 描边 */
+const BUTTON_SECONDARY =
+  "rounded-lg border border-hairline bg-canvas px-4 py-2 text-sm text-ink transition active:border-border-strong";
 
 export function TopNav(): React.JSX.Element {
   const deckPath = useDeckStore((s) => s.deckPath);
@@ -46,12 +32,14 @@ export function TopNav(): React.JSX.Element {
   const [report, setReport] = useState<DoctorReport | null>(null);
   // doctor 调用失败不应阻断界面，仅降级为「环境未知」
   const [doctorFailed, setDoctorFailed] = useState(false);
-  const [doctorOpen, setDoctorOpen] = useState(false);
-  const doctorRef = useRef<HTMLDivElement | null>(null);
+  // 启动提示只提示一次；关掉后仍可从 chip 下拉看到完整明细
+  const [noticeDismissed, setNoticeDismissed] = useState(false);
 
   const [strict, setStrict] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
+  // 非 null 表示导出被环境警告拦下，等待用户确认「仍要导出」
+  const [exportConfirm, setExportConfirm] = useState<DoctorNotice | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,21 +56,10 @@ export function TopNav(): React.JSX.Element {
     };
   }, []);
 
-  // 点击卡片外部收起下拉
-  useEffect(() => {
-    if (!doctorOpen) return;
-    function onPointerDown(event: MouseEvent): void {
-      const node = doctorRef.current;
-      if (node && !node.contains(event.target as Node)) setDoctorOpen(false);
-    }
-    document.addEventListener("mousedown", onPointerDown);
-    return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [doctorOpen]);
-
   const running = runStatus !== "idle";
   const exportDisabled = !deckPath || exporting || running;
 
-  async function handleExport(): Promise<void> {
+  async function runExport(): Promise<void> {
     if (!deckPath) return;
     const outputPath = await window.api.system.saveFileDialog("output.pptx");
     if (!outputPath) return;
@@ -105,11 +82,23 @@ export function TopNav(): React.JSX.Element {
     }
   }
 
-  const chip: ChipStyle | null = report
-    ? chipStyleOf(report)
-    : doctorFailed
-      ? { label: "环境未知", className: "bg-surface-strong text-muted" }
-      : null;
+  /** PRD F5.1：环境问题不阻止打开与复核，但导出前必须警告一次 */
+  function handleExportClick(): void {
+    if (!deckPath) return;
+    const notice = exportNotice(report);
+    if (notice !== null) {
+      setExportConfirm(notice);
+      return;
+    }
+    void runExport();
+  }
+
+  function handleConfirmExport(): void {
+    setExportConfirm(null);
+    void runExport();
+  }
+
+  const notice = noticeDismissed ? null : startupNotice(report);
 
   return (
     <div className="shrink-0 border-b border-hairline bg-canvas">
@@ -145,51 +134,7 @@ export function TopNav(): React.JSX.Element {
           className="flex shrink-0 items-center gap-4"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
-          {chip && (
-            <div className="relative shrink-0" ref={doctorRef}>
-              <button
-                type="button"
-                onClick={() => setDoctorOpen((open) => !open)}
-                className={cn(
-                  "rounded-xs px-2 py-0.5 text-sm font-medium transition",
-                  chip.className,
-                )}
-              >
-                {chip.label}
-              </button>
-              {doctorOpen && (
-                <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-md border border-hairline bg-canvas p-4">
-                  {report ? (
-                    <ul className="flex flex-col gap-3">
-                      {report.checks.map((check) => (
-                        <li key={check.id} className="flex gap-2">
-                          <span
-                            className={cn(
-                              "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                              CHECK_DOT_CLASS[check.status] ??
-                                "bg-surface-strong",
-                            )}
-                          />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-ink">
-                              {check.label}
-                            </p>
-                            <p className="text-sm leading-relaxed text-body">
-                              {check.message}
-                            </p>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-body">
-                      环境检查未能完成，请确认依赖是否可用。
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          <DoctorChip report={report} failed={doctorFailed} />
 
           {/* 未打开 deck 时导出无从谈起，严格模式开关一并隐藏以减少空态噪音 */}
           {deckPath !== null && (
@@ -208,15 +153,54 @@ export function TopNav(): React.JSX.Element {
 
           <button
             type="button"
-            onClick={() => void handleExport()}
+            onClick={handleExportClick}
             disabled={exportDisabled}
             title={running ? "执行中不可导出" : undefined}
-            className="shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40"
+            className={cn("shrink-0", BUTTON_PRIMARY)}
           >
             {exporting ? "导出中…" : "导出 PPTX"}
           </button>
         </div>
       </div>
+
+      {notice && (
+        <DoctorNoticeBar
+          notice={notice}
+          actions={
+            <button
+              type="button"
+              onClick={() => setNoticeDismissed(true)}
+              className={BUTTON_SECONDARY}
+            >
+              知道了
+            </button>
+          }
+        />
+      )}
+
+      {exportConfirm && (
+        <DoctorNoticeBar
+          notice={exportConfirm}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={handleConfirmExport}
+                className={BUTTON_PRIMARY}
+              >
+                仍要导出
+              </button>
+              <button
+                type="button"
+                onClick={() => setExportConfirm(null)}
+                className={BUTTON_SECONDARY}
+              >
+                取消
+              </button>
+            </>
+          }
+        />
+      )}
 
       {exportResult && (
         <div

@@ -53,9 +53,7 @@ export function DeckEmptyState({
       )}
     >
       <div className="flex flex-col items-center gap-4 text-center">
-        <h1 className="text-[32px] font-normal leading-[1.2] text-ink">
-          PPT Maker
-        </h1>
+        <h1 className="text-display-md font-normal text-ink">PPT Maker</h1>
         <p className="max-w-md text-sm leading-relaxed text-body">
           可视化复核 PPT
           中的文字检测结果，批量运行去字与重建流水线，导出为可编辑 PPTX。
@@ -81,7 +79,7 @@ export function DeckEmptyState({
         </button>
       </div>
 
-      <div className="flex max-w-sm flex-col gap-1 text-center text-xs font-medium leading-relaxed text-muted">
+      <div className="flex max-w-sm flex-col gap-1 text-center text-sm font-medium leading-relaxed text-muted">
         <p>
           <strong className="font-medium text-body">打开</strong> —
           选择一个已有的 Deck 工作区目录
@@ -93,7 +91,7 @@ export function DeckEmptyState({
       </div>
 
       {error !== null && error !== "" && (
-        <p className="rounded-sm bg-signature-coral/10 px-4 py-2 text-xs font-medium text-signature-coral">
+        <p className="rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral">
           {error}
         </p>
       )}

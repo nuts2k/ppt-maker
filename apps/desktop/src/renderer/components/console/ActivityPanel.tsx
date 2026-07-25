@@ -46,17 +46,17 @@ export function ActivityPanel({
           className,
         )}
       >
-        <span className="shrink-0 text-xs font-medium text-muted">
+        <span className="shrink-0 text-sm font-medium text-muted">
           活动日志
         </span>
-        <span className="min-w-0 flex-1 truncate text-xs text-muted">
+        <span className="min-w-0 flex-1 truncate text-sm text-muted">
           {latest ? describeActivity(latest) : "暂无记录"}
         </span>
         <button
           type="button"
           aria-label="展开活动日志"
           onClick={() => toggle(true)}
-          className="shrink-0 rounded-sm border border-hairline px-2 py-0.5 text-xs text-muted transition active:border-border-strong"
+          className="shrink-0 rounded-sm border border-hairline px-2 py-0.5 text-sm text-muted transition active:border-border-strong"
         >
           ⌃
         </button>
@@ -73,14 +73,14 @@ export function ActivityPanel({
     >
       <div className="sticky top-0 z-10 flex h-10 items-center gap-3 border-b border-hairline bg-canvas px-6">
         <span className="text-base font-medium text-ink">活动日志</span>
-        <span className="flex-1 text-xs font-medium text-muted">
+        <span className="flex-1 text-sm font-medium text-muted">
           {records.length} 条
         </span>
         <button
           type="button"
           aria-label="收起活动日志"
           onClick={() => toggle(false)}
-          className="shrink-0 rounded-sm border border-hairline px-2 py-0.5 text-xs text-muted transition active:border-border-strong"
+          className="shrink-0 rounded-sm border border-hairline px-2 py-0.5 text-sm text-muted transition active:border-border-strong"
         >
           ⌄
         </button>
@@ -95,7 +95,7 @@ export function ActivityPanel({
           {groups.map((group) => (
             <section key={group.date} className="flex flex-col gap-1">
               <div className="flex items-center gap-3">
-                <span className="shrink-0 text-xs font-medium text-muted">
+                <span className="shrink-0 text-sm font-medium text-muted">
                   {group.date}
                 </span>
                 <span className="flex-1 border-t border-hairline" />
@@ -122,7 +122,7 @@ function ActivityRow({
       <span
         className={cn("w-0.5 shrink-0 rounded-xs", RESULT_BAR[record.result])}
       />
-      <span className="w-16 shrink-0 text-xs font-medium tabular-nums text-muted">
+      <span className="w-20 shrink-0 text-sm font-medium tabular-nums text-muted">
         {formatTime(record.at)}
       </span>
       <span className="min-w-0 flex-1 text-sm text-body">

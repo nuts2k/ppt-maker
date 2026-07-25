@@ -127,12 +127,12 @@ export function SlideCard({ slide }: SlideCardProps): React.JSX.Element {
             className="h-full w-full object-contain"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-muted">
+          <div className="flex h-full w-full items-center justify-center text-sm text-muted">
             {thumbnailState === "loading" ? "加载中…" : "无预览"}
           </div>
         )}
         {slide.removed && (
-          <span className="absolute left-2 top-2 rounded-xs bg-surface-dark px-1.5 py-0.5 text-xs font-medium text-on-dark">
+          <span className="absolute left-2 top-2 rounded-xs bg-surface-dark px-1.5 py-0.5 text-sm font-medium text-on-dark">
             已移除
           </span>
         )}

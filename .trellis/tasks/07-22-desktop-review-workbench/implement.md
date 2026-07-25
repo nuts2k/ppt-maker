@@ -103,10 +103,31 @@
 
 ## 阶段 E：收尾
 
-- [ ] E1 doctor 启动提示 + 导出前警告
-- [ ] E2 DESIGN.md 合规走查（对照 token 表逐组件核对；无 hover 新增样式；display ≤ 500 weight）
-- [ ] E3 全量验证：`pnpm format:check && pnpm typecheck && pnpm test && pnpm build`
-- [ ] E4 真实 deck 端到端：创建 → 批量 → 逐页验收 → 导出 → PowerPoint 打开确认
+- [x] E1 doctor 启动提示 + 导出前警告
+- [x] E2 DESIGN.md 合规走查（对照 token 表逐组件核对；无 hover 新增样式；display ≤ 500 weight）
+- [x] E3 全量验证：`pnpm format:check && pnpm typecheck && pnpm test && pnpm build`
+- [ ] E4 真实 deck 端到端：创建 → 批量 → 逐页验收 → 导出 → PowerPoint 打开确认（**需人工执行**，见下）
+
+**实施补充（阶段 E 实际产出）**
+
+- **检查项按影响面分两级**（E1 的关键决策）：新增 `renderer/lib/doctor-view.ts`（纯函数，16 个单测）把 doctor 检查项分成关键项 `platform / swift / powerpoint / font-microsoft-yahei` 与基线项 `node / pnpm`。启动提示只看关键项——基线项在打包后的应用里缺失是常态，本机实测即为佐证：`node v25.8.0` 相对 Node 24 LTS 基线报 warn，若不分级则每次启动都要弹一条与用户无关的警告。chip 的计数仍覆盖全部检查项，与下拉明细同口径，分级只影响提示时机而非诚实计数。
+- **导出判据比启动提示更窄**：`EXPORT_CHECK_IDS` 只含 `powerpoint` 与 `font-microsoft-yahei`。Swift 缺失不影响已完成页的拼装（`deck export` 只做 pptx 组装，不跑 OCR），不该在导出时二次打扰。字体缺失不会让 `deck export` 抛错（`assertPptxFontReady` 只在单页 `slide pptx` 路径生效），而是让新生成的占位页在 PowerPoint 里静默字体回退——这正是必须在导出**前**告知的理由。
+- **提示形态为条形而非模态**：DESIGN.md 没有模态语言，且 PRD F5.1 要求「不阻止打开」。新增 `components/layout/DoctorNoticeBar.tsx`，启动提示（动作＝「知道了」）与导出确认（动作＝「仍要导出」/「取消」）复用同一条，与既有导出结果条同处顶栏下方一列。chip 与下拉抽成 `components/layout/DoctorChip.tsx`，报告仍由 `TopNav` 持有并透传——导出警告要用同一份数据，chip 自行拉取会出现两份报告不一致。
+- **E2 走查结论**：颜色全部落在 DESIGN.md token 内（实测使用中的 `bg-/text-/border-/ring-` 自定义色 27 个，无一例外）；字重只有 `font-medium`(500) × 80 与 `font-normal`(400) × 1，无 600+；圆角全部 `rounded-xs/sm/md/lg/full`；全仓无 `hover:`、无 `shadow`。修正三类偏差：
+  - **12px 字号清零**（18 处）：`text-xs` 低于 DESIGN.md 最小档（body-md 14px），统一改为 `text-sm`，沿用阶段 D 侧边栏已确立的方向。活动日志时间列随之从 `w-16` 放宽到 `w-20`，否则 14px 的 `12:34:56` 会被截断。
+  - **画布分类色映射到文档内 token**：`#16a34a / #9ca3af / #f59e0b` 三个文档外强调色（DESIGN.md 明确禁止签名色板外新增强调色）改为 `success-border / border-strong / signature-mustard`，语义分别是「已确认版面文字」「对象整合符号」「不确定」，最后一项与全局「待处理＝mustard」同色。
+  - **tailwind config 清理**：删掉 9 个从未被引用的文档外 token（`error*` / `warning*` / `block-*`），新增 `display-md`(32px/1.2) 一档并把 `DeckEmptyState` 的 `text-[32px] leading-[1.2]` 换掉——tailwind 默认刻度的 14/16/18/20/24px 恰好对上 DESIGN.md，只有 32px 档缺失。
+- **保留的例外（两处，均在画布标注层）**：`TextBlockOverlay` 的块内文字与 `TextEditor` 的编辑框同为 `text-[10px]`。尺寸由识别框 bbox 决定，用界面字号会溢出小块；两者必须同号，否则双击进入编辑时文字会跳大。已在代码注释中写明理由。
+- **biome 报错清零**：阶段 A 起挂账的 2 处 V1 报错已修 —— `noUselessFragments`（多余 fragment 包裹 `HANDLE_POSITIONS.map`，改为条件短路直出数组）、`useSemanticElements`（块内含 8 个手柄按钮与编辑态 textarea，`<button>` 会构成非法嵌套，按 `SlideCard` 同一模式加 `biome-ignore` 并说明）。
+- **E3 结果**：`pnpm format:check`（142 文件）/ `pnpm typecheck`（3 包）/ `pnpm test`（cli 78 + desktop 141 = 219）/ `pnpm build` 四项全绿。desktop 测试较阶段 D 增加 16 个（`doctor-view`）。
+
+**E4 待人工执行**（需 GUI、真实 PPT 截图与 API key，无法在无头环境完成）
+
+1. 创建：从图片目录新建 deck，确认卡片网格与页数正确。
+2. 批量：「处理全部」跑完整流水线，观察卡片轨道实时推进、控制条计时、停止语义、失败页错误条。
+3. 逐页验收：从待办队列点进单页，走 accept-clean（SliderCompare + 清单）与 accept-pptx，确认「处理下一项」闭环；验收记录用 CLI `deck status` / `slide report` 核对。
+4. 导出：确认导出前警告在本机（关键项全 pass）**不**出现，导出成功条给出原生/占位页数。
+5. PowerPoint 打开导出的 pptx，确认字体与版面。
 
 ## 回滚点
 
@@ -117,4 +138,5 @@
 
 - [x] 移除 `slide:run` 通道后确认 renderer 无残留调用
 - [x] 删除 pipeline-store 及其引用（阶段 B 收口，全仓 grep 已确认无残留）
+- [x] tailwind config 孤儿 token 清理（阶段 E 收口：`error*` / `warning*` / `block-*` 共 9 个）
 - [ ] `out/` 构建产物按现有仓库习惯处理（当前被 git 跟踪，保持现状，不在本任务内改变策略）

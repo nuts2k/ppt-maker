@@ -34,21 +34,17 @@ const config: Config = {
         "signature-mint": "#a8d8c4",
         "signature-yellow": "#f4d35e",
         "signature-mustard": "#d9a441",
-        error: "#8b1a1a",
-        "error-light": "#fef2f2",
-        "error-border": "#dc4545",
-        warning: "#7c4a00",
-        "warning-light": "#fefce8",
-        "warning-border": "#d97706",
-        "block-layout": "#16a34a",
-        "block-object": "#9ca3af",
-        "block-uncertain": "#f59e0b",
       },
       borderRadius: {
         xs: "2px",
         sm: "6px",
         md: "10px",
         lg: "12px",
+      },
+      fontSize: {
+        // DESIGN.md 的 display 档，tailwind 默认刻度覆盖不到（默认 text-3xl 是 30px）。
+        // 14/16/18/20/24px 直接落在 text-sm/base/lg/xl/2xl 上，无需重复定义。
+        "display-md": ["32px", { lineHeight: "1.2" }],
       },
       fontFamily: {
         sans: [

@@ -16,11 +16,16 @@ interface TextBlockOverlayProps {
     | undefined;
 }
 
+/**
+ * 分类边框色。V1 用的 #16a34a / #9ca3af / #f59e0b 是 DESIGN.md 之外的强调色
+ * （文档明确禁止在签名色板外新增强调色），这里映射到文档内 token：
+ * 版面文字＝确认态绿、对象符号＝强描边灰、不确定＝mustard（与全局「待处理」同色）。
+ */
 const CLASSIFICATION_BORDER: Record<TextReviewBlock["classification"], string> =
   {
-    layout_text: "border-block-layout",
-    object_integrated_symbol: "border-block-object",
-    uncertain: "border-block-uncertain",
+    layout_text: "border-success-border",
+    object_integrated_symbol: "border-border-strong",
+    uncertain: "border-signature-mustard",
   };
 
 const HANDLE_POSITIONS = ["nw", "ne", "sw", "se", "n", "s", "e", "w"] as const;
@@ -91,6 +96,9 @@ export function TextBlockOverlay({
   }, []);
 
   return (
+    // 块内会渲染 8 个拖拽手柄按钮与编辑态 textarea，外层用 <button> 构成非法嵌套，
+    // 因此沿用 SlideCard 的做法：div + role="button" 自行补齐键盘可达性。
+    // biome-ignore lint/a11y/useSemanticElements: 见上，语义按钮会导致 button 嵌套
     <div
       role="button"
       tabIndex={0}
@@ -115,25 +123,26 @@ export function TextBlockOverlay({
           onCancel={handleTextCancel}
         />
       ) : (
+        // 10px 低于 DESIGN.md 最小字号（legal 13.12px）：这是贴在原图 bbox 上的标注，
+        // 尺寸由识别框决定，用界面字号会溢出小块。属画布标注层，不参与界面排版。
         <span className="block truncate p-0.5 text-[10px] leading-tight text-ink">
           {block.text}
         </span>
       )}
 
-      {selected && onUpdate && !editing && (
-        <>
-          {HANDLE_POSITIONS.map((pos) => (
-            <TextBlockHandle
-              key={pos}
-              position={pos}
-              scale={scale}
-              onDragStart={handleDragStart}
-              onDrag={handleDrag}
-              onDragEnd={handleDragEnd}
-            />
-          ))}
-        </>
-      )}
+      {selected &&
+        onUpdate &&
+        !editing &&
+        HANDLE_POSITIONS.map((pos) => (
+          <TextBlockHandle
+            key={pos}
+            position={pos}
+            scale={scale}
+            onDragStart={handleDragStart}
+            onDrag={handleDrag}
+            onDragEnd={handleDragEnd}
+          />
+        ))}
     </div>
   );
 }

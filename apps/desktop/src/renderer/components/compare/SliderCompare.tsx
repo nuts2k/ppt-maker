@@ -97,10 +97,10 @@ export function SliderCompare({
       </div>
 
       {/* 标签 */}
-      <div className="absolute top-3 left-3 rounded-sm bg-primary/70 px-2 py-0.5 text-xs text-on-primary">
+      <div className="absolute top-3 left-3 rounded-sm bg-primary/70 px-2 py-0.5 text-sm text-on-primary">
         原图
       </div>
-      <div className="absolute top-3 right-3 rounded-sm bg-primary/70 px-2 py-0.5 text-xs text-on-primary">
+      <div className="absolute top-3 right-3 rounded-sm bg-primary/70 px-2 py-0.5 text-sm text-on-primary">
         Clean Plate
       </div>
     </div>

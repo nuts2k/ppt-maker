@@ -77,7 +77,7 @@ export function ReviewCanvas({
           ))}
       </div>
 
-      <div className="absolute bottom-3 left-3 rounded-sm bg-surface-dark/70 px-2 py-1 text-xs text-on-dark">
+      <div className="absolute bottom-3 left-3 rounded-sm bg-surface-dark/70 px-2 py-1 text-sm text-on-dark">
         {Math.round(transform.scale * 100)}%
       </div>
     </div>
