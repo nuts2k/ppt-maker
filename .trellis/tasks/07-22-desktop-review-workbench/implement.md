@@ -106,7 +106,7 @@
 - [x] E1 doctor 启动提示 + 导出前警告
 - [x] E2 DESIGN.md 合规走查（对照 token 表逐组件核对；无 hover 新增样式；display ≤ 500 weight）
 - [x] E3 全量验证：`pnpm format:check && pnpm typecheck && pnpm test && pnpm build`
-- [ ] E4 真实 deck 端到端：创建 → 批量 → 逐页验收 → 导出 → PowerPoint 打开确认（**需人工执行**，见下）
+- [x] E4 真实 deck 端到端：创建 → 批量 → 逐页验收 → 导出 → PowerPoint 打开确认（人工执行完成，走查中发现并修复 7 个缺陷，见下）
 
 **实施补充（阶段 E 实际产出）**
 
@@ -121,7 +121,7 @@
 - **biome 报错清零**：阶段 A 起挂账的 2 处 V1 报错已修 —— `noUselessFragments`（多余 fragment 包裹 `HANDLE_POSITIONS.map`，改为条件短路直出数组）、`useSemanticElements`（块内含 8 个手柄按钮与编辑态 textarea，`<button>` 会构成非法嵌套，按 `SlideCard` 同一模式加 `biome-ignore` 并说明）。
 - **E3 结果**：`pnpm format:check`（142 文件）/ `pnpm typecheck`（3 包）/ `pnpm test`（cli 78 + desktop 141 = 219）/ `pnpm build` 四项全绿。desktop 测试较阶段 D 增加 16 个（`doctor-view`）。
 
-**E4 走查中发现的三个缺陷（均为 M4 早期埋下，非 E 阶段引入，已修复）**
+**E4 走查中发现的七个缺陷（均为 M4 早期埋下，非 E 阶段引入，已修复）**
 
 E4 一开始就卡住，连续暴露三个问题。共同特征是**失败被静默吞掉**，界面上一律表现为「点了没反应」：
 
@@ -129,30 +129,44 @@ E4 一开始就卡住，连续暴露三个问题。共同特征是**失败被静
 2. **「标记已复核」这个动作在 UI 里从未实现**：renderer 全仓搜 `reviewStatus` 只有读、没有写。`assist-review` 只自动确认高置信块，其余需人工确认，但界面上无从操作 → `mask/run.ts:152` 门禁「存在未复核却参与 mask 的文字块」必然失败，整条流水线走不下去。补齐两档：PropertyPanel 单块「标记已复核」+ SlideToolbar 整页「全部标为已复核 N」。纯逻辑在 `lib/review-status.ts`（8 个单测），`accepted_with_risk` 不被批量覆盖（它带 `riskAcceptance` 记录，语义不同）。
 3. **断点续跑死锁**（`slide-detail.ts` 的 `computeResumeStage`）：原实现 `if (TRANSIENT.has(stage)) continue` 直接跳过 `validate-review`。用户保存复核后 `text-blocks.json` 的 sha 变化，mask 报「在校验后已改动，请重新运行 validate-review」，而续跑起点恒为 mask、永不回头校验——**点多少次「运行此页」都不动**。改为：判据仍只看持久阶段（避免每轮从头），但起点**回退到未完成阶段前最近的瞬态阶段**；下游已完成则不回退（说明当时校验通过过）。回退安全，validate-review 是纯离线幂等的毫秒级校验。
    - 此改动打破了 3 个既有测试，它们恰好把死锁行为固化成断言（`.toBe("mask")` / `.not.toBe("validate-review")`）。已重写并在用例名与注释中写明死锁场景，防止被「修复」回去。
+4. **闸门到了、图没到**（`SlidePage.tsx` + `slide-store.ts`）：`loadSlide` 只依赖 `workspacePath`，进页时 clean 尚未产出，`cleanPlateUrl` 取到 null；跑完 clean 后路径未变，加载 effect 不重跑，store 里的图永远是进页那一刻的快照。而闸门走的是 run-store 事件、照常把视图切到 accept，于是 accept-clean 界面显示「缺少原图或去字底板，无法对比；请先重跑 clean 阶段」——**产物在磁盘上齐全**，纯读取侧问题，与缺陷 1 同类。新增 `slide-store.reloadImages()` 只刷两张图（不复用 `loadSlide`：它会重置 `reviewDocument`，吞掉未保存的复核改动），带切页竞态守卫；`SlidePage` 在 `pageBusy` 由 true 落回 false 时触发，覆盖「运行此页」「处理全部」「拒绝验收后重跑」三条路径。
+5. **「重跑」点了毫无反应**（`run-from.ts` 的幂等守卫缺少强制重做路径）：由缺陷 4 的提示文案引到「那就重跑 clean」，结果连点 6 次无反应。活动日志给出决定性证据——每次 run 都在 **2 毫秒**内 `run-start → page-done`，且**一条 `stage-start` 都没有**，终点是 `gate: 请人工核对 clean plate`。根因：`run-from.ts:128` 的 `if (stageState(...)?.status !== "completed")` 把显式 `--from clean` 也按断点续跑的幂等规则整段跳过，执行器一路滑到下一个人工闸门原地返回。绕过守卫也没用，`runSlideClean` 内部的 `isStageReusable` 同样只认 `completed` + 指纹，会复用旧产物。
+   - **语义缺口**：仓库里 6 处 `invalidateStageAndDownstream` 调用清一色是「输入指纹变化 → 产物过期」，唯独缺「人工判定不合格 → 强制重做」——后者输入一字未改，靠指纹永远推不出来。
+   - 新增 `apps/cli/src/slide/invalidate.ts` 的 `invalidateSlideStage`（复用 core 现成的 `invalidateStageAndDownstream`），打通 `slide:invalidate-stage` 通道，`SlidePage` 把三个重跑入口（StageRail 徽章、SlideToolbar、拒绝验收）统一收进 `rerunFrom`：先标 `stale` 再启动，失效写盘失败则不启动 run（否则又退化成空转）。`stale` 让 run-from 守卫与 `isStageReusable` 两道判断一并放行。**无参的「运行此页」不走这条路径**——它本就是断点续跑，跳过已完成阶段是正确行为。
+   - 4 个回归测试（`apps/cli/test/slide-invalidate.test.ts`）：断言落在「失效后 `isStageReusable` 必须为 false」而非「写盘成功」，因为两道判断都只认 `completed`；用例名与注释写明空转场景，防止被「修复」回去。同时验证上游不被牵连（重跑 clean 不该把 mask 拖下水）与 pending 阶段不被改写成 stale。
+   - 全量验证：`format:check`（146 文件）/ `typecheck`（3 包）/ `test` **292 通过**（core 61 + desktop 149 + cli 82）。
+
+6. **report 跑成功但状态永不落库**（`report/run.ts`）：`runSlideReport` 收尾只写 `assets`，**完全没碰 `stages` / `attempts`**——全流水线独此一家。于是 report 恒为 pending：`computeResumeStage` 每次都从 report 起跑、每次都真的成功、每次都不改状态，界面上就是「运行没任何反馈」，用户只能反复点。活动日志是决定性证据——page-01 连着 4 次、page-02 连着 3 次 `stage-complete report success` + `已执行到 report，流水线完成`，而 manifest 里 report 始终 pending。已补齐 `completed` 状态 + 递增 attempt + `inputFingerprint`（report 无外部产物，指纹取上游各阶段完成态），并让报告内容用落库后的 stages（否则报告把自己记成 pending）。report 是毫秒级纯本地汇总、无中断窗口，故直接写 completed，不走「先 running 再 replace」的两段式。
+   - **该缺陷能存活的原因**：`slide-run-report.test.ts` 既有 5 个用例全部只断言 `report` 内容，无一个碰 manifest 状态。已补 2 个回归测试（落库状态 + 重跑递增 attempt 编号）。
+7. **缺陷 5 修复的副作用：StageRail 误触代价被放大**（同轮已处理）：`StageRail` 的 10 个阶段点位横贯顶栏、单击即重跑且无确认。修复前误触无害（重跑压根不生效，正是缺陷 5 本身）；修好之后误触会真的作废该阶段及全部下游产物，clean 这类还要重新调付费 API。用户在 E4 中即反馈「不知道在哪操作后会回退到上一阶段」。已加二次确认：**仅已完成阶段**需点两次（pending/failed 无产物可作废，单击直达），待确认态经 5 秒超时、点击轨道之外、或本页转入执行中三条路径退出。提示条用 `bg-signature-mustard`（文档内 token，与全局「待处理＝mustard」及既有 coral 错误条同构），无模态——DESIGN.md 无模态语言。
+   - 记录此条是因为它是**修复引入的新风险**，不是既有缺陷：判断「点了没反应」类问题时，务必确认修复后误触路径的后果是否随之改变。
 
 **E4 遗留待查（下个会话接手点）**
 
-- **失败反馈链路存疑**（问题 C，未动）：mask 在前置校验就抛错，manifest 里 `attempts: []`，耐久层 `extractLastError` 读不到东西，错误只存在于会话层 `sessionResult.error`。三次失败用户全程只感觉到「不动」。需确认 StageRail 的错误条在这种「无 manifest 记录的前置失败」下是否真的渲染。
+- **失败反馈链路（问题 C）已代码走查通过，待目视确认**：链路完整闭合——`deck-runner.ts:277-289` 把 `runSlideRunFrom` 之外抛出的前置异常 catch 后照样 `emit({kind:"page-done", error:{code:"PIPELINE_RUN_FAILED"}})`，`run-reducer.ts:108-117` 写入 `sessionResults[slideId].error`，`SlidePage.tsx` 透传 `sessionError`，`StageRail` 以 `slide.lastError ?? sessionError` 兜底。**manifest 无 attempts 记录时错误条仍会渲染**。当时「三次失败只感觉到不动」的真实成因是缺陷 3 的死锁与缺陷 5 的静默跳过（后者根本没失败，是 2 毫秒空转），不是错误条缺失。仍需一次真实失败目视确认。
 - **画布滚轮 preventDefault 失效**（pre-existing，`useCanvasTransform.ts:88`）：React 18+ 把 wheel 注册为 passive listener，`e.preventDefault()` 被忽略并刷屏警告。缩放平移本身正常（`overflow-hidden` 兜住了），但 Cmd/Ctrl+滚轮拦不住浏览器页面级缩放。修法是改用原生 `addEventListener("wheel", h, { passive: false })`。属画布内核，M4 计划划了「不改交互逻辑」的红线，需确认后再动。
+- **网关不遵守 `size` 参数**（外部服务行为，非本仓代码缺陷）：`provider.json` 记录请求 `size: "2048x1152"`（耗时 48.6s 真实调用），但返回的 `result.png` 实测 1672×940，恰为源图尺寸；`resultBuffer` 是 API base64 直接解码、中间无缩放，故可确定是网关按输入图尺寸返回。`checks.size.ok` 因此**恒为 false**（只要源图不是 2048×1152），`aspectRatioOk` 仍为 true。功能上无害：PPTX 用**源图**尺寸做坐标换算（`pptx/run.ts:306` 的 `source.image` 取自 init 实测），底板只作背景贴入，同尺寸反而省一次缩放；代价是背景分辨率低于 M1 技术结论「固定 2048x1152」的预期。需决定的是改期望值还是改网关请求，不是改检查逻辑——检查是对的，它抓到了真实偏离。
+- **`clean_plate` asset 的尺寸是硬编码而非实测**（`clean/run.ts:328-332` 直接写 `CLEAN_PLATE_WIDTH/HEIGHT`）：manifest 记 2048×1152，磁盘实为 1672×940，元数据说谎。全仓消费点已核（`clean/accept.ts` / `clean/run.ts` 按 role 取 asset，`slide:load-image` 只用 `image.format`），**当前无人读它的宽高**，故无下游影响；但这是留给后来者的陷阱，应改为落盘后实测。`assertWorkspaceAssetIntegrity` 只校验 sha256，抓不到这类不一致。
+- **accept-clean 的核查清单名不副实**（设计缺口，非 bug，建议下个里程碑处理；**E4 已出现真实案例**：page-01 的 `checks.size.ok=false` 就摆在 `record.json` 里，但验收界面不展示自动检查数值，四项清单全勾提交后 `accepted.json` 落库 `sizeCorrect: true`——机器判了不合格，人在不知情下签了字，恰好实证下述缺口）：闸门本身该留——`stage-graph` 里 `pptx: ["accept-clean"]` 是硬门禁，挡的是「破容器的底板一路合成到 PPTX、进了 export 才在 PowerPoint 里发现」的返工成本；且它卡在唯一一个花钱且不可逆的外部调用（`gpt-image-2` 上传）之后。问题在交互：`AcceptFlow` 的四条人工清单（文字无残留 / 容器完整 / 非文字区未误改 / 尺寸正确）与 `clean/checks.ts` 的四项自动检查（size / textResidue / outsideMaskDiff / containerRingDiff）**一一对应**，而勾选结果不落库（组件注释已写明：UI 强制全勾才允许提交，CLI 侧落库为默认全 true）——勾四下不产生任何信息，与直接点「接受」等价，退化成仪式。人工本该补的是统计量判不了的语义：同样 300 个残留像素落在标题正中还是角落背景是两回事，容器环改动率 0.02 是描边被吃掉还是抗锯齿抖动只有看一眼才知道。**建议形态**：把四项自动检查的实际数值摆在清单旁，人工只对机器判不了的部分做判断并逐项落库。需扩 IPC `AcceptOptions` 契约（阶段 A 定型时只有 acceptedBy / note），超出 M4「壳层重写、不改交互逻辑」红线，故不在本任务内改。
 - **路径常量重复 5 处**：`stages/review/text-blocks.json` 在 CLI 三处 + desktop 一处各自定义，正是缺陷 1 的根因。根治需提到 `@ppt-maker/core` 统一导出，会动 CLI 三个文件，未做。
 
-**E4 当前测试数据状态**
+**E4 执行结果（已完成）**
 
 - deck 工作区：`~/test/ppttest-2026-07-25`（2 页，源图来自 `~/test/ppttest/`，已裁/补白为 16:9）
-- `page-01`：60 块（53 layout_text + 7 uncertain 已全部分类完），阶段 `init/ocr/review/assist-review` completed，mask 及之后 pending
-- `page-02`：95 块，全部 layout_text
+- `page-01`：60 块（44 layout_text + 16 object_integrated_symbol），`page-02`：95 块全 layout_text
+- **两页 10 个阶段全部 completed**，`report` attempt 编号正确递增（page-01 三次点击 → `report-001/002/003`，page-02 一次）
+- 导出成功：`~/Downloads/output.pptx`，活动日志记 `原生 2 页，占位 0 页`；本机 doctor 关键项全 pass，导出前警告如期**不**出现
+- PowerPoint for Mac 打开确认：字体与版面无问题（人工确认）
 - 本机 doctor：关键项全 pass，仅 `node v25.8.0` 偏离 Node 24 基线（基线项，不触发启动提示、不拦截导出）
 - `.env` 已配（根目录，网关 `gpt-image-2` 可用，探测 HTTP 200）
 
-**E4 待人工执行**（需 GUI、真实 PPT 截图与 API key，无法在无头环境完成）
+五步走查逐项结论：
 
-**新会话接手步骤**：`pnpm desktop` 启动 → 打开 `~/test/ppttest-2026-07-25` → 进 page-01 → 工具栏「全部标为已复核 40」→ **⌘S 保存**（不保存则磁盘仍是旧文件）→「运行此页」，此时应先跑 validate-review 刷新 sha 再进 mask。clean 阶段会真实调 `gpt-image-2` 上传图片，需确认上传。活动日志在 `~/Library/Application Support/@ppt-maker/desktop/activity/*.jsonl`，用它判断「不动」到底是卡住还是快速失败。
-
-1. 创建：从图片目录新建 deck，确认卡片网格与页数正确。
-2. 批量：「处理全部」跑完整流水线，观察卡片轨道实时推进、控制条计时、停止语义、失败页错误条。
-3. 逐页验收：从待办队列点进单页，走 accept-clean（SliderCompare + 清单）与 accept-pptx，确认「处理下一项」闭环；验收记录用 CLI `deck status` / `slide report` 核对。
-4. 导出：确认导出前警告在本机（关键项全 pass）**不**出现，导出成功条给出原生/占位页数。
-5. PowerPoint 打开导出的 pptx，确认字体与版面。
+1. 创建：卡片网格与页数正确 ✓（上一会话完成）
+2. 批量：流水线贯通，卡片轨道实时推进、控制条计时、停止语义正常 ✓
+3. 逐页验收：accept-clean（SliderCompare + 清单）与 accept-pptx 均可完成，验收记录正确写入 manifest ✓ —— 缺陷 4、5 在此暴露并修复
+4. 导出：警告不出现、成功条给出原生/占位页数 ✓
+5. PowerPoint 打开确认：16:9、可编辑、微软雅黑、版面一致 ✓
 
 ## 回滚点
 
