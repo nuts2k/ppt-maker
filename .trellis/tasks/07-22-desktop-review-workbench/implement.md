@@ -4,13 +4,26 @@
 
 ## 阶段 A：main 进程执行层（UI 无关，可独立验证）
 
-- [ ] A1 `src/main/activity-log.ts`：按 deckId 追加写 userData jsonl；`activity:list` IPC；单元可测（纯函数 + fs）
-- [ ] A2 `src/main/runner/deck-runner.ts`：串行队列、断点续跑 from 计算、stop 语义、DeckRunEvent 广播、事件同步写 ActivityLog
-- [ ] A3 `src/main/ipc/deck.ts`：新增 `deck:run-start` / `deck:run-stop` / `deck:status-detailed`（stages + lastError + stageDurations 聚合自 manifest attempts）
-- [ ] A4 `src/main/ipc/slide.ts`：移除 `slide:run`；accept-clean / accept-pptx / export handler 追加 ActivityLog 记录
-- [ ] A5 `src/main/ipc/channels.ts` + preload：类型与桥接同步更新
+- [x] A1 `src/main/activity-log.ts`：按 deckId 追加写 userData jsonl；`activity:list` IPC；单元可测（纯函数 + fs）
+- [x] A2 `src/main/runner/deck-runner.ts`：串行队列、断点续跑 from 计算、stop 语义、DeckRunEvent 广播、事件同步写 ActivityLog
+- [x] A3 `src/main/ipc/deck.ts`：新增 `deck:run-start` / `deck:run-stop` / `deck:status-detailed`（stages + lastError + stageDurations 聚合自 manifest attempts）
+- [x] A4 `src/main/ipc/slide.ts`：移除 `slide:run`；accept-clean / accept-pptx / export handler 追加 ActivityLog 记录
+- [x] A5 `src/main/ipc/channels.ts` + preload：类型与桥接同步更新
 
 验证：`pnpm typecheck`；dev 模式对真实 deck 触发 run-start，观察事件序列与 jsonl 落盘。
+
+**实施补充（阶段 A 实际产出，供后续阶段对齐）**
+
+- 新增 `src/shared/stages.ts`：`RUN_STAGE_SEQUENCE` / `RunStage` / `STAGE_LABELS` 单点定义。design.md 中两处"10 阶段"实为不同集合——执行序列（含 `validate-review`、不含 `init`）与 core `SlideStage`（含 `init`、无 `validate-review`）。轨道与事件一律采用执行序列。
+- `validate-review` 无 manifest 记录：展示状态由下游 `mask === completed` 反推；断点续跑判据跳过该阶段（否则每轮从它重来）。
+- 新增 `src/main/slide-detail.ts`（聚合纯函数）与 `src/main/deck-context.ts`（从 slide 工作区逐级回溯 deck，slide 实际位于 `<deck>/slides/page-NN` 两层）。
+- `SlideDetail` 额外提供 `absWorkspacePath` 与 `pageLabel`，renderer 不再自行拼接路径。
+- IPC 与 runner 注册移到 `app.whenReady()` 一次性执行（原先在 `createWindow` 内，macOS 重建窗口会触发重复注册报错）。
+- renderer alias `@shared` 已配好（electron.vite.config.ts + tsconfig.web.json）。
+- desktop 包接入 vitest（28 个测试）：`vitest.config.ts` + `test/`，含真实 OCR 流水线端到端（假窗口驱动 DeckRunner，无需 GUI 与 API key）。
+- `pipeline-store` 暂改为走 DeckRunner 的过渡实现以保持编译通过，阶段 B1 按计划由 run-store 取代。
+
+**遗留（非本阶段引入，pre-existing）**：`pnpm format:check` 仍有 3 处 V1 lint 报错——`TextBlockOverlay.tsx` 的 `noUselessFragments` / `useSemanticElements`，`SlidePage.tsx` 的 `useExhaustiveDependencies`（Cmd+S 存在过期闭包风险）。分别留待阶段 E2 与阶段 D 处理。
 
 ## 阶段 B：renderer 状态层
 

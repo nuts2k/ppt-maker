@@ -1,9 +1,9 @@
-import { resolve, dirname, join, basename, relative, isAbsolute } from "node:path";
+import { join, resolve, dirname, basename, relative, isAbsolute } from "node:path";
 import { config } from "dotenv";
 import { ipcMain, dialog, app, BrowserWindow } from "electron";
+import { mkdir, appendFile, readFile, mkdtemp, copyFile, rename, rm, writeFile, stat, readdir, access } from "node:fs/promises";
 import { randomUUID, createHash } from "node:crypto";
-import { readFile, mkdir, mkdtemp, copyFile, rename, rm, writeFile, stat, readdir, access } from "node:fs/promises";
-import { assertWideAspectRatio, validateWideAspectRatio, SlideWorkspaceManifestSchema, SlideWorkspaceConfigSchema, FoundationError, SCHEMA_VERSION, createInitialStageStates, DeckManifestSchema, DEFAULT_FONT_FACE, DoctorReportSchema, SUPPORTED_NODE_MAJOR, SUPPORTED_PNPM_MAJOR, PPTX_WIDE_HEIGHT_INCHES, PPTX_WIDE_WIDTH_INCHES, pixelsToPptxBox, assertStageDependenciesCompleted, TextReviewDocumentSchema, isStageReusable, PptxCheckReportSchema, invalidateStageAndDownstream, PptxSynthesisRecordSchema, ArtifactAcceptanceSchema, DeckExportRecordSchema, SLIDE_STAGE_ORDER, CleanAttemptRecordSchema, ProviderCallRecordSchema, OcrProbeResponseSchema, MASK_ALGORITHM_VERSION, maskInvalidationProjection, MaskRecordSchema, TextReviewValidationReportSchema, SlideReportSchema, TextAssistResultSchema, TEXT_MERGE_ALGORITHM_VERSION, mergeTextBlockCandidates, validateTextReviewDocument, REVIEW_VALIDATION_RULES_VERSION } from "@ppt-maker/core";
+import { assertWideAspectRatio, validateWideAspectRatio, SlideWorkspaceManifestSchema, SlideWorkspaceConfigSchema, FoundationError, SCHEMA_VERSION, createInitialStageStates, DeckManifestSchema, DEFAULT_FONT_FACE, DoctorReportSchema, SUPPORTED_NODE_MAJOR, SUPPORTED_PNPM_MAJOR, PPTX_WIDE_WIDTH_INCHES, PPTX_WIDE_HEIGHT_INCHES, pixelsToPptxBox, ArtifactAcceptanceSchema, assertStageDependenciesCompleted, TextReviewDocumentSchema, isStageReusable, PptxCheckReportSchema, invalidateStageAndDownstream, PptxSynthesisRecordSchema, DeckExportRecordSchema, SLIDE_STAGE_ORDER, CleanAttemptRecordSchema, validateTextReviewDocument, ProviderCallRecordSchema, OcrProbeResponseSchema, MASK_ALGORITHM_VERSION, maskInvalidationProjection, MaskRecordSchema, TextReviewValidationReportSchema, SlideReportSchema, TextAssistResultSchema, TEXT_MERGE_ALGORITHM_VERSION, mergeTextBlockCandidates, REVIEW_VALIDATION_RULES_VERSION } from "@ppt-maker/core";
 import { imageSize } from "image-size";
 import { execFileSync, execFile } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -18,6 +18,72 @@ import __cjs_mod__ from "node:module";
 const __filename = import.meta.filename;
 const __dirname = import.meta.dirname;
 const require2 = __cjs_mod__.createRequire(import.meta.url);
+class ActivityLog {
+  baseDir;
+  /** 串行化追加写，避免同一进程内并发 appendFile 交错 */
+  tail = Promise.resolve();
+  constructor(baseDir) {
+    this.baseDir = baseDir;
+  }
+  filePath(deckId) {
+    return join(this.baseDir, `${sanitizeDeckId(deckId)}.jsonl`);
+  }
+  /**
+   * 追加一条记录。写盘失败只记录到 stderr，绝不向上抛——
+   * 日志是旁路能力，不允许影响流水线执行。
+   */
+  append(deckId, record) {
+    this.tail = this.tail.then(async () => {
+      try {
+        await mkdir(this.baseDir, { recursive: true });
+        await appendFile(
+          this.filePath(deckId),
+          `${JSON.stringify(record)}
+`,
+          "utf-8"
+        );
+      } catch (error) {
+        console.error("[activity-log] 写入失败", error);
+      }
+    });
+    return this.tail;
+  }
+  /** 倒序返回最近 limit 条；坏行跳过，不因单行损坏丢掉整个文件 */
+  async list(deckId, limit = 200) {
+    let raw;
+    try {
+      raw = await readFile(this.filePath(deckId), "utf-8");
+    } catch {
+      return [];
+    }
+    const records = [];
+    for (const line of raw.split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed === "") continue;
+      try {
+        records.push(JSON.parse(trimmed));
+      } catch {
+      }
+    }
+    records.reverse();
+    return records.slice(0, limit);
+  }
+}
+function sanitizeDeckId(deckId) {
+  return deckId.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+function buildActivityRecord(input) {
+  return {
+    at: input.at ?? (/* @__PURE__ */ new Date()).toISOString(),
+    kind: input.kind,
+    slideId: input.slideId,
+    pageLabel: input.pageLabel,
+    stage: input.stage,
+    result: input.result,
+    durationMs: input.durationMs,
+    detail: input.detail
+  };
+}
 async function readImageMetadata(path) {
   const buffer = await readFile(path);
   const dimensions = imageSize(buffer);
@@ -460,6 +526,58 @@ async function writeDeckManifest(deckPath, manifest) {
   await writeJsonAtomic(
     resolveDeckPath(deckPath, "deck-manifest.json"),
     DeckManifestSchema.parse(manifest)
+  );
+}
+const deckIdCache = /* @__PURE__ */ new Map();
+const MAX_LOOKUP_DEPTH = 3;
+async function resolveDeckId(deckPath) {
+  const path = resolve(deckPath);
+  const cached = deckIdCache.get(path);
+  if (cached !== void 0) return cached;
+  const deck = await loadDeckWorkspace(path);
+  deckIdCache.set(path, deck.manifest.deckId);
+  return deck.manifest.deckId;
+}
+async function hasDeckManifest(path) {
+  try {
+    await stat(join(path, "deck-manifest.json"));
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function resolveDeckContext(slideWorkspacePath) {
+  const ws = resolve(slideWorkspacePath);
+  let current = dirname(ws);
+  for (let depth = 0; depth < MAX_LOOKUP_DEPTH; depth += 1) {
+    if (await hasDeckManifest(current)) {
+      try {
+        return {
+          deckPath: current,
+          deckId: await resolveDeckId(current),
+          pageLabel: basename(ws)
+        };
+      } catch {
+        return null;
+      }
+    }
+    const parent = dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return null;
+}
+function registerActivityHandlers(activityLog) {
+  ipcMain.handle(
+    "activity:list",
+    async (_event, deckPath, limit) => {
+      try {
+        const deckId = await resolveDeckId(deckPath);
+        return await activityLog.list(deckId, limit ?? 200);
+      } catch {
+        return [];
+      }
+    }
   );
 }
 const PAGE_PATTERN = /^slides\/page-(\d+)$/;
@@ -1607,6 +1725,95 @@ async function deckStatus(deckPath) {
     }
   };
 }
+const RUN_STAGE_SEQUENCE = [
+  "ocr",
+  "review",
+  "assist-review",
+  "validate-review",
+  "mask",
+  "clean",
+  "accept-clean",
+  "pptx",
+  "accept-pptx",
+  "report"
+];
+const TRANSIENT_STAGES = ["validate-review"];
+const STAGE_LABELS = {
+  ocr: "文字识别",
+  review: "生成复核稿",
+  "assist-review": "AI 辅助复核",
+  "validate-review": "复核校验",
+  mask: "生成遮罩",
+  clean: "生成干净底图",
+  "accept-clean": "验收底图",
+  pptx: "生成 PPTX",
+  "accept-pptx": "验收 PPTX",
+  report: "生成报告"
+};
+function stageLabel(stage) {
+  return STAGE_LABELS[stage] ?? stage;
+}
+const TRANSIENT = new Set(TRANSIENT_STAGES);
+function manifestStatus(manifest, stage) {
+  return manifest.stages.find((state) => state.stage === stage)?.status;
+}
+function deriveStageDetails(manifest) {
+  return RUN_STAGE_SEQUENCE.map((stage) => {
+    if (TRANSIENT.has(stage)) {
+      const downstreamDone = manifestStatus(manifest, "mask") === "completed";
+      return {
+        stage,
+        status: downstreamDone ? "completed" : "pending"
+      };
+    }
+    return {
+      stage,
+      status: manifestStatus(manifest, stage) ?? "pending"
+    };
+  });
+}
+function computeResumeStage(manifest) {
+  for (const stage of RUN_STAGE_SEQUENCE) {
+    if (TRANSIENT.has(stage)) continue;
+    if (manifestStatus(manifest, stage) !== "completed") {
+      return stage;
+    }
+  }
+  return null;
+}
+function attemptEndTime(attempt) {
+  return attempt.endedAt === null ? 0 : Date.parse(attempt.endedAt);
+}
+function extractLastError(manifest) {
+  let latest = null;
+  for (const attempt of manifest.attempts) {
+    if (attempt.status !== "failed" || attempt.error === null) continue;
+    if (latest === null || attemptEndTime(attempt) >= attemptEndTime(latest)) {
+      latest = attempt;
+    }
+  }
+  if (latest === null || latest.error === null) return null;
+  return {
+    stage: latest.stage,
+    code: latest.error.code,
+    message: latest.error.message,
+    at: latest.endedAt ?? latest.startedAt
+  };
+}
+function computeStageDurations(manifest) {
+  const durations = {};
+  const latestAt = {};
+  for (const attempt of manifest.attempts) {
+    if (attempt.status !== "completed" || attempt.endedAt === null) continue;
+    const ended = Date.parse(attempt.endedAt);
+    const started = Date.parse(attempt.startedAt);
+    if (Number.isNaN(ended) || Number.isNaN(started)) continue;
+    if ((latestAt[attempt.stage] ?? -1) > ended) continue;
+    latestAt[attempt.stage] = ended;
+    durations[attempt.stage] = Math.max(0, ended - started);
+  }
+  return durations;
+}
 async function buildDeckStatus(deckPath) {
   const status = await deckStatus(resolve(deckPath));
   return {
@@ -1617,7 +1824,78 @@ async function buildDeckStatus(deckPath) {
     summary: status.summary
   };
 }
-function registerDeckHandlers(_mainWindow) {
+async function buildDeckStatusDetailed(deckPath) {
+  const abs = resolve(deckPath);
+  const status = await deckStatus(abs);
+  const deck = await loadDeckWorkspace(abs);
+  const slides = [];
+  for (const slide of status.slides) {
+    const absWorkspacePath = resolveDeckPath(deck.path, slide.workspacePath);
+    const pageLabel = basename(slide.workspacePath);
+    if (slide.removed) {
+      slides.push({
+        ...slide,
+        absWorkspacePath,
+        pageLabel,
+        stages: [],
+        lastError: null,
+        stageDurations: {}
+      });
+      continue;
+    }
+    try {
+      const workspace = await loadSlideWorkspace(absWorkspacePath);
+      slides.push({
+        ...slide,
+        absWorkspacePath,
+        pageLabel,
+        stages: deriveStageDetails(workspace.manifest),
+        lastError: extractLastError(workspace.manifest),
+        stageDurations: computeStageDurations(workspace.manifest)
+      });
+    } catch (error) {
+      slides.push({
+        ...slide,
+        absWorkspacePath,
+        pageLabel,
+        stages: [],
+        lastError: {
+          stage: slide.currentStage,
+          code: "WORKSPACE_LOAD_FAILED",
+          message: error instanceof Error ? error.message : String(error),
+          at: (/* @__PURE__ */ new Date()).toISOString()
+        },
+        stageDurations: {}
+      });
+    }
+  }
+  return {
+    deckPath,
+    name: status.name,
+    deckId: status.deckId,
+    slides,
+    summary: status.summary
+  };
+}
+function registerDeckHandlers(runner, activityLog) {
+  async function log(deckPath, kind, result, detail, pageLabel = null) {
+    try {
+      const deckId = await resolveDeckId(deckPath);
+      await activityLog.append(
+        deckId,
+        buildActivityRecord({
+          kind,
+          result,
+          detail,
+          slideId: null,
+          pageLabel,
+          stage: null,
+          durationMs: null
+        })
+      );
+    } catch {
+    }
+  }
   ipcMain.handle(
     "deck:open",
     async (_event, path) => {
@@ -1632,6 +1910,12 @@ function registerDeckHandlers(_mainWindow) {
         workspacePath: resolve(workspacePath),
         ...name ? { name } : {}
       });
+      await log(
+        result.path,
+        "deck-create",
+        "info",
+        `创建 deck：${result.path}`
+      );
       return buildDeckStatus(result.path);
     }
   );
@@ -1642,19 +1926,50 @@ function registerDeckHandlers(_mainWindow) {
     }
   );
   ipcMain.handle(
+    "deck:status-detailed",
+    async (_event, path) => {
+      return buildDeckStatusDetailed(path);
+    }
+  );
+  ipcMain.handle(
+    "deck:run-start",
+    async (_event, deckPath, opts) => {
+      return runner.start(resolve(deckPath), opts ?? {});
+    }
+  );
+  ipcMain.handle("deck:run-stop", async () => {
+    runner.stop();
+  });
+  ipcMain.handle(
     "deck:export",
     async (_event, deckPath, outputPath, strict) => {
-      const result = await exportDeckPptx({
-        deckPath: resolve(deckPath),
-        outputPath,
-        ...strict === true ? { strict: true } : {}
-      });
-      return {
-        outputPath: result.outputPath,
-        totalSlides: result.totalSlides,
-        nativeSlides: result.nativeSlides,
-        placeholderSlides: result.placeholderSlides
-      };
+      try {
+        const result = await exportDeckPptx({
+          deckPath: resolve(deckPath),
+          outputPath,
+          ...strict === true ? { strict: true } : {}
+        });
+        await log(
+          deckPath,
+          "deck-export",
+          "success",
+          `导出 PPTX：${result.outputPath}（原生 ${result.nativeSlides} 页，占位 ${result.placeholderSlides} 页）`
+        );
+        return {
+          outputPath: result.outputPath,
+          totalSlides: result.totalSlides,
+          nativeSlides: result.nativeSlides,
+          placeholderSlides: result.placeholderSlides
+        };
+      } catch (error) {
+        await log(
+          deckPath,
+          "deck-export",
+          "failure",
+          `导出失败：${error instanceof Error ? error.message : String(error)}`
+        );
+        throw error;
+      }
     }
   );
   ipcMain.handle(
@@ -1664,6 +1979,13 @@ function registerDeckHandlers(_mainWindow) {
         deckPath: resolve(deckPath),
         imagePath: resolve(imagePath)
       });
+      await log(
+        deckPath,
+        "deck-add-slide",
+        "info",
+        `添加页面：${result.pageLabel}`,
+        result.pageLabel
+      );
       return { pageLabel: result.pageLabel, slideId: result.slideId };
     }
   );
@@ -1674,6 +1996,13 @@ function registerDeckHandlers(_mainWindow) {
         deckPath: resolve(deckPath),
         pageLabel
       });
+      await log(
+        deckPath,
+        "deck-remove-slide",
+        "info",
+        `移除页面：${pageLabel}`,
+        pageLabel
+      );
     }
   );
 }
@@ -1947,6 +2276,194 @@ async function runAcceptPptx(options) {
     artifactSha256: pptxAsset.sha256,
     autoCheckSummary
   };
+}
+function registerSlideHandlers(activityLog) {
+  async function log(workspacePath, kind, stage, result, detail) {
+    const context = await resolveDeckContext(workspacePath);
+    if (context === null) return;
+    await activityLog.append(
+      context.deckId,
+      buildActivityRecord({
+        kind,
+        result,
+        detail,
+        slideId: null,
+        pageLabel: context.pageLabel,
+        stage,
+        durationMs: null
+      })
+    );
+  }
+  ipcMain.handle(
+    "slide:load-review",
+    async (_event, workspacePath) => {
+      const ws = resolve(workspacePath);
+      const reviewPath = join(ws, "review", "text-blocks.json");
+      try {
+        const raw = await readFile(reviewPath, "utf-8");
+        return TextReviewDocumentSchema.parse(JSON.parse(raw));
+      } catch {
+        return null;
+      }
+    }
+  );
+  ipcMain.handle(
+    "slide:save-review",
+    async (_event, workspacePath, document) => {
+      const ws = resolve(workspacePath);
+      const parsed = TextReviewDocumentSchema.parse(document);
+      const reviewPath = join(ws, "review", "text-blocks.json");
+      const { writeFile: writeFile2 } = await import("node:fs/promises");
+      await writeFile2(reviewPath, JSON.stringify(parsed, null, 2), "utf-8");
+      const workspace = await loadSlideWorkspace(ws);
+      const sourceImage = workspace.manifest.assets.find(
+        (a) => a.role === "source_image"
+      );
+      const violations = validateTextReviewDocument(parsed, {
+        image: sourceImage?.image ?? parsed.image
+      });
+      const errors = violations.filter((v) => v.severity === "error").length;
+      const warnings = violations.filter(
+        (v) => v.severity === "warning"
+      ).length;
+      return { valid: errors === 0, errors, warnings };
+    }
+  );
+  ipcMain.handle(
+    "slide:accept-clean",
+    async (_event, workspacePath, opts) => {
+      try {
+        const result = await runAcceptClean({
+          workspacePath: resolve(workspacePath),
+          ...opts?.acceptedBy ? { acceptedBy: opts.acceptedBy } : {},
+          ...opts?.note ? { note: opts.note } : {}
+        });
+        await log(
+          workspacePath,
+          "accept-clean",
+          "accept-clean",
+          "success",
+          `验收干净底图：${result.autoCheckSummary}`
+        );
+        return {
+          acceptedPath: result.acceptedPath,
+          autoCheckSummary: result.autoCheckSummary
+        };
+      } catch (error) {
+        await log(
+          workspacePath,
+          "accept-clean",
+          "accept-clean",
+          "failure",
+          `验收失败：${error instanceof Error ? error.message : String(error)}`
+        );
+        throw error;
+      }
+    }
+  );
+  ipcMain.handle(
+    "slide:accept-pptx",
+    async (_event, workspacePath, opts) => {
+      try {
+        const result = await runAcceptPptx({
+          workspacePath: resolve(workspacePath),
+          ...opts?.acceptedBy ? { acceptedBy: opts.acceptedBy } : {},
+          ...opts?.note ? { note: opts.note } : {}
+        });
+        await log(
+          workspacePath,
+          "accept-pptx",
+          "accept-pptx",
+          "success",
+          `验收 PPTX：${result.autoCheckSummary}`
+        );
+        return {
+          acceptedPath: result.acceptedPath,
+          autoCheckSummary: result.autoCheckSummary
+        };
+      } catch (error) {
+        await log(
+          workspacePath,
+          "accept-pptx",
+          "accept-pptx",
+          "failure",
+          `验收失败：${error instanceof Error ? error.message : String(error)}`
+        );
+        throw error;
+      }
+    }
+  );
+  ipcMain.handle(
+    "slide:load-image",
+    async (_event, workspacePath, role) => {
+      const ws = resolve(workspacePath);
+      const workspace = await loadSlideWorkspace(ws);
+      const asset = workspace.manifest.assets.find((a) => a.role === role);
+      if (!asset) return null;
+      const imagePath = join(ws, asset.path);
+      try {
+        const buffer = await readFile(imagePath);
+        const ext = asset.image?.format ?? "png";
+        return `data:image/${ext};base64,${buffer.toString("base64")}`;
+      } catch {
+        return null;
+      }
+    }
+  );
+}
+function registerSystemHandlers() {
+  ipcMain.handle("system:doctor", () => {
+    const report = collectSystemDoctorReport();
+    return {
+      checks: report.checks.map((c) => ({
+        id: c.id,
+        label: c.label,
+        status: c.status,
+        message: c.message
+      })),
+      summary: report.summary
+    };
+  });
+  ipcMain.handle(
+    "system:select-directory",
+    async () => {
+      const result = await dialog.showOpenDialog({
+        properties: ["openDirectory"]
+      });
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+      return result.filePaths[0] ?? null;
+    }
+  );
+  ipcMain.handle(
+    "system:select-file",
+    async (_event, filters) => {
+      const result = await dialog.showOpenDialog({
+        properties: ["openFile"],
+        filters: filters ?? [
+          { name: "图片", extensions: ["png", "jpg", "jpeg"] }
+        ]
+      });
+      if (result.canceled || result.filePaths.length === 0) {
+        return null;
+      }
+      return result.filePaths[0] ?? null;
+    }
+  );
+  ipcMain.handle(
+    "system:save-file-dialog",
+    async (_event, defaultName) => {
+      const result = await dialog.showSaveDialog({
+        defaultPath: defaultName,
+        filters: [{ name: "PowerPoint", extensions: ["pptx"] }]
+      });
+      if (result.canceled || !result.filePath) {
+        return null;
+      }
+      return result.filePath;
+    }
+  );
 }
 const OPENAI_IMAGE_MODEL = "gpt-image-2";
 const CLEAN_PLATE_QUALITY = "high";
@@ -4797,198 +5314,253 @@ async function runSlideRunFrom(from, options) {
     message: "已执行到 report，流水线完成"
   };
 }
-function sendProgress(win, event) {
-  win.webContents.send("pipeline:progress", event);
-}
-function registerSlideHandlers(mainWindow) {
-  ipcMain.handle(
-    "slide:load-review",
-    async (_event, workspacePath) => {
-      const ws = resolve(workspacePath);
-      const reviewPath = join(ws, "review", "text-blocks.json");
-      try {
-        const raw = await readFile(reviewPath, "utf-8");
-        return TextReviewDocumentSchema.parse(JSON.parse(raw));
-      } catch {
-        return null;
+class DeckRunner {
+  /** 惰性取窗口：macOS 下窗口可被关闭后重建，不能持有固定引用 */
+  getWindow;
+  activityLog;
+  status = "idle";
+  queue = [];
+  deckPath = null;
+  deckId = null;
+  confirmApi = false;
+  confirmUpload = false;
+  summary = {
+    total: 0,
+    completed: 0,
+    gated: 0,
+    failed: 0
+  };
+  processedCount = 0;
+  constructor(getWindow, activityLog) {
+    this.getWindow = getWindow;
+    this.activityLog = activityLog;
+  }
+  isRunning() {
+    return this.status !== "idle";
+  }
+  async start(deckPath, options = {}) {
+    const deck = await loadDeckWorkspace(deckPath);
+    if (this.status !== "idle" && this.deckPath !== deck.path) {
+      return {
+        accepted: false,
+        queued: 0,
+        message: "已有其他 deck 正在执行，请先停止"
+      };
+    }
+    const requested = options.slideIds === void 0 ? null : new Set(options.slideIds);
+    const items = [];
+    for (const entry of deck.manifest.slides) {
+      if (entry.removedAt !== null) continue;
+      if (requested !== null && !requested.has(entry.slideId)) continue;
+      if (this.queue.some((queued) => queued.slideId === entry.slideId)) {
+        continue;
       }
-    }
-  );
-  ipcMain.handle(
-    "slide:save-review",
-    async (_event, workspacePath, document) => {
-      const ws = resolve(workspacePath);
-      const parsed = TextReviewDocumentSchema.parse(document);
-      const reviewPath = join(ws, "review", "text-blocks.json");
-      const { writeFile: writeFile2 } = await import("node:fs/promises");
-      await writeFile2(reviewPath, JSON.stringify(parsed, null, 2), "utf-8");
-      const workspace = await loadSlideWorkspace(ws);
-      const sourceImage = workspace.manifest.assets.find(
-        (a) => a.role === "source_image"
-      );
-      const violations = validateTextReviewDocument(parsed, {
-        image: sourceImage?.image ?? parsed.image
-      });
-      const errors = violations.filter((v) => v.severity === "error").length;
-      const warnings = violations.filter(
-        (v) => v.severity === "warning"
-      ).length;
-      return { valid: errors === 0, errors, warnings };
-    }
-  );
-  ipcMain.handle(
-    "slide:run",
-    async (_event, workspacePath, from, opts) => {
-      const slideId = workspacePath.split("/").pop() ?? "unknown";
-      try {
-        const result = await runSlideRunFrom(from, {
-          workspacePath: resolve(workspacePath),
-          ...opts?.confirmApi === true ? { confirmApi: true } : {},
-          ...opts?.confirmUpload === true ? { confirmUpload: true } : {},
-          onStageStart(stage) {
-            sendProgress(mainWindow, {
-              slideId,
-              stage,
-              status: "running"
-            });
-          },
-          onStageComplete(stage) {
-            sendProgress(mainWindow, {
-              slideId,
-              stage,
-              status: "completed"
-            });
-          }
-        });
-        const acceptGate = result.gate === "manual" && result.stoppedAt && (result.stoppedAt === "accept-clean" || result.stoppedAt === "accept-pptx") ? result.stoppedAt : void 0;
-        if (acceptGate) {
-          sendProgress(mainWindow, {
-            slideId,
-            stage: acceptGate,
-            status: "running",
-            gate: acceptGate
-          });
+      const absWorkspacePath = resolveDeckPath(deck.path, entry.workspacePath);
+      let from = options.from ?? null;
+      if (from === null) {
+        const workspace = await loadSlideWorkspace(absWorkspacePath);
+        const resume = computeResumeStage(workspace.manifest);
+        if (resume === null) {
+          if (requested === null) continue;
+          from = "report";
+        } else {
+          from = resume;
         }
-        return {
-          executed: result.executed,
-          stoppedAt: result.stoppedAt,
-          gate: acceptGate ?? result.gate,
-          message: result.message,
-          nextCommand: result.nextCommand
-        };
-      } catch (error) {
-        sendProgress(mainWindow, {
-          slideId,
-          stage: from,
-          status: "failed",
-          error: {
-            code: "PIPELINE_RUN_FAILED",
-            message: error instanceof Error ? error.message : String(error)
-          }
-        });
-        throw error;
       }
-    }
-  );
-  ipcMain.handle(
-    "slide:accept-clean",
-    async (_event, workspacePath, opts) => {
-      const result = await runAcceptClean({
-        workspacePath: resolve(workspacePath),
-        ...opts?.acceptedBy ? { acceptedBy: opts.acceptedBy } : {},
-        ...opts?.note ? { note: opts.note } : {}
+      items.push({
+        slideId: entry.slideId,
+        pageLabel: basename(entry.workspacePath),
+        absWorkspacePath,
+        from
       });
+    }
+    if (items.length === 0) {
       return {
-        acceptedPath: result.acceptedPath,
-        autoCheckSummary: result.autoCheckSummary
+        accepted: false,
+        queued: 0,
+        message: this.status === "idle" ? "没有需要执行的页面" : "目标页面已在执行队列中"
       };
     }
-  );
-  ipcMain.handle(
-    "slide:accept-pptx",
-    async (_event, workspacePath, opts) => {
-      const result = await runAcceptPptx({
-        workspacePath: resolve(workspacePath),
-        ...opts?.acceptedBy ? { acceptedBy: opts.acceptedBy } : {},
-        ...opts?.note ? { note: opts.note } : {}
+    this.queue.push(...items);
+    this.confirmApi = options.confirmApi === true || this.confirmApi;
+    this.confirmUpload = options.confirmUpload === true || this.confirmUpload;
+    if (this.status === "idle") {
+      this.deckPath = deck.path;
+      this.deckId = deck.manifest.deckId;
+      this.status = "running";
+      this.processedCount = 0;
+      this.summary = {
+        total: items.length,
+        completed: 0,
+        gated: 0,
+        failed: 0
+      };
+      this.emit({
+        kind: "run-start",
+        total: items.length,
+        slideIds: items.map((item) => item.slideId)
       });
-      return {
-        acceptedPath: result.acceptedPath,
-        autoCheckSummary: result.autoCheckSummary
+      this.record("run-start", "info", `开始执行 ${items.length} 页`, {});
+      void this.drain();
+    } else {
+      this.summary = {
+        ...this.summary,
+        total: this.summary.total + items.length
       };
     }
-  );
-  ipcMain.handle(
-    "slide:load-image",
-    async (_event, workspacePath, role) => {
-      const ws = resolve(workspacePath);
-      const workspace = await loadSlideWorkspace(ws);
-      const asset = workspace.manifest.assets.find((a) => a.role === role);
-      if (!asset) return null;
-      const imagePath = join(ws, asset.path);
-      try {
-        const buffer = await readFile(imagePath);
-        const ext = asset.image?.format ?? "png";
-        return `data:image/${ext};base64,${buffer.toString("base64")}`;
-      } catch {
-        return null;
-      }
-    }
-  );
-}
-function registerSystemHandlers(_mainWindow) {
-  ipcMain.handle("system:doctor", () => {
-    const report = collectSystemDoctorReport();
     return {
-      checks: report.checks.map((c) => ({
-        id: c.id,
-        label: c.label,
-        status: c.status,
-        message: c.message
-      })),
-      summary: report.summary
+      accepted: true,
+      queued: items.length,
+      message: `已排队 ${items.length} 页`
     };
-  });
-  ipcMain.handle(
-    "system:select-directory",
-    async () => {
-      const result = await dialog.showOpenDialog({
-        properties: ["openDirectory"]
-      });
-      if (result.canceled || result.filePaths.length === 0) {
-        return null;
-      }
-      return result.filePaths[0] ?? null;
+  }
+  /** 协作式停止：当前页执行完即停，剩余队列丢弃 */
+  stop() {
+    if (this.status !== "running") return;
+    this.status = "stopping";
+    this.queue = [];
+    this.emit({ kind: "run-stopping" });
+    this.record("run-stop", "info", "已请求停止，当前页完成后结束", {});
+  }
+  async drain() {
+    while (this.queue.length > 0) {
+      if (this.status === "stopping") break;
+      const item = this.queue.shift();
+      if (item === void 0) break;
+      this.processedCount += 1;
+      await this.runItem(item, this.processedCount);
     }
-  );
-  ipcMain.handle(
-    "system:select-file",
-    async (_event, filters) => {
-      const result = await dialog.showOpenDialog({
-        properties: ["openFile"],
-        filters: filters ?? [
-          { name: "图片", extensions: ["png", "jpg", "jpeg"] }
-        ]
+    const summary = this.summary;
+    this.status = "idle";
+    this.queue = [];
+    this.confirmApi = false;
+    this.confirmUpload = false;
+    this.emit({ kind: "run-done", summary });
+    this.record(
+      "run-done",
+      summary.failed > 0 ? "failure" : "info",
+      `执行结束：完成 ${summary.completed}，待人工 ${summary.gated}，失败 ${summary.failed}`,
+      {}
+    );
+  }
+  async runItem(item, index) {
+    this.emit({
+      kind: "page-start",
+      slideId: item.slideId,
+      pageLabel: item.pageLabel,
+      index,
+      total: this.summary.total
+    });
+    this.record("page-start", "info", `开始处理 ${item.pageLabel}`, {
+      slideId: item.slideId,
+      pageLabel: item.pageLabel
+    });
+    const stageStartedAt = /* @__PURE__ */ new Map();
+    try {
+      const result = await runSlideRunFrom(item.from ?? "ocr", {
+        workspacePath: item.absWorkspacePath,
+        ...this.confirmApi ? { confirmApi: true } : {},
+        ...this.confirmUpload ? { confirmUpload: true } : {},
+        onStageStart: (stage) => {
+          stageStartedAt.set(stage, Date.now());
+          this.emit({
+            kind: "stage-start",
+            slideId: item.slideId,
+            stage,
+            at: (/* @__PURE__ */ new Date()).toISOString()
+          });
+        },
+        onStageComplete: (stage) => {
+          const startedAt = stageStartedAt.get(stage);
+          const durationMs = startedAt === void 0 ? 0 : Math.max(0, Date.now() - startedAt);
+          this.emit({
+            kind: "stage-complete",
+            slideId: item.slideId,
+            stage,
+            at: (/* @__PURE__ */ new Date()).toISOString(),
+            durationMs
+          });
+          this.record(
+            "stage-complete",
+            "success",
+            `${item.pageLabel} · ${stageLabel(stage)} 完成`,
+            {
+              slideId: item.slideId,
+              pageLabel: item.pageLabel,
+              stage,
+              durationMs
+            }
+          );
+        }
       });
-      if (result.canceled || result.filePaths.length === 0) {
-        return null;
+      const failed = result.gate === "error";
+      const gated = !failed && result.gate !== null;
+      if (failed) {
+        this.summary = { ...this.summary, failed: this.summary.failed + 1 };
+      } else if (gated) {
+        this.summary = { ...this.summary, gated: this.summary.gated + 1 };
+      } else {
+        this.summary = {
+          ...this.summary,
+          completed: this.summary.completed + 1
+        };
       }
-      return result.filePaths[0] ?? null;
-    }
-  );
-  ipcMain.handle(
-    "system:save-file-dialog",
-    async (_event, defaultName) => {
-      const result = await dialog.showSaveDialog({
-        defaultPath: defaultName,
-        filters: [{ name: "PowerPoint", extensions: ["pptx"] }]
+      this.emit({
+        kind: "page-done",
+        slideId: item.slideId,
+        gate: result.gate,
+        stoppedAt: result.stoppedAt,
+        message: result.message,
+        error: failed ? { code: "PIPELINE_STAGE_FAILED", message: result.message } : null
       });
-      if (result.canceled || !result.filePath) {
-        return null;
-      }
-      return result.filePath;
+      this.record(
+        "page-done",
+        failed ? "failure" : gated ? "gate" : "success",
+        `${item.pageLabel} · ${result.message}`,
+        {
+          slideId: item.slideId,
+          pageLabel: item.pageLabel,
+          stage: result.stoppedAt
+        }
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.summary = { ...this.summary, failed: this.summary.failed + 1 };
+      this.emit({
+        kind: "page-done",
+        slideId: item.slideId,
+        gate: "error",
+        stoppedAt: item.from,
+        message,
+        error: { code: "PIPELINE_RUN_FAILED", message }
+      });
+      this.record("page-done", "failure", `${item.pageLabel} · ${message}`, {
+        slideId: item.slideId,
+        pageLabel: item.pageLabel,
+        stage: item.from
+      });
     }
-  );
+  }
+  emit(event) {
+    const window = this.getWindow();
+    if (window === null || window.isDestroyed()) return;
+    window.webContents.send("deck:run-progress", event);
+  }
+  record(kind, result, detail, extra) {
+    if (this.deckId === null) return;
+    void this.activityLog.append(
+      this.deckId,
+      buildActivityRecord({
+        kind,
+        result,
+        detail,
+        slideId: extra.slideId ?? null,
+        pageLabel: extra.pageLabel ?? null,
+        stage: extra.stage ?? null,
+        durationMs: extra.durationMs ?? null
+      })
+    );
+  }
 }
 const projectRoot = resolve(app.getAppPath(), "../..");
 process.chdir(projectRoot);
@@ -5008,9 +5580,6 @@ function createWindow() {
       sandbox: false
     }
   });
-  registerSystemHandlers();
-  registerDeckHandlers();
-  registerSlideHandlers(mainWindow);
   const rendererUrl = process.env.ELECTRON_RENDERER_URL;
   if (rendererUrl) {
     mainWindow.loadURL(rendererUrl);
@@ -5020,6 +5589,17 @@ function createWindow() {
   return mainWindow;
 }
 app.whenReady().then(() => {
+  const activityLog = new ActivityLog(
+    join(app.getPath("userData"), "activity")
+  );
+  const runner = new DeckRunner(
+    () => BrowserWindow.getAllWindows()[0] ?? null,
+    activityLog
+  );
+  registerSystemHandlers();
+  registerDeckHandlers(runner, activityLog);
+  registerSlideHandlers(activityLog);
+  registerActivityHandlers(activityLog);
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {

@@ -2,13 +2,15 @@ import type { TextReviewDocument } from "@ppt-maker/core";
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   AcceptOptions,
+  ActivityRecord,
   DeckExportResult,
+  DeckRunEvent,
+  DeckRunStartOptions,
+  DeckRunStartResult,
+  DeckStatusDetailedResult,
   DeckStatusResult,
   DoctorReport,
   IpcApi,
-  PipelineProgressEvent,
-  SlideRunOptions,
-  SlideRunResult,
 } from "../main/ipc/channels.js";
 
 const api: IpcApi = {
@@ -23,6 +25,14 @@ const api: IpcApi = {
       ipcRenderer.invoke("deck:create", imagesDir, workspacePath, name),
     status: (path: string): Promise<DeckStatusResult> =>
       ipcRenderer.invoke("deck:status", path),
+    statusDetailed: (path: string): Promise<DeckStatusDetailedResult> =>
+      ipcRenderer.invoke("deck:status-detailed", path),
+    runStart: (
+      deckPath: string,
+      opts?: DeckRunStartOptions,
+    ): Promise<DeckRunStartResult> =>
+      ipcRenderer.invoke("deck:run-start", deckPath, opts),
+    runStop: (): Promise<void> => ipcRenderer.invoke("deck:run-stop"),
     export: (
       deckPath: string,
       outputPath: string,
@@ -45,12 +55,6 @@ const api: IpcApi = {
       document: TextReviewDocument,
     ): Promise<{ valid: boolean; errors: number; warnings: number }> =>
       ipcRenderer.invoke("slide:save-review", workspacePath, document),
-    run: (
-      workspacePath: string,
-      from: string,
-      opts?: SlideRunOptions,
-    ): Promise<SlideRunResult> =>
-      ipcRenderer.invoke("slide:run", workspacePath, from, opts),
     acceptClean: (
       workspacePath: string,
       opts?: AcceptOptions,
@@ -64,6 +68,10 @@ const api: IpcApi = {
     loadImage: (workspacePath: string, role: string): Promise<string | null> =>
       ipcRenderer.invoke("slide:load-image", workspacePath, role),
   },
+  activity: {
+    list: (deckPath: string, limit?: number): Promise<ActivityRecord[]> =>
+      ipcRenderer.invoke("activity:list", deckPath, limit),
+  },
   system: {
     doctor: (): Promise<DoctorReport> => ipcRenderer.invoke("system:doctor"),
     selectDirectory: (): Promise<string | null> =>
@@ -75,18 +83,18 @@ const api: IpcApi = {
     saveFileDialog: (defaultName: string): Promise<string | null> =>
       ipcRenderer.invoke("system:save-file-dialog", defaultName),
   },
-  onPipelineProgress: (
-    callback: (event: PipelineProgressEvent) => void,
+  onDeckRunProgress: (
+    callback: (event: DeckRunEvent) => void,
   ): (() => void) => {
     const handler = (
       _e: Electron.IpcRendererEvent,
-      event: PipelineProgressEvent,
+      event: DeckRunEvent,
     ): void => {
       callback(event);
     };
-    ipcRenderer.on("pipeline:progress", handler);
+    ipcRenderer.on("deck:run-progress", handler);
     return () => {
-      ipcRenderer.removeListener("pipeline:progress", handler);
+      ipcRenderer.removeListener("deck:run-progress", handler);
     };
   },
 };

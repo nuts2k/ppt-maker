@@ -2,26 +2,41 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { runAcceptClean } from "@cli/clean/accept.js";
 import { runAcceptPptx } from "@cli/pptx/accept.js";
-import { runSlideRunFrom } from "@cli/slide/run-from.js";
 import { loadSlideWorkspace } from "@cli/slide/workspace.js";
 import {
   type TextReviewDocument,
   TextReviewDocumentSchema,
   validateTextReviewDocument,
 } from "@ppt-maker/core";
-import { type BrowserWindow, ipcMain } from "electron";
-import type {
-  AcceptOptions,
-  PipelineProgressEvent,
-  SlideRunOptions,
-  SlideRunResult,
-} from "./channels.js";
+import { ipcMain } from "electron";
+import { type ActivityLog, buildActivityRecord } from "../activity-log.js";
+import { resolveDeckContext } from "../deck-context.js";
+import type { AcceptOptions, ActivityResult } from "./channels.js";
 
-function sendProgress(win: BrowserWindow, event: PipelineProgressEvent): void {
-  win.webContents.send("pipeline:progress", event);
-}
+export function registerSlideHandlers(activityLog: ActivityLog): void {
+  async function log(
+    workspacePath: string,
+    kind: string,
+    stage: string,
+    result: ActivityResult,
+    detail: string,
+  ): Promise<void> {
+    const context = await resolveDeckContext(workspacePath);
+    if (context === null) return;
+    await activityLog.append(
+      context.deckId,
+      buildActivityRecord({
+        kind,
+        result,
+        detail,
+        slideId: null,
+        pageLabel: context.pageLabel,
+        stage,
+        durationMs: null,
+      }),
+    );
+  }
 
-export function registerSlideHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle(
     "slide:load-review",
     async (
@@ -68,91 +83,39 @@ export function registerSlideHandlers(mainWindow: BrowserWindow): void {
   );
 
   ipcMain.handle(
-    "slide:run",
-    async (
-      _event,
-      workspacePath: string,
-      from: string,
-      opts?: SlideRunOptions,
-    ): Promise<SlideRunResult> => {
-      const slideId = workspacePath.split("/").pop() ?? "unknown";
-
-      try {
-        const result = await runSlideRunFrom(from, {
-          workspacePath: resolve(workspacePath),
-          ...(opts?.confirmApi === true ? { confirmApi: true } : {}),
-          ...(opts?.confirmUpload === true ? { confirmUpload: true } : {}),
-          onStageStart(stage) {
-            sendProgress(mainWindow, {
-              slideId,
-              stage: stage as PipelineProgressEvent["stage"],
-              status: "running",
-            });
-          },
-          onStageComplete(stage) {
-            sendProgress(mainWindow, {
-              slideId,
-              stage: stage as PipelineProgressEvent["stage"],
-              status: "completed",
-            });
-          },
-        });
-
-        const acceptGate =
-          result.gate === "manual" &&
-          result.stoppedAt &&
-          (result.stoppedAt === "accept-clean" ||
-            result.stoppedAt === "accept-pptx")
-            ? (result.stoppedAt as "accept-clean" | "accept-pptx")
-            : undefined;
-
-        if (acceptGate) {
-          sendProgress(mainWindow, {
-            slideId,
-            stage: acceptGate as PipelineProgressEvent["stage"],
-            status: "running",
-            gate: acceptGate,
-          });
-        }
-
-        return {
-          executed: result.executed,
-          stoppedAt: result.stoppedAt,
-          gate: acceptGate ?? result.gate,
-          message: result.message,
-          nextCommand: result.nextCommand,
-        };
-      } catch (error) {
-        sendProgress(mainWindow, {
-          slideId,
-          stage: from as PipelineProgressEvent["stage"],
-          status: "failed",
-          error: {
-            code: "PIPELINE_RUN_FAILED",
-            message: error instanceof Error ? error.message : String(error),
-          },
-        });
-        throw error;
-      }
-    },
-  );
-
-  ipcMain.handle(
     "slide:accept-clean",
     async (
       _event,
       workspacePath: string,
       opts?: AcceptOptions,
     ): Promise<{ acceptedPath: string; autoCheckSummary: string }> => {
-      const result = await runAcceptClean({
-        workspacePath: resolve(workspacePath),
-        ...(opts?.acceptedBy ? { acceptedBy: opts.acceptedBy } : {}),
-        ...(opts?.note ? { note: opts.note } : {}),
-      });
-      return {
-        acceptedPath: result.acceptedPath,
-        autoCheckSummary: result.autoCheckSummary,
-      };
+      try {
+        const result = await runAcceptClean({
+          workspacePath: resolve(workspacePath),
+          ...(opts?.acceptedBy ? { acceptedBy: opts.acceptedBy } : {}),
+          ...(opts?.note ? { note: opts.note } : {}),
+        });
+        await log(
+          workspacePath,
+          "accept-clean",
+          "accept-clean",
+          "success",
+          `验收干净底图：${result.autoCheckSummary}`,
+        );
+        return {
+          acceptedPath: result.acceptedPath,
+          autoCheckSummary: result.autoCheckSummary,
+        };
+      } catch (error) {
+        await log(
+          workspacePath,
+          "accept-clean",
+          "accept-clean",
+          "failure",
+          `验收失败：${error instanceof Error ? error.message : String(error)}`,
+        );
+        throw error;
+      }
     },
   );
 
@@ -163,15 +126,33 @@ export function registerSlideHandlers(mainWindow: BrowserWindow): void {
       workspacePath: string,
       opts?: AcceptOptions,
     ): Promise<{ acceptedPath: string; autoCheckSummary: string }> => {
-      const result = await runAcceptPptx({
-        workspacePath: resolve(workspacePath),
-        ...(opts?.acceptedBy ? { acceptedBy: opts.acceptedBy } : {}),
-        ...(opts?.note ? { note: opts.note } : {}),
-      });
-      return {
-        acceptedPath: result.acceptedPath,
-        autoCheckSummary: result.autoCheckSummary,
-      };
+      try {
+        const result = await runAcceptPptx({
+          workspacePath: resolve(workspacePath),
+          ...(opts?.acceptedBy ? { acceptedBy: opts.acceptedBy } : {}),
+          ...(opts?.note ? { note: opts.note } : {}),
+        });
+        await log(
+          workspacePath,
+          "accept-pptx",
+          "accept-pptx",
+          "success",
+          `验收 PPTX：${result.autoCheckSummary}`,
+        );
+        return {
+          acceptedPath: result.acceptedPath,
+          autoCheckSummary: result.autoCheckSummary,
+        };
+      } catch (error) {
+        await log(
+          workspacePath,
+          "accept-pptx",
+          "accept-pptx",
+          "failure",
+          `验收失败：${error instanceof Error ? error.message : String(error)}`,
+        );
+        throw error;
+      }
     },
   );
 

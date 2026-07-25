@@ -17053,6 +17053,21 @@ function SourceList({ block }) {
     ))
   ] });
 }
+const RUN_STAGE_SEQUENCE = [
+  "ocr",
+  "review",
+  "assist-review",
+  "validate-review",
+  "mask",
+  "clean",
+  "accept-clean",
+  "pptx",
+  "accept-pptx",
+  "report"
+];
+function isRunStage(value) {
+  return RUN_STAGE_SEQUENCE.includes(value);
+}
 function getApi() {
   return window.api;
 }
@@ -17063,41 +17078,98 @@ const usePipelineStore = create((set, get) => ({
   pendingGate: null,
   error: null,
   async startPipeline(workspacePath, from, opts) {
-    set({ running: true, error: null, stageStatuses: {}, pendingGate: null });
-    const unsubscribe = getApi().onPipelineProgress((event) => {
-      const { stageStatuses } = get();
-      set({
-        stageStatuses: {
-          ...stageStatuses,
-          [event.stage]: event.status
-        },
-        ...event.gate ? { pendingGate: event.gate } : {},
-        ...event.error ? { error: { code: event.error.code, message: event.error.message } } : {}
-      });
-    });
-    try {
-      const result = await getApi().slide.run(workspacePath, from, opts);
-      if (result.gate === "accept-clean" || result.gate === "accept-pptx") {
-        set({ pendingGate: result.gate });
-      } else if (result.gate) {
-        set({
-          error: {
-            code: `PIPELINE_GATE_${result.gate.toUpperCase()}`,
-            message: result.message
-          }
-        });
-      }
-    } catch (error) {
+    const { deckPath, slides } = useDeckStore.getState();
+    const slide = slides.find((s) => workspacePath.endsWith(s.workspacePath));
+    if (deckPath === null || slide === void 0 || !isRunStage(from)) {
       set({
         error: {
-          code: "PIPELINE_RUN_FAILED",
-          message: error instanceof Error ? error.message : String(error)
+          code: "PIPELINE_TARGET_UNRESOLVED",
+          message: "无法定位待执行页面"
         }
       });
-    } finally {
-      unsubscribe();
-      set({ running: false });
+      return;
     }
+    set({
+      running: true,
+      error: null,
+      stageStatuses: {},
+      pendingGate: null,
+      currentSlideId: slide.slideId
+    });
+    await new Promise((resolvePromise) => {
+      const unsubscribe = getApi().onDeckRunProgress((event) => {
+        if (event.kind === "stage-start") {
+          set({
+            stageStatuses: { ...get().stageStatuses, [event.stage]: "running" }
+          });
+          return;
+        }
+        if (event.kind === "stage-complete") {
+          set({
+            stageStatuses: {
+              ...get().stageStatuses,
+              [event.stage]: "completed"
+            }
+          });
+          return;
+        }
+        if (event.kind === "page-done") {
+          if (event.gate === "manual" && event.stoppedAt !== null) {
+            if (event.stoppedAt === "accept-clean" || event.stoppedAt === "accept-pptx") {
+              set({ pendingGate: event.stoppedAt });
+            }
+          } else if (event.error !== null) {
+            set({
+              error: {
+                code: event.error.code,
+                message: event.error.message
+              }
+            });
+          } else if (event.gate !== null) {
+            set({
+              error: {
+                code: `PIPELINE_GATE_${event.gate.toUpperCase()}`,
+                message: event.message
+              }
+            });
+          }
+          return;
+        }
+        if (event.kind === "run-done") {
+          unsubscribe();
+          set({ running: false });
+          resolvePromise();
+        }
+      });
+      void getApi().deck.runStart(deckPath, {
+        slideIds: [slide.slideId],
+        from,
+        ...opts?.confirmApi === true ? { confirmApi: true } : {},
+        ...opts?.confirmUpload === true ? { confirmUpload: true } : {}
+      }).then((result) => {
+        if (!result.accepted) {
+          unsubscribe();
+          set({
+            running: false,
+            error: {
+              code: "PIPELINE_RUN_REJECTED",
+              message: result.message
+            }
+          });
+          resolvePromise();
+        }
+      }).catch((error) => {
+        unsubscribe();
+        set({
+          running: false,
+          error: {
+            code: "PIPELINE_RUN_FAILED",
+            message: error instanceof Error ? error.message : String(error)
+          }
+        });
+        resolvePromise();
+      });
+    });
   },
   acceptGate() {
     set({ pendingGate: null });

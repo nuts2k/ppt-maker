@@ -1,8 +1,8 @@
 import { collectSystemDoctorReport } from "@cli/doctor.js";
-import { type BrowserWindow, dialog, ipcMain } from "electron";
+import { dialog, ipcMain } from "electron";
 import type { DoctorReport } from "./channels.js";
 
-export function registerSystemHandlers(_mainWindow: BrowserWindow): void {
+export function registerSystemHandlers(): void {
   ipcMain.handle("system:doctor", (): DoctorReport => {
     const report = collectSystemDoctorReport();
     return {
