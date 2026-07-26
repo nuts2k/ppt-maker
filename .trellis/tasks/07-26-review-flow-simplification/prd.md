@@ -158,9 +158,10 @@ Apple Vision 离线 OCR 错误率高，`ai_text_assist` 在纠错（`主贾蛸�
 - R1.1 `RUN_SEQUENCE` 在 `validate-review` 之后、`mask` 之前新增**显式文本复核门**：存在 `layout_text` 且 `reviewStatus === "unreviewed"` 的块时返回 `gate: "human-edit"`，`stoppedAt: "review"`，并给出待复核块数。取代当前 mask/pptx 门禁以错误形式代偿的行为（F-11）。
 - R1.2 `accept-clean` 不再单独停顿。执行流从 `clean` 直通 `pptx`，停于最终确认；`report` 依 `STAGE_DEPENDENCIES` 位于 `accept-pptx` 之后，于验收完成后自动补跑。
 - R1.3 最终确认一次性写入 `accept-clean` 与 `accept-pptx` 两条验收记录，备注标明「经最终产物确认统一验收」。人在最终确认页确实可查看底板（R2.2），故验收记录仍如实反映人工判断。
-- R1.4 `SlideStage` 枚举与 `STAGE_DEPENDENCIES` 保持不变，既有工作区 manifest 无需迁移。
-- R1.5 桌面端待办队列的分组随之收敛为：需文本复核 / 待最终确认 / 失败。
-- R1.6 CLI 保持可用：`slide accept-clean` / `accept-pptx` 命令继续存在，`run --from` 语义与新门一致。
+- R1.4 放宽 `pptx/run.ts` 的 `assertAcceptedCleanPlate` 前置条件：`pptx` 阶段只要求 `clean` 阶段 completed 且产物哈希匹配、非 stale，不再要求「底板已人工接受」；该断言后移至最终确认。**用户已于 2026-07-26 明确确认此改动可以执行**（这是本任务对既有质量约束改动最大的一处，无需再次征询）。约束的净效果不变：`deck export --strict` 仍要求 `accept-pptx` completed。
+- R1.5 `SlideStage` 枚举与 `STAGE_DEPENDENCIES` 保持不变，既有工作区 manifest 无需迁移。
+- R1.6 桌面端待办队列的分组随之收敛为：需文本复核 / 待最终确认 / 失败。
+- R1.7 CLI 保持可用：`slide accept-clean` / `accept-pptx` 命令继续存在，`run --from` 语义与新门一致。
 
 ### R2 最终确认页（D1、D2）
 

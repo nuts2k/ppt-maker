@@ -310,7 +310,7 @@ white-space: pre-wrap（保留 lines.join("\n") 的显式换行）
 
 | 风险 | 处理 |
 |---|---|
-| `assertAcceptedCleanPlate` 前置条件放宽（§3.2）削弱了「底板必须人工接受才能生成 PPTX」的约束 | 约束不是取消而是后移：最终确认写入 accept-clean 记录，且导出仍要求 accept-pptx completed。`deck export --strict` 语义不变 |
+| `assertAcceptedCleanPlate` 前置条件放宽（§3.2）削弱了「底板必须人工接受才能生成 PPTX」的约束 | 约束不是取消而是后移：最终确认写入 accept-clean 记录，且导出仍要求 accept-pptx completed。`deck export --strict` 语义不变。**用户已于 2026-07-26 确认此改动可以执行（PRD R1.4），实现时按计划推进，不必再次征询** |
 | 合成预览换行与 PptxGenJS 不一致，可能预览过关而 PPT 错位 | R2.6 界面明示 + 保留「在 PowerPoint 中打开」；差异属已知残留，不承诺像素一致 |
 | 字符级 diff 在长文本上的可读性 | 分歧多为 1–3 字（F-9 示例），按字符高亮足够；超长文本回退为整行并排 |
 | `buildFreshBlock` 默认 `includeInMask=true` 触发 mask 及下游大面积失效 | 仅影响新生成/重跑 review 的块；人工确认块受 `isHumanTouched` 保护 |

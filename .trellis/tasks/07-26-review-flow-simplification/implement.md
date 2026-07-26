@@ -84,7 +84,7 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 
 - [ ] B1 `run-from.ts` 在 `mask` 分支前插入 human-edit 门判定（`stoppedAt: "review"`、`gate: "human-edit"`、消息含待复核块数）
 - [ ] B2 `run-from.ts` 拆分 `accept-clean || accept-pptx` 分支：`accept-clean` 直接跳过不返回门；`accept-pptx` 保留 `manual` 门
-- [ ] B3 `pptx/run.ts` 的 `assertAcceptedCleanPlate` 改为断言「`clean` 阶段 completed 且产物哈希匹配、非 stale」，移除「人工已接受」前置；人工已接受的断言移入 B4
+- [ ] B3 `pptx/run.ts` 的 `assertAcceptedCleanPlate` 改为断言「`clean` 阶段 completed 且产物哈希匹配、非 stale」，移除「人工已接受」前置；人工已接受的断言移入 B4。**用户已于 2026-07-26 确认此改动可执行（PRD R1.4），按计划推进，不必再次征询**
 - [ ] B4 新增 `apps/cli/src/slide/accept-final.ts`：顺序调 `runAcceptClean` + `runAcceptPptx`，note 统一前缀「经最终产物确认统一验收：」，失败不回滚（重试幂等）
 - [ ] B5 CLI 注册 `slide accept-final <workspace>`；`accept-clean` / `accept-pptx` 子命令保留
 - [ ] B6 `mask/run.ts:155` 与 `pptx/run.ts:103` 的复核门禁保留为兜底，不改动
@@ -92,10 +92,11 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 - [ ] B8 测试：全部复核后继续 run 直通至停在 `accept-pptx`，`accept-clean` 未产生停顿
 - [ ] B9 测试：`runAcceptFinal` 写入两条验收记录，结构与单步 `runAcceptClean` / `runAcceptPptx` 一致；重复调用幂等
 - [ ] B10 测试：既有已完成页（两个 accept 均 completed）走新逻辑不产生任何停顿
+- [ ] B11 测试（B3 批准的前提条件）：`accept-pptx` 未 completed 的页在 `deck export --strict` 下仍被拒绝；`pptx` 阶段在 `clean` 为 stale 时仍拒绝生成
 
 **验证**：`pnpm test` + 用备份工作区跑一次 `slide run --from ocr --confirm-api --confirm-upload`，确认停在 human-edit 门（page-02 应先因 A1 校验在 `validation-failed` 停下，这是 R4.3 的预期行为）。
 
-**风险点**：B3 是本任务对既有质量约束改动最大的一处。改动后必须确认 `deck export --strict` 仍要求 `accept-pptx` completed，语义未被削弱。
+**风险点**：B3 是本任务对既有质量约束改动最大的一处，**已获用户明确批准（2026-07-26）**。改动后必须确认 `deck export --strict` 仍要求 `accept-pptx` completed，语义未被削弱——这是批准的前提条件，必须实测验证而非假定。
 
 **回滚点**：B 阶段单独 commit。
 
@@ -150,7 +151,7 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 
 | 文件 | 风险 |
 |---|---|
-| `apps/cli/src/pptx/run.ts` | B3 放宽 `assertAcceptedCleanPlate` 前置条件，是本任务对质量约束改动最大处；必须确认 `--strict` 导出语义未被削弱 |
+| `apps/cli/src/pptx/run.ts` | B3 放宽 `assertAcceptedCleanPlate` 前置条件，是本任务对质量约束改动最大处（已获批准，2026-07-26）；必须**实测**确认 `--strict` 导出语义未被削弱，这是批准的前提条件 |
 | `packages/core/src/text-blocks.ts` | A1/A3 会使既有工作区校验失败并触发 mask 及下游失效，属预期但需在走查中确认表现为「停在复核门 + 可一键修正」而非「阶段执行失败」 |
 | `apps/cli/src/pptx/synthesize.ts` | A5 是纯搬迁，任何计算逻辑变动都会让 PPTX 输出漂移；必须有迁移前后一致性测试 |
 | `apps/desktop/src/renderer/pages/SlidePage.tsx` | C15 大规模重写；`rerunFrom` 的「先失效再启动」纪律与 `pageBusy → reloadImages` 的产物刷新时序必须保留 |
