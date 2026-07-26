@@ -1,0 +1,56 @@
+{
+  "clean-001": {
+    "size": {
+      "width": 1672,
+      "height": 940,
+      "expectedWidth": 2048,
+      "expectedHeight": 1152,
+      "ok": false,
+      "aspectRatioOk": true
+    },
+    "textResidue": {
+      "maskedPixels": 185110,
+      "residualForegroundPixels": 0,
+      "residualRatio": 0
+    },
+    "outsideMaskDiff": {
+      "comparedPixels": 1386570,
+      "changedPixels": 56911,
+      "changedRatio": 0.04104444781006368,
+      "meanDelta": 5.303352156760928,
+      "threshold": 24
+    },
+    "containerRingDiff": {
+      "ringPixels": 176779,
+      "changedPixels": 3251,
+      "changedRatio": 0.018390193405325293
+    }
+  },
+  "clean-002": {
+    "size": {
+      "width": 1672,
+      "height": 940,
+      "expectedWidth": 2048,
+      "expectedHeight": 1152,
+      "ok": false,
+      "aspectRatioOk": true
+    },
+    "textResidue": {
+      "maskedPixels": 185110,
+      "residualForegroundPixels": 0,
+      "residualRatio": 0
+    },
+    "outsideMaskDiff": {
+      "comparedPixels": 1386570,
+      "changedPixels": 60903,
+      "changedRatio": 0.04392349466669551,
+      "meanDelta": 5.520404307031019,
+      "threshold": 24
+    },
+    "containerRingDiff": {
+      "ringPixels": 176779,
+      "changedPixels": 5671,
+      "changedRatio": 0.03207960221519524
+    }
+  }
+}

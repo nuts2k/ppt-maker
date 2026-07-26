@@ -1,0 +1,29 @@
+{
+  "clean-001": {
+    "size": {
+      "width": 1672,
+      "height": 941,
+      "expectedWidth": 2048,
+      "expectedHeight": 1152,
+      "ok": false,
+      "aspectRatioOk": true
+    },
+    "textResidue": {
+      "maskedPixels": 99556,
+      "residualForegroundPixels": 0,
+      "residualRatio": 0
+    },
+    "outsideMaskDiff": {
+      "comparedPixels": 1764124,
+      "changedPixels": 149426,
+      "changedRatio": 0.08470266262462275,
+      "meanDelta": 8.526792334325705,
+      "threshold": 24
+    },
+    "containerRingDiff": {
+      "ringPixels": 181841,
+      "changedPixels": 1183,
+      "changedRatio": 0.006505683536716142
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{"file": ".trellis/spec/backend/contracts.md", "reason": "本任务改动 core 校验规则、RUN_SEQUENCE 门语义与 assertAcceptedCleanPlate 前置条件，必须先确认 workspace manifest / 阶段图 / 指纹投影的既有契约边界"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "新增 human-edit 门取代 mask/pptx 的 INVALID_STAGE_STATE 抛错，需保持稳定错误码语义；新增 LAYOUT_TEXT_MUST_BE_MASKED 校验码同样受此约定"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "本任务核心动因是三处静默失败（F-7 分类误判漏字、F-8 导出重影、F-11 门以错误形式代偿），实现时必须按该指南逐项确认新路径不再静默"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "compareBlockSources 与 resolveFontSizePt 等纯函数要从 cli 提到 core 供 renderer 共用，跨 core/cli/desktop 三层，类型与公式必须单点定义"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "合成预览必须复用 pptx/synthesize.ts 的几何与字号公式而非重写；列表分区判据必须与 core 的 compareBlockSources 同源，避免两处口径漂移"}
+{"file": "DESIGN.md", "reason": "ReviewPage 三分区列表、TextDiffRow diff 高亮、FinalConfirmPage 合成预览均为新增界面，颜色/排版/圆角/间距必须取文档内 token，diff 与失败态只能用签名色板"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "新增 BlockListPanel / TextDiffRow / CompositePreview / CheckSummary 并删除 PropertyPanel 等五个组件，需遵循既有组件划分与命名约定"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "列表主导范式改变焦点与编辑写回路径（补写 updatedAt 与 manual 来源），slide-store 与 ui-store 的职责边界需按既有 Zustand 约定调整"}
