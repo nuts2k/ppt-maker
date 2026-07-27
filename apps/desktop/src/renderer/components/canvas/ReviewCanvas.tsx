@@ -39,7 +39,7 @@ export function ReviewCanvas({
     onPointerMove,
     onPointerUp,
     resetView,
-    centerOn,
+    focusOn,
   } = useCanvasTransform(size);
 
   const currentPartition = useMemo<ReviewPartition | null>(() => {
@@ -47,7 +47,7 @@ export function ReviewCanvas({
     return currentBlock === undefined ? null : partitionOf(currentBlock);
   }, [blocks, currentBlockId]);
 
-  // 居中只在「当前项切换」时发生：effect 依赖仅取 currentBlockId，
+  // 跟随只在「当前项切换」时发生：effect 依赖仅取 currentBlockId，
   // 块坐标从 ref 读取，否则拖动块导致 blocks 变化会把视口一直拽回中心。
   const blocksRef = useRef(blocks);
   blocksRef.current = blocks;
@@ -61,8 +61,8 @@ export function ReviewCanvas({
     if (target === undefined) {
       return;
     }
-    centerOn(target.bboxPx);
-  }, [currentBlockId, size, centerOn]);
+    focusOn(target.bboxPx);
+  }, [currentBlockId, size, focusOn]);
 
   return (
     <div
@@ -113,8 +113,10 @@ export function ReviewCanvas({
           ))}
       </div>
 
-      <div className="absolute bottom-3 left-3 rounded-sm bg-surface-dark/70 px-2 py-1 text-sm text-on-dark">
+      {/* 跟随会自动改缩放，所以必须把「怎么回到整页」摆出来，否则用户会以为卡在放大态 */}
+      <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-sm bg-surface-dark/70 px-2 py-1 text-sm text-on-dark">
         {Math.round(transform.scale * 100)}%
+        <span className="opacity-70">双击恢复整页</span>
       </div>
     </div>
   );

@@ -22,17 +22,42 @@ interface TextBlockOverlayProps {
  * 三态标注（design.md §4.2）：分类不再用边框色编码——分类由左侧列表分区表达，
  * 画布只回答「哪一块是当前项」。取色全部落在 DESIGN.md 色板内：
  *
- * - 当前项：沿用 DESIGN.md 的 focus 语言「外 2px 蓝环」，2px `info-border` 实线 +
- *   `canvas` 色 1px 间隔 + 半透明蓝环。白色间隔是关键——彩色底图上纯蓝边可能与
- *   底色同明度而糊掉，中间垫一圈白才能保证「当前项清晰可辨」。
+ * - 当前项：沿用 DESIGN.md 的 focus 语言「外 2px 蓝环」，`info-border` 实线 +
+ *   `canvas` 色间隔 + 半透明蓝晕 + 淡蓝底。白色间隔是关键——彩色底图上纯蓝边可能
+ *   与底色同明度而糊掉，中间垫一圈白才能保证「当前项清晰可辨」；蓝晕向外扩散，
+ *   让 13–19px 高的小块在缩略视图下也能一眼扫到。
  * - 非当前项：hairline(#dddddd) 在彩色底图上几乎不可见，故取色板内更强的
  *   `border-strong`(#9297a0)——中性灰在浅底与深底上都留得住形，且不构成强调色。
- *   同分区保持满不透明度；其他分区降到 40% 退居背景。
+ *   同分区保持满不透明度；其他分区降到 35% 退居背景。
+ *
+ * **线宽必须按 scale 反算**：标注 div 在缩放容器内部，写死的 `border-2` 实际渲染
+ * 宽度是 `2px × scale`。2048 宽的图 fit 进 ~780px 画布时 scale≈0.38，边框只剩
+ * 0.76px、外发光同理——95 个框铺满时根本分不出当前项。下面所有描边与光晕都用
+ * `/scale` 换算，保证屏幕上恒定粗细。
  */
-const CURRENT_CLASS =
-  "border-2 border-info-border ring-2 ring-info-border/40 ring-offset-1 ring-offset-canvas";
-const SAME_PARTITION_CLASS = "border border-border-strong";
-const OTHER_PARTITION_CLASS = "border border-border-strong opacity-40";
+const INFO_BORDER = "#458fff";
+const CANVAS = "#ffffff";
+const BORDER_STRONG = "#9297a0";
+
+function annotationStyle(
+  current: boolean,
+  samePartition: boolean,
+  scale: number,
+): React.CSSProperties {
+  // scale 可能为 0（尺寸未就绪的一帧），兜底避免除零得到 Infinity 线宽
+  const px = (screenPx: number): number => screenPx / Math.max(scale, 0.01);
+  if (current) {
+    return {
+      border: `${px(2)}px solid ${INFO_BORDER}`,
+      backgroundColor: "rgba(69, 143, 255, 0.16)",
+      boxShadow: `0 0 0 ${px(1)}px ${CANVAS}, 0 0 0 ${px(6)}px rgba(69, 143, 255, 0.35)`,
+    };
+  }
+  return {
+    border: `${px(1)}px solid ${BORDER_STRONG}`,
+    opacity: samePartition ? 1 : 0.35,
+  };
+}
 
 // 屏幕位移小于该像素数视为点击而非拖动，避免选中块时手抖改坐标
 const DRAG_THRESHOLD_PX = 3;
@@ -90,6 +115,9 @@ export function TextBlockOverlay({
     top: `${(y / imageHeight) * 100}%`,
     width: `${(width / imageWidth) * 100}%`,
     height: `${(height / imageHeight) * 100}%`,
+    // 当前项的光晕要盖住相邻框，否则密集区里它会被后面的框压掉
+    zIndex: current ? 2 : 1,
+    ...annotationStyle(current, samePartition, scale),
   };
 
   const handlePointerDown = useCallback(
@@ -197,13 +225,8 @@ export function TextBlockOverlay({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       className={cn(
-        "absolute box-border bg-transparent p-0 transition-colors",
+        "absolute box-border p-0",
         onUpdate ? "cursor-move" : "cursor-pointer",
-        current
-          ? CURRENT_CLASS
-          : samePartition
-            ? SAME_PARTITION_CLASS
-            : OTHER_PARTITION_CLASS,
       )}
     />
   );

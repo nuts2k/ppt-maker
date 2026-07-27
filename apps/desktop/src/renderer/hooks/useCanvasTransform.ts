@@ -37,13 +37,28 @@ interface UseCanvasTransformResult {
   onPointerMove(e: ReactPointerEvent<HTMLDivElement>): void;
   onPointerUp(e: ReactPointerEvent<HTMLDivElement>): void;
   resetView(): void;
-  /** 把内容坐标系里的 bbox 滚到视口中心；不改变当前 scale */
-  centerOn(bbox: ContentBox): void;
+  /** 把内容坐标系里的 bbox 放大到可读比例并滚到视口中心 */
+  focusOn(bbox: ContentBox): void;
 }
 
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 5;
 const ZOOM_SENSITIVITY = 0.0015;
+
+/**
+ * 跟随当前项时的目标屏幕高度（px）。
+ *
+ * 真实数据里正文行在原图中只有 13–19px 高，整页 fit 到画布后 scale≈0.38，
+ * 屏幕上不足 8px——根本没法拿原图核对「象衽鲍洁高雅」到底是哪几个字，
+ * 而这正是双源分歧要判的东西。放大到这个高度才谈得上核字。
+ */
+const FOCUS_BLOCK_HEIGHT_PX = 44;
+
+/** 当前项横向最多占视口的比例，留出左右余量看上下文 */
+const FOCUS_WIDTH_RATIO = 0.8;
+
+/** 跟随缩放上限：短块（「口沿」这类两三个字）不要被放到糊 */
+const FOCUS_MAX_SCALE = 3;
 
 function clampScale(scale: number): number {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
@@ -185,35 +200,48 @@ export function useCanvasTransform(
   contentRef.current = content ?? null;
 
   /**
-   * 把 bbox 滚到视口中心，但不把内容拖出视口。
+   * 把 bbox 放大到可读比例并滚到视口中心。
    *
-   * 当前 scale 用函数式 setTransform 读取，同样不进依赖数组。
+   * **只居中不缩放是无效的**：fit-to-view 的定义就是两个轴都装得下，此时任何
+   * 边界安全的平移都等于零位移，整个跟随会变成空操作；而不做边界夹取又会让靠边
+   * 的块把整张图推出视口露白底。所以跟随必须连缩放一起给。
    *
-   * 边界夹取是必需的：进页时 scale 为 fit-to-view，整图本就完整可见，此时若
-   * 无条件按块居中，靠边的块会把整张图推向一侧、露出大片空白底。故按轴分别
-   * 处理——该轴上内容比视口窄时保持居中（结果与 fit 一致），否则把偏移夹在
-   * 「内容边缘不越过视口边缘」的范围内。
+   * 目标比例取「高度放到 FOCUS_BLOCK_HEIGHT_PX」与「宽度占满视口 FOCUS_WIDTH_RATIO」
+   * 中较小者，再夹到 [fit, FOCUS_MAX_SCALE]：下界是整页 fit，保证横跨整页的宽块
+   * 缩到能看全而不会再退到更远；上界防止两三个字的短块被放糊。
+   *
+   * 用户仍可自由缩放平移，双击 resetView 回到整页全景；下次切换当前项会重新跟随。
    */
-  const centerOn = useCallback((bbox: ContentBox) => {
+  const focusOn = useCallback((bbox: ContentBox) => {
     const container = containerRef.current;
     if (container === null) {
       return;
     }
     const { clientWidth, clientHeight } = container;
     const content = contentRef.current;
-    setTransform((prev) => ({
-      scale: prev.scale,
+    const byHeight =
+      bbox.height > 0 ? FOCUS_BLOCK_HEIGHT_PX / bbox.height : FOCUS_MAX_SCALE;
+    const byWidth =
+      bbox.width > 0
+        ? (clientWidth * FOCUS_WIDTH_RATIO) / bbox.width
+        : FOCUS_MAX_SCALE;
+    const fit = computeFit(container, content).scale;
+    const scale = clampScale(
+      Math.min(FOCUS_MAX_SCALE, Math.max(fit, Math.min(byHeight, byWidth))),
+    );
+    setTransform({
+      scale,
       offsetX: clampAxisOffset(
-        clientWidth / 2 - (bbox.x + bbox.width / 2) * prev.scale,
+        clientWidth / 2 - (bbox.x + bbox.width / 2) * scale,
         clientWidth,
-        (content?.width ?? 0) * prev.scale,
+        (content?.width ?? 0) * scale,
       ),
       offsetY: clampAxisOffset(
-        clientHeight / 2 - (bbox.y + bbox.height / 2) * prev.scale,
+        clientHeight / 2 - (bbox.y + bbox.height / 2) * scale,
         clientHeight,
-        (content?.height ?? 0) * prev.scale,
+        (content?.height ?? 0) * scale,
       ),
-    }));
+    });
   }, []);
 
   return {
@@ -224,6 +252,6 @@ export function useCanvasTransform(
     onPointerMove,
     onPointerUp,
     resetView,
-    centerOn,
+    focusOn,
   };
 }

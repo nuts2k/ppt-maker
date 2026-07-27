@@ -183,6 +183,28 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 - [ ] E5 更新 `ROADMAP.md` 的 M4 状态与技术结论；记录 D1/D8 对既有约束的解除
 - [ ] E6 按 Phase 3 更新 spec（阶段门语义变更、双源比对判据、合成预览与 PPTX 的公式同源约定）
 
+## 遗留缺陷：保存复核不失效下游，改动传不到产物（待另立任务）
+
+**2026-07-26 真实工作区走查中发现，属既有缺陷、非本任务引入；用户已确认记录后再做。**
+
+**现象**：在一个全部阶段已 completed 的页上改复核内容并保存，界面仍显示「完成」，但 mask/clean/pptx 产物不会更新——去字底板里那几块字没被抹掉，PPTX 却已给它们生成文本框。产物与复核数据静默分歧，与 F-8 同类。
+
+**复现**：`~/test/ppttest-2026-07-25` page-02（10 个阶段全 completed），把 `block-031/039/079/081` 由 object_symbol 改为 layout_text（连带 `includeInMask=true`）、修正 `block-045` 的重影，⌘S 保存。text-blocks.json 正确写入，manifest 各阶段状态一字未变。
+
+**链路**：
+
+1. `apps/desktop/src/main/ipc/slide.ts:70` 的 `slide:save-review` 只写文件 + 做内存校验，不调用任何失效逻辑；
+2. `computeResumeStage`（`apps/desktop/src/main/slide-detail.ts`）全部 completed 时返回 null；
+3. `apps/desktop/src/main/runner/deck-runner.ts:93` 对显式点名的单页把起点兜底成 `report`，于是 mask 及以后一步都不执行。
+
+`mask/run.ts:376` 本身有正确的指纹判断（输入变了就重做并连带失效下游），问题是它根本没被调用到。
+
+**建议修法**：`slide:save-review` 写盘前读取旧文档，用 core 的 `maskInvalidationProjection`（`packages/core/src/text-blocks.ts:426`）比对：投影变了失效 `mask`，只有文本/样式变了失效 `pptx`，都没变则不失效。正好复用既有的变更粒度矩阵（见 `apps/cli/test` 的「变更粒度失效矩阵」用例），不会让「只改了个错字」也去烧一次 gpt-image-2。
+
+**注意**：不要图省事一律失效 `mask`——`invalidate.ts` 的语义是「强制重做而不是幂等跳过」，那会让每次保存都触发一次 clean 的付费调用。
+
+**临时绕行**：工具栏「从阶段重跑 → 文字校验」，走 validate-review → mask → clean → pptx。
+
 ## 风险文件与注意事项
 
 | 文件 | 风险 |
