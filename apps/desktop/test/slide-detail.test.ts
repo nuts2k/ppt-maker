@@ -196,6 +196,30 @@ describe("extractLastError", () => {
     expect(extractLastError(manifest)).toBeNull();
   });
 
+  it("阶段重试成功后不再报旧错误", () => {
+    // 真实工作区的形态：assist-review 前三次缺 OPENAI_API_KEY 失败、第四次成功。
+    // 按历史 attempt 取最新失败会让这条早已解决的错误永久挂在界面上。
+    const failed = attempt(
+      "assist-review",
+      "failed",
+      "2026-07-01T00:00:00.000Z",
+      "2026-07-01T00:00:01.000Z",
+      { code: "MISSING_DEPENDENCY", message: "缺少 OPENAI_API_KEY" },
+    );
+    const succeeded = attempt(
+      "assist-review",
+      "completed",
+      "2026-07-01T00:05:00.000Z",
+      "2026-07-01T00:05:30.000Z",
+    );
+    const manifest = buildManifest(
+      ["init", "ocr", "review", "assist-review"],
+      {},
+      [failed, succeeded],
+    );
+    expect(extractLastError(manifest)).toBeNull();
+  });
+
   it("取结束时间最新的失败 attempt", () => {
     const manifest = buildManifest(["init"], {}, [
       attempt(

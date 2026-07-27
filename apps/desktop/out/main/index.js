@@ -1744,9 +1744,29 @@ function computeResumeStage(manifest) {
 function attemptEndTime(attempt) {
   return attempt.endedAt === null ? 0 : Date.parse(attempt.endedAt);
 }
+function currentAttemptOf(manifest, stage, state) {
+  if (state.latestAttemptId !== null) {
+    const byId = manifest.attempts.find(
+      (attempt) => attempt.id === state.latestAttemptId
+    );
+    if (byId !== void 0) return byId;
+  }
+  let newest = null;
+  for (const attempt of manifest.attempts) {
+    if (attempt.stage !== stage) continue;
+    if (newest === null || attemptEndTime(attempt) >= attemptEndTime(newest)) {
+      newest = attempt;
+    }
+  }
+  return newest;
+}
 function extractLastError(manifest) {
   let latest = null;
-  for (const attempt of manifest.attempts) {
+  for (const state of manifest.stages) {
+    const attempt = currentAttemptOf(manifest, state.stage, {
+      latestAttemptId: state.latestAttemptId
+    });
+    if (attempt === null) continue;
     if (attempt.status !== "failed" || attempt.error === null) continue;
     if (latest === null || attemptEndTime(attempt) >= attemptEndTime(latest)) {
       latest = attempt;
