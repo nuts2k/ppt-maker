@@ -3,9 +3,8 @@ import type { RunStage } from "@shared/stages";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReviewCanvas } from "@/components/canvas/ReviewCanvas";
 import { SliderCompare } from "@/components/compare/SliderCompare";
-import { ConfidenceQueue } from "@/components/sidebar/ConfidenceQueue";
-import { PropertyPanel } from "@/components/sidebar/PropertyPanel";
-import { SourceList } from "@/components/sidebar/SourceList";
+import { BlockListPanel } from "@/components/review/BlockListPanel";
+import { ReviewShortcutBar } from "@/components/review/ReviewShortcutBar";
 import { AcceptFlow } from "@/components/slide/AcceptFlow";
 import {
   SlideToolbar,
@@ -13,6 +12,7 @@ import {
 } from "@/components/slide/SlideToolbar";
 import { StageRail } from "@/components/slide/StageRail";
 import { deriveAcceptGate } from "@/lib/accept-gate";
+import { orderedReviewBlocks } from "@/lib/review-partition";
 import { countUnreviewed } from "@/lib/review-status";
 import { adjacentSlides } from "@/lib/slide-nav";
 import { cn } from "@/lib/utils";
@@ -23,27 +23,20 @@ import { deriveTodoQueue, nextTodoItem } from "@/stores/todo-queue";
 import { useUIStore } from "@/stores/ui-store";
 
 /**
- * 单页复核（design.md 3.3 SlidePage）—— 壳层重写，画布内核（ReviewCanvas /
- * TextBlockOverlay / TextEditor / SliderCompare / useCanvasTransform）行为不变。
+ * 文本复核页（原 SlidePage，阶段 C 重构为列表主导）。
  *
- * 三个视图态共用同一壳层：`canvas`（编辑文字块）、`compare`（滑块擦除对比）、
- * `accept`（人工验收布局）。验收闸门由 `deriveAcceptGate` 从**耐久层 + 会话层**推导——
- * 这是待办队列"点一次到达能完成该操作的界面"的前提：V1 只认会话层，应用重启后
- * 队列里的待验收项点进来是一片画布，无从验收。
+ * 主次关系相对 V1 反转：左侧 BlockListPanel 是主操作面（三分区 + 双源 diff +
+ * 就地编辑 + 键盘流），画布降级为只读定位标注层。V1 的「画布编辑 + 320px 三标签
+ * 侧栏」被整体取代——PRD F-6 实测该结构零使用：8 个拖拽手柄、旋转、低置信度
+ * 队列全部未被触发，真实行为是「打开 → 全部标记已复核 → 跑下去」。
  *
- * 本页只订阅非计时字段，耗时展示下沉到 SlideToolbar / StageRail 各自订阅 1s ticker，
- * 否则画布会跟着每秒重渲染。
+ * compare / accept 两个视图态在本阶段原样保留：最终确认页（FinalConfirmPage）
+ * 属阶段 D，在它落地前 AcceptFlow 仍是唯一的验收路径，此处不能提前拆掉。
+ *
+ * 本页只订阅非计时字段，耗时展示下沉到 SlideToolbar / StageRail 各自订阅 1s
+ * ticker，否则画布会跟着每秒重渲染。
  */
-
-type SidebarTab = "properties" | "sources" | "queue";
-
-const SIDEBAR_TABS: ReadonlyArray<readonly [SidebarTab, string]> = [
-  ["properties", "属性"],
-  ["sources", "来源"],
-  ["queue", "低置信度"],
-];
-
-export function SlidePage(): React.JSX.Element {
+export function ReviewPage(): React.JSX.Element {
   const selectedSlideId = useUIStore((s) => s.selectedSlideId);
   const selectedBlockId = useUIStore((s) => s.selectedBlockId);
   const selectBlock = useUIStore((s) => s.selectBlock);
@@ -58,6 +51,9 @@ export function SlidePage(): React.JSX.Element {
   const reloadImages = useSlideStore((s) => s.reloadImages);
   const saveReview = useSlideStore((s) => s.saveReview);
   const updateBlock = useSlideStore((s) => s.updateBlock);
+  const markBlockReviewed = useSlideStore((s) => s.markBlockReviewed);
+  const markBlocksReviewed = useSlideStore((s) => s.markBlocksReviewed);
+  const deleteBlock = useSlideStore((s) => s.deleteBlock);
   const markAllReviewed = useSlideStore((s) => s.markAllReviewed);
   const reset = useSlideStore((s) => s.reset);
   const reviewDocument = useSlideStore((s) => s.reviewDocument);
@@ -100,7 +96,6 @@ export function SlidePage(): React.JSX.Element {
   );
 
   const [viewMode, setViewMode] = useState<SlideViewMode>("canvas");
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("properties");
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<{
     readonly ok: boolean;
@@ -133,7 +128,7 @@ export function SlidePage(): React.JSX.Element {
 
   /**
    * 闸门变化时切换视图态。签名含 source，因此"拒绝重跑 → 再次停在同一闸门"也会
-   * 重新进入验收布局；用户手动切回画布后签名不变，不会被强行拉回。
+   * 重新进入验收布局；用户手动切回复核后签名不变，不会被强行拉回。
    */
   const gateSignature =
     acceptGate === null || slideId === null
@@ -141,16 +136,36 @@ export function SlidePage(): React.JSX.Element {
       : `${slideId}:${acceptGate.stage}:${acceptGate.source}`;
   useEffect(() => {
     if (gateSignature === null) {
-      // 闸门消失（已验收或产物失效）：验收布局已无意义，退回画布
+      // 闸门消失（已验收或产物失效）：验收布局已无意义，退回复核
       setViewMode((mode) => (mode === "accept" ? "canvas" : mode));
       return;
     }
     setViewMode("accept");
   }, [gateSignature]);
 
-  const blocks = reviewDocument?.blocks ?? [];
-  const selectedBlock = blocks.find((b) => b.id === selectedBlockId) ?? null;
+  const blocks = useMemo(
+    () => reviewDocument?.blocks ?? [],
+    [reviewDocument?.blocks],
+  );
   const unreviewedCount = countUnreviewed(blocks);
+
+  /**
+   * 键盘流需要一个起点：文档就绪后自动选中三分区展平顺序的第一项。
+   *
+   * 依赖 slideId 而非 blocks，否则每次编辑写回都会把焦点弹回首项。当前项被删除
+   * 后 selectedBlockId 会指向不存在的块，此时同样回落到首项。
+   */
+  useEffect(() => {
+    if (blocks.length === 0) return;
+    if (
+      selectedBlockId !== null &&
+      blocks.some((block) => block.id === selectedBlockId)
+    ) {
+      return;
+    }
+    const first = orderedReviewBlocks(blocks)[0];
+    selectBlock(first?.id ?? null);
+  }, [blocks, selectedBlockId, selectBlock]);
 
   const handleBlockUpdate = useCallback(
     (blockId: string, patch: Partial<TextReviewBlock>) => {
@@ -176,7 +191,8 @@ export function SlidePage(): React.JSX.Element {
     }
   }, [saveReview]);
 
-  // handleSave 进依赖，避免 V1 里 Cmd+S 捕获过期闭包（阶段 B 遗留的 lint 报错）
+  // handleSave 进依赖，避免 V1 里 Cmd+S 捕获过期闭包（阶段 B 遗留的 lint 报错）。
+  // 列表内的 Tab/↑↓/Enter/⌥1⌥2 由 BlockListPanel 自行处理，此处只留全局保存。
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
       if ((event.metaKey || event.ctrlKey) && event.key === "s") {
@@ -355,85 +371,65 @@ export function SlidePage(): React.JSX.Element {
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1">
-        <main className="relative min-w-0 flex-1">
-          {loading ? (
-            <p className="flex h-full items-center justify-center text-sm font-medium text-muted">
-              加载中…
-            </p>
-          ) : viewMode === "accept" && acceptGate !== null ? (
-            <AcceptFlow
-              gate={acceptGate}
-              sourceImageUrl={sourceImageUrl}
-              cleanPlateUrl={cleanPlateUrl}
-              submitting={submitting}
-              disabled={pageBusy}
-              onAccept={(note) => void handleAccept(note)}
-              onRejectRerun={rerunFrom}
-            />
-          ) : viewMode === "compare" &&
-            sourceImageUrl !== null &&
-            cleanPlateUrl !== null ? (
-            <div className="flex h-full items-center justify-center overflow-auto bg-surface-strong p-6">
-              <div className="w-full max-w-5xl overflow-hidden rounded-md">
-                <SliderCompare
-                  sourceImageUrl={sourceImageUrl}
-                  cleanPlateUrl={cleanPlateUrl}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {loading ? (
+          <p className="flex h-full items-center justify-center text-sm font-medium text-muted">
+            加载中…
+          </p>
+        ) : viewMode === "accept" && acceptGate !== null ? (
+          <AcceptFlow
+            gate={acceptGate}
+            sourceImageUrl={sourceImageUrl}
+            cleanPlateUrl={cleanPlateUrl}
+            submitting={submitting}
+            disabled={pageBusy}
+            onAccept={(note) => void handleAccept(note)}
+            onRejectRerun={rerunFrom}
+          />
+        ) : viewMode === "compare" &&
+          sourceImageUrl !== null &&
+          cleanPlateUrl !== null ? (
+          <div className="flex h-full items-center justify-center overflow-auto bg-surface-strong p-6">
+            <div className="w-full max-w-5xl overflow-hidden rounded-md">
+              <SliderCompare
+                sourceImageUrl={sourceImageUrl}
+                cleanPlateUrl={cleanPlateUrl}
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* 列表在左、画布在右：相对 V1 的「画布 + 320px 侧栏」反转主次关系 */}
+            <div className="flex min-h-0 flex-1">
+              <div className="w-[480px] shrink-0 border-r border-hairline">
+                <BlockListPanel
+                  blocks={blocks}
+                  currentBlockId={selectedBlockId}
+                  onSelectBlock={selectBlock}
+                  onUpdateBlock={handleBlockUpdate}
+                  onMarkReviewed={markBlockReviewed}
+                  onMarkBlocksReviewed={markBlocksReviewed}
+                  onDeleteBlock={deleteBlock}
                 />
               </div>
+              <main className="relative min-w-0 flex-1">
+                {sourceImageUrl !== null ? (
+                  <ReviewCanvas
+                    imageUrl={sourceImageUrl}
+                    blocks={blocks}
+                    currentBlockId={selectedBlockId}
+                    onSelectBlock={selectBlock}
+                    onUpdateBlock={handleBlockUpdate}
+                  />
+                ) : (
+                  <p className="flex h-full items-center justify-center text-sm font-medium text-muted">
+                    暂无源图，请先执行「文字识别」阶段
+                  </p>
+                )}
+              </main>
             </div>
-          ) : sourceImageUrl !== null ? (
-            <ReviewCanvas
-              imageUrl={sourceImageUrl}
-              blocks={blocks}
-              selectedBlockId={selectedBlockId}
-              onSelectBlock={selectBlock}
-              onUpdateBlock={handleBlockUpdate}
-            />
-          ) : (
-            <p className="flex h-full items-center justify-center text-sm font-medium text-muted">
-              暂无源图，请先执行「文字识别」阶段
-            </p>
-          )}
-        </main>
-
-        {/* 验收布局自带右栏清单，此时隐藏复核侧边栏以免出现双侧栏 */}
-        {viewMode !== "accept" && (
-          <aside className="flex w-80 shrink-0 flex-col border-l border-hairline bg-surface-soft">
-            <div className="flex shrink-0 border-b border-hairline">
-              {SIDEBAR_TABS.map(([tab, label]) => (
-                <button
-                  key={tab}
-                  type="button"
-                  className={cn(
-                    "flex-1 py-3 text-sm transition",
-                    sidebarTab === tab
-                      ? "border-b-2 border-primary font-medium text-ink"
-                      : "text-muted active:bg-surface-strong",
-                  )}
-                  onClick={() => setSidebarTab(tab)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {sidebarTab === "properties" && (
-                <PropertyPanel
-                  block={selectedBlock}
-                  onUpdate={handleBlockUpdate}
-                />
-              )}
-              {sidebarTab === "sources" && <SourceList block={selectedBlock} />}
-              {sidebarTab === "queue" && (
-                <ConfidenceQueue
-                  blocks={blocks}
-                  selectedBlockId={selectedBlockId}
-                  onSelect={selectBlock}
-                />
-              )}
-            </div>
-          </aside>
+            <ReviewShortcutBar />
+          </>
         )}
       </div>
     </div>

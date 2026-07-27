@@ -1,14 +1,16 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
-import { useCallback, useState } from "react";
+import { useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { TextBlockHandle } from "./TextBlockHandle";
-import { TextEditor } from "./TextEditor";
 
 interface TextBlockOverlayProps {
   block: TextReviewBlock;
   imageWidth: number;
   imageHeight: number;
-  selected: boolean;
+  /** 是否为当前复核项 */
+  current: boolean;
+  /** 是否与当前项同属一个复核分区（当前项自身也为 true） */
+  samePartition: boolean;
+  /** 画布缩放，用于把屏幕位移换算回图片像素 */
   scale: number;
   onClick(): void;
   onUpdate?:
@@ -17,30 +19,71 @@ interface TextBlockOverlayProps {
 }
 
 /**
- * 分类边框色。V1 用的 #16a34a / #9ca3af / #f59e0b 是 DESIGN.md 之外的强调色
- * （文档明确禁止在签名色板外新增强调色），这里映射到文档内 token：
- * 版面文字＝确认态绿、对象符号＝强描边灰、不确定＝mustard（与全局「待处理」同色）。
+ * 三态标注（design.md §4.2）：分类不再用边框色编码——分类由左侧列表分区表达，
+ * 画布只回答「哪一块是当前项」。取色全部落在 DESIGN.md 色板内：
+ *
+ * - 当前项：沿用 DESIGN.md 的 focus 语言「外 2px 蓝环」，2px `info-border` 实线 +
+ *   `canvas` 色 1px 间隔 + 半透明蓝环。白色间隔是关键——彩色底图上纯蓝边可能与
+ *   底色同明度而糊掉，中间垫一圈白才能保证「当前项清晰可辨」。
+ * - 非当前项：hairline(#dddddd) 在彩色底图上几乎不可见，故取色板内更强的
+ *   `border-strong`(#9297a0)——中性灰在浅底与深底上都留得住形，且不构成强调色。
+ *   同分区保持满不透明度；其他分区降到 40% 退居背景。
  */
-const CLASSIFICATION_BORDER: Record<TextReviewBlock["classification"], string> =
-  {
-    layout_text: "border-success-border",
-    object_integrated_symbol: "border-border-strong",
-    uncertain: "border-signature-mustard",
-  };
+const CURRENT_CLASS =
+  "border-2 border-info-border ring-2 ring-info-border/40 ring-offset-1 ring-offset-canvas";
+const SAME_PARTITION_CLASS = "border border-border-strong";
+const OTHER_PARTITION_CLASS = "border border-border-strong opacity-40";
 
-const HANDLE_POSITIONS = ["nw", "ne", "sw", "se", "n", "s", "e", "w"] as const;
+// 屏幕位移小于该像素数视为点击而非拖动，避免选中块时手抖改坐标
+const DRAG_THRESHOLD_PX = 3;
+
+interface DragState {
+  pointerId: number;
+  // 按下时的屏幕坐标与块原点，位移始终相对原点计算，避免逐帧累加漂移
+  startClientX: number;
+  startClientY: number;
+  originX: number;
+  originY: number;
+  moved: boolean;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+// quadPx 跟随 bbox 做同一位移；bbox 已被夹在图内，故这里不再单独夹取，
+// 保持四边形形状不被静默变形。
+function translateQuad(
+  quad: TextReviewBlock["quadPx"],
+  dx: number,
+  dy: number,
+): TextReviewBlock["quadPx"] {
+  if (quad === null) {
+    return null;
+  }
+  return [
+    { x: quad[0].x + dx, y: quad[0].y + dy },
+    { x: quad[1].x + dx, y: quad[1].y + dy },
+    { x: quad[2].x + dx, y: quad[2].y + dy },
+    { x: quad[3].x + dx, y: quad[3].y + dy },
+  ];
+}
 
 export function TextBlockOverlay({
   block,
   imageWidth,
   imageHeight,
-  selected,
+  current,
+  samePartition,
   scale,
   onClick,
   onUpdate,
 }: TextBlockOverlayProps): React.JSX.Element {
   const { x, y, width, height } = block.bboxPx;
-  const [editing, setEditing] = useState(false);
+
+  const dragRef = useRef<DragState | null>(null);
+  // 拖动结束后紧跟的 click 需要吞掉，否则拖完还会触发一次选中
+  const suppressClickRef = useRef(false);
 
   const style: React.CSSProperties = {
     left: `${(x / imageWidth) * 100}%`,
@@ -49,100 +92,119 @@ export function TextBlockOverlay({
     height: `${(height / imageHeight) * 100}%`,
   };
 
-  const unreviewed = block.reviewStatus === "unreviewed";
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      // 只接管左键；中键留给画布平移，只读画布完全不接管指针
+      if (e.button !== 0 || !onUpdate) {
+        return;
+      }
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      dragRef.current = {
+        pointerId: e.pointerId,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        originX: block.bboxPx.x,
+        originY: block.bboxPx.y,
+        moved: false,
+      };
+    },
+    [block.bboxPx.x, block.bboxPx.y, onUpdate],
+  );
 
-  const handleDragStart = useCallback(() => {}, []);
-
-  const handleDrag = useCallback(
-    (delta: { dx: number; dy: number; dw: number; dh: number }) => {
-      if (!onUpdate) return;
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      const drag = dragRef.current;
+      if (drag === null || drag.pointerId !== e.pointerId || !onUpdate) {
+        return;
+      }
+      e.stopPropagation();
+      const screenDx = e.clientX - drag.startClientX;
+      const screenDy = e.clientY - drag.startClientY;
+      if (
+        !drag.moved &&
+        Math.abs(screenDx) < DRAG_THRESHOLD_PX &&
+        Math.abs(screenDy) < DRAG_THRESHOLD_PX
+      ) {
+        return;
+      }
+      drag.moved = true;
+      // 屏幕位移除以缩放换算回图片像素；bbox 必须完整落在图内（BBOX_OUT_OF_BOUNDS）
+      const nextX = clamp(
+        drag.originX + screenDx / scale,
+        0,
+        Math.max(0, imageWidth - block.bboxPx.width),
+      );
+      const nextY = clamp(
+        drag.originY + screenDy / scale,
+        0,
+        Math.max(0, imageHeight - block.bboxPx.height),
+      );
+      const stepX = nextX - block.bboxPx.x;
+      const stepY = nextY - block.bboxPx.y;
+      if (stepX === 0 && stepY === 0) {
+        return;
+      }
       onUpdate(block.id, {
-        bboxPx: {
-          x: block.bboxPx.x + delta.dx,
-          y: block.bboxPx.y + delta.dy,
-          width: Math.max(10, block.bboxPx.width + delta.dw),
-          height: Math.max(10, block.bboxPx.height + delta.dh),
-        },
+        bboxPx: { ...block.bboxPx, x: nextX, y: nextY },
+        quadPx: translateQuad(block.quadPx, stepX, stepY),
       });
     },
-    [block.id, block.bboxPx, onUpdate],
+    [
+      block.id,
+      block.bboxPx,
+      block.quadPx,
+      imageWidth,
+      imageHeight,
+      scale,
+      onUpdate,
+    ],
   );
 
-  const handleDragEnd = useCallback(() => {}, []);
-
-  const handleDoubleClick = useCallback(
-    (e: React.MouseEvent) => {
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
+      const drag = dragRef.current;
+      if (drag === null || drag.pointerId !== e.pointerId) {
+        return;
+      }
       e.stopPropagation();
-      if (onUpdate) setEditing(true);
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      suppressClickRef.current = drag.moved;
+      dragRef.current = null;
     },
-    [onUpdate],
+    [],
   );
 
-  const handleTextCommit = useCallback(
-    (text: string) => {
-      setEditing(false);
-      if (!onUpdate) return;
-      const lines = text
-        .split(/\r?\n/)
-        .map((l) => l.trim())
-        .filter((l) => l.length > 0);
-      onUpdate(block.id, { text, lines: lines.length > 0 ? lines : [text] });
-    },
-    [block.id, onUpdate],
-  );
-
-  const handleTextCancel = useCallback(() => {
-    setEditing(false);
-  }, []);
+  const handleClick = useCallback(() => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    onClick();
+  }, [onClick]);
 
   return (
-    // 块内会渲染 8 个拖拽手柄按钮与编辑态 textarea，外层用 <button> 构成非法嵌套，
-    // 因此沿用 SlideCard 的做法：div + role="button" 自行补齐键盘可达性。
-    // biome-ignore lint/a11y/useSemanticElements: 见上，语义按钮会导致 button 嵌套
-    <div
-      role="button"
-      tabIndex={0}
+    // 块内不再渲染任何内容：识别文本叠在原图同处文字上会造成双层重影（PRD F-6），
+    // 文本一律由左侧列表呈现，画布只画框。
+    <button
+      type="button"
+      aria-label={block.text.length > 0 ? block.text : "未识别文字块"}
+      aria-current={current ? "true" : undefined}
       style={style}
-      onClick={onClick}
-      onDoubleClick={handleDoubleClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") onClick();
-      }}
+      onClick={handleClick}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       className={cn(
-        "absolute box-border overflow-visible border-2 text-left transition-colors",
-        selected
-          ? "border-info-border bg-info/10"
-          : CLASSIFICATION_BORDER[block.classification],
-        !selected && unreviewed && "border-dashed",
+        "absolute box-border bg-transparent p-0 transition-colors",
+        onUpdate ? "cursor-move" : "cursor-pointer",
+        current
+          ? CURRENT_CLASS
+          : samePartition
+            ? SAME_PARTITION_CLASS
+            : OTHER_PARTITION_CLASS,
       )}
-    >
-      {editing ? (
-        <TextEditor
-          text={block.text}
-          onCommit={handleTextCommit}
-          onCancel={handleTextCancel}
-        />
-      ) : (
-        // 10px 低于 DESIGN.md 最小字号（legal 13.12px）：这是贴在原图 bbox 上的标注，
-        // 尺寸由识别框决定，用界面字号会溢出小块。属画布标注层，不参与界面排版。
-        <span className="block truncate p-0.5 text-[10px] leading-tight text-ink">
-          {block.text}
-        </span>
-      )}
-
-      {selected &&
-        onUpdate &&
-        !editing &&
-        HANDLE_POSITIONS.map((pos) => (
-          <TextBlockHandle
-            key={pos}
-            position={pos}
-            scale={scale}
-            onDragStart={handleDragStart}
-            onDrag={handleDrag}
-            onDragEnd={handleDragEnd}
-          />
-        ))}
-    </div>
+    />
   );
 }

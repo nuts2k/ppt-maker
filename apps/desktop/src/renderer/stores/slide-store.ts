@@ -1,5 +1,10 @@
 import type { TextReviewBlock, TextReviewDocument } from "@ppt-maker/core";
 import { create } from "zustand";
+import {
+  applyManualEdit,
+  deleteBlockById,
+  markBlocksReviewedById,
+} from "@/lib/block-edit";
 import { getApi } from "@/lib/ipc-client";
 import { markAllBlocksReviewed } from "@/lib/review-status";
 
@@ -27,14 +32,26 @@ interface SlideState {
    * 会吞掉用户尚未保存的改动。
    */
   reloadImages(): Promise<void>;
-  // 局部更新指定 block 字段并标记 dirty
+  /**
+   * 人工编辑指定 block（文本 / 分类 / includeInMask 等）：合并 patch，
+   * 写入 `updatedAt` 并同步 manual 来源，标记 dirty。
+   *
+   * 溯源必须写在编辑路径上而非确认路径上，否则 report 中的「已复核」无法区分
+   * 「人工改过」与「一键放行」（PRD F-6）。
+   */
   updateBlock(blockId: string, patch: Partial<TextReviewBlock>): void;
+  /** 仅推进单块复核状态（Enter 确认当前项）：不写 updatedAt、不加 manual 来源 */
+  markBlockReviewed(blockId: string): void;
+  /** 把指定块批量标为已复核（「全部通过」），返回实际改动数；同样不写溯源字段 */
+  markBlocksReviewed(blockIds: readonly string[]): number;
+  /** 删除块（列表上的「删除此块」），标记 dirty */
+  deleteBlock(blockId: string): void;
   /**
    * 把所有未复核块一次性标为已复核，返回实际改动的数量。
    *
    * mask 门禁（CLI `mask/run.ts`）要求参与抹字的块必须已确认，而 assist-review
    * 只会自动确认高置信块，其余需要人工逐个确认。整页几十个块时逐块点击不现实，
-   * 因此提供整页批量档；精确到单块的确认走 PropertyPanel。
+   * 因此提供整页批量档；精确到单块的确认走复核列表。
    */
   markAllReviewed(): number;
   // 保存复核文档，成功后清除 dirty
@@ -91,11 +108,42 @@ export const useSlideStore = create<SlideState>((set, get) => ({
     if (reviewDocument === null) {
       return;
     }
+    const now = new Date().toISOString();
     const blocks = reviewDocument.blocks.map((block) =>
-      block.id === blockId ? { ...block, ...patch } : block,
+      block.id === blockId ? applyManualEdit(block, patch, now) : block,
     );
     set({
       reviewDocument: { ...reviewDocument, blocks },
+      dirty: true,
+    });
+  },
+
+  markBlockReviewed(blockId) {
+    get().markBlocksReviewed([blockId]);
+  },
+
+  markBlocksReviewed(blockIds) {
+    const { reviewDocument } = get();
+    if (reviewDocument === null) return 0;
+    const { blocks, changed } = markBlocksReviewedById(
+      reviewDocument.blocks,
+      blockIds,
+    );
+    if (changed === 0) return 0;
+    set({
+      reviewDocument: { ...reviewDocument, blocks: [...blocks] },
+      dirty: true,
+    });
+    return changed;
+  },
+
+  deleteBlock(blockId) {
+    const { reviewDocument } = get();
+    if (reviewDocument === null) return;
+    const { blocks, deleted } = deleteBlockById(reviewDocument.blocks, blockId);
+    if (!deleted) return;
+    set({
+      reviewDocument: { ...reviewDocument, blocks: [...blocks] },
       dirty: true,
     });
   },

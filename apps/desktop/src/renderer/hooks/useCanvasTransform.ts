@@ -21,6 +21,14 @@ interface ContentSize {
   height: number;
 }
 
+// 内容坐标系中的矩形，用于 centerOn
+interface ContentBox {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 interface UseCanvasTransformResult {
   transform: CanvasTransform;
   containerRef: RefObject<HTMLDivElement | null>;
@@ -29,6 +37,8 @@ interface UseCanvasTransformResult {
   onPointerMove(e: ReactPointerEvent<HTMLDivElement>): void;
   onPointerUp(e: ReactPointerEvent<HTMLDivElement>): void;
   resetView(): void;
+  /** 把内容坐标系里的 bbox 滚到视口中心；不改变当前 scale */
+  centerOn(bbox: ContentBox): void;
 }
 
 const MIN_SCALE = 0.1;
@@ -54,6 +64,21 @@ function computeFit(
   const offsetX = (clientWidth - content.width * scale) / 2;
   const offsetY = (clientHeight - content.height * scale) / 2;
   return { scale, offsetX, offsetY };
+}
+
+/** 单轴偏移夹取：内容比视口窄时居中，否则保证内容边缘不越过视口边缘 */
+function clampAxisOffset(
+  offset: number,
+  viewport: number,
+  contentLength: number,
+): number {
+  if (contentLength <= 0) {
+    return offset;
+  }
+  if (contentLength <= viewport) {
+    return (viewport - contentLength) / 2;
+  }
+  return Math.min(0, Math.max(viewport - contentLength, offset));
 }
 
 export function useCanvasTransform(
@@ -154,6 +179,43 @@ export function useCanvasTransform(
     }
   }, []);
 
+  // content 走 ref：centerOn 需要内容尺寸做边界夹取，但把它放进依赖数组会让
+  // centerOn 随每次 content 对象重建而换标识，调用方的居中 effect 会跟着抖动。
+  const contentRef = useRef<ContentSize | null>(content ?? null);
+  contentRef.current = content ?? null;
+
+  /**
+   * 把 bbox 滚到视口中心，但不把内容拖出视口。
+   *
+   * 当前 scale 用函数式 setTransform 读取，同样不进依赖数组。
+   *
+   * 边界夹取是必需的：进页时 scale 为 fit-to-view，整图本就完整可见，此时若
+   * 无条件按块居中，靠边的块会把整张图推向一侧、露出大片空白底。故按轴分别
+   * 处理——该轴上内容比视口窄时保持居中（结果与 fit 一致），否则把偏移夹在
+   * 「内容边缘不越过视口边缘」的范围内。
+   */
+  const centerOn = useCallback((bbox: ContentBox) => {
+    const container = containerRef.current;
+    if (container === null) {
+      return;
+    }
+    const { clientWidth, clientHeight } = container;
+    const content = contentRef.current;
+    setTransform((prev) => ({
+      scale: prev.scale,
+      offsetX: clampAxisOffset(
+        clientWidth / 2 - (bbox.x + bbox.width / 2) * prev.scale,
+        clientWidth,
+        (content?.width ?? 0) * prev.scale,
+      ),
+      offsetY: clampAxisOffset(
+        clientHeight / 2 - (bbox.y + bbox.height / 2) * prev.scale,
+        clientHeight,
+        (content?.height ?? 0) * prev.scale,
+      ),
+    }));
+  }, []);
+
   return {
     transform,
     containerRef,
@@ -162,5 +224,6 @@ export function useCanvasTransform(
     onPointerMove,
     onPointerUp,
     resetView,
+    centerOn,
   };
 }

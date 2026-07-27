@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { useRunBridge } from "@/hooks/useRunBridge";
 import { ConsolePage } from "@/pages/ConsolePage";
-import { SlidePage } from "@/pages/SlidePage";
+import { ReviewPage } from "@/pages/ReviewPage";
 import { useUIStore } from "@/stores/ui-store";
 
 export function App(): React.JSX.Element {
@@ -14,9 +14,9 @@ export function App(): React.JSX.Element {
   return (
     <AppShell>
       {currentView === "slide" ? (
-        // key 绑定页 id：换页即重挂载，视图态/侧边栏页签/临时提示自然回到初始值，
-        // 不必在 SlidePage 里写"切页重置"的 effect
-        <SlidePage key={selectedSlideId ?? "none"} />
+        // key 绑定页 id：换页即重挂载，视图态与临时提示自然回到初始值，
+        // 不必在 ReviewPage 里写"切页重置"的 effect
+        <ReviewPage key={selectedSlideId ?? "none"} />
       ) : (
         <ConsolePage />
       )}

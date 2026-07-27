@@ -1,0 +1,3133 @@
+{
+  "schemaVersion": 1,
+  "slideId": "f8eabbbd-edd4-4fd4-8c5d-d88479280a64",
+  "image": {
+    "width": 1672,
+    "height": 940
+  },
+  "generatedAt": "2026-07-25T03:56:44.476Z",
+  "reviewStartedAt": "2026-07-25T03:56:44.476Z",
+  "blocks": [
+    {
+      "schemaVersion": 1,
+      "id": "block-001",
+      "text": "智能引擎赋能：AI Agent深度融入业务流，化身人机协同四大副驾",
+      "lines": [
+        "智能引擎赋能：AI Agent深度融入业务流，化身人机协同四大副驾"
+      ],
+      "bboxPx": {
+        "x": 34.833388605624805,
+        "y": 27.851852048585773,
+        "width": 1588.39990234375,
+        "height": 83.55555725097656
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 0,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "「智能引擎赋能：Al Agent 深度融入业务流，化身人机协同四大副驾",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "智能引擎赋能：AI Agent深度融入业务流，化身人机协同四大副驾",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-002",
+      "text": "AI不替代业务责任人决策，而是极大降低信息获取与分析门槛。",
+      "lines": [
+        "AI不替代业务责任人决策，而是极大降低信息获取与分析门槛。"
+      ],
+      "bboxPx": {
+        "x": 381.5465083903787,
+        "y": 133.59173110116228,
+        "width": 950.2209472656248,
+        "height": 48.578811645507805
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 1,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "Al不替代业务责任人决策，而是极大降低信息获取与分析门槛。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "AI不替代业务责任人决策，而是极大降低信息获取与分析门槛。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-003",
+      "text": "信息收集助手",
+      "lines": [
+        "信息收集助手"
+      ],
+      "bboxPx": {
+        "x": 143.38371747966028,
+        "y": 245.00000012105178,
+        "width": 211.4302368164062,
+        "height": 42.00000000000001
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 2,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "信息收集助手",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "信息收集助手",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-004",
+      "text": "风险侦测助手",
+      "lines": [
+        "风险侦测助手"
+      ],
+      "bboxPx": {
+        "x": 487.40085187668876,
+        "y": 242.13661563980216,
+        "width": 279.1983032226562,
+        "height": 51.87491607666009
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 3,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "A 风险侦测助手",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "风险侦测助手",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-005",
+      "text": "商品根因分析助手",
+      "lines": [
+        "商品根因分析助手"
+      ],
+      "bboxPx": {
+        "x": 863.3701430716274,
+        "y": 234.0741989832822,
+        "width": 286.62637329101557,
+        "height": 61.03678703308108
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 4,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "品根因分析助手",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "商品根因分析助手",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-006",
+      "text": "复盘总结助手",
+      "lines": [
+        "复盘总结助手"
+      ],
+      "bboxPx": {
+        "x": 1317.016317449469,
+        "y": 244.35290351618616,
+        "width": 231.21154785156244,
+        "height": 43.23217773437505
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 5,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "，复盘总结助手",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "复盘总结助手",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-007",
+      "text": "跨系统穿透汇总品、价、量信息，",
+      "lines": [
+        "跨系统穿透汇总品、价、量信息，"
+      ],
+      "bboxPx": {
+        "x": 80.19768939863272,
+        "y": 308.000000858358,
+        "width": 318.3604431152344,
+        "height": 32.05167865753176
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 6,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "跨系统穿透汇总品、价、量信息，",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "跨系统穿透汇总品、价、量信息，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-008",
+      "text": "24小时扫描节点健康度，主动",
+      "lines": [
+        "24小时扫描节点健康度，主动"
+      ],
+      "bboxPx": {
+        "x": 480.70000708789917,
+        "y": 298.99999991922834,
+        "width": 306.53332519531244,
+        "height": 42.185184478759744
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 7,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "24小时扫描节点健康度，主动",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "24小时扫描节点健康度，主动",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-009",
+      "text": "针对预测偏差、异常库存飙升，",
+      "lines": [
+        "针对预测偏差、异常库存飙升，"
+      ],
+      "bboxPx": {
+        "x": 863.8666614416669,
+        "y": 298.99999964172275,
+        "width": 313.50000000000017,
+        "height": 35.22222328186032
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 8,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "针对预测偏差、异常库存飙升，",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "针对预测偏差、异常库存飙升，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-010",
+      "text": "结合档期全量数据，自动生成",
+      "lines": [
+        "结合档期全量数据，自动生成"
+      ],
+      "bboxPx": {
+        "x": 1268.5814004374333,
+        "y": 306.000000341992,
+        "width": 308.6395263671874,
+        "height": 32.00000000000004
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 9,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "结合档期全量数据，自动生成",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "结合档期全量数据，自动生成",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-011",
+      "text": "实现一键全景查阅，消灭表格搬运。",
+      "lines": [
+        "实现一键全景查阅，消灭表格搬运。"
+      ],
+      "bboxPx": {
+        "x": 80.19768491804138,
+        "y": 342.0000004023834,
+        "width": 340.23254394531244,
+        "height": 29.999999999999993
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 10,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "实现一键全景查阅，消灭表格搬运。",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "实现一键全景查阅，消灭表格搬运。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-012",
+      "text": "进行风险预警与异常拦截提示。",
+      "lines": [
+        "进行风险预警与异常拦截提示。"
+      ],
+      "bboxPx": {
+        "x": 486.04651546356297,
+        "y": 337.62273922032904,
+        "width": 306.2092895507812,
+        "height": 31.576227188110312
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 11,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "进行风险预警与异常拦截提示。",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "进行风险预警与异常拦截提示。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-013",
+      "text": "提供多维度下钻的初步归因线索。",
+      "lines": [
+        "提供多维度下钻的初步归因线索。"
+      ],
+      "bboxPx": {
+        "x": 872.4534889759714,
+        "y": 337.6227390670743,
+        "width": 332.9418640136719,
+        "height": 31.576227188110416
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 12,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "提供多维度下钻的初步归因线索。",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "提供多维度下钻的初步归因线索。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-014",
+      "text": "复盘报告初稿及改善建议，加速",
+      "lines": [
+        "复盘报告初稿及改善建议，加速"
+      ],
+      "bboxPx": {
+        "x": 1268.5813999471284,
+        "y": 340.0000003921548,
+        "width": 328.0813903808595,
+        "height": 31.999999046325655
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 13,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "复盘报告初稿及改善建议，加速",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "复盘报告初稿及改善建议，加速",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-015",
+      "text": "知识沉淀。",
+      "lines": [
+        "知识沉淀。"
+      ],
+      "bboxPx": {
+        "x": 1268.5113383330872,
+        "y": 368.9548475541427,
+        "width": 109.50057983398435,
+        "height": 32.064464569091875
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 14,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "知识沉淀。",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "知识沉淀。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-016",
+      "text": "Q",
+      "lines": [
+        "Q"
+      ],
+      "bboxPx": {
+        "x": 887.034884667885,
+        "y": 432.3514212027186,
+        "width": 24.302324295043817,
+        "height": 19.431524276733285
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 15,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "Q",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "Q",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-017",
+      "text": "根因分析搜索",
+      "lines": [
+        "根因分析搜索"
+      ],
+      "bboxPx": {
+        "x": 916.0790704350284,
+        "y": 431.8032513206152,
+        "width": 87.72557830810551,
+        "height": 20.527863502502456
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 16,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "根因分析搜索",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "根因分析搜索",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-018",
+      "text": "档期经营复盘报告",
+      "lines": [
+        "档期经营复盘报告"
+      ],
+      "bboxPx": {
+        "x": 1363.3604661742195,
+        "y": 436.99999983225865,
+        "width": 148.24418640136716,
+        "height": 22.069766998291044
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 17,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "档期经营复盘报告",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "档期经营复盘报告",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-019",
+      "text": "销量波动",
+      "lines": [
+        "销量波动"
+      ],
+      "bboxPx": {
+        "x": 1093.6046514709215,
+        "y": 478.50129187207654,
+        "width": 53.46511459350579,
+        "height": 17.498707771301238
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 18,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "外郎波动",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "销量波动",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-020",
+      "text": "主要结论",
+      "lines": [
+        "主要结论"
+      ],
+      "bboxPx": {
+        "x": 1336.6279073461187,
+        "y": 476.00000018412294,
+        "width": 43.74418640136715,
+        "height": 14.999999999999996
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 19,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "主贾蛸论",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "主要结论",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-021",
+      "text": "无法可靠还原的图表说明文字",
+      "lines": [
+        "无法可靠还原的图表说明文字"
+      ],
+      "bboxPx": {
+        "x": 1336.6279083187321,
+        "y": 495.5038760661681,
+        "width": 204.13952636718741,
+        "height": 14.573642730712923
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 20,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "水图阴望终經曾目畅论价線992.3%，装上明 +8.6%。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "无法可靠还原的图表说明文字",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-022",
+      "text": "无法可靠还原的看板标签",
+      "lines": [
+        "无法可靠还原的看板标签"
+      ],
+      "bboxPx": {
+        "x": 250.27361406483902,
+        "y": 505.07285544988014,
+        "width": 43.824863433837905,
+        "height": 12.43826866149899
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 21,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "妣設署板",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "无法可靠还原的看板标签",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-023",
+      "text": "历史库存缺陷",
+      "lines": [
+        "历史库存缺陷"
+      ],
+      "bboxPx": {
+        "x": 1098.4270308326627,
+        "y": 505.05500263116505,
+        "width": 72.98314666748048,
+        "height": 17.331855773925838
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 22,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "历史須餡缺陷",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "历史库存缺陷",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-024",
+      "text": "无法可靠还原的图表说明文字",
+      "lines": [
+        "无法可靠还原的图表说明文字"
+      ],
+      "bboxPx": {
+        "x": 1334.1976742720017,
+        "y": 510.00000006021173,
+        "width": 165.25581359863284,
+        "height": 14.999999999999996
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 23,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "成存周姆凉提升阴盈，迎识纪化什袋羽美，",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "无法可靠还原的图表说明文字",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-025",
+      "text": "预测偏差",
+      "lines": [
+        "预测偏差"
+      ],
+      "bboxPx": {
+        "x": 998.8255823538561,
+        "y": 519.7932814551945,
+        "width": 53.46511459350579,
+        "height": 17.206718444824265
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 24,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "预测偏差",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "预测偏差",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-026",
+      "text": "特征异常",
+      "lines": [
+        "特征异常"
+      ],
+      "bboxPx": {
+        "x": 1093.5863242921005,
+        "y": 534.3164379247177,
+        "width": 53.50177001953114,
+        "height": 19.53249931335452
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 25,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "特征异常",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "特征异常",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-027",
+      "text": "风险预警",
+      "lines": [
+        "风险预警"
+      ],
+      "bboxPx": {
+        "x": 590.4935827685212,
+        "y": 556.035054060975,
+        "width": 114.32678985595705,
+        "height": 31.960899353027372
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 26,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "风险预警",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "风险预警",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-028",
+      "text": "预测偏差",
+      "lines": [
+        "预测偏差"
+      ],
+      "bboxPx": {
+        "x": 898.9644767260565,
+        "y": 570.0424129843841,
+        "width": 56.338489532470724,
+        "height": 18.51982402801513
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 27,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "预测儁差",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "预测偏差",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-029",
+      "text": "数据粒度",
+      "lines": [
+        "数据粒度"
+      ],
+      "bboxPx": {
+        "x": 1096.034884147561,
+        "y": 563.5142123478217,
+        "width": 51.034881591796896,
+        "height": 14.57364273071282
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 28,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "數据粒度",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "数据粒度",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-030",
+      "text": "销售额",
+      "lines": [
+        "销售额"
+      ],
+      "bboxPx": {
+        "x": 1334.197675876651,
+        "y": 563.514211730358,
+        "width": 31.59302139282231,
+        "height": 12.485788345336953
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 29,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "銷售敜",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "销售额",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-031",
+      "text": "达成率",
+      "lines": [
+        "达成率"
+      ],
+      "bboxPx": {
+        "x": 1392.5232564996063,
+        "y": 563.514211730358,
+        "width": 29.162790298461978,
+        "height": 12.485788345336953
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 30,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "达战事",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "达成率",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-032",
+      "text": "库存周转率",
+      "lines": [
+        "库存周转率"
+      ],
+      "bboxPx": {
+        "x": 1441.127909073173,
+        "y": 563.514211730358,
+        "width": 48.60464859008782,
+        "height": 12.485788345336953
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 31,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "陈闻$6率",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "无法可靠还原的指标标签",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-033",
+      "text": "毛利率",
+      "lines": [
+        "毛利率"
+      ],
+      "bboxPx": {
+        "x": 1509.1744192903038,
+        "y": 563.514211730358,
+        "width": 29.162790298461978,
+        "height": 12.485788345336953
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 32,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "毛刚事",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "毛利率",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-034",
+      "text": "库存策略",
+      "lines": [
+        "库存策略"
+      ],
+      "bboxPx": {
+        "x": 1098.257915257696,
+        "y": 591.938215140824,
+        "width": 49.01905441284187,
+        "height": 16.02021026611329
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 33,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "库存築略",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "库存策略",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-035",
+      "text": "效果概览（示例）",
+      "lines": [
+        "效果概览（示例）"
+      ],
+      "bboxPx": {
+        "x": 1317.1860469765293,
+        "y": 594.9999998009283,
+        "width": 70.47674560546861,
+        "height": 12.235142230987533
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 34,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "效換概兔（示例）",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "效果概览（示例）",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-036",
+      "text": "补货异常",
+      "lines": [
+        "补货异常"
+      ],
+      "bboxPx": {
+        "x": 1096.0178459300407,
+        "y": 621.7489591172488,
+        "width": 51.06895828247069,
+        "height": 14.693296432495144
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 35,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "补货异常",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "补货异常",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-037",
+      "text": "销售额",
+      "lines": [
+        "销售额"
+      ],
+      "bboxPx": {
+        "x": 1319.616279431389,
+        "y": 619.0000000588013,
+        "width": 29.16279029846179,
+        "height": 12.99999999999994
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 36,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "明俳級",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "明细级",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-038",
+      "text": "商品结构占比",
+      "lines": [
+        "商品结构占比"
+      ],
+      "bboxPx": {
+        "x": 1453.2442010901232,
+        "y": 621.6463959473206,
+        "width": 55.96508789062506,
+        "height": 12.469482421874986
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 37,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "昌央絡构占比",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "商品结构占比",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-039",
+      "text": "商品",
+      "lines": [
+        "商品"
+      ],
+      "bboxPx": {
+        "x": 260.03488373248945,
+        "y": 626.6666666737108,
+        "width": 19.441860198974588,
+        "height": 9.715762138366642
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 38,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "商品",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "商品",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-040",
+      "text": "价格",
+      "lines": [
+        "价格"
+      ],
+      "bboxPx": {
+        "x": 303.7790699005127,
+        "y": 626.6666668345786,
+        "width": 19.441860198974588,
+        "height": 12.333333015441896
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 39,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "价格",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "价格",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-041",
+      "text": "异常库存",
+      "lines": [
+        "异常库存"
+      ],
+      "bboxPx": {
+        "x": 1001.2558134540029,
+        "y": 621.8087854293826,
+        "width": 48.60465240478513,
+        "height": 14.57364368438721
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 40,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "异常库存",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "异常库存",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-042",
+      "text": "数量",
+      "lines": [
+        "数量"
+      ],
+      "bboxPx": {
+        "x": 345.09302348915793,
+        "y": 626.6666666650359,
+        "width": 17.011627197265646,
+        "height": 9.715762138366745
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 41,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "效段",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "数量",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-043",
+      "text": "金额",
+      "lines": [
+        "金额"
+      ],
+      "bboxPx": {
+        "x": 391.26744187202434,
+        "y": 626.6666666737108,
+        "width": 19.441860198974588,
+        "height": 9.715762138366642
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 42,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "金贤",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "金额",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-044",
+      "text": "商品A",
+      "lines": [
+        "商品A"
+      ],
+      "bboxPx": {
+        "x": 257.60465221100515,
+        "y": 645.9999997972318,
+        "width": 24.302324295043956,
+        "height": 12.242894172668432
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 43,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "淡品A",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "商品A",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-045",
+      "text": "30%",
+      "lines": [
+        "30%"
+      ],
+      "bboxPx": {
+        "x": 1450.8488376664043,
+        "y": 640.9999998722141,
+        "width": 19.441860198974588,
+        "height": 9.999999999999963
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 44,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "30%",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "30%",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-046",
+      "text": "¥120",
+      "lines": [
+        "¥120"
+      ],
+      "bboxPx": {
+        "x": 301.3488367560535,
+        "y": 646.000000040126,
+        "width": 21.872093200683622,
+        "height": 12.242894172668432
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 45,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "¥120",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "¥120",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-047",
+      "text": "1,230",
+      "lines": [
+        "1,230"
+      ],
+      "bboxPx": {
+        "x": 342.66279174588885,
+        "y": 645.9999997972318,
+        "width": 24.30232429504391,
+        "height": 12.242894172668432
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 46,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "1.230",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "1,230",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-048",
+      "text": "¥147,600",
+      "lines": [
+        "¥147,600"
+      ],
+      "bboxPx": {
+        "x": 383.97674469521144,
+        "y": 646.0000001931044,
+        "width": 38.883720397949176,
+        "height": 12.24289369583129
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 47,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "¥147,600",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "¥147,600",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-049",
+      "text": "需求波动",
+      "lines": [
+        "需求波动"
+      ],
+      "bboxPx": {
+        "x": 1098.4651181729791,
+        "y": 650.9560725700442,
+        "width": 48.60464859008782,
+        "height": 15.043927192688058
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 48,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "鬻求波动",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "需求波动",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-050",
+      "text": "商品B",
+      "lines": [
+        "商品B"
+      ],
+      "bboxPx": {
+        "x": 257.6046521097454,
+        "y": 665.5297156366887,
+        "width": 24.302324295043956,
+        "height": 12.470284461975048
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 49,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "商品8",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "商品B",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-051",
+      "text": "¥65",
+      "lines": [
+        "¥65"
+      ],
+      "bboxPx": {
+        "x": 303.77906965748946,
+        "y": 665.5297155253623,
+        "width": 19.441860198974634,
+        "height": 12.470284461975151
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 50,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "ves",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "¥65",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-052",
+      "text": "2,340",
+      "lines": [
+        "2,340"
+      ],
+      "bboxPx": {
+        "x": 342.6627914218579,
+        "y": 665.5297155253623,
+        "width": 24.30232429504391,
+        "height": 12.470284461975151
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 51,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "2.340",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "2,340",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-053",
+      "text": "¥?",
+      "lines": [
+        "¥?"
+      ],
+      "bboxPx": {
+        "x": 303.77906965748946,
+        "y": 684.961240073166,
+        "width": 19.441860198974634,
+        "height": 12.144702911376925
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 52,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "v6S",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "¥?",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-054",
+      "text": "初步识别·市场波动",
+      "lines": [
+        "初步识别·市场波动"
+      ],
+      "bboxPx": {
+        "x": 996.3953464109763,
+        "y": 701.9638245290383,
+        "width": 140.95349121093759,
+        "height": 19.431524276733388
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 53,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "初步识别•市场波动",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "初步识别·市场波动",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-055",
+      "text": "改善建议",
+      "lines": [
+        "改善建议"
+      ],
+      "bboxPx": {
+        "x": 1319.6023285957053,
+        "y": 740.7825977817375,
+        "width": 46.20232009887697,
+        "height": 14.662194252014078
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 54,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "改箇建议",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "改善建议",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-056",
+      "text": "推荐行动：库存调整",
+      "lines": [
+        "推荐行动：库存调整"
+      ],
+      "bboxPx": {
+        "x": 925.9186008758896,
+        "y": 755.0000001480271,
+        "width": 133.66279602050767,
+        "height": 17.40310096740728
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 55,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "推荐行动：库存调整",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "推荐行动：库存调整",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-057",
+      "text": "•优化重点品类补货节奏与安全库存。",
+      "lines": [
+        "•优化重点品类补货节奏与安全库存。"
+      ],
+      "bboxPx": {
+        "x": 1317.1860488049365,
+        "y": 762.6873387603972,
+        "width": 148.24418640136716,
+        "height": 14.57364273071282
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 56,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "•优化鹿点品炎补货$变与安念愿强。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "•优化重点品类补货节奏与安全库存。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-058",
+      "text": "•加强促销品调拨灵活性，提升库存周转效率。",
+      "lines": [
+        "•加强促销品调拨灵活性，提升库存周转效率。"
+      ],
+      "bboxPx": {
+        "x": 1317.1860487547533,
+        "y": 779.689922355035,
+        "width": 165.25581359863284,
+        "height": 12.310077667236339
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 57,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "•加弱候销要调開湿没族，绳升眼化效事。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "•加强促销品调拨灵活性，提升库存周转效率。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-059",
+      "text": "•关注短期波动，提升库存预测准确率。",
+      "lines": [
+        "•关注短期波动，提升库存预测准确率。"
+      ],
+      "bboxPx": {
+        "x": 1317.1860495203805,
+        "y": 794.000000225574,
+        "width": 155.5348815917969,
+        "height": 12.408268451690702
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 58,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "•关珍潮明岛调理，婆升废孕渊5致车。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "•关注短期波动，提升库存预测准确率。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-060",
+      "text": "•优化滞销品结构，提升整体利润贡献。",
+      "lines": [
+        "•优化滞销品结构，提升整体利润贡献。"
+      ],
+      "bboxPx": {
+        "x": 1317.1860438634637,
+        "y": 808.8372093892727,
+        "width": 148.24418640136716,
+        "height": 12.162790775299026
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 59,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "•孤颜离混品炎，拽升整利照疫款，",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "•优化滞销品结构，提升整体利润贡献。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    }
+  ],
+  "unmatchedReferenceCandidates": []
+}

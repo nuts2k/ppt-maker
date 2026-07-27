@@ -1,20 +1,29 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCanvasTransform } from "@/hooks/useCanvasTransform";
+import { partitionOf, type ReviewPartition } from "@/lib/review-partition";
 import { TextBlockOverlay } from "./TextBlockOverlay";
 
 interface ReviewCanvasProps {
-  imageUrl: string;
-  blocks: TextReviewBlock[];
-  selectedBlockId?: string | null;
-  onSelectBlock?: (blockId: string) => void;
-  onUpdateBlock?: (blockId: string, patch: Partial<TextReviewBlock>) => void;
+  readonly imageUrl: string;
+  readonly blocks: readonly TextReviewBlock[];
+  /** 当前复核项；画布据此高亮 + 自动居中 */
+  readonly currentBlockId: string | null;
+  readonly onSelectBlock?: ((blockId: string) => void) | undefined;
+  /** 块整体拖动写回；不传则画布只读 */
+  readonly onUpdateBlock?:
+    | ((blockId: string, patch: Partial<TextReviewBlock>) => void)
+    | undefined;
 }
 
+/**
+ * 复核画布：只读定位标注层。文本编辑与分类切换都在左侧列表完成（design.md §4.2），
+ * 这里只负责「当前项在页面的哪个位置」——高亮、自动居中、块整体拖动。
+ */
 export function ReviewCanvas({
   imageUrl,
   blocks,
-  selectedBlockId,
+  currentBlockId,
   onSelectBlock,
   onUpdateBlock,
 }: ReviewCanvasProps): React.JSX.Element {
@@ -30,7 +39,30 @@ export function ReviewCanvas({
     onPointerMove,
     onPointerUp,
     resetView,
+    centerOn,
   } = useCanvasTransform(size);
+
+  const currentPartition = useMemo<ReviewPartition | null>(() => {
+    const currentBlock = blocks.find((block) => block.id === currentBlockId);
+    return currentBlock === undefined ? null : partitionOf(currentBlock);
+  }, [blocks, currentBlockId]);
+
+  // 居中只在「当前项切换」时发生：effect 依赖仅取 currentBlockId，
+  // 块坐标从 ref 读取，否则拖动块导致 blocks 变化会把视口一直拽回中心。
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
+  useEffect(() => {
+    if (currentBlockId === null || size === null) {
+      return;
+    }
+    const target = blocksRef.current.find(
+      (block) => block.id === currentBlockId,
+    );
+    if (target === undefined) {
+      return;
+    }
+    centerOn(target.bboxPx);
+  }, [currentBlockId, size, centerOn]);
 
   return (
     <div
@@ -69,7 +101,11 @@ export function ReviewCanvas({
               block={block}
               imageWidth={size.width}
               imageHeight={size.height}
-              selected={block.id === selectedBlockId}
+              current={block.id === currentBlockId}
+              samePartition={
+                currentPartition === null ||
+                partitionOf(block) === currentPartition
+              }
               scale={transform.scale}
               onClick={() => onSelectBlock?.(block.id)}
               onUpdate={onUpdateBlock}

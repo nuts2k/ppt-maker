@@ -121,25 +121,42 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 > 阶段 B 已提供：`gate: "human-edit"` + `stoppedAt: "review"`（C15 与 D7 按此定位界面）、
 > `slide accept-final`（D4 的 IPC 直接调 `runAcceptFinal`）。
 
-- [ ] C1 新增 `lib/review-partition.ts`：`partitionOf(block)` 三分区派生（object_symbol 与 uncertain → 分类待确认；layout_text 按 `compareBlockSources().agrees` 二分）。测试断言用 `research/data-snapshot` 的实测值：page-01 = 25 / 16 / 19，page-02 = 45 / 18 / 32
-- [ ] C2 新增 `lib/text-diff.ts`：字符级 LCS diff，输出分段（相同 / 仅在 OCR / 仅在 assist）
-- [ ] C3 新增 `components/review/BlockListPanel.tsx`：三分区、计数徽标、已一致区默认折叠 + 「全部通过」
-- [ ] C4 新增 `components/review/TextDiffRow.tsx`：上行 OCR 原文（muted，diff 段高亮）、下行可编辑 textarea；超长文本回退整行并排
-- [ ] C5 新增 `components/review/ClassificationRow.tsx`：文本 + 「改为版式文字」单击动作
-- [ ] C6 新增 `components/review/ReviewShortcutBar.tsx`：快捷键常驻可见
-- [ ] C7 `slide-store`：`updateBlock` 补写 `updatedAt` 并向 `sources` 追加 `manual` 条目；`markAllReviewed` 明确**不**写这两项
-- [ ] C8 新增 `components/review/DeleteBlockButton`（或并入项卡）：删除块走既有 `save-review`
-- [ ] C9 `ReviewCanvas` 改造：移除块内文本叠加与 `TextEditor` 引用；三态标注（当前项 / 同分区 / 其他分区淡化）；分类不再用边框色编码
-- [ ] C10 `useCanvasTransform` 新增 `centerOn(bbox)`；当前项变化时自动居中
-- [ ] C11 块整体拖动保留；删除 `TextBlockHandle.tsx` 与 8 手柄逻辑
-- [ ] C12 键盘流：Tab/↓ 下一项、Shift+Tab/↑ 上一项、聚焦项 textarea 直接可打字、Enter 标记已复核并前进、⌥1/⌥2 切分类、⌘S 保存
-- [ ] C13 `layout_text && !includeInMask` 的项显示「会重影」警告 + 一键修正（R3.10）
-- [ ] C14 删除 `ConfidenceQueue.tsx`、`PropertyPanel.tsx`、`SourceList.tsx`、`TextEditor.tsx` 及其引用
-- [ ] C15 `SlidePage` 改为 `ReviewPage`，侧边栏三标签结构移除
+- [x] C1 新增 `lib/review-partition.ts`：`partitionOf(block)` 三分区派生（object_symbol 与 uncertain → 分类待确认；layout_text 按 `compareBlockSources().agrees` 二分）。测试断言用 `research/data-snapshot` 的实测值：page-01 = 25 / 16 / 19，page-02 = 45 / 18 / 32
+- [x] C2 新增 `lib/text-diff.ts`：字符级 LCS diff，输出分段（相同 / 仅在 OCR / 仅在 assist）
+- [x] C3 新增 `components/review/BlockListPanel.tsx`：三分区、计数徽标、已一致区默认折叠 + 「全部通过」
+- [x] C4 新增 `components/review/TextDiffRow.tsx`：上行 OCR 原文（muted，diff 段高亮）、下行可编辑 textarea；超长文本回退整行并排
+- [x] C5 新增 `components/review/ClassificationRow.tsx`：文本 + 「改为版式文字」单击动作
+- [x] C6 新增 `components/review/ReviewShortcutBar.tsx`：快捷键常驻可见
+- [x] C7 `slide-store`：`updateBlock` 补写 `updatedAt` 并向 `sources` 追加 `manual` 条目；`markAllReviewed` 明确**不**写这两项
+- [x] C8 新增 `components/review/DeleteBlockButton`（或并入项卡）：删除块走既有 `save-review`
+- [x] C9 `ReviewCanvas` 改造：移除块内文本叠加与 `TextEditor` 引用；三态标注（当前项 / 同分区 / 其他分区淡化）；分类不再用边框色编码
+- [x] C10 `useCanvasTransform` 新增 `centerOn(bbox)`；当前项变化时自动居中
+- [x] C11 块整体拖动保留；删除 `TextBlockHandle.tsx` 与 8 手柄逻辑
+- [x] C12 键盘流：Tab/↓ 下一项、Shift+Tab/↑ 上一项、聚焦项 textarea 直接可打字、Enter 标记已复核并前进、⌥1/⌥2 切分类、⌘S 保存
+- [x] C13 `layout_text && !includeInMask` 的项显示「会重影」警告 + 一键修正（R3.10）
+- [x] C14 删除 `ConfidenceQueue.tsx`、`PropertyPanel.tsx`、`SourceList.tsx`、`TextEditor.tsx` 及其引用
+- [x] C15 `SlidePage` 改为 `ReviewPage`，侧边栏三标签结构移除
 
 **验证**：`pnpm typecheck && pnpm build`；用备份工作区实际走一遍 page-02（95 块）复核，确认全键盘可完成、分区计数与 PRD F-9 的数字吻合（分类待确认 18、文字待确认 45、已一致 32）。
 
 **回滚点**：C 阶段单独 commit。
+
+### C 阶段已完成（2026-07-26）
+
+工程验证四项全绿：`pnpm format:check`、`pnpm typecheck`、`pnpm test`（core 76 + desktop 195 + cli 91）、`pnpm build`。分区计数由 `test/review-partition.test.ts` 用真实快照断言，与 PRD F-9 完全吻合（page-01 = 25/16/19，page-02 = 45/18/32）。
+
+**尚未做、留给阶段 E1 的视觉走查**：用真实工作区 `~/test/ppttest-2026-07-25` 走一遍 page-02 的 95 块复核，确认全键盘可完成、画布标注在彩色底图上可辨。需要启动 Electron 与人眼判断，代码层无法自证。
+
+**落地差异与实现决策**：
+
+- **阶段 D 的边界按最小改动划**：`compare` / `accept` 两个视图态与 `AcceptFlow` 在 C 阶段原样保留——`FinalConfirmPage` 属阶段 D，提前拆掉会出现「没有任何验收路径」的空窗。工具栏「全部标为已复核」同样保留：移除它不在 C 的条目里，但它正是 F-6 的逃生口，随 D7 收敛待办分组时一并处理更合适。
+- **分区内保持存储顺序**：`design.md` §4.1 写的是「按 `zIndex` 后 `readingOrder` 排列」，但契约里并不存在 `readingOrder` 字段，`text-blocks.json` 的存储顺序即阅读顺序，故不做任何重排。
+- **C7 抽出 `lib/block-edit.ts`**：`applyManualEdit` / `markBlocksReviewedById` / `deleteBlockById` 三个纯函数从 store 里分出来，测试不必造 zustand 环境。踩到的契约坑：`TextBlockSourceSchema.text` 是 `z.string().min(1)` 而 `TextReviewBlock.text` 允许空串，编辑成空串时必须移除 manual 条目，否则保存被 zod 拒绝。
+- **C10 `centerOn` 增加按轴边界夹取**：无条件居中会在 fit-to-view 尺度下把靠边的块拉到正中、露出大片空白底。现在该轴上内容比视口窄时保持居中，否则夹在「内容边缘不越过视口边缘」的范围内。
+- **C12 键盘流落在 `BlockListPanel` 内**，页面壳只保留 ⌘S 的 window 监听。两个判断：⌥1/⌥2 用 `event.code` 而非 `event.key`（macOS 上 ⌥1 的 `key` 是 `¡`）；焦点在项内按钮上时 Enter 放行冒泡，否则 keydown 的 `preventDefault` 会把按钮的 click 一起吃掉。推进到折叠的「已一致」分区时**自动展开**而非跳过——跳过会让折叠区里的块永远无法用键盘到达，与「全程仅用键盘完成一页复核」冲突。
+- **切分类必须同改 `includeInMask`**：阶段 A 的 `LAYOUT_TEXT_MUST_BE_MASKED` 把「layout_text 却不参与 mask」判为 error，只改分类会一改就触发校验失败。`ClassificationRow` 同时提供反向动作（改回对象符号 + `includeInMask=false`）。
+- **测试夹具进仓**：`test/fixtures/review-partition/page-0{1,2}.json` 是 `research/data-snapshot` 的逐字副本——任务归档后 `.trellis/tasks/` 路径会失效，测试不能依赖它。相应地 `biome.json` 增加 `files.includes` 排除 `**/test/fixtures`，夹具必须与快照逐字一致，不能被格式化。
+- **「全部通过」只出现在「已一致」分区**：另两个分区给批量入口等于把 F-6 的「一键全标已复核」搬回来。
 
 ## 阶段 D — 最终确认页（R2、design §4.3、§5）
 

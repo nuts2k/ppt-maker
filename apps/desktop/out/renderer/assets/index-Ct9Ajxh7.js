@@ -8,21 +8,21 @@ function requireReactJsxRuntime_production() {
   if (hasRequiredReactJsxRuntime_production) return reactJsxRuntime_production;
   hasRequiredReactJsxRuntime_production = 1;
   var REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment");
-  function jsxProd(type, config, maybeKey) {
+  function jsxProd(type, config2, maybeKey) {
     var key = null;
     void 0 !== maybeKey && (key = "" + maybeKey);
-    void 0 !== config.key && (key = "" + config.key);
-    if ("key" in config) {
+    void 0 !== config2.key && (key = "" + config2.key);
+    if ("key" in config2) {
       maybeKey = {};
-      for (var propName in config)
-        "key" !== propName && (maybeKey[propName] = config[propName]);
-    } else maybeKey = config;
-    config = maybeKey.ref;
+      for (var propName in config2)
+        "key" !== propName && (maybeKey[propName] = config2[propName]);
+    } else maybeKey = config2;
+    config2 = maybeKey.ref;
     return {
       $$typeof: REACT_ELEMENT_TYPE,
       type,
       key,
-      ref: void 0 !== config ? config : null,
+      ref: void 0 !== config2 ? config2 : null,
       props: maybeKey
     };
   }
@@ -111,8 +111,8 @@ function requireReact_production() {
   function cloneAndReplaceKey(oldElement, newKey) {
     return ReactElement(oldElement.type, newKey, oldElement.props);
   }
-  function isValidElement(object) {
-    return "object" === typeof object && null !== object && object.$$typeof === REACT_ELEMENT_TYPE;
+  function isValidElement(object2) {
+    return "object" === typeof object2 && null !== object2 && object2.$$typeof === REACT_ELEMENT_TYPE;
   }
   function escape(key) {
     var escaperLookup = { "=": "=0", ":": "=2" };
@@ -147,7 +147,7 @@ function requireReact_production() {
     }
     throw thenable;
   }
-  function mapIntoArray(children, array, escapedPrefix, nameSoFar, callback) {
+  function mapIntoArray(children, array2, escapedPrefix, nameSoFar, callback) {
     var type = typeof children;
     if ("undefined" === type || "boolean" === type) children = null;
     var invokeCallback = false;
@@ -168,7 +168,7 @@ function requireReact_production() {
             case REACT_LAZY_TYPE:
               return invokeCallback = children._init, mapIntoArray(
                 invokeCallback(children._payload),
-                array,
+                array2,
                 escapedPrefix,
                 nameSoFar,
                 callback
@@ -176,7 +176,7 @@ function requireReact_production() {
           }
       }
     if (invokeCallback)
-      return callback = callback(children), invokeCallback = "" === nameSoFar ? "." + getElementKey(children, 0) : nameSoFar, isArrayImpl(callback) ? (escapedPrefix = "", null != invokeCallback && (escapedPrefix = invokeCallback.replace(userProvidedKeyEscapeRegex, "$&/") + "/"), mapIntoArray(callback, array, escapedPrefix, "", function(c) {
+      return callback = callback(children), invokeCallback = "" === nameSoFar ? "." + getElementKey(children, 0) : nameSoFar, isArrayImpl(callback) ? (escapedPrefix = "", null != invokeCallback && (escapedPrefix = invokeCallback.replace(userProvidedKeyEscapeRegex, "$&/") + "/"), mapIntoArray(callback, array2, escapedPrefix, "", function(c) {
         return c;
       })) : null != callback && (isValidElement(callback) && (callback = cloneAndReplaceKey(
         callback,
@@ -184,14 +184,14 @@ function requireReact_production() {
           userProvidedKeyEscapeRegex,
           "$&/"
         ) + "/") + invokeCallback
-      )), array.push(callback)), 1;
+      )), array2.push(callback)), 1;
     invokeCallback = 0;
     var nextNamePrefix = "" === nameSoFar ? "." : nameSoFar + ":";
     if (isArrayImpl(children))
       for (var i = 0; i < children.length; i++)
         nameSoFar = children[i], type = nextNamePrefix + getElementKey(nameSoFar, i), invokeCallback += mapIntoArray(
           nameSoFar,
-          array,
+          array2,
           escapedPrefix,
           type,
           callback
@@ -200,7 +200,7 @@ function requireReact_production() {
       for (children = i.call(children), i = 0; !(nameSoFar = children.next()).done; )
         nameSoFar = nameSoFar.value, type = nextNamePrefix + getElementKey(nameSoFar, i++), invokeCallback += mapIntoArray(
           nameSoFar,
-          array,
+          array2,
           escapedPrefix,
           type,
           callback
@@ -209,14 +209,14 @@ function requireReact_production() {
       if ("function" === typeof children.then)
         return mapIntoArray(
           resolveThenable(children),
-          array,
+          array2,
           escapedPrefix,
           nameSoFar,
           callback
         );
-      array = String(children);
+      array2 = String(children);
       throw Error(
-        "Objects are not valid as a React child (found: " + ("[object Object]" === array ? "object with keys {" + Object.keys(children).join(", ") + "}" : array) + "). If you meant to render a collection of children, use an array instead."
+        "Objects are not valid as a React child (found: " + ("[object Object]" === array2 ? "object with keys {" + Object.keys(children).join(", ") + "}" : array2) + "). If you meant to render a collection of children, use an array instead."
       );
     }
     return invokeCallback;
@@ -316,15 +316,15 @@ function requireReact_production() {
   react_production.cacheSignal = function() {
     return null;
   };
-  react_production.cloneElement = function(element, config, children) {
+  react_production.cloneElement = function(element, config2, children) {
     if (null === element || void 0 === element)
       throw Error(
         "The argument must be a React element, but you passed " + element + "."
       );
     var props = assign({}, element.props), key = element.key;
-    if (null != config)
-      for (propName in void 0 !== config.key && (key = "" + config.key), config)
-        !hasOwnProperty.call(config, propName) || "key" === propName || "__self" === propName || "__source" === propName || "ref" === propName && void 0 === config.ref || (props[propName] = config[propName]);
+    if (null != config2)
+      for (propName in void 0 !== config2.key && (key = "" + config2.key), config2)
+        !hasOwnProperty.call(config2, propName) || "key" === propName || "__self" === propName || "__source" === propName || "ref" === propName && void 0 === config2.ref || (props[propName] = config2[propName]);
     var propName = arguments.length - 2;
     if (1 === propName) props.children = children;
     else if (1 < propName) {
@@ -350,11 +350,11 @@ function requireReact_production() {
     };
     return defaultValue;
   };
-  react_production.createElement = function(type, config, children) {
+  react_production.createElement = function(type, config2, children) {
     var propName, props = {}, key = null;
-    if (null != config)
-      for (propName in void 0 !== config.key && (key = "" + config.key), config)
-        hasOwnProperty.call(config, propName) && "key" !== propName && "__self" !== propName && "__source" !== propName && (props[propName] = config[propName]);
+    if (null != config2)
+      for (propName in void 0 !== config2.key && (key = "" + config2.key), config2)
+        hasOwnProperty.call(config2, propName) && "key" !== propName && "__self" !== propName && "__source" !== propName && (props[propName] = config2[propName]);
     var childrenLength = arguments.length - 2;
     if (1 === childrenLength) props.children = children;
     else if (1 < childrenLength) {
@@ -3770,14 +3770,14 @@ function requireReactDomClient_production() {
       queue = queue.firstBaseUpdate;
       if (null !== queue) {
         do {
-          var clone = {
+          var clone2 = {
             lane: queue.lane,
             tag: queue.tag,
             payload: queue.payload,
             callback: null,
             next: null
           };
-          null === newLast ? newFirst = newLast = clone : newLast = newLast.next = clone;
+          null === newLast ? newFirst = newLast = clone2 : newLast = newLast.next = clone2;
           queue = queue.next;
         } while (null !== queue);
         null === newLast ? newFirst = newLast = capturedUpdate : newLast = newLast.next = capturedUpdate;
@@ -4116,8 +4116,8 @@ function requireReactDomClient_production() {
     if (null == memoCache) {
       var current = currentlyRenderingFiber.alternate;
       null !== current && (current = current.updateQueue, null !== current && (current = current.memoCache, null != current && (memoCache = {
-        data: current.data.map(function(array) {
-          return array.slice();
+        data: current.data.map(function(array2) {
+          return array2.slice();
         }),
         index: 0
       })));
@@ -10925,15 +10925,15 @@ function requireReactDomClient_production() {
   function estimateBandwidth() {
     if ("function" === typeof performance.getEntriesByType) {
       for (var count = 0, bits = 0, resourceEntries = performance.getEntriesByType("resource"), i = 0; i < resourceEntries.length; i++) {
-        var entry = resourceEntries[i], transferSize = entry.transferSize, initiatorType = entry.initiatorType, duration = entry.duration;
-        if (transferSize && duration && isLikelyStaticResource(initiatorType)) {
+        var entry = resourceEntries[i], transferSize = entry.transferSize, initiatorType = entry.initiatorType, duration2 = entry.duration;
+        if (transferSize && duration2 && isLikelyStaticResource(initiatorType)) {
           initiatorType = 0;
-          duration = entry.responseEnd;
+          duration2 = entry.responseEnd;
           for (i += 1; i < resourceEntries.length; i++) {
             var overlapEntry = resourceEntries[i], overlapStartTime = overlapEntry.startTime;
-            if (overlapStartTime > duration) break;
+            if (overlapStartTime > duration2) break;
             var overlapTransferSize = overlapEntry.transferSize, overlapInitiatorType = overlapEntry.initiatorType;
-            overlapTransferSize && isLikelyStaticResource(overlapInitiatorType) && (overlapEntry = overlapEntry.responseEnd, initiatorType += overlapTransferSize * (overlapEntry < duration ? 1 : (duration - overlapStartTime) / (overlapEntry - overlapStartTime)));
+            overlapTransferSize && isLikelyStaticResource(overlapInitiatorType) && (overlapEntry = overlapEntry.responseEnd, initiatorType += overlapTransferSize * (overlapEntry < duration2 ? 1 : (duration2 - overlapStartTime) / (overlapEntry - overlapStartTime)));
           }
           --i;
           bits += 8 * (transferSize + initiatorType) / (entry.duration / 1e3);
@@ -12553,12 +12553,12 @@ const createClassPartObject = (nextPart = /* @__PURE__ */ new Map(), validators 
 const CLASS_PART_SEPARATOR = "-";
 const EMPTY_CONFLICTS = [];
 const ARBITRARY_PROPERTY_PREFIX = "arbitrary..";
-const createClassGroupUtils = (config) => {
-  const classMap = createClassMap(config);
+const createClassGroupUtils = (config2) => {
+  const classMap = createClassMap(config2);
   const {
     conflictingClassGroups,
     conflictingClassGroupModifiers
-  } = config;
+  } = config2;
   const getClassGroupId = (className) => {
     if (className.startsWith("[") && className.endsWith("]")) {
       return getGroupIdForArbitraryProperty(className);
@@ -12617,11 +12617,11 @@ const getGroupIdForArbitraryProperty = (className) => className.slice(1, -1).ind
   const property = content.slice(0, colonIndex);
   return property ? ARBITRARY_PROPERTY_PREFIX + property : void 0;
 })();
-const createClassMap = (config) => {
+const createClassMap = (config2) => {
   const {
     theme,
     classGroups
-  } = config;
+  } = config2;
   return processClassGroups(classGroups, theme);
 };
 const processClassGroups = (classGroups, theme) => {
@@ -12738,11 +12738,11 @@ const createResultObject = (modifiers, hasImportantModifier, baseClassName, mayb
   maybePostfixModifierPosition,
   isExternal
 });
-const createParseClassName = (config) => {
+const createParseClassName = (config2) => {
   const {
     prefix,
     experimentalParseClassName
-  } = config;
+  } = config2;
   let parseClassName = (className) => {
     const modifiers = [];
     let bracketDepth = 0;
@@ -12801,9 +12801,9 @@ const createParseClassName = (config) => {
   }
   return parseClassName;
 };
-const createSortModifiers = (config) => {
+const createSortModifiers = (config2) => {
   const modifierWeights = /* @__PURE__ */ new Map();
-  config.orderSensitiveModifiers.forEach((mod, index) => {
+  config2.orderSensitiveModifiers.forEach((mod, index) => {
     modifierWeights.set(mod, 1e6 + index);
   });
   return (modifiers) => {
@@ -12831,16 +12831,16 @@ const createSortModifiers = (config) => {
     return result;
   };
 };
-const createConfigUtils = (config) => ({
-  cache: createLruCache(config.cacheSize),
-  parseClassName: createParseClassName(config),
-  sortModifiers: createSortModifiers(config),
-  postfixLookupClassGroupIds: createPostfixLookupClassGroupIds(config),
-  ...createClassGroupUtils(config)
+const createConfigUtils = (config2) => ({
+  cache: createLruCache(config2.cacheSize),
+  parseClassName: createParseClassName(config2),
+  sortModifiers: createSortModifiers(config2),
+  postfixLookupClassGroupIds: createPostfixLookupClassGroupIds(config2),
+  ...createClassGroupUtils(config2)
 });
-const createPostfixLookupClassGroupIds = (config) => {
+const createPostfixLookupClassGroupIds = (config2) => {
   const lookup = /* @__PURE__ */ Object.create(null);
-  const classGroupIds = config.postfixLookupClassGroups;
+  const classGroupIds = config2.postfixLookupClassGroups;
   if (classGroupIds) {
     for (let i = 0; i < classGroupIds.length; i++) {
       lookup[classGroupIds[i]] = true;
@@ -12918,32 +12918,32 @@ const twJoin = (...classLists) => {
   let index = 0;
   let argument;
   let resolvedValue;
-  let string = "";
+  let string2 = "";
   while (index < classLists.length) {
     if (argument = classLists[index++]) {
       if (resolvedValue = toValue(argument)) {
-        string && (string += " ");
-        string += resolvedValue;
+        string2 && (string2 += " ");
+        string2 += resolvedValue;
       }
     }
   }
-  return string;
+  return string2;
 };
 const toValue = (mix) => {
   if (typeof mix === "string") {
     return mix;
   }
   let resolvedValue;
-  let string = "";
+  let string2 = "";
   for (let k = 0; k < mix.length; k++) {
     if (mix[k]) {
       if (resolvedValue = toValue(mix[k])) {
-        string && (string += " ");
-        string += resolvedValue;
+        string2 && (string2 += " ");
+        string2 += resolvedValue;
       }
     }
   }
-  return string;
+  return string2;
 };
 const createTailwindMerge = (createConfigFirst, ...createConfigRest) => {
   let configUtils;
@@ -12951,8 +12951,8 @@ const createTailwindMerge = (createConfigFirst, ...createConfigRest) => {
   let cacheSet;
   let functionToCall;
   const initTailwindMerge = (classList) => {
-    const config = createConfigRest.reduce((previousConfig, createConfigCurrent) => createConfigCurrent(previousConfig), createConfigFirst());
-    configUtils = createConfigUtils(config);
+    const config2 = createConfigRest.reduce((previousConfig, createConfigCurrent) => createConfigCurrent(previousConfig), createConfigFirst());
+    configUtils = createConfigUtils(config2);
     cacheGet = configUtils.cache.get;
     cacheSet = configUtils.cache.set;
     functionToCall = tailwindMerge;
@@ -15789,8 +15789,8 @@ function cn(...inputs) {
 const createStoreImpl = (createState) => {
   let state;
   const listeners = /* @__PURE__ */ new Set();
-  const setState = (partial, replace) => {
-    const nextState = typeof partial === "function" ? partial(state) : partial;
+  const setState = (partial2, replace) => {
+    const nextState = typeof partial2 === "function" ? partial2(state) : partial2;
     if (!Object.is(nextState, state)) {
       const previousState = state;
       state = (replace != null ? replace : typeof nextState !== "object" || nextState === null) ? nextState : Object.assign({}, state, nextState);
@@ -16467,8 +16467,8 @@ const useActivityStore = create((set) => ({
       throw err;
     }
   },
-  append(record) {
-    set((state) => ({ records: [record, ...state.records] }));
+  append(record2) {
+    set((state) => ({ records: [record2, ...state.records] }));
   },
   reset() {
     set({ records: [], loading: false, error: null });
@@ -16518,19 +16518,19 @@ const KIND_LABELS = {
 };
 function groupByDate(records) {
   const buckets = /* @__PURE__ */ new Map();
-  for (const record of records) {
-    const key = localDateKey(record.at);
+  for (const record2 of records) {
+    const key = localDateKey(record2.at);
     const bucket = buckets.get(key);
     if (bucket === void 0) {
-      buckets.set(key, [record]);
+      buckets.set(key, [record2]);
     } else {
-      bucket.push(record);
+      bucket.push(record2);
     }
   }
   const groups = [];
-  for (const [date, items] of buckets) {
+  for (const [date2, items] of buckets) {
     items.sort((a, b) => timestamp(b) - timestamp(a));
-    groups.push({ date, records: items });
+    groups.push({ date: date2, records: items });
   }
   groups.sort((a, b) => {
     if (a.date === b.date) return 0;
@@ -16600,12 +16600,12 @@ function runEventToActivity(event, ctx) {
     }
   }
 }
-function describeActivity(record) {
+function describeActivity(record2) {
   const parts = [];
-  const body = record.detail.trim();
-  parts.push(body !== "" ? body : fallbackText(record));
-  if (record.durationMs !== null) {
-    parts.push(`用时 ${formatDuration(record.durationMs)}`);
+  const body = record2.detail.trim();
+  parts.push(body !== "" ? body : fallbackText(record2));
+  if (record2.durationMs !== null) {
+    parts.push(`用时 ${formatDuration(record2.durationMs)}`);
   }
   return parts.join(" · ");
 }
@@ -16617,15 +16617,15 @@ function formatDuration(durationMs) {
   const seconds = Math.round(ms % 6e4 / 1e3);
   return `${minutes}m${seconds}s`;
 }
-function fallbackText(record) {
+function fallbackText(record2) {
   const parts = [];
-  if (record.pageLabel !== null && record.pageLabel !== "") {
-    parts.push(record.pageLabel);
+  if (record2.pageLabel !== null && record2.pageLabel !== "") {
+    parts.push(record2.pageLabel);
   }
-  if (record.stage !== null && record.stage !== "") {
-    parts.push(stageLabel(record.stage));
+  if (record2.stage !== null && record2.stage !== "") {
+    parts.push(stageLabel(record2.stage));
   }
-  parts.push(KIND_LABELS[record.kind] ?? record.kind);
+  parts.push(KIND_LABELS[record2.kind] ?? record2.kind);
   return parts.join(" · ");
 }
 function build(input) {
@@ -16641,22 +16641,22 @@ function build(input) {
   };
 }
 function localDateKey(at) {
-  const time = Date.parse(at);
-  if (Number.isNaN(time)) return UNKNOWN_DATE;
-  const date = new Date(time);
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${date.getFullYear()}-${month}-${day}`;
+  const time2 = Date.parse(at);
+  if (Number.isNaN(time2)) return UNKNOWN_DATE;
+  const date2 = new Date(time2);
+  const month = `${date2.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date2.getDate()}`.padStart(2, "0");
+  return `${date2.getFullYear()}-${month}-${day}`;
 }
-function timestamp(record) {
-  const time = Date.parse(record.at);
-  return Number.isNaN(time) ? 0 : time;
+function timestamp(record2) {
+  const time2 = Date.parse(record2.at);
+  return Number.isNaN(time2) ? 0 : time2;
 }
 function dispatchRunEvent(event, deps) {
-  const record = runEventToActivity(event, {
+  const record2 = runEventToActivity(event, {
     pageLabelOf: deps.pageLabelOf
   });
-  if (record !== null) deps.appendActivity(record);
+  if (record2 !== null) deps.appendActivity(record2);
   if (event.kind === "page-done") {
     void deps.refreshSlide(event.slideId).catch(() => void 0);
     return;
@@ -16727,9 +16727,9 @@ function ActivityPanel({
   const groups = reactExports.useMemo(
     () => groupByDate(records).map((group) => ({
       date: group.date,
-      rows: group.records.map((record, index) => ({
-        key: `${record.at}-${record.kind}-${index}`,
-        record
+      rows: group.records.map((record2, index) => ({
+        key: `${record2.at}-${record2.kind}-${index}`,
+        record: record2
       }))
     })),
     [records]
@@ -16797,17 +16797,17 @@ function ActivityPanel({
   );
 }
 function ActivityRow({
-  record
+  record: record2
 }) {
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-stretch gap-3 py-0.5", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx(
       "span",
       {
-        className: cn("w-0.5 shrink-0 rounded-xs", RESULT_BAR[record.result])
+        className: cn("w-0.5 shrink-0 rounded-xs", RESULT_BAR[record2.result])
       }
     ),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "w-20 shrink-0 text-sm font-medium tabular-nums text-muted", children: formatTime(record.at) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1 text-sm text-body", children: describeActivity(record) })
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "w-20 shrink-0 text-sm font-medium tabular-nums text-muted", children: formatTime(record2.at) }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1 text-sm text-body", children: describeActivity(record2) })
   ] });
 }
 const RESULT_BAR = {
@@ -16817,12 +16817,12 @@ const RESULT_BAR = {
   info: "bg-surface-strong"
 };
 function formatTime(at) {
-  const time = Date.parse(at);
-  if (Number.isNaN(time)) return "--:--:--";
-  const date = new Date(time);
-  const hh = `${date.getHours()}`.padStart(2, "0");
-  const mm = `${date.getMinutes()}`.padStart(2, "0");
-  const ss = `${date.getSeconds()}`.padStart(2, "0");
+  const time2 = Date.parse(at);
+  if (Number.isNaN(time2)) return "--:--:--";
+  const date2 = new Date(time2);
+  const hh = `${date2.getHours()}`.padStart(2, "0");
+  const mm = `${date2.getMinutes()}`.padStart(2, "0");
+  const ss = `${date2.getSeconds()}`.padStart(2, "0");
   return `${hh}:${mm}:${ss}`;
 }
 function DeckEmptyState({
@@ -17371,7 +17371,7 @@ const GROUP_ACCENT = {
 };
 const ACCEPT_GROUPS = ["accept-pptx", "accept-clean"];
 const ICON_BUTTON = "rounded-sm border border-hairline px-1.5 py-1 text-sm text-ink transition active:border-border-strong";
-const COUNT_BADGE = "shrink-0 rounded-xs bg-surface-strong px-1.5 py-0.5 text-sm font-medium text-ink";
+const COUNT_BADGE$1 = "shrink-0 rounded-xs bg-surface-strong px-1.5 py-0.5 text-sm font-medium text-ink";
 function TodoQueuePanel({
   className
 }) {
@@ -17405,7 +17405,7 @@ function TodoQueuePanel({
               children: "‹"
             }
           ),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: COUNT_BADGE, children: queue.total })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: COUNT_BADGE$1, children: queue.total })
         ]
       }
     );
@@ -17420,7 +17420,7 @@ function TodoQueuePanel({
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 px-4 py-4", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "min-w-0 flex-1 truncate text-base font-medium text-ink", children: "待办队列" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: COUNT_BADGE, children: queue.total }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: COUNT_BADGE$1, children: queue.total }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(
             "button",
             {
@@ -17450,7 +17450,7 @@ function QueueGroup({ group }) {
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
           /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "min-w-0 flex-1 truncate text-sm font-medium tracking-[0.16px] text-muted", children: group.label }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: COUNT_BADGE, children: group.items.length })
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: COUNT_BADGE$1, children: group.items.length })
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-1", children: group.items.map((item) => /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: /* @__PURE__ */ jsxRuntimeExports.jsx(QueueItem, { item, accent }) }, item.slideId)) })
       ]
@@ -17584,9 +17584,18 @@ function computeFit(container, content) {
   const offsetY = (clientHeight - content.height * scale) / 2;
   return { scale, offsetX, offsetY };
 }
+function clampAxisOffset(offset, viewport, contentLength) {
+  if (contentLength <= 0) {
+    return offset;
+  }
+  if (contentLength <= viewport) {
+    return (viewport - contentLength) / 2;
+  }
+  return Math.min(0, Math.max(viewport - contentLength, offset));
+}
 function useCanvasTransform(content) {
   const containerRef = reactExports.useRef(null);
-  const [transform, setTransform] = reactExports.useState({
+  const [transform2, setTransform] = reactExports.useState({
     scale: 1,
     offsetX: 0,
     offsetY: 0
@@ -17638,11 +17647,11 @@ function useCanvasTransform(content) {
         active: true,
         startX: e.clientX,
         startY: e.clientY,
-        originX: transform.offsetX,
-        originY: transform.offsetY
+        originX: transform2.offsetX,
+        originY: transform2.offsetY
       };
     },
-    [transform.offsetX, transform.offsetY]
+    [transform2.offsetX, transform2.offsetY]
   );
   const onPointerMove = reactExports.useCallback((e) => {
     const pan = panRef.current;
@@ -17661,251 +17670,5644 @@ function useCanvasTransform(content) {
       panRef.current = null;
     }
   }, []);
+  const contentRef = reactExports.useRef(content ?? null);
+  contentRef.current = content ?? null;
+  const centerOn = reactExports.useCallback((bbox) => {
+    const container = containerRef.current;
+    if (container === null) {
+      return;
+    }
+    const { clientWidth, clientHeight } = container;
+    const content2 = contentRef.current;
+    setTransform((prev) => ({
+      scale: prev.scale,
+      offsetX: clampAxisOffset(
+        clientWidth / 2 - (bbox.x + bbox.width / 2) * prev.scale,
+        clientWidth,
+        (content2?.width ?? 0) * prev.scale
+      ),
+      offsetY: clampAxisOffset(
+        clientHeight / 2 - (bbox.y + bbox.height / 2) * prev.scale,
+        clientHeight,
+        (content2?.height ?? 0) * prev.scale
+      )
+    }));
+  }, []);
   return {
-    transform,
+    transform: transform2,
     containerRef,
     onWheel,
     onPointerDown,
     onPointerMove,
     onPointerUp,
-    resetView
+    resetView,
+    centerOn
   };
 }
-const CURSOR_MAP = {
-  nw: "nwse-resize",
-  ne: "nesw-resize",
-  sw: "nesw-resize",
-  se: "nwse-resize",
-  n: "ns-resize",
-  s: "ns-resize",
-  e: "ew-resize",
-  w: "ew-resize"
+var _a$1;
+function $constructor(name, initializer2, params) {
+  function init(inst, def) {
+    if (!inst._zod) {
+      Object.defineProperty(inst, "_zod", {
+        value: {
+          def,
+          constr: _,
+          traits: /* @__PURE__ */ new Set()
+        },
+        enumerable: false
+      });
+    }
+    if (inst._zod.traits.has(name)) {
+      return;
+    }
+    inst._zod.traits.add(name);
+    initializer2(inst, def);
+    const proto = _.prototype;
+    const keys = Object.keys(proto);
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if (!(k in inst)) {
+        inst[k] = proto[k].bind(inst);
+      }
+    }
+  }
+  const Parent = params?.Parent ?? Object;
+  class Definition extends Parent {
+  }
+  Object.defineProperty(Definition, "name", { value: name });
+  function _(def) {
+    var _a2;
+    const inst = params?.Parent ? new Definition() : this;
+    init(inst, def);
+    (_a2 = inst._zod).deferred ?? (_a2.deferred = []);
+    for (const fn of inst._zod.deferred) {
+      fn();
+    }
+    return inst;
+  }
+  Object.defineProperty(_, "init", { value: init });
+  Object.defineProperty(_, Symbol.hasInstance, {
+    value: (inst) => {
+      if (params?.Parent && inst instanceof params.Parent)
+        return true;
+      return inst?._zod?.traits?.has(name);
+    }
+  });
+  Object.defineProperty(_, "name", { value: name });
+  return _;
+}
+class $ZodAsyncError extends Error {
+  constructor() {
+    super(`Encountered Promise during synchronous parse. Use .parseAsync() instead.`);
+  }
+}
+class $ZodEncodeError extends Error {
+  constructor(name) {
+    super(`Encountered unidirectional transform during encode: ${name}`);
+    this.name = "ZodEncodeError";
+  }
+}
+(_a$1 = globalThis).__zod_globalConfig ?? (_a$1.__zod_globalConfig = {});
+const globalConfig = globalThis.__zod_globalConfig;
+function config(newConfig) {
+  return globalConfig;
+}
+function getEnumValues(entries) {
+  const numericValues = Object.values(entries).filter((v) => typeof v === "number");
+  const values = Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
+  return values;
+}
+function jsonStringifyReplacer(_, value) {
+  if (typeof value === "bigint")
+    return value.toString();
+  return value;
+}
+function cached(getter) {
+  return {
+    get value() {
+      {
+        const value = getter();
+        Object.defineProperty(this, "value", { value });
+        return value;
+      }
+    }
+  };
+}
+function nullish(input) {
+  return input === null || input === void 0;
+}
+function cleanRegex(source) {
+  const start = source.startsWith("^") ? 1 : 0;
+  const end = source.endsWith("$") ? source.length - 1 : source.length;
+  return source.slice(start, end);
+}
+function floatSafeRemainder(val, step) {
+  const ratio = val / step;
+  const roundedRatio = Math.round(ratio);
+  const tolerance = Number.EPSILON * Math.max(Math.abs(ratio), 1);
+  if (Math.abs(ratio - roundedRatio) < tolerance)
+    return 0;
+  return ratio - roundedRatio;
+}
+const EVALUATING = /* @__PURE__ */ Symbol("evaluating");
+function defineLazy(object2, key, getter) {
+  let value = void 0;
+  Object.defineProperty(object2, key, {
+    get() {
+      if (value === EVALUATING) {
+        return void 0;
+      }
+      if (value === void 0) {
+        value = EVALUATING;
+        value = getter();
+      }
+      return value;
+    },
+    set(v) {
+      Object.defineProperty(object2, key, {
+        value: v
+        // configurable: true,
+      });
+    },
+    configurable: true
+  });
+}
+function assignProp(target, prop, value) {
+  Object.defineProperty(target, prop, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true
+  });
+}
+function mergeDefs(...defs) {
+  const mergedDescriptors = {};
+  for (const def of defs) {
+    const descriptors = Object.getOwnPropertyDescriptors(def);
+    Object.assign(mergedDescriptors, descriptors);
+  }
+  return Object.defineProperties({}, mergedDescriptors);
+}
+function esc(str) {
+  return JSON.stringify(str);
+}
+function slugify(input) {
+  return input.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
+}
+const captureStackTrace = "captureStackTrace" in Error ? Error.captureStackTrace : (..._args) => {
 };
-const POSITION_CLASSES = {
-  nw: "-top-1 -left-1",
-  ne: "-top-1 -right-1",
-  sw: "-bottom-1 -left-1",
-  se: "-bottom-1 -right-1",
-  n: "-top-1 left-1/2 -translate-x-1/2",
-  s: "-bottom-1 left-1/2 -translate-x-1/2",
-  e: "top-1/2 -right-1 -translate-y-1/2",
-  w: "top-1/2 -left-1 -translate-y-1/2"
+function isObject(data) {
+  return typeof data === "object" && data !== null && !Array.isArray(data);
+}
+const allowsEval = /* @__PURE__ */ cached(() => {
+  if (globalConfig.jitless) {
+    return false;
+  }
+  if (typeof navigator !== "undefined" && navigator?.userAgent?.includes("Cloudflare")) {
+    return false;
+  }
+  try {
+    const F = Function;
+    new F("");
+    return true;
+  } catch (_) {
+    return false;
+  }
+});
+function isPlainObject(o) {
+  if (isObject(o) === false)
+    return false;
+  const ctor = o.constructor;
+  if (ctor === void 0)
+    return true;
+  if (typeof ctor !== "function")
+    return true;
+  const prot = ctor.prototype;
+  if (isObject(prot) === false)
+    return false;
+  if (Object.prototype.hasOwnProperty.call(prot, "isPrototypeOf") === false) {
+    return false;
+  }
+  return true;
+}
+function shallowClone(o) {
+  if (isPlainObject(o))
+    return { ...o };
+  if (Array.isArray(o))
+    return [...o];
+  if (o instanceof Map)
+    return new Map(o);
+  if (o instanceof Set)
+    return new Set(o);
+  return o;
+}
+const propertyKeyTypes = /* @__PURE__ */ new Set(["string", "number", "symbol"]);
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function clone(inst, def, params) {
+  const cl = new inst._zod.constr(def ?? inst._zod.def);
+  if (!def || params?.parent)
+    cl._zod.parent = inst;
+  return cl;
+}
+function normalizeParams(_params) {
+  const params = _params;
+  if (!params)
+    return {};
+  if (typeof params === "string")
+    return { error: () => params };
+  if (params?.message !== void 0) {
+    if (params?.error !== void 0)
+      throw new Error("Cannot specify both `message` and `error` params");
+    params.error = params.message;
+  }
+  delete params.message;
+  if (typeof params.error === "string")
+    return { ...params, error: () => params.error };
+  return params;
+}
+function optionalKeys(shape) {
+  return Object.keys(shape).filter((k) => {
+    return shape[k]._zod.optin === "optional" && shape[k]._zod.optout === "optional";
+  });
+}
+const NUMBER_FORMAT_RANGES = {
+  safeint: [Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER],
+  int32: [-2147483648, 2147483647],
+  uint32: [0, 4294967295],
+  float32: [-34028234663852886e22, 34028234663852886e22],
+  float64: [-Number.MAX_VALUE, Number.MAX_VALUE]
 };
-function computeDelta(position, movementX, movementY) {
-  const result = { dx: 0, dy: 0, dw: 0, dh: 0 };
-  if (position.includes("w")) {
-    result.dx = movementX;
-    result.dw = -movementX;
+function pick(schema, mask) {
+  const currDef = schema._zod.def;
+  const checks = currDef.checks;
+  const hasChecks = checks && checks.length > 0;
+  if (hasChecks) {
+    throw new Error(".pick() cannot be used on object schemas containing refinements");
   }
-  if (position.includes("e")) {
-    result.dw = movementX;
+  const def = mergeDefs(schema._zod.def, {
+    get shape() {
+      const newShape = {};
+      for (const key in mask) {
+        if (!(key in currDef.shape)) {
+          throw new Error(`Unrecognized key: "${key}"`);
+        }
+        if (!mask[key])
+          continue;
+        newShape[key] = currDef.shape[key];
+      }
+      assignProp(this, "shape", newShape);
+      return newShape;
+    },
+    checks: []
+  });
+  return clone(schema, def);
+}
+function omit(schema, mask) {
+  const currDef = schema._zod.def;
+  const checks = currDef.checks;
+  const hasChecks = checks && checks.length > 0;
+  if (hasChecks) {
+    throw new Error(".omit() cannot be used on object schemas containing refinements");
   }
-  if (position.includes("n")) {
-    result.dy = movementY;
-    result.dh = -movementY;
+  const def = mergeDefs(schema._zod.def, {
+    get shape() {
+      const newShape = { ...schema._zod.def.shape };
+      for (const key in mask) {
+        if (!(key in currDef.shape)) {
+          throw new Error(`Unrecognized key: "${key}"`);
+        }
+        if (!mask[key])
+          continue;
+        delete newShape[key];
+      }
+      assignProp(this, "shape", newShape);
+      return newShape;
+    },
+    checks: []
+  });
+  return clone(schema, def);
+}
+function extend(schema, shape) {
+  if (!isPlainObject(shape)) {
+    throw new Error("Invalid input to extend: expected a plain object");
   }
-  if (position.includes("s")) {
-    result.dh = movementY;
+  const checks = schema._zod.def.checks;
+  const hasChecks = checks && checks.length > 0;
+  if (hasChecks) {
+    const existingShape = schema._zod.def.shape;
+    for (const key in shape) {
+      if (Object.getOwnPropertyDescriptor(existingShape, key) !== void 0) {
+        throw new Error("Cannot overwrite keys on object schemas containing refinements. Use `.safeExtend()` instead.");
+      }
+    }
+  }
+  const def = mergeDefs(schema._zod.def, {
+    get shape() {
+      const _shape = { ...schema._zod.def.shape, ...shape };
+      assignProp(this, "shape", _shape);
+      return _shape;
+    }
+  });
+  return clone(schema, def);
+}
+function safeExtend(schema, shape) {
+  if (!isPlainObject(shape)) {
+    throw new Error("Invalid input to safeExtend: expected a plain object");
+  }
+  const def = mergeDefs(schema._zod.def, {
+    get shape() {
+      const _shape = { ...schema._zod.def.shape, ...shape };
+      assignProp(this, "shape", _shape);
+      return _shape;
+    }
+  });
+  return clone(schema, def);
+}
+function merge(a, b) {
+  if (a._zod.def.checks?.length) {
+    throw new Error(".merge() cannot be used on object schemas containing refinements. Use .safeExtend() instead.");
+  }
+  const def = mergeDefs(a._zod.def, {
+    get shape() {
+      const _shape = { ...a._zod.def.shape, ...b._zod.def.shape };
+      assignProp(this, "shape", _shape);
+      return _shape;
+    },
+    get catchall() {
+      return b._zod.def.catchall;
+    },
+    checks: b._zod.def.checks ?? []
+  });
+  return clone(a, def);
+}
+function partial(Class, schema, mask) {
+  const currDef = schema._zod.def;
+  const checks = currDef.checks;
+  const hasChecks = checks && checks.length > 0;
+  if (hasChecks) {
+    throw new Error(".partial() cannot be used on object schemas containing refinements");
+  }
+  const def = mergeDefs(schema._zod.def, {
+    get shape() {
+      const oldShape = schema._zod.def.shape;
+      const shape = { ...oldShape };
+      if (mask) {
+        for (const key in mask) {
+          if (!(key in oldShape)) {
+            throw new Error(`Unrecognized key: "${key}"`);
+          }
+          if (!mask[key])
+            continue;
+          shape[key] = Class ? new Class({
+            type: "optional",
+            innerType: oldShape[key]
+          }) : oldShape[key];
+        }
+      } else {
+        for (const key in oldShape) {
+          shape[key] = Class ? new Class({
+            type: "optional",
+            innerType: oldShape[key]
+          }) : oldShape[key];
+        }
+      }
+      assignProp(this, "shape", shape);
+      return shape;
+    },
+    checks: []
+  });
+  return clone(schema, def);
+}
+function required(Class, schema, mask) {
+  const def = mergeDefs(schema._zod.def, {
+    get shape() {
+      const oldShape = schema._zod.def.shape;
+      const shape = { ...oldShape };
+      if (mask) {
+        for (const key in mask) {
+          if (!(key in shape)) {
+            throw new Error(`Unrecognized key: "${key}"`);
+          }
+          if (!mask[key])
+            continue;
+          shape[key] = new Class({
+            type: "nonoptional",
+            innerType: oldShape[key]
+          });
+        }
+      } else {
+        for (const key in oldShape) {
+          shape[key] = new Class({
+            type: "nonoptional",
+            innerType: oldShape[key]
+          });
+        }
+      }
+      assignProp(this, "shape", shape);
+      return shape;
+    }
+  });
+  return clone(schema, def);
+}
+function aborted(x, startIndex = 0) {
+  if (x.aborted === true)
+    return true;
+  for (let i = startIndex; i < x.issues.length; i++) {
+    if (x.issues[i]?.continue !== true) {
+      return true;
+    }
+  }
+  return false;
+}
+function explicitlyAborted(x, startIndex = 0) {
+  if (x.aborted === true)
+    return true;
+  for (let i = startIndex; i < x.issues.length; i++) {
+    if (x.issues[i]?.continue === false) {
+      return true;
+    }
+  }
+  return false;
+}
+function prefixIssues(path, issues) {
+  return issues.map((iss) => {
+    var _a2;
+    (_a2 = iss).path ?? (_a2.path = []);
+    iss.path.unshift(path);
+    return iss;
+  });
+}
+function unwrapMessage(message) {
+  return typeof message === "string" ? message : message?.message;
+}
+function finalizeIssue(iss, ctx, config2) {
+  const message = iss.message ? iss.message : unwrapMessage(iss.inst?._zod.def?.error?.(iss)) ?? unwrapMessage(ctx?.error?.(iss)) ?? unwrapMessage(config2.customError?.(iss)) ?? unwrapMessage(config2.localeError?.(iss)) ?? "Invalid input";
+  const { inst: _inst, continue: _continue, input: _input, ...rest } = iss;
+  rest.path ?? (rest.path = []);
+  rest.message = message;
+  if (ctx?.reportInput) {
+    rest.input = _input;
+  }
+  return rest;
+}
+function getLengthableOrigin(input) {
+  if (Array.isArray(input))
+    return "array";
+  if (typeof input === "string")
+    return "string";
+  return "unknown";
+}
+function issue(...args) {
+  const [iss, input, inst] = args;
+  if (typeof iss === "string") {
+    return {
+      message: iss,
+      code: "custom",
+      input,
+      inst
+    };
+  }
+  return { ...iss };
+}
+const initializer$1 = (inst, def) => {
+  inst.name = "$ZodError";
+  Object.defineProperty(inst, "_zod", {
+    value: inst._zod,
+    enumerable: false
+  });
+  Object.defineProperty(inst, "issues", {
+    value: def,
+    enumerable: false
+  });
+  inst.message = JSON.stringify(def, jsonStringifyReplacer, 2);
+  Object.defineProperty(inst, "toString", {
+    value: () => inst.message,
+    enumerable: false
+  });
+};
+const $ZodError = $constructor("$ZodError", initializer$1);
+const $ZodRealError = $constructor("$ZodError", initializer$1, { Parent: Error });
+function flattenError(error, mapper = (issue2) => issue2.message) {
+  const fieldErrors = {};
+  const formErrors = [];
+  for (const sub of error.issues) {
+    if (sub.path.length > 0) {
+      fieldErrors[sub.path[0]] = fieldErrors[sub.path[0]] || [];
+      fieldErrors[sub.path[0]].push(mapper(sub));
+    } else {
+      formErrors.push(mapper(sub));
+    }
+  }
+  return { formErrors, fieldErrors };
+}
+function formatError(error, mapper = (issue2) => issue2.message) {
+  const fieldErrors = { _errors: [] };
+  const processError = (error2, path = []) => {
+    for (const issue2 of error2.issues) {
+      if (issue2.code === "invalid_union" && issue2.errors.length) {
+        issue2.errors.map((issues) => processError({ issues }, [...path, ...issue2.path]));
+      } else if (issue2.code === "invalid_key") {
+        processError({ issues: issue2.issues }, [...path, ...issue2.path]);
+      } else if (issue2.code === "invalid_element") {
+        processError({ issues: issue2.issues }, [...path, ...issue2.path]);
+      } else {
+        const fullpath = [...path, ...issue2.path];
+        if (fullpath.length === 0) {
+          fieldErrors._errors.push(mapper(issue2));
+        } else {
+          let curr = fieldErrors;
+          let i = 0;
+          while (i < fullpath.length) {
+            const el = fullpath[i];
+            const terminal = i === fullpath.length - 1;
+            if (!terminal) {
+              curr[el] = curr[el] || { _errors: [] };
+            } else {
+              curr[el] = curr[el] || { _errors: [] };
+              curr[el]._errors.push(mapper(issue2));
+            }
+            curr = curr[el];
+            i++;
+          }
+        }
+      }
+    }
+  };
+  processError(error);
+  return fieldErrors;
+}
+const _parse = (_Err) => (schema, value, _ctx, _params) => {
+  const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
+  const result = schema._zod.run({ value, issues: [] }, ctx);
+  if (result instanceof Promise) {
+    throw new $ZodAsyncError();
+  }
+  if (result.issues.length) {
+    const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
+    captureStackTrace(e, _params?.callee);
+    throw e;
+  }
+  return result.value;
+};
+const _parseAsync = (_Err) => async (schema, value, _ctx, params) => {
+  const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
+  let result = schema._zod.run({ value, issues: [] }, ctx);
+  if (result instanceof Promise)
+    result = await result;
+  if (result.issues.length) {
+    const e = new (params?.Err ?? _Err)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())));
+    captureStackTrace(e, params?.callee);
+    throw e;
+  }
+  return result.value;
+};
+const _safeParse = (_Err) => (schema, value, _ctx) => {
+  const ctx = _ctx ? { ..._ctx, async: false } : { async: false };
+  const result = schema._zod.run({ value, issues: [] }, ctx);
+  if (result instanceof Promise) {
+    throw new $ZodAsyncError();
+  }
+  return result.issues.length ? {
+    success: false,
+    error: new (_Err ?? $ZodError)(result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
+  } : { success: true, data: result.value };
+};
+const safeParse$1 = /* @__PURE__ */ _safeParse($ZodRealError);
+const _safeParseAsync = (_Err) => async (schema, value, _ctx) => {
+  const ctx = _ctx ? { ..._ctx, async: true } : { async: true };
+  let result = schema._zod.run({ value, issues: [] }, ctx);
+  if (result instanceof Promise)
+    result = await result;
+  return result.issues.length ? {
+    success: false,
+    error: new _Err(result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
+  } : { success: true, data: result.value };
+};
+const safeParseAsync$1 = /* @__PURE__ */ _safeParseAsync($ZodRealError);
+const _encode = (_Err) => (schema, value, _ctx) => {
+  const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
+  return _parse(_Err)(schema, value, ctx);
+};
+const _decode = (_Err) => (schema, value, _ctx) => {
+  return _parse(_Err)(schema, value, _ctx);
+};
+const _encodeAsync = (_Err) => async (schema, value, _ctx) => {
+  const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
+  return _parseAsync(_Err)(schema, value, ctx);
+};
+const _decodeAsync = (_Err) => async (schema, value, _ctx) => {
+  return _parseAsync(_Err)(schema, value, _ctx);
+};
+const _safeEncode = (_Err) => (schema, value, _ctx) => {
+  const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
+  return _safeParse(_Err)(schema, value, ctx);
+};
+const _safeDecode = (_Err) => (schema, value, _ctx) => {
+  return _safeParse(_Err)(schema, value, _ctx);
+};
+const _safeEncodeAsync = (_Err) => async (schema, value, _ctx) => {
+  const ctx = _ctx ? { ..._ctx, direction: "backward" } : { direction: "backward" };
+  return _safeParseAsync(_Err)(schema, value, ctx);
+};
+const _safeDecodeAsync = (_Err) => async (schema, value, _ctx) => {
+  return _safeParseAsync(_Err)(schema, value, _ctx);
+};
+const cuid = /^[cC][0-9a-z]{6,}$/;
+const cuid2 = /^[0-9a-z]+$/;
+const ulid = /^[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]{26}$/;
+const xid = /^[0-9a-vA-V]{20}$/;
+const ksuid = /^[A-Za-z0-9]{27}$/;
+const nanoid = /^[a-zA-Z0-9_-]{21}$/;
+const duration$1 = /^P(?:(\d+W)|(?!.*W)(?=\d|T\d)(\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+([.,]\d+)?S)?)?)$/;
+const guid = /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/;
+const uuid = (version2) => {
+  if (!version2)
+    return /^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/;
+  return new RegExp(`^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-${version2}[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$`);
+};
+const email = /^(?!\.)(?!.*\.\.)([A-Za-z0-9_'+\-\.]*)[A-Za-z0-9_+-]@([A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
+const _emoji$1 = `^(\\p{Extended_Pictographic}|\\p{Emoji_Component})+$`;
+function emoji() {
+  return new RegExp(_emoji$1, "u");
+}
+const ipv4 = /^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])$/;
+const ipv6 = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))$/;
+const cidrv4 = /^((25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\.){3}(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9][0-9]|[0-9])\/([0-9]|[1-2][0-9]|3[0-2])$/;
+const cidrv6 = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|::|([0-9a-fA-F]{1,4})?::([0-9a-fA-F]{1,4}:?){0,6})\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/;
+const base64 = /^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$/;
+const base64url = /^[A-Za-z0-9_-]*$/;
+const httpProtocol = /^https?$/;
+const e164 = /^\+[1-9]\d{6,14}$/;
+const dateSource = `(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))`;
+const date$1 = /* @__PURE__ */ new RegExp(`^${dateSource}$`);
+function timeSource(args) {
+  const hhmm = `(?:[01]\\d|2[0-3]):[0-5]\\d`;
+  const regex = typeof args.precision === "number" ? args.precision === -1 ? `${hhmm}` : args.precision === 0 ? `${hhmm}:[0-5]\\d` : `${hhmm}:[0-5]\\d\\.\\d{${args.precision}}` : `${hhmm}(?::[0-5]\\d(?:\\.\\d+)?)?`;
+  return regex;
+}
+function time$1(args) {
+  return new RegExp(`^${timeSource(args)}$`);
+}
+function datetime$1(args) {
+  const time2 = timeSource({ precision: args.precision });
+  const opts = ["Z"];
+  if (args.local)
+    opts.push("");
+  if (args.offset)
+    opts.push(`([+-](?:[01]\\d|2[0-3]):[0-5]\\d)`);
+  const timeRegex = `${time2}(?:${opts.join("|")})`;
+  return new RegExp(`^${dateSource}T(?:${timeRegex})$`);
+}
+const string$1 = (params) => {
+  const regex = params ? `[\\s\\S]{${params?.minimum ?? 0},${params?.maximum ?? ""}}` : `[\\s\\S]*`;
+  return new RegExp(`^${regex}$`);
+};
+const integer = /^-?\d+$/;
+const number$1 = /^-?\d+(?:\.\d+)?$/;
+const boolean$1 = /^(?:true|false)$/i;
+const lowercase = /^[^A-Z]*$/;
+const uppercase = /^[^a-z]*$/;
+const $ZodCheck = /* @__PURE__ */ $constructor("$ZodCheck", (inst, def) => {
+  var _a2;
+  inst._zod ?? (inst._zod = {});
+  inst._zod.def = def;
+  (_a2 = inst._zod).onattach ?? (_a2.onattach = []);
+});
+const numericOriginMap = {
+  number: "number",
+  bigint: "bigint",
+  object: "date"
+};
+const $ZodCheckLessThan = /* @__PURE__ */ $constructor("$ZodCheckLessThan", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  const origin = numericOriginMap[typeof def.value];
+  inst._zod.onattach.push((inst2) => {
+    const bag = inst2._zod.bag;
+    const curr = (def.inclusive ? bag.maximum : bag.exclusiveMaximum) ?? Number.POSITIVE_INFINITY;
+    if (def.value < curr) {
+      if (def.inclusive)
+        bag.maximum = def.value;
+      else
+        bag.exclusiveMaximum = def.value;
+    }
+  });
+  inst._zod.check = (payload) => {
+    if (def.inclusive ? payload.value <= def.value : payload.value < def.value) {
+      return;
+    }
+    payload.issues.push({
+      origin,
+      code: "too_big",
+      maximum: typeof def.value === "object" ? def.value.getTime() : def.value,
+      input: payload.value,
+      inclusive: def.inclusive,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodCheckGreaterThan = /* @__PURE__ */ $constructor("$ZodCheckGreaterThan", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  const origin = numericOriginMap[typeof def.value];
+  inst._zod.onattach.push((inst2) => {
+    const bag = inst2._zod.bag;
+    const curr = (def.inclusive ? bag.minimum : bag.exclusiveMinimum) ?? Number.NEGATIVE_INFINITY;
+    if (def.value > curr) {
+      if (def.inclusive)
+        bag.minimum = def.value;
+      else
+        bag.exclusiveMinimum = def.value;
+    }
+  });
+  inst._zod.check = (payload) => {
+    if (def.inclusive ? payload.value >= def.value : payload.value > def.value) {
+      return;
+    }
+    payload.issues.push({
+      origin,
+      code: "too_small",
+      minimum: typeof def.value === "object" ? def.value.getTime() : def.value,
+      input: payload.value,
+      inclusive: def.inclusive,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodCheckMultipleOf = /* @__PURE__ */ $constructor("$ZodCheckMultipleOf", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  inst._zod.onattach.push((inst2) => {
+    var _a2;
+    (_a2 = inst2._zod.bag).multipleOf ?? (_a2.multipleOf = def.value);
+  });
+  inst._zod.check = (payload) => {
+    if (typeof payload.value !== typeof def.value)
+      throw new Error("Cannot mix number and bigint in multiple_of check.");
+    const isMultiple = typeof payload.value === "bigint" ? payload.value % def.value === BigInt(0) : floatSafeRemainder(payload.value, def.value) === 0;
+    if (isMultiple)
+      return;
+    payload.issues.push({
+      origin: typeof payload.value,
+      code: "not_multiple_of",
+      divisor: def.value,
+      input: payload.value,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodCheckNumberFormat = /* @__PURE__ */ $constructor("$ZodCheckNumberFormat", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  def.format = def.format || "float64";
+  const isInt = def.format?.includes("int");
+  const origin = isInt ? "int" : "number";
+  const [minimum, maximum] = NUMBER_FORMAT_RANGES[def.format];
+  inst._zod.onattach.push((inst2) => {
+    const bag = inst2._zod.bag;
+    bag.format = def.format;
+    bag.minimum = minimum;
+    bag.maximum = maximum;
+    if (isInt)
+      bag.pattern = integer;
+  });
+  inst._zod.check = (payload) => {
+    const input = payload.value;
+    if (isInt) {
+      if (!Number.isInteger(input)) {
+        payload.issues.push({
+          expected: origin,
+          format: def.format,
+          code: "invalid_type",
+          continue: false,
+          input,
+          inst
+        });
+        return;
+      }
+      if (!Number.isSafeInteger(input)) {
+        if (input > 0) {
+          payload.issues.push({
+            input,
+            code: "too_big",
+            maximum: Number.MAX_SAFE_INTEGER,
+            note: "Integers must be within the safe integer range.",
+            inst,
+            origin,
+            inclusive: true,
+            continue: !def.abort
+          });
+        } else {
+          payload.issues.push({
+            input,
+            code: "too_small",
+            minimum: Number.MIN_SAFE_INTEGER,
+            note: "Integers must be within the safe integer range.",
+            inst,
+            origin,
+            inclusive: true,
+            continue: !def.abort
+          });
+        }
+        return;
+      }
+    }
+    if (input < minimum) {
+      payload.issues.push({
+        origin: "number",
+        input,
+        code: "too_small",
+        minimum,
+        inclusive: true,
+        inst,
+        continue: !def.abort
+      });
+    }
+    if (input > maximum) {
+      payload.issues.push({
+        origin: "number",
+        input,
+        code: "too_big",
+        maximum,
+        inclusive: true,
+        inst,
+        continue: !def.abort
+      });
+    }
+  };
+});
+const $ZodCheckMaxLength = /* @__PURE__ */ $constructor("$ZodCheckMaxLength", (inst, def) => {
+  var _a2;
+  $ZodCheck.init(inst, def);
+  (_a2 = inst._zod.def).when ?? (_a2.when = (payload) => {
+    const val = payload.value;
+    return !nullish(val) && val.length !== void 0;
+  });
+  inst._zod.onattach.push((inst2) => {
+    const curr = inst2._zod.bag.maximum ?? Number.POSITIVE_INFINITY;
+    if (def.maximum < curr)
+      inst2._zod.bag.maximum = def.maximum;
+  });
+  inst._zod.check = (payload) => {
+    const input = payload.value;
+    const length = input.length;
+    if (length <= def.maximum)
+      return;
+    const origin = getLengthableOrigin(input);
+    payload.issues.push({
+      origin,
+      code: "too_big",
+      maximum: def.maximum,
+      inclusive: true,
+      input,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodCheckMinLength = /* @__PURE__ */ $constructor("$ZodCheckMinLength", (inst, def) => {
+  var _a2;
+  $ZodCheck.init(inst, def);
+  (_a2 = inst._zod.def).when ?? (_a2.when = (payload) => {
+    const val = payload.value;
+    return !nullish(val) && val.length !== void 0;
+  });
+  inst._zod.onattach.push((inst2) => {
+    const curr = inst2._zod.bag.minimum ?? Number.NEGATIVE_INFINITY;
+    if (def.minimum > curr)
+      inst2._zod.bag.minimum = def.minimum;
+  });
+  inst._zod.check = (payload) => {
+    const input = payload.value;
+    const length = input.length;
+    if (length >= def.minimum)
+      return;
+    const origin = getLengthableOrigin(input);
+    payload.issues.push({
+      origin,
+      code: "too_small",
+      minimum: def.minimum,
+      inclusive: true,
+      input,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodCheckLengthEquals = /* @__PURE__ */ $constructor("$ZodCheckLengthEquals", (inst, def) => {
+  var _a2;
+  $ZodCheck.init(inst, def);
+  (_a2 = inst._zod.def).when ?? (_a2.when = (payload) => {
+    const val = payload.value;
+    return !nullish(val) && val.length !== void 0;
+  });
+  inst._zod.onattach.push((inst2) => {
+    const bag = inst2._zod.bag;
+    bag.minimum = def.length;
+    bag.maximum = def.length;
+    bag.length = def.length;
+  });
+  inst._zod.check = (payload) => {
+    const input = payload.value;
+    const length = input.length;
+    if (length === def.length)
+      return;
+    const origin = getLengthableOrigin(input);
+    const tooBig = length > def.length;
+    payload.issues.push({
+      origin,
+      ...tooBig ? { code: "too_big", maximum: def.length } : { code: "too_small", minimum: def.length },
+      inclusive: true,
+      exact: true,
+      input: payload.value,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodCheckStringFormat = /* @__PURE__ */ $constructor("$ZodCheckStringFormat", (inst, def) => {
+  var _a2, _b;
+  $ZodCheck.init(inst, def);
+  inst._zod.onattach.push((inst2) => {
+    const bag = inst2._zod.bag;
+    bag.format = def.format;
+    if (def.pattern) {
+      bag.patterns ?? (bag.patterns = /* @__PURE__ */ new Set());
+      bag.patterns.add(def.pattern);
+    }
+  });
+  if (def.pattern)
+    (_a2 = inst._zod).check ?? (_a2.check = (payload) => {
+      def.pattern.lastIndex = 0;
+      if (def.pattern.test(payload.value))
+        return;
+      payload.issues.push({
+        origin: "string",
+        code: "invalid_format",
+        format: def.format,
+        input: payload.value,
+        ...def.pattern ? { pattern: def.pattern.toString() } : {},
+        inst,
+        continue: !def.abort
+      });
+    });
+  else
+    (_b = inst._zod).check ?? (_b.check = () => {
+    });
+});
+const $ZodCheckRegex = /* @__PURE__ */ $constructor("$ZodCheckRegex", (inst, def) => {
+  $ZodCheckStringFormat.init(inst, def);
+  inst._zod.check = (payload) => {
+    def.pattern.lastIndex = 0;
+    if (def.pattern.test(payload.value))
+      return;
+    payload.issues.push({
+      origin: "string",
+      code: "invalid_format",
+      format: "regex",
+      input: payload.value,
+      pattern: def.pattern.toString(),
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodCheckLowerCase = /* @__PURE__ */ $constructor("$ZodCheckLowerCase", (inst, def) => {
+  def.pattern ?? (def.pattern = lowercase);
+  $ZodCheckStringFormat.init(inst, def);
+});
+const $ZodCheckUpperCase = /* @__PURE__ */ $constructor("$ZodCheckUpperCase", (inst, def) => {
+  def.pattern ?? (def.pattern = uppercase);
+  $ZodCheckStringFormat.init(inst, def);
+});
+const $ZodCheckIncludes = /* @__PURE__ */ $constructor("$ZodCheckIncludes", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  const escapedRegex = escapeRegex(def.includes);
+  const pattern = new RegExp(typeof def.position === "number" ? `^.{${def.position}}${escapedRegex}` : escapedRegex);
+  def.pattern = pattern;
+  inst._zod.onattach.push((inst2) => {
+    const bag = inst2._zod.bag;
+    bag.patterns ?? (bag.patterns = /* @__PURE__ */ new Set());
+    bag.patterns.add(pattern);
+  });
+  inst._zod.check = (payload) => {
+    if (payload.value.includes(def.includes, def.position))
+      return;
+    payload.issues.push({
+      origin: "string",
+      code: "invalid_format",
+      format: "includes",
+      includes: def.includes,
+      input: payload.value,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodCheckStartsWith = /* @__PURE__ */ $constructor("$ZodCheckStartsWith", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  const pattern = new RegExp(`^${escapeRegex(def.prefix)}.*`);
+  def.pattern ?? (def.pattern = pattern);
+  inst._zod.onattach.push((inst2) => {
+    const bag = inst2._zod.bag;
+    bag.patterns ?? (bag.patterns = /* @__PURE__ */ new Set());
+    bag.patterns.add(pattern);
+  });
+  inst._zod.check = (payload) => {
+    if (payload.value.startsWith(def.prefix))
+      return;
+    payload.issues.push({
+      origin: "string",
+      code: "invalid_format",
+      format: "starts_with",
+      prefix: def.prefix,
+      input: payload.value,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodCheckEndsWith = /* @__PURE__ */ $constructor("$ZodCheckEndsWith", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  const pattern = new RegExp(`.*${escapeRegex(def.suffix)}$`);
+  def.pattern ?? (def.pattern = pattern);
+  inst._zod.onattach.push((inst2) => {
+    const bag = inst2._zod.bag;
+    bag.patterns ?? (bag.patterns = /* @__PURE__ */ new Set());
+    bag.patterns.add(pattern);
+  });
+  inst._zod.check = (payload) => {
+    if (payload.value.endsWith(def.suffix))
+      return;
+    payload.issues.push({
+      origin: "string",
+      code: "invalid_format",
+      format: "ends_with",
+      suffix: def.suffix,
+      input: payload.value,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodCheckOverwrite = /* @__PURE__ */ $constructor("$ZodCheckOverwrite", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  inst._zod.check = (payload) => {
+    payload.value = def.tx(payload.value);
+  };
+});
+class Doc {
+  constructor(args = []) {
+    this.content = [];
+    this.indent = 0;
+    if (this)
+      this.args = args;
+  }
+  indented(fn) {
+    this.indent += 1;
+    fn(this);
+    this.indent -= 1;
+  }
+  write(arg) {
+    if (typeof arg === "function") {
+      arg(this, { execution: "sync" });
+      arg(this, { execution: "async" });
+      return;
+    }
+    const content = arg;
+    const lines = content.split("\n").filter((x) => x);
+    const minIndent = Math.min(...lines.map((x) => x.length - x.trimStart().length));
+    const dedented = lines.map((x) => x.slice(minIndent)).map((x) => " ".repeat(this.indent * 2) + x);
+    for (const line of dedented) {
+      this.content.push(line);
+    }
+  }
+  compile() {
+    const F = Function;
+    const args = this?.args;
+    const content = this?.content ?? [``];
+    const lines = [...content.map((x) => `  ${x}`)];
+    return new F(...args, lines.join("\n"));
+  }
+}
+const version = {
+  major: 4,
+  minor: 4,
+  patch: 3
+};
+const $ZodType = /* @__PURE__ */ $constructor("$ZodType", (inst, def) => {
+  var _a2;
+  inst ?? (inst = {});
+  inst._zod.def = def;
+  inst._zod.bag = inst._zod.bag || {};
+  inst._zod.version = version;
+  const checks = [...inst._zod.def.checks ?? []];
+  if (inst._zod.traits.has("$ZodCheck")) {
+    checks.unshift(inst);
+  }
+  for (const ch of checks) {
+    for (const fn of ch._zod.onattach) {
+      fn(inst);
+    }
+  }
+  if (checks.length === 0) {
+    (_a2 = inst._zod).deferred ?? (_a2.deferred = []);
+    inst._zod.deferred?.push(() => {
+      inst._zod.run = inst._zod.parse;
+    });
+  } else {
+    const runChecks = (payload, checks2, ctx) => {
+      let isAborted = aborted(payload);
+      let asyncResult;
+      for (const ch of checks2) {
+        if (ch._zod.def.when) {
+          if (explicitlyAborted(payload))
+            continue;
+          const shouldRun = ch._zod.def.when(payload);
+          if (!shouldRun)
+            continue;
+        } else if (isAborted) {
+          continue;
+        }
+        const currLen = payload.issues.length;
+        const _ = ch._zod.check(payload);
+        if (_ instanceof Promise && ctx?.async === false) {
+          throw new $ZodAsyncError();
+        }
+        if (asyncResult || _ instanceof Promise) {
+          asyncResult = (asyncResult ?? Promise.resolve()).then(async () => {
+            await _;
+            const nextLen = payload.issues.length;
+            if (nextLen === currLen)
+              return;
+            if (!isAborted)
+              isAborted = aborted(payload, currLen);
+          });
+        } else {
+          const nextLen = payload.issues.length;
+          if (nextLen === currLen)
+            continue;
+          if (!isAborted)
+            isAborted = aborted(payload, currLen);
+        }
+      }
+      if (asyncResult) {
+        return asyncResult.then(() => {
+          return payload;
+        });
+      }
+      return payload;
+    };
+    const handleCanaryResult = (canary, payload, ctx) => {
+      if (aborted(canary)) {
+        canary.aborted = true;
+        return canary;
+      }
+      const checkResult = runChecks(payload, checks, ctx);
+      if (checkResult instanceof Promise) {
+        if (ctx.async === false)
+          throw new $ZodAsyncError();
+        return checkResult.then((checkResult2) => inst._zod.parse(checkResult2, ctx));
+      }
+      return inst._zod.parse(checkResult, ctx);
+    };
+    inst._zod.run = (payload, ctx) => {
+      if (ctx.skipChecks) {
+        return inst._zod.parse(payload, ctx);
+      }
+      if (ctx.direction === "backward") {
+        const canary = inst._zod.parse({ value: payload.value, issues: [] }, { ...ctx, skipChecks: true });
+        if (canary instanceof Promise) {
+          return canary.then((canary2) => {
+            return handleCanaryResult(canary2, payload, ctx);
+          });
+        }
+        return handleCanaryResult(canary, payload, ctx);
+      }
+      const result = inst._zod.parse(payload, ctx);
+      if (result instanceof Promise) {
+        if (ctx.async === false)
+          throw new $ZodAsyncError();
+        return result.then((result2) => runChecks(result2, checks, ctx));
+      }
+      return runChecks(result, checks, ctx);
+    };
+  }
+  defineLazy(inst, "~standard", () => ({
+    validate: (value) => {
+      try {
+        const r2 = safeParse$1(inst, value);
+        return r2.success ? { value: r2.data } : { issues: r2.error?.issues };
+      } catch (_) {
+        return safeParseAsync$1(inst, value).then((r2) => r2.success ? { value: r2.data } : { issues: r2.error?.issues });
+      }
+    },
+    vendor: "zod",
+    version: 1
+  }));
+});
+const $ZodString = /* @__PURE__ */ $constructor("$ZodString", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.pattern = [...inst?._zod.bag?.patterns ?? []].pop() ?? string$1(inst._zod.bag);
+  inst._zod.parse = (payload, _) => {
+    if (def.coerce)
+      try {
+        payload.value = String(payload.value);
+      } catch (_2) {
+      }
+    if (typeof payload.value === "string")
+      return payload;
+    payload.issues.push({
+      expected: "string",
+      code: "invalid_type",
+      input: payload.value,
+      inst
+    });
+    return payload;
+  };
+});
+const $ZodStringFormat = /* @__PURE__ */ $constructor("$ZodStringFormat", (inst, def) => {
+  $ZodCheckStringFormat.init(inst, def);
+  $ZodString.init(inst, def);
+});
+const $ZodGUID = /* @__PURE__ */ $constructor("$ZodGUID", (inst, def) => {
+  def.pattern ?? (def.pattern = guid);
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodUUID = /* @__PURE__ */ $constructor("$ZodUUID", (inst, def) => {
+  if (def.version) {
+    const versionMap = {
+      v1: 1,
+      v2: 2,
+      v3: 3,
+      v4: 4,
+      v5: 5,
+      v6: 6,
+      v7: 7,
+      v8: 8
+    };
+    const v = versionMap[def.version];
+    if (v === void 0)
+      throw new Error(`Invalid UUID version: "${def.version}"`);
+    def.pattern ?? (def.pattern = uuid(v));
+  } else
+    def.pattern ?? (def.pattern = uuid());
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodEmail = /* @__PURE__ */ $constructor("$ZodEmail", (inst, def) => {
+  def.pattern ?? (def.pattern = email);
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodURL = /* @__PURE__ */ $constructor("$ZodURL", (inst, def) => {
+  $ZodStringFormat.init(inst, def);
+  inst._zod.check = (payload) => {
+    try {
+      const trimmed = payload.value.trim();
+      if (!def.normalize && def.protocol?.source === httpProtocol.source) {
+        if (!/^https?:\/\//i.test(trimmed)) {
+          payload.issues.push({
+            code: "invalid_format",
+            format: "url",
+            note: "Invalid URL format",
+            input: payload.value,
+            inst,
+            continue: !def.abort
+          });
+          return;
+        }
+      }
+      const url = new URL(trimmed);
+      if (def.hostname) {
+        def.hostname.lastIndex = 0;
+        if (!def.hostname.test(url.hostname)) {
+          payload.issues.push({
+            code: "invalid_format",
+            format: "url",
+            note: "Invalid hostname",
+            pattern: def.hostname.source,
+            input: payload.value,
+            inst,
+            continue: !def.abort
+          });
+        }
+      }
+      if (def.protocol) {
+        def.protocol.lastIndex = 0;
+        if (!def.protocol.test(url.protocol.endsWith(":") ? url.protocol.slice(0, -1) : url.protocol)) {
+          payload.issues.push({
+            code: "invalid_format",
+            format: "url",
+            note: "Invalid protocol",
+            pattern: def.protocol.source,
+            input: payload.value,
+            inst,
+            continue: !def.abort
+          });
+        }
+      }
+      if (def.normalize) {
+        payload.value = url.href;
+      } else {
+        payload.value = trimmed;
+      }
+      return;
+    } catch (_) {
+      payload.issues.push({
+        code: "invalid_format",
+        format: "url",
+        input: payload.value,
+        inst,
+        continue: !def.abort
+      });
+    }
+  };
+});
+const $ZodEmoji = /* @__PURE__ */ $constructor("$ZodEmoji", (inst, def) => {
+  def.pattern ?? (def.pattern = emoji());
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodNanoID = /* @__PURE__ */ $constructor("$ZodNanoID", (inst, def) => {
+  def.pattern ?? (def.pattern = nanoid);
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodCUID = /* @__PURE__ */ $constructor("$ZodCUID", (inst, def) => {
+  def.pattern ?? (def.pattern = cuid);
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodCUID2 = /* @__PURE__ */ $constructor("$ZodCUID2", (inst, def) => {
+  def.pattern ?? (def.pattern = cuid2);
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodULID = /* @__PURE__ */ $constructor("$ZodULID", (inst, def) => {
+  def.pattern ?? (def.pattern = ulid);
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodXID = /* @__PURE__ */ $constructor("$ZodXID", (inst, def) => {
+  def.pattern ?? (def.pattern = xid);
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodKSUID = /* @__PURE__ */ $constructor("$ZodKSUID", (inst, def) => {
+  def.pattern ?? (def.pattern = ksuid);
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodISODateTime = /* @__PURE__ */ $constructor("$ZodISODateTime", (inst, def) => {
+  def.pattern ?? (def.pattern = datetime$1(def));
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodISODate = /* @__PURE__ */ $constructor("$ZodISODate", (inst, def) => {
+  def.pattern ?? (def.pattern = date$1);
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodISOTime = /* @__PURE__ */ $constructor("$ZodISOTime", (inst, def) => {
+  def.pattern ?? (def.pattern = time$1(def));
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodISODuration = /* @__PURE__ */ $constructor("$ZodISODuration", (inst, def) => {
+  def.pattern ?? (def.pattern = duration$1);
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodIPv4 = /* @__PURE__ */ $constructor("$ZodIPv4", (inst, def) => {
+  def.pattern ?? (def.pattern = ipv4);
+  $ZodStringFormat.init(inst, def);
+  inst._zod.bag.format = `ipv4`;
+});
+const $ZodIPv6 = /* @__PURE__ */ $constructor("$ZodIPv6", (inst, def) => {
+  def.pattern ?? (def.pattern = ipv6);
+  $ZodStringFormat.init(inst, def);
+  inst._zod.bag.format = `ipv6`;
+  inst._zod.check = (payload) => {
+    try {
+      new URL(`http://[${payload.value}]`);
+    } catch {
+      payload.issues.push({
+        code: "invalid_format",
+        format: "ipv6",
+        input: payload.value,
+        inst,
+        continue: !def.abort
+      });
+    }
+  };
+});
+const $ZodCIDRv4 = /* @__PURE__ */ $constructor("$ZodCIDRv4", (inst, def) => {
+  def.pattern ?? (def.pattern = cidrv4);
+  $ZodStringFormat.init(inst, def);
+});
+const $ZodCIDRv6 = /* @__PURE__ */ $constructor("$ZodCIDRv6", (inst, def) => {
+  def.pattern ?? (def.pattern = cidrv6);
+  $ZodStringFormat.init(inst, def);
+  inst._zod.check = (payload) => {
+    const parts = payload.value.split("/");
+    try {
+      if (parts.length !== 2)
+        throw new Error();
+      const [address, prefix] = parts;
+      if (!prefix)
+        throw new Error();
+      const prefixNum = Number(prefix);
+      if (`${prefixNum}` !== prefix)
+        throw new Error();
+      if (prefixNum < 0 || prefixNum > 128)
+        throw new Error();
+      new URL(`http://[${address}]`);
+    } catch {
+      payload.issues.push({
+        code: "invalid_format",
+        format: "cidrv6",
+        input: payload.value,
+        inst,
+        continue: !def.abort
+      });
+    }
+  };
+});
+function isValidBase64(data) {
+  if (data === "")
+    return true;
+  if (/\s/.test(data))
+    return false;
+  if (data.length % 4 !== 0)
+    return false;
+  try {
+    atob(data);
+    return true;
+  } catch {
+    return false;
+  }
+}
+const $ZodBase64 = /* @__PURE__ */ $constructor("$ZodBase64", (inst, def) => {
+  def.pattern ?? (def.pattern = base64);
+  $ZodStringFormat.init(inst, def);
+  inst._zod.bag.contentEncoding = "base64";
+  inst._zod.check = (payload) => {
+    if (isValidBase64(payload.value))
+      return;
+    payload.issues.push({
+      code: "invalid_format",
+      format: "base64",
+      input: payload.value,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+function isValidBase64URL(data) {
+  if (!base64url.test(data))
+    return false;
+  const base642 = data.replace(/[-_]/g, (c) => c === "-" ? "+" : "/");
+  const padded = base642.padEnd(Math.ceil(base642.length / 4) * 4, "=");
+  return isValidBase64(padded);
+}
+const $ZodBase64URL = /* @__PURE__ */ $constructor("$ZodBase64URL", (inst, def) => {
+  def.pattern ?? (def.pattern = base64url);
+  $ZodStringFormat.init(inst, def);
+  inst._zod.bag.contentEncoding = "base64url";
+  inst._zod.check = (payload) => {
+    if (isValidBase64URL(payload.value))
+      return;
+    payload.issues.push({
+      code: "invalid_format",
+      format: "base64url",
+      input: payload.value,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodE164 = /* @__PURE__ */ $constructor("$ZodE164", (inst, def) => {
+  def.pattern ?? (def.pattern = e164);
+  $ZodStringFormat.init(inst, def);
+});
+function isValidJWT(token, algorithm = null) {
+  try {
+    const tokensParts = token.split(".");
+    if (tokensParts.length !== 3)
+      return false;
+    const [header] = tokensParts;
+    if (!header)
+      return false;
+    const parsedHeader = JSON.parse(atob(header));
+    if ("typ" in parsedHeader && parsedHeader?.typ !== "JWT")
+      return false;
+    if (!parsedHeader.alg)
+      return false;
+    if (algorithm && (!("alg" in parsedHeader) || parsedHeader.alg !== algorithm))
+      return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+const $ZodJWT = /* @__PURE__ */ $constructor("$ZodJWT", (inst, def) => {
+  $ZodStringFormat.init(inst, def);
+  inst._zod.check = (payload) => {
+    if (isValidJWT(payload.value, def.alg))
+      return;
+    payload.issues.push({
+      code: "invalid_format",
+      format: "jwt",
+      input: payload.value,
+      inst,
+      continue: !def.abort
+    });
+  };
+});
+const $ZodNumber = /* @__PURE__ */ $constructor("$ZodNumber", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.pattern = inst._zod.bag.pattern ?? number$1;
+  inst._zod.parse = (payload, _ctx) => {
+    if (def.coerce)
+      try {
+        payload.value = Number(payload.value);
+      } catch (_) {
+      }
+    const input = payload.value;
+    if (typeof input === "number" && !Number.isNaN(input) && Number.isFinite(input)) {
+      return payload;
+    }
+    const received = typeof input === "number" ? Number.isNaN(input) ? "NaN" : !Number.isFinite(input) ? "Infinity" : void 0 : void 0;
+    payload.issues.push({
+      expected: "number",
+      code: "invalid_type",
+      input,
+      inst,
+      ...received ? { received } : {}
+    });
+    return payload;
+  };
+});
+const $ZodNumberFormat = /* @__PURE__ */ $constructor("$ZodNumberFormat", (inst, def) => {
+  $ZodCheckNumberFormat.init(inst, def);
+  $ZodNumber.init(inst, def);
+});
+const $ZodBoolean = /* @__PURE__ */ $constructor("$ZodBoolean", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.pattern = boolean$1;
+  inst._zod.parse = (payload, _ctx) => {
+    if (def.coerce)
+      try {
+        payload.value = Boolean(payload.value);
+      } catch (_) {
+      }
+    const input = payload.value;
+    if (typeof input === "boolean")
+      return payload;
+    payload.issues.push({
+      expected: "boolean",
+      code: "invalid_type",
+      input,
+      inst
+    });
+    return payload;
+  };
+});
+const $ZodUnknown = /* @__PURE__ */ $constructor("$ZodUnknown", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload) => payload;
+});
+const $ZodNever = /* @__PURE__ */ $constructor("$ZodNever", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, _ctx) => {
+    payload.issues.push({
+      expected: "never",
+      code: "invalid_type",
+      input: payload.value,
+      inst
+    });
+    return payload;
+  };
+});
+function handleArrayResult(result, final, index) {
+  if (result.issues.length) {
+    final.issues.push(...prefixIssues(index, result.issues));
+  }
+  final.value[index] = result.value;
+}
+const $ZodArray = /* @__PURE__ */ $constructor("$ZodArray", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, ctx) => {
+    const input = payload.value;
+    if (!Array.isArray(input)) {
+      payload.issues.push({
+        expected: "array",
+        code: "invalid_type",
+        input,
+        inst
+      });
+      return payload;
+    }
+    payload.value = Array(input.length);
+    const proms = [];
+    for (let i = 0; i < input.length; i++) {
+      const item = input[i];
+      const result = def.element._zod.run({
+        value: item,
+        issues: []
+      }, ctx);
+      if (result instanceof Promise) {
+        proms.push(result.then((result2) => handleArrayResult(result2, payload, i)));
+      } else {
+        handleArrayResult(result, payload, i);
+      }
+    }
+    if (proms.length) {
+      return Promise.all(proms).then(() => payload);
+    }
+    return payload;
+  };
+});
+function handlePropertyResult(result, final, key, input, isOptionalIn, isOptionalOut) {
+  const isPresent = key in input;
+  if (result.issues.length) {
+    if (isOptionalIn && isOptionalOut && !isPresent) {
+      return;
+    }
+    final.issues.push(...prefixIssues(key, result.issues));
+  }
+  if (!isPresent && !isOptionalIn) {
+    if (!result.issues.length) {
+      final.issues.push({
+        code: "invalid_type",
+        expected: "nonoptional",
+        input: void 0,
+        path: [key]
+      });
+    }
+    return;
+  }
+  if (result.value === void 0) {
+    if (isPresent) {
+      final.value[key] = void 0;
+    }
+  } else {
+    final.value[key] = result.value;
+  }
+}
+function normalizeDef(def) {
+  const keys = Object.keys(def.shape);
+  for (const k of keys) {
+    if (!def.shape?.[k]?._zod?.traits?.has("$ZodType")) {
+      throw new Error(`Invalid element at key "${k}": expected a Zod schema`);
+    }
+  }
+  const okeys = optionalKeys(def.shape);
+  return {
+    ...def,
+    keys,
+    keySet: new Set(keys),
+    numKeys: keys.length,
+    optionalKeys: new Set(okeys)
+  };
+}
+function handleCatchall(proms, input, payload, ctx, def, inst) {
+  const unrecognized = [];
+  const keySet = def.keySet;
+  const _catchall = def.catchall._zod;
+  const t = _catchall.def.type;
+  const isOptionalIn = _catchall.optin === "optional";
+  const isOptionalOut = _catchall.optout === "optional";
+  for (const key in input) {
+    if (key === "__proto__")
+      continue;
+    if (keySet.has(key))
+      continue;
+    if (t === "never") {
+      unrecognized.push(key);
+      continue;
+    }
+    const r2 = _catchall.run({ value: input[key], issues: [] }, ctx);
+    if (r2 instanceof Promise) {
+      proms.push(r2.then((r3) => handlePropertyResult(r3, payload, key, input, isOptionalIn, isOptionalOut)));
+    } else {
+      handlePropertyResult(r2, payload, key, input, isOptionalIn, isOptionalOut);
+    }
+  }
+  if (unrecognized.length) {
+    payload.issues.push({
+      code: "unrecognized_keys",
+      keys: unrecognized,
+      input,
+      inst
+    });
+  }
+  if (!proms.length)
+    return payload;
+  return Promise.all(proms).then(() => {
+    return payload;
+  });
+}
+const $ZodObject = /* @__PURE__ */ $constructor("$ZodObject", (inst, def) => {
+  $ZodType.init(inst, def);
+  const desc = Object.getOwnPropertyDescriptor(def, "shape");
+  if (!desc?.get) {
+    const sh = def.shape;
+    Object.defineProperty(def, "shape", {
+      get: () => {
+        const newSh = { ...sh };
+        Object.defineProperty(def, "shape", {
+          value: newSh
+        });
+        return newSh;
+      }
+    });
+  }
+  const _normalized = cached(() => normalizeDef(def));
+  defineLazy(inst._zod, "propValues", () => {
+    const shape = def.shape;
+    const propValues = {};
+    for (const key in shape) {
+      const field = shape[key]._zod;
+      if (field.values) {
+        propValues[key] ?? (propValues[key] = /* @__PURE__ */ new Set());
+        for (const v of field.values)
+          propValues[key].add(v);
+      }
+    }
+    return propValues;
+  });
+  const isObject$1 = isObject;
+  const catchall = def.catchall;
+  let value;
+  inst._zod.parse = (payload, ctx) => {
+    value ?? (value = _normalized.value);
+    const input = payload.value;
+    if (!isObject$1(input)) {
+      payload.issues.push({
+        expected: "object",
+        code: "invalid_type",
+        input,
+        inst
+      });
+      return payload;
+    }
+    payload.value = {};
+    const proms = [];
+    const shape = value.shape;
+    for (const key of value.keys) {
+      const el = shape[key];
+      const isOptionalIn = el._zod.optin === "optional";
+      const isOptionalOut = el._zod.optout === "optional";
+      const r2 = el._zod.run({ value: input[key], issues: [] }, ctx);
+      if (r2 instanceof Promise) {
+        proms.push(r2.then((r3) => handlePropertyResult(r3, payload, key, input, isOptionalIn, isOptionalOut)));
+      } else {
+        handlePropertyResult(r2, payload, key, input, isOptionalIn, isOptionalOut);
+      }
+    }
+    if (!catchall) {
+      return proms.length ? Promise.all(proms).then(() => payload) : payload;
+    }
+    return handleCatchall(proms, input, payload, ctx, _normalized.value, inst);
+  };
+});
+const $ZodObjectJIT = /* @__PURE__ */ $constructor("$ZodObjectJIT", (inst, def) => {
+  $ZodObject.init(inst, def);
+  const superParse = inst._zod.parse;
+  const _normalized = cached(() => normalizeDef(def));
+  const generateFastpass = (shape) => {
+    const doc = new Doc(["shape", "payload", "ctx"]);
+    const normalized = _normalized.value;
+    const parseStr = (key) => {
+      const k = esc(key);
+      return `shape[${k}]._zod.run({ value: input[${k}], issues: [] }, ctx)`;
+    };
+    doc.write(`const input = payload.value;`);
+    const ids = /* @__PURE__ */ Object.create(null);
+    let counter = 0;
+    for (const key of normalized.keys) {
+      ids[key] = `key_${counter++}`;
+    }
+    doc.write(`const newResult = {};`);
+    for (const key of normalized.keys) {
+      const id = ids[key];
+      const k = esc(key);
+      const schema = shape[key];
+      const isOptionalIn = schema?._zod?.optin === "optional";
+      const isOptionalOut = schema?._zod?.optout === "optional";
+      doc.write(`const ${id} = ${parseStr(key)};`);
+      if (isOptionalIn && isOptionalOut) {
+        doc.write(`
+        if (${id}.issues.length) {
+          if (${k} in input) {
+            payload.issues = payload.issues.concat(${id}.issues.map(iss => ({
+              ...iss,
+              path: iss.path ? [${k}, ...iss.path] : [${k}]
+            })));
+          }
+        }
+        
+        if (${id}.value === undefined) {
+          if (${k} in input) {
+            newResult[${k}] = undefined;
+          }
+        } else {
+          newResult[${k}] = ${id}.value;
+        }
+        
+      `);
+      } else if (!isOptionalIn) {
+        doc.write(`
+        const ${id}_present = ${k} in input;
+        if (${id}.issues.length) {
+          payload.issues = payload.issues.concat(${id}.issues.map(iss => ({
+            ...iss,
+            path: iss.path ? [${k}, ...iss.path] : [${k}]
+          })));
+        }
+        if (!${id}_present && !${id}.issues.length) {
+          payload.issues.push({
+            code: "invalid_type",
+            expected: "nonoptional",
+            input: undefined,
+            path: [${k}]
+          });
+        }
+
+        if (${id}_present) {
+          if (${id}.value === undefined) {
+            newResult[${k}] = undefined;
+          } else {
+            newResult[${k}] = ${id}.value;
+          }
+        }
+
+      `);
+      } else {
+        doc.write(`
+        if (${id}.issues.length) {
+          payload.issues = payload.issues.concat(${id}.issues.map(iss => ({
+            ...iss,
+            path: iss.path ? [${k}, ...iss.path] : [${k}]
+          })));
+        }
+        
+        if (${id}.value === undefined) {
+          if (${k} in input) {
+            newResult[${k}] = undefined;
+          }
+        } else {
+          newResult[${k}] = ${id}.value;
+        }
+        
+      `);
+      }
+    }
+    doc.write(`payload.value = newResult;`);
+    doc.write(`return payload;`);
+    const fn = doc.compile();
+    return (payload, ctx) => fn(shape, payload, ctx);
+  };
+  let fastpass;
+  const isObject$1 = isObject;
+  const jit = !globalConfig.jitless;
+  const allowsEval$1 = allowsEval;
+  const fastEnabled = jit && allowsEval$1.value;
+  const catchall = def.catchall;
+  let value;
+  inst._zod.parse = (payload, ctx) => {
+    value ?? (value = _normalized.value);
+    const input = payload.value;
+    if (!isObject$1(input)) {
+      payload.issues.push({
+        expected: "object",
+        code: "invalid_type",
+        input,
+        inst
+      });
+      return payload;
+    }
+    if (jit && fastEnabled && ctx?.async === false && ctx.jitless !== true) {
+      if (!fastpass)
+        fastpass = generateFastpass(def.shape);
+      payload = fastpass(payload, ctx);
+      if (!catchall)
+        return payload;
+      return handleCatchall([], input, payload, ctx, value, inst);
+    }
+    return superParse(payload, ctx);
+  };
+});
+function handleUnionResults(results, final, inst, ctx) {
+  for (const result of results) {
+    if (result.issues.length === 0) {
+      final.value = result.value;
+      return final;
+    }
+  }
+  const nonaborted = results.filter((r2) => !aborted(r2));
+  if (nonaborted.length === 1) {
+    final.value = nonaborted[0].value;
+    return nonaborted[0];
+  }
+  final.issues.push({
+    code: "invalid_union",
+    input: final.value,
+    inst,
+    errors: results.map((result) => result.issues.map((iss) => finalizeIssue(iss, ctx, config())))
+  });
+  return final;
+}
+const $ZodUnion = /* @__PURE__ */ $constructor("$ZodUnion", (inst, def) => {
+  $ZodType.init(inst, def);
+  defineLazy(inst._zod, "optin", () => def.options.some((o) => o._zod.optin === "optional") ? "optional" : void 0);
+  defineLazy(inst._zod, "optout", () => def.options.some((o) => o._zod.optout === "optional") ? "optional" : void 0);
+  defineLazy(inst._zod, "values", () => {
+    if (def.options.every((o) => o._zod.values)) {
+      return new Set(def.options.flatMap((option) => Array.from(option._zod.values)));
+    }
+    return void 0;
+  });
+  defineLazy(inst._zod, "pattern", () => {
+    if (def.options.every((o) => o._zod.pattern)) {
+      const patterns = def.options.map((o) => o._zod.pattern);
+      return new RegExp(`^(${patterns.map((p) => cleanRegex(p.source)).join("|")})$`);
+    }
+    return void 0;
+  });
+  const first = def.options.length === 1 ? def.options[0]._zod.run : null;
+  inst._zod.parse = (payload, ctx) => {
+    if (first) {
+      return first(payload, ctx);
+    }
+    let async = false;
+    const results = [];
+    for (const option of def.options) {
+      const result = option._zod.run({
+        value: payload.value,
+        issues: []
+      }, ctx);
+      if (result instanceof Promise) {
+        results.push(result);
+        async = true;
+      } else {
+        if (result.issues.length === 0)
+          return result;
+        results.push(result);
+      }
+    }
+    if (!async)
+      return handleUnionResults(results, payload, inst, ctx);
+    return Promise.all(results).then((results2) => {
+      return handleUnionResults(results2, payload, inst, ctx);
+    });
+  };
+});
+const $ZodIntersection = /* @__PURE__ */ $constructor("$ZodIntersection", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, ctx) => {
+    const input = payload.value;
+    const left = def.left._zod.run({ value: input, issues: [] }, ctx);
+    const right = def.right._zod.run({ value: input, issues: [] }, ctx);
+    const async = left instanceof Promise || right instanceof Promise;
+    if (async) {
+      return Promise.all([left, right]).then(([left2, right2]) => {
+        return handleIntersectionResults(payload, left2, right2);
+      });
+    }
+    return handleIntersectionResults(payload, left, right);
+  };
+});
+function mergeValues(a, b) {
+  if (a === b) {
+    return { valid: true, data: a };
+  }
+  if (a instanceof Date && b instanceof Date && +a === +b) {
+    return { valid: true, data: a };
+  }
+  if (isPlainObject(a) && isPlainObject(b)) {
+    const bKeys = Object.keys(b);
+    const sharedKeys = Object.keys(a).filter((key) => bKeys.indexOf(key) !== -1);
+    const newObj = { ...a, ...b };
+    for (const key of sharedKeys) {
+      const sharedValue = mergeValues(a[key], b[key]);
+      if (!sharedValue.valid) {
+        return {
+          valid: false,
+          mergeErrorPath: [key, ...sharedValue.mergeErrorPath]
+        };
+      }
+      newObj[key] = sharedValue.data;
+    }
+    return { valid: true, data: newObj };
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) {
+      return { valid: false, mergeErrorPath: [] };
+    }
+    const newArray = [];
+    for (let index = 0; index < a.length; index++) {
+      const itemA = a[index];
+      const itemB = b[index];
+      const sharedValue = mergeValues(itemA, itemB);
+      if (!sharedValue.valid) {
+        return {
+          valid: false,
+          mergeErrorPath: [index, ...sharedValue.mergeErrorPath]
+        };
+      }
+      newArray.push(sharedValue.data);
+    }
+    return { valid: true, data: newArray };
+  }
+  return { valid: false, mergeErrorPath: [] };
+}
+function handleIntersectionResults(result, left, right) {
+  const unrecKeys = /* @__PURE__ */ new Map();
+  let unrecIssue;
+  for (const iss of left.issues) {
+    if (iss.code === "unrecognized_keys") {
+      unrecIssue ?? (unrecIssue = iss);
+      for (const k of iss.keys) {
+        if (!unrecKeys.has(k))
+          unrecKeys.set(k, {});
+        unrecKeys.get(k).l = true;
+      }
+    } else {
+      result.issues.push(iss);
+    }
+  }
+  for (const iss of right.issues) {
+    if (iss.code === "unrecognized_keys") {
+      for (const k of iss.keys) {
+        if (!unrecKeys.has(k))
+          unrecKeys.set(k, {});
+        unrecKeys.get(k).r = true;
+      }
+    } else {
+      result.issues.push(iss);
+    }
+  }
+  const bothKeys = [...unrecKeys].filter(([, f]) => f.l && f.r).map(([k]) => k);
+  if (bothKeys.length && unrecIssue) {
+    result.issues.push({ ...unrecIssue, keys: bothKeys });
+  }
+  if (aborted(result))
+    return result;
+  const merged = mergeValues(left.value, right.value);
+  if (!merged.valid) {
+    throw new Error(`Unmergable intersection. Error path: ${JSON.stringify(merged.mergeErrorPath)}`);
+  }
+  result.value = merged.data;
+  return result;
+}
+const $ZodTuple = /* @__PURE__ */ $constructor("$ZodTuple", (inst, def) => {
+  $ZodType.init(inst, def);
+  const items = def.items;
+  inst._zod.parse = (payload, ctx) => {
+    const input = payload.value;
+    if (!Array.isArray(input)) {
+      payload.issues.push({
+        input,
+        inst,
+        expected: "tuple",
+        code: "invalid_type"
+      });
+      return payload;
+    }
+    payload.value = [];
+    const proms = [];
+    const optinStart = getTupleOptStart(items, "optin");
+    const optoutStart = getTupleOptStart(items, "optout");
+    if (!def.rest) {
+      if (input.length < optinStart) {
+        payload.issues.push({
+          code: "too_small",
+          minimum: optinStart,
+          inclusive: true,
+          input,
+          inst,
+          origin: "array"
+        });
+        return payload;
+      }
+      if (input.length > items.length) {
+        payload.issues.push({
+          code: "too_big",
+          maximum: items.length,
+          inclusive: true,
+          input,
+          inst,
+          origin: "array"
+        });
+      }
+    }
+    const itemResults = new Array(items.length);
+    for (let i = 0; i < items.length; i++) {
+      const r2 = items[i]._zod.run({ value: input[i], issues: [] }, ctx);
+      if (r2 instanceof Promise) {
+        proms.push(r2.then((rr) => {
+          itemResults[i] = rr;
+        }));
+      } else {
+        itemResults[i] = r2;
+      }
+    }
+    if (def.rest) {
+      let i = items.length - 1;
+      const rest = input.slice(items.length);
+      for (const el of rest) {
+        i++;
+        const result = def.rest._zod.run({ value: el, issues: [] }, ctx);
+        if (result instanceof Promise) {
+          proms.push(result.then((r2) => handleTupleResult(r2, payload, i)));
+        } else {
+          handleTupleResult(result, payload, i);
+        }
+      }
+    }
+    if (proms.length) {
+      return Promise.all(proms).then(() => handleTupleResults(itemResults, payload, items, input, optoutStart));
+    }
+    return handleTupleResults(itemResults, payload, items, input, optoutStart);
+  };
+});
+function getTupleOptStart(items, key) {
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (items[i]._zod[key] !== "optional")
+      return i + 1;
+  }
+  return 0;
+}
+function handleTupleResult(result, final, index) {
+  if (result.issues.length) {
+    final.issues.push(...prefixIssues(index, result.issues));
+  }
+  final.value[index] = result.value;
+}
+function handleTupleResults(itemResults, final, items, input, optoutStart) {
+  for (let i = 0; i < items.length; i++) {
+    const r2 = itemResults[i];
+    const isPresent = i < input.length;
+    if (r2.issues.length) {
+      if (!isPresent && i >= optoutStart) {
+        final.value.length = i;
+        break;
+      }
+      final.issues.push(...prefixIssues(i, r2.issues));
+    }
+    final.value[i] = r2.value;
+  }
+  for (let i = final.value.length - 1; i >= input.length; i--) {
+    if (items[i]._zod.optout === "optional" && final.value[i] === void 0) {
+      final.value.length = i;
+    } else {
+      break;
+    }
+  }
+  return final;
+}
+const $ZodRecord = /* @__PURE__ */ $constructor("$ZodRecord", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, ctx) => {
+    const input = payload.value;
+    if (!isPlainObject(input)) {
+      payload.issues.push({
+        expected: "record",
+        code: "invalid_type",
+        input,
+        inst
+      });
+      return payload;
+    }
+    const proms = [];
+    const values = def.keyType._zod.values;
+    if (values) {
+      payload.value = {};
+      const recordKeys = /* @__PURE__ */ new Set();
+      for (const key of values) {
+        if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
+          recordKeys.add(typeof key === "number" ? key.toString() : key);
+          const keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+          if (keyResult instanceof Promise) {
+            throw new Error("Async schemas not supported in object keys currently");
+          }
+          if (keyResult.issues.length) {
+            payload.issues.push({
+              code: "invalid_key",
+              origin: "record",
+              issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+              input: key,
+              path: [key],
+              inst
+            });
+            continue;
+          }
+          const outKey = keyResult.value;
+          const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+          if (result instanceof Promise) {
+            proms.push(result.then((result2) => {
+              if (result2.issues.length) {
+                payload.issues.push(...prefixIssues(key, result2.issues));
+              }
+              payload.value[outKey] = result2.value;
+            }));
+          } else {
+            if (result.issues.length) {
+              payload.issues.push(...prefixIssues(key, result.issues));
+            }
+            payload.value[outKey] = result.value;
+          }
+        }
+      }
+      let unrecognized;
+      for (const key in input) {
+        if (!recordKeys.has(key)) {
+          unrecognized = unrecognized ?? [];
+          unrecognized.push(key);
+        }
+      }
+      if (unrecognized && unrecognized.length > 0) {
+        payload.issues.push({
+          code: "unrecognized_keys",
+          input,
+          inst,
+          keys: unrecognized
+        });
+      }
+    } else {
+      payload.value = {};
+      for (const key of Reflect.ownKeys(input)) {
+        if (key === "__proto__")
+          continue;
+        if (!Object.prototype.propertyIsEnumerable.call(input, key))
+          continue;
+        let keyResult = def.keyType._zod.run({ value: key, issues: [] }, ctx);
+        if (keyResult instanceof Promise) {
+          throw new Error("Async schemas not supported in object keys currently");
+        }
+        const checkNumericKey = typeof key === "string" && number$1.test(key) && keyResult.issues.length;
+        if (checkNumericKey) {
+          const retryResult = def.keyType._zod.run({ value: Number(key), issues: [] }, ctx);
+          if (retryResult instanceof Promise) {
+            throw new Error("Async schemas not supported in object keys currently");
+          }
+          if (retryResult.issues.length === 0) {
+            keyResult = retryResult;
+          }
+        }
+        if (keyResult.issues.length) {
+          if (def.mode === "loose") {
+            payload.value[key] = input[key];
+          } else {
+            payload.issues.push({
+              code: "invalid_key",
+              origin: "record",
+              issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
+              input: key,
+              path: [key],
+              inst
+            });
+          }
+          continue;
+        }
+        const result = def.valueType._zod.run({ value: input[key], issues: [] }, ctx);
+        if (result instanceof Promise) {
+          proms.push(result.then((result2) => {
+            if (result2.issues.length) {
+              payload.issues.push(...prefixIssues(key, result2.issues));
+            }
+            payload.value[keyResult.value] = result2.value;
+          }));
+        } else {
+          if (result.issues.length) {
+            payload.issues.push(...prefixIssues(key, result.issues));
+          }
+          payload.value[keyResult.value] = result.value;
+        }
+      }
+    }
+    if (proms.length) {
+      return Promise.all(proms).then(() => payload);
+    }
+    return payload;
+  };
+});
+const $ZodEnum = /* @__PURE__ */ $constructor("$ZodEnum", (inst, def) => {
+  $ZodType.init(inst, def);
+  const values = getEnumValues(def.entries);
+  const valuesSet = new Set(values);
+  inst._zod.values = valuesSet;
+  inst._zod.pattern = new RegExp(`^(${values.filter((k) => propertyKeyTypes.has(typeof k)).map((o) => typeof o === "string" ? escapeRegex(o) : o.toString()).join("|")})$`);
+  inst._zod.parse = (payload, _ctx) => {
+    const input = payload.value;
+    if (valuesSet.has(input)) {
+      return payload;
+    }
+    payload.issues.push({
+      code: "invalid_value",
+      values,
+      input,
+      inst
+    });
+    return payload;
+  };
+});
+const $ZodLiteral = /* @__PURE__ */ $constructor("$ZodLiteral", (inst, def) => {
+  $ZodType.init(inst, def);
+  if (def.values.length === 0) {
+    throw new Error("Cannot create literal schema with no valid values");
+  }
+  const values = new Set(def.values);
+  inst._zod.values = values;
+  inst._zod.pattern = new RegExp(`^(${def.values.map((o) => typeof o === "string" ? escapeRegex(o) : o ? escapeRegex(o.toString()) : String(o)).join("|")})$`);
+  inst._zod.parse = (payload, _ctx) => {
+    const input = payload.value;
+    if (values.has(input)) {
+      return payload;
+    }
+    payload.issues.push({
+      code: "invalid_value",
+      values: def.values,
+      input,
+      inst
+    });
+    return payload;
+  };
+});
+const $ZodTransform = /* @__PURE__ */ $constructor("$ZodTransform", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.optin = "optional";
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      throw new $ZodEncodeError(inst.constructor.name);
+    }
+    const _out = def.transform(payload.value, payload);
+    if (ctx.async) {
+      const output = _out instanceof Promise ? _out : Promise.resolve(_out);
+      return output.then((output2) => {
+        payload.value = output2;
+        payload.fallback = true;
+        return payload;
+      });
+    }
+    if (_out instanceof Promise) {
+      throw new $ZodAsyncError();
+    }
+    payload.value = _out;
+    payload.fallback = true;
+    return payload;
+  };
+});
+function handleOptionalResult(result, input) {
+  if (input === void 0 && (result.issues.length || result.fallback)) {
+    return { issues: [], value: void 0 };
   }
   return result;
 }
-function TextBlockHandle({
-  position,
-  scale,
-  onDragStart,
-  onDrag,
-  onDragEnd
-}) {
-  const dragging = reactExports.useRef(false);
-  const handlePointerDown = reactExports.useCallback(
-    (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      dragging.current = true;
-      e.target.setPointerCapture(e.pointerId);
-      onDragStart();
-    },
-    [onDragStart]
-  );
-  const handlePointerMove = reactExports.useCallback(
-    (e) => {
-      if (!dragging.current) return;
-      e.stopPropagation();
-      const delta = computeDelta(
-        position,
-        e.movementX / scale,
-        e.movementY / scale
-      );
-      onDrag(delta);
-    },
-    [position, scale, onDrag]
-  );
-  const handlePointerUp = reactExports.useCallback(
-    (e) => {
-      if (!dragging.current) return;
-      e.stopPropagation();
-      dragging.current = false;
-      onDragEnd();
-    },
-    [onDragEnd]
-  );
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "div",
-    {
-      className: `absolute z-10 h-2.5 w-2.5 rounded-xs border border-info-border bg-canvas ${POSITION_CLASSES[position]}`,
-      style: { cursor: CURSOR_MAP[position] },
-      onPointerDown: handlePointerDown,
-      onPointerMove: handlePointerMove,
-      onPointerUp: handlePointerUp
+const $ZodOptional = /* @__PURE__ */ $constructor("$ZodOptional", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.optin = "optional";
+  inst._zod.optout = "optional";
+  defineLazy(inst._zod, "values", () => {
+    return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, void 0]) : void 0;
+  });
+  defineLazy(inst._zod, "pattern", () => {
+    const pattern = def.innerType._zod.pattern;
+    return pattern ? new RegExp(`^(${cleanRegex(pattern.source)})?$`) : void 0;
+  });
+  inst._zod.parse = (payload, ctx) => {
+    if (def.innerType._zod.optin === "optional") {
+      const input = payload.value;
+      const result = def.innerType._zod.run(payload, ctx);
+      if (result instanceof Promise)
+        return result.then((r2) => handleOptionalResult(r2, input));
+      return handleOptionalResult(result, input);
     }
-  );
+    if (payload.value === void 0) {
+      return payload;
+    }
+    return def.innerType._zod.run(payload, ctx);
+  };
+});
+const $ZodExactOptional = /* @__PURE__ */ $constructor("$ZodExactOptional", (inst, def) => {
+  $ZodOptional.init(inst, def);
+  defineLazy(inst._zod, "values", () => def.innerType._zod.values);
+  defineLazy(inst._zod, "pattern", () => def.innerType._zod.pattern);
+  inst._zod.parse = (payload, ctx) => {
+    return def.innerType._zod.run(payload, ctx);
+  };
+});
+const $ZodNullable = /* @__PURE__ */ $constructor("$ZodNullable", (inst, def) => {
+  $ZodType.init(inst, def);
+  defineLazy(inst._zod, "optin", () => def.innerType._zod.optin);
+  defineLazy(inst._zod, "optout", () => def.innerType._zod.optout);
+  defineLazy(inst._zod, "pattern", () => {
+    const pattern = def.innerType._zod.pattern;
+    return pattern ? new RegExp(`^(${cleanRegex(pattern.source)}|null)$`) : void 0;
+  });
+  defineLazy(inst._zod, "values", () => {
+    return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, null]) : void 0;
+  });
+  inst._zod.parse = (payload, ctx) => {
+    if (payload.value === null)
+      return payload;
+    return def.innerType._zod.run(payload, ctx);
+  };
+});
+const $ZodDefault = /* @__PURE__ */ $constructor("$ZodDefault", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.optin = "optional";
+  defineLazy(inst._zod, "values", () => def.innerType._zod.values);
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      return def.innerType._zod.run(payload, ctx);
+    }
+    if (payload.value === void 0) {
+      payload.value = def.defaultValue;
+      return payload;
+    }
+    const result = def.innerType._zod.run(payload, ctx);
+    if (result instanceof Promise) {
+      return result.then((result2) => handleDefaultResult(result2, def));
+    }
+    return handleDefaultResult(result, def);
+  };
+});
+function handleDefaultResult(payload, def) {
+  if (payload.value === void 0) {
+    payload.value = def.defaultValue;
+  }
+  return payload;
 }
-const EDITOR_CLASS = "absolute inset-0 resize-none border-none bg-canvas/90 p-1 text-[10px] text-ink outline-none focus:ring-1 focus:ring-info-border";
-function TextEditor({
-  text,
-  onCommit,
-  onCancel
-}) {
-  const ref = reactExports.useRef(null);
-  reactExports.useEffect(() => {
-    const el = ref.current;
-    if (el) {
-      el.focus();
-      el.select();
+const $ZodPrefault = /* @__PURE__ */ $constructor("$ZodPrefault", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.optin = "optional";
+  defineLazy(inst._zod, "values", () => def.innerType._zod.values);
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      return def.innerType._zod.run(payload, ctx);
     }
-  }, []);
-  const handleKeyDown = reactExports.useCallback(
-    (e) => {
-      if (e.key === "Escape") {
-        e.stopPropagation();
-        onCancel();
-      } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-        e.stopPropagation();
-        onCommit(ref.current?.value ?? text);
+    if (payload.value === void 0) {
+      payload.value = def.defaultValue;
+    }
+    return def.innerType._zod.run(payload, ctx);
+  };
+});
+const $ZodNonOptional = /* @__PURE__ */ $constructor("$ZodNonOptional", (inst, def) => {
+  $ZodType.init(inst, def);
+  defineLazy(inst._zod, "values", () => {
+    const v = def.innerType._zod.values;
+    return v ? new Set([...v].filter((x) => x !== void 0)) : void 0;
+  });
+  inst._zod.parse = (payload, ctx) => {
+    const result = def.innerType._zod.run(payload, ctx);
+    if (result instanceof Promise) {
+      return result.then((result2) => handleNonOptionalResult(result2, inst));
+    }
+    return handleNonOptionalResult(result, inst);
+  };
+});
+function handleNonOptionalResult(payload, inst) {
+  if (!payload.issues.length && payload.value === void 0) {
+    payload.issues.push({
+      code: "invalid_type",
+      expected: "nonoptional",
+      input: payload.value,
+      inst
+    });
+  }
+  return payload;
+}
+const $ZodCatch = /* @__PURE__ */ $constructor("$ZodCatch", (inst, def) => {
+  $ZodType.init(inst, def);
+  inst._zod.optin = "optional";
+  defineLazy(inst._zod, "optout", () => def.innerType._zod.optout);
+  defineLazy(inst._zod, "values", () => def.innerType._zod.values);
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      return def.innerType._zod.run(payload, ctx);
+    }
+    const result = def.innerType._zod.run(payload, ctx);
+    if (result instanceof Promise) {
+      return result.then((result2) => {
+        payload.value = result2.value;
+        if (result2.issues.length) {
+          payload.value = def.catchValue({
+            ...payload,
+            error: {
+              issues: result2.issues.map((iss) => finalizeIssue(iss, ctx, config()))
+            },
+            input: payload.value
+          });
+          payload.issues = [];
+          payload.fallback = true;
+        }
+        return payload;
+      });
+    }
+    payload.value = result.value;
+    if (result.issues.length) {
+      payload.value = def.catchValue({
+        ...payload,
+        error: {
+          issues: result.issues.map((iss) => finalizeIssue(iss, ctx, config()))
+        },
+        input: payload.value
+      });
+      payload.issues = [];
+      payload.fallback = true;
+    }
+    return payload;
+  };
+});
+const $ZodPipe = /* @__PURE__ */ $constructor("$ZodPipe", (inst, def) => {
+  $ZodType.init(inst, def);
+  defineLazy(inst._zod, "values", () => def.in._zod.values);
+  defineLazy(inst._zod, "optin", () => def.in._zod.optin);
+  defineLazy(inst._zod, "optout", () => def.out._zod.optout);
+  defineLazy(inst._zod, "propValues", () => def.in._zod.propValues);
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      const right = def.out._zod.run(payload, ctx);
+      if (right instanceof Promise) {
+        return right.then((right2) => handlePipeResult(right2, def.in, ctx));
       }
-    },
-    [text, onCommit, onCancel]
-  );
-  const handleBlur = reactExports.useCallback(() => {
-    onCommit(ref.current?.value ?? text);
-  }, [text, onCommit]);
-  return /* @__PURE__ */ jsxRuntimeExports.jsx(
-    "textarea",
-    {
-      ref,
-      className: EDITOR_CLASS,
-      defaultValue: text,
-      onKeyDown: handleKeyDown,
-      onBlur: handleBlur
+      return handlePipeResult(right, def.in, ctx);
     }
-  );
+    const left = def.in._zod.run(payload, ctx);
+    if (left instanceof Promise) {
+      return left.then((left2) => handlePipeResult(left2, def.out, ctx));
+    }
+    return handlePipeResult(left, def.out, ctx);
+  };
+});
+function handlePipeResult(left, next, ctx) {
+  if (left.issues.length) {
+    left.aborted = true;
+    return left;
+  }
+  return next._zod.run({ value: left.value, issues: left.issues, fallback: left.fallback }, ctx);
 }
-const CLASSIFICATION_BORDER = {
-  layout_text: "border-success-border",
-  object_integrated_symbol: "border-border-strong",
-  uncertain: "border-signature-mustard"
+const $ZodReadonly = /* @__PURE__ */ $constructor("$ZodReadonly", (inst, def) => {
+  $ZodType.init(inst, def);
+  defineLazy(inst._zod, "propValues", () => def.innerType._zod.propValues);
+  defineLazy(inst._zod, "values", () => def.innerType._zod.values);
+  defineLazy(inst._zod, "optin", () => def.innerType?._zod?.optin);
+  defineLazy(inst._zod, "optout", () => def.innerType?._zod?.optout);
+  inst._zod.parse = (payload, ctx) => {
+    if (ctx.direction === "backward") {
+      return def.innerType._zod.run(payload, ctx);
+    }
+    const result = def.innerType._zod.run(payload, ctx);
+    if (result instanceof Promise) {
+      return result.then(handleReadonlyResult);
+    }
+    return handleReadonlyResult(result);
+  };
+});
+function handleReadonlyResult(payload) {
+  payload.value = Object.freeze(payload.value);
+  return payload;
+}
+const $ZodCustom = /* @__PURE__ */ $constructor("$ZodCustom", (inst, def) => {
+  $ZodCheck.init(inst, def);
+  $ZodType.init(inst, def);
+  inst._zod.parse = (payload, _) => {
+    return payload;
+  };
+  inst._zod.check = (payload) => {
+    const input = payload.value;
+    const r2 = def.fn(input);
+    if (r2 instanceof Promise) {
+      return r2.then((r3) => handleRefineResult(r3, payload, input, inst));
+    }
+    handleRefineResult(r2, payload, input, inst);
+    return;
+  };
+});
+function handleRefineResult(result, payload, input, inst) {
+  if (!result) {
+    const _iss = {
+      code: "custom",
+      input,
+      inst,
+      // incorporates params.error into issue reporting
+      path: [...inst._zod.def.path ?? []],
+      // incorporates params.error into issue reporting
+      continue: !inst._zod.def.abort
+      // params: inst._zod.def.params,
+    };
+    if (inst._zod.def.params)
+      _iss.params = inst._zod.def.params;
+    payload.issues.push(issue(_iss));
+  }
+}
+var _a;
+class $ZodRegistry {
+  constructor() {
+    this._map = /* @__PURE__ */ new WeakMap();
+    this._idmap = /* @__PURE__ */ new Map();
+  }
+  add(schema, ..._meta) {
+    const meta = _meta[0];
+    this._map.set(schema, meta);
+    if (meta && typeof meta === "object" && "id" in meta) {
+      this._idmap.set(meta.id, schema);
+    }
+    return this;
+  }
+  clear() {
+    this._map = /* @__PURE__ */ new WeakMap();
+    this._idmap = /* @__PURE__ */ new Map();
+    return this;
+  }
+  remove(schema) {
+    const meta = this._map.get(schema);
+    if (meta && typeof meta === "object" && "id" in meta) {
+      this._idmap.delete(meta.id);
+    }
+    this._map.delete(schema);
+    return this;
+  }
+  get(schema) {
+    const p = schema._zod.parent;
+    if (p) {
+      const pm = { ...this.get(p) ?? {} };
+      delete pm.id;
+      const f = { ...pm, ...this._map.get(schema) };
+      return Object.keys(f).length ? f : void 0;
+    }
+    return this._map.get(schema);
+  }
+  has(schema) {
+    return this._map.has(schema);
+  }
+}
+function registry() {
+  return new $ZodRegistry();
+}
+(_a = globalThis).__zod_globalRegistry ?? (_a.__zod_globalRegistry = registry());
+const globalRegistry = globalThis.__zod_globalRegistry;
+// @__NO_SIDE_EFFECTS__
+function _string(Class, params) {
+  return new Class({
+    type: "string",
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _email(Class, params) {
+  return new Class({
+    type: "string",
+    format: "email",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _guid(Class, params) {
+  return new Class({
+    type: "string",
+    format: "guid",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _uuid(Class, params) {
+  return new Class({
+    type: "string",
+    format: "uuid",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _uuidv4(Class, params) {
+  return new Class({
+    type: "string",
+    format: "uuid",
+    check: "string_format",
+    abort: false,
+    version: "v4",
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _uuidv6(Class, params) {
+  return new Class({
+    type: "string",
+    format: "uuid",
+    check: "string_format",
+    abort: false,
+    version: "v6",
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _uuidv7(Class, params) {
+  return new Class({
+    type: "string",
+    format: "uuid",
+    check: "string_format",
+    abort: false,
+    version: "v7",
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _url(Class, params) {
+  return new Class({
+    type: "string",
+    format: "url",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _emoji(Class, params) {
+  return new Class({
+    type: "string",
+    format: "emoji",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _nanoid(Class, params) {
+  return new Class({
+    type: "string",
+    format: "nanoid",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _cuid(Class, params) {
+  return new Class({
+    type: "string",
+    format: "cuid",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _cuid2(Class, params) {
+  return new Class({
+    type: "string",
+    format: "cuid2",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _ulid(Class, params) {
+  return new Class({
+    type: "string",
+    format: "ulid",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _xid(Class, params) {
+  return new Class({
+    type: "string",
+    format: "xid",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _ksuid(Class, params) {
+  return new Class({
+    type: "string",
+    format: "ksuid",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _ipv4(Class, params) {
+  return new Class({
+    type: "string",
+    format: "ipv4",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _ipv6(Class, params) {
+  return new Class({
+    type: "string",
+    format: "ipv6",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _cidrv4(Class, params) {
+  return new Class({
+    type: "string",
+    format: "cidrv4",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _cidrv6(Class, params) {
+  return new Class({
+    type: "string",
+    format: "cidrv6",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _base64(Class, params) {
+  return new Class({
+    type: "string",
+    format: "base64",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _base64url(Class, params) {
+  return new Class({
+    type: "string",
+    format: "base64url",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _e164(Class, params) {
+  return new Class({
+    type: "string",
+    format: "e164",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _jwt(Class, params) {
+  return new Class({
+    type: "string",
+    format: "jwt",
+    check: "string_format",
+    abort: false,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _isoDateTime(Class, params) {
+  return new Class({
+    type: "string",
+    format: "datetime",
+    check: "string_format",
+    offset: false,
+    local: false,
+    precision: null,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _isoDate(Class, params) {
+  return new Class({
+    type: "string",
+    format: "date",
+    check: "string_format",
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _isoTime(Class, params) {
+  return new Class({
+    type: "string",
+    format: "time",
+    check: "string_format",
+    precision: null,
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _isoDuration(Class, params) {
+  return new Class({
+    type: "string",
+    format: "duration",
+    check: "string_format",
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _number(Class, params) {
+  return new Class({
+    type: "number",
+    checks: [],
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _int(Class, params) {
+  return new Class({
+    type: "number",
+    check: "number_format",
+    abort: false,
+    format: "safeint",
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _boolean(Class, params) {
+  return new Class({
+    type: "boolean",
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _unknown(Class) {
+  return new Class({
+    type: "unknown"
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _never(Class, params) {
+  return new Class({
+    type: "never",
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _lt(value, params) {
+  return new $ZodCheckLessThan({
+    check: "less_than",
+    ...normalizeParams(params),
+    value,
+    inclusive: false
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _lte(value, params) {
+  return new $ZodCheckLessThan({
+    check: "less_than",
+    ...normalizeParams(params),
+    value,
+    inclusive: true
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _gt(value, params) {
+  return new $ZodCheckGreaterThan({
+    check: "greater_than",
+    ...normalizeParams(params),
+    value,
+    inclusive: false
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _gte(value, params) {
+  return new $ZodCheckGreaterThan({
+    check: "greater_than",
+    ...normalizeParams(params),
+    value,
+    inclusive: true
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _multipleOf(value, params) {
+  return new $ZodCheckMultipleOf({
+    check: "multiple_of",
+    ...normalizeParams(params),
+    value
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _maxLength(maximum, params) {
+  const ch = new $ZodCheckMaxLength({
+    check: "max_length",
+    ...normalizeParams(params),
+    maximum
+  });
+  return ch;
+}
+// @__NO_SIDE_EFFECTS__
+function _minLength(minimum, params) {
+  return new $ZodCheckMinLength({
+    check: "min_length",
+    ...normalizeParams(params),
+    minimum
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _length(length, params) {
+  return new $ZodCheckLengthEquals({
+    check: "length_equals",
+    ...normalizeParams(params),
+    length
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _regex(pattern, params) {
+  return new $ZodCheckRegex({
+    check: "string_format",
+    format: "regex",
+    ...normalizeParams(params),
+    pattern
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _lowercase(params) {
+  return new $ZodCheckLowerCase({
+    check: "string_format",
+    format: "lowercase",
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _uppercase(params) {
+  return new $ZodCheckUpperCase({
+    check: "string_format",
+    format: "uppercase",
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _includes(includes, params) {
+  return new $ZodCheckIncludes({
+    check: "string_format",
+    format: "includes",
+    ...normalizeParams(params),
+    includes
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _startsWith(prefix, params) {
+  return new $ZodCheckStartsWith({
+    check: "string_format",
+    format: "starts_with",
+    ...normalizeParams(params),
+    prefix
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _endsWith(suffix, params) {
+  return new $ZodCheckEndsWith({
+    check: "string_format",
+    format: "ends_with",
+    ...normalizeParams(params),
+    suffix
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _overwrite(tx) {
+  return new $ZodCheckOverwrite({
+    check: "overwrite",
+    tx
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _normalize(form) {
+  return /* @__PURE__ */ _overwrite((input) => input.normalize(form));
+}
+// @__NO_SIDE_EFFECTS__
+function _trim() {
+  return /* @__PURE__ */ _overwrite((input) => input.trim());
+}
+// @__NO_SIDE_EFFECTS__
+function _toLowerCase() {
+  return /* @__PURE__ */ _overwrite((input) => input.toLowerCase());
+}
+// @__NO_SIDE_EFFECTS__
+function _toUpperCase() {
+  return /* @__PURE__ */ _overwrite((input) => input.toUpperCase());
+}
+// @__NO_SIDE_EFFECTS__
+function _slugify() {
+  return /* @__PURE__ */ _overwrite((input) => slugify(input));
+}
+// @__NO_SIDE_EFFECTS__
+function _array(Class, element, params) {
+  return new Class({
+    type: "array",
+    element,
+    // get element() {
+    //   return element;
+    // },
+    ...normalizeParams(params)
+  });
+}
+// @__NO_SIDE_EFFECTS__
+function _refine(Class, fn, _params) {
+  const schema = new Class({
+    type: "custom",
+    check: "custom",
+    fn,
+    ...normalizeParams(_params)
+  });
+  return schema;
+}
+// @__NO_SIDE_EFFECTS__
+function _superRefine(fn, params) {
+  const ch = /* @__PURE__ */ _check((payload) => {
+    payload.addIssue = (issue$1) => {
+      if (typeof issue$1 === "string") {
+        payload.issues.push(issue(issue$1, payload.value, ch._zod.def));
+      } else {
+        const _issue = issue$1;
+        if (_issue.fatal)
+          _issue.continue = false;
+        _issue.code ?? (_issue.code = "custom");
+        _issue.input ?? (_issue.input = payload.value);
+        _issue.inst ?? (_issue.inst = ch);
+        _issue.continue ?? (_issue.continue = !ch._zod.def.abort);
+        payload.issues.push(issue(_issue));
+      }
+    };
+    return fn(payload.value, payload);
+  }, params);
+  return ch;
+}
+// @__NO_SIDE_EFFECTS__
+function _check(fn, params) {
+  const ch = new $ZodCheck({
+    check: "custom",
+    ...normalizeParams(params)
+  });
+  ch._zod.check = fn;
+  return ch;
+}
+function initializeContext(params) {
+  let target = params?.target ?? "draft-2020-12";
+  if (target === "draft-4")
+    target = "draft-04";
+  if (target === "draft-7")
+    target = "draft-07";
+  return {
+    processors: params.processors ?? {},
+    metadataRegistry: params?.metadata ?? globalRegistry,
+    target,
+    unrepresentable: params?.unrepresentable ?? "throw",
+    override: params?.override ?? (() => {
+    }),
+    io: params?.io ?? "output",
+    counter: 0,
+    seen: /* @__PURE__ */ new Map(),
+    cycles: params?.cycles ?? "ref",
+    reused: params?.reused ?? "inline",
+    external: params?.external ?? void 0
+  };
+}
+function process$1(schema, ctx, _params = { path: [], schemaPath: [] }) {
+  var _a2;
+  const def = schema._zod.def;
+  const seen = ctx.seen.get(schema);
+  if (seen) {
+    seen.count++;
+    const isCycle = _params.schemaPath.includes(schema);
+    if (isCycle) {
+      seen.cycle = _params.path;
+    }
+    return seen.schema;
+  }
+  const result = { schema: {}, count: 1, cycle: void 0, path: _params.path };
+  ctx.seen.set(schema, result);
+  const overrideSchema = schema._zod.toJSONSchema?.();
+  if (overrideSchema) {
+    result.schema = overrideSchema;
+  } else {
+    const params = {
+      ..._params,
+      schemaPath: [..._params.schemaPath, schema],
+      path: _params.path
+    };
+    if (schema._zod.processJSONSchema) {
+      schema._zod.processJSONSchema(ctx, result.schema, params);
+    } else {
+      const _json = result.schema;
+      const processor = ctx.processors[def.type];
+      if (!processor) {
+        throw new Error(`[toJSONSchema]: Non-representable type encountered: ${def.type}`);
+      }
+      processor(schema, ctx, _json, params);
+    }
+    const parent = schema._zod.parent;
+    if (parent) {
+      if (!result.ref)
+        result.ref = parent;
+      process$1(parent, ctx, params);
+      ctx.seen.get(parent).isParent = true;
+    }
+  }
+  const meta = ctx.metadataRegistry.get(schema);
+  if (meta)
+    Object.assign(result.schema, meta);
+  if (ctx.io === "input" && isTransforming(schema)) {
+    delete result.schema.examples;
+    delete result.schema.default;
+  }
+  if (ctx.io === "input" && "_prefault" in result.schema)
+    (_a2 = result.schema).default ?? (_a2.default = result.schema._prefault);
+  delete result.schema._prefault;
+  const _result = ctx.seen.get(schema);
+  return _result.schema;
+}
+function extractDefs(ctx, schema) {
+  const root2 = ctx.seen.get(schema);
+  if (!root2)
+    throw new Error("Unprocessed schema. This is a bug in Zod.");
+  const idToSchema = /* @__PURE__ */ new Map();
+  for (const entry of ctx.seen.entries()) {
+    const id = ctx.metadataRegistry.get(entry[0])?.id;
+    if (id) {
+      const existing = idToSchema.get(id);
+      if (existing && existing !== entry[0]) {
+        throw new Error(`Duplicate schema id "${id}" detected during JSON Schema conversion. Two different schemas cannot share the same id when converted together.`);
+      }
+      idToSchema.set(id, entry[0]);
+    }
+  }
+  const makeURI = (entry) => {
+    const defsSegment = ctx.target === "draft-2020-12" ? "$defs" : "definitions";
+    if (ctx.external) {
+      const externalId = ctx.external.registry.get(entry[0])?.id;
+      const uriGenerator = ctx.external.uri ?? ((id2) => id2);
+      if (externalId) {
+        return { ref: uriGenerator(externalId) };
+      }
+      const id = entry[1].defId ?? entry[1].schema.id ?? `schema${ctx.counter++}`;
+      entry[1].defId = id;
+      return { defId: id, ref: `${uriGenerator("__shared")}#/${defsSegment}/${id}` };
+    }
+    if (entry[1] === root2) {
+      return { ref: "#" };
+    }
+    const uriPrefix = `#`;
+    const defUriPrefix = `${uriPrefix}/${defsSegment}/`;
+    const defId = entry[1].schema.id ?? `__schema${ctx.counter++}`;
+    return { defId, ref: defUriPrefix + defId };
+  };
+  const extractToDef = (entry) => {
+    if (entry[1].schema.$ref) {
+      return;
+    }
+    const seen = entry[1];
+    const { ref, defId } = makeURI(entry);
+    seen.def = { ...seen.schema };
+    if (defId)
+      seen.defId = defId;
+    const schema2 = seen.schema;
+    for (const key in schema2) {
+      delete schema2[key];
+    }
+    schema2.$ref = ref;
+  };
+  if (ctx.cycles === "throw") {
+    for (const entry of ctx.seen.entries()) {
+      const seen = entry[1];
+      if (seen.cycle) {
+        throw new Error(`Cycle detected: #/${seen.cycle?.join("/")}/<root>
+
+Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.`);
+      }
+    }
+  }
+  for (const entry of ctx.seen.entries()) {
+    const seen = entry[1];
+    if (schema === entry[0]) {
+      extractToDef(entry);
+      continue;
+    }
+    if (ctx.external) {
+      const ext = ctx.external.registry.get(entry[0])?.id;
+      if (schema !== entry[0] && ext) {
+        extractToDef(entry);
+        continue;
+      }
+    }
+    const id = ctx.metadataRegistry.get(entry[0])?.id;
+    if (id) {
+      extractToDef(entry);
+      continue;
+    }
+    if (seen.cycle) {
+      extractToDef(entry);
+      continue;
+    }
+    if (seen.count > 1) {
+      if (ctx.reused === "ref") {
+        extractToDef(entry);
+        continue;
+      }
+    }
+  }
+}
+function finalize(ctx, schema) {
+  const root2 = ctx.seen.get(schema);
+  if (!root2)
+    throw new Error("Unprocessed schema. This is a bug in Zod.");
+  const flattenRef = (zodSchema) => {
+    const seen = ctx.seen.get(zodSchema);
+    if (seen.ref === null)
+      return;
+    const schema2 = seen.def ?? seen.schema;
+    const _cached = { ...schema2 };
+    const ref = seen.ref;
+    seen.ref = null;
+    if (ref) {
+      flattenRef(ref);
+      const refSeen = ctx.seen.get(ref);
+      const refSchema = refSeen.schema;
+      if (refSchema.$ref && (ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0")) {
+        schema2.allOf = schema2.allOf ?? [];
+        schema2.allOf.push(refSchema);
+      } else {
+        Object.assign(schema2, refSchema);
+      }
+      Object.assign(schema2, _cached);
+      const isParentRef = zodSchema._zod.parent === ref;
+      if (isParentRef) {
+        for (const key in schema2) {
+          if (key === "$ref" || key === "allOf")
+            continue;
+          if (!(key in _cached)) {
+            delete schema2[key];
+          }
+        }
+      }
+      if (refSchema.$ref && refSeen.def) {
+        for (const key in schema2) {
+          if (key === "$ref" || key === "allOf")
+            continue;
+          if (key in refSeen.def && JSON.stringify(schema2[key]) === JSON.stringify(refSeen.def[key])) {
+            delete schema2[key];
+          }
+        }
+      }
+    }
+    const parent = zodSchema._zod.parent;
+    if (parent && parent !== ref) {
+      flattenRef(parent);
+      const parentSeen = ctx.seen.get(parent);
+      if (parentSeen?.schema.$ref) {
+        schema2.$ref = parentSeen.schema.$ref;
+        if (parentSeen.def) {
+          for (const key in schema2) {
+            if (key === "$ref" || key === "allOf")
+              continue;
+            if (key in parentSeen.def && JSON.stringify(schema2[key]) === JSON.stringify(parentSeen.def[key])) {
+              delete schema2[key];
+            }
+          }
+        }
+      }
+    }
+    ctx.override({
+      zodSchema,
+      jsonSchema: schema2,
+      path: seen.path ?? []
+    });
+  };
+  for (const entry of [...ctx.seen.entries()].reverse()) {
+    flattenRef(entry[0]);
+  }
+  const result = {};
+  if (ctx.target === "draft-2020-12") {
+    result.$schema = "https://json-schema.org/draft/2020-12/schema";
+  } else if (ctx.target === "draft-07") {
+    result.$schema = "http://json-schema.org/draft-07/schema#";
+  } else if (ctx.target === "draft-04") {
+    result.$schema = "http://json-schema.org/draft-04/schema#";
+  } else if (ctx.target === "openapi-3.0") ;
+  else ;
+  if (ctx.external?.uri) {
+    const id = ctx.external.registry.get(schema)?.id;
+    if (!id)
+      throw new Error("Schema is missing an `id` property");
+    result.$id = ctx.external.uri(id);
+  }
+  Object.assign(result, root2.def ?? root2.schema);
+  const rootMetaId = ctx.metadataRegistry.get(schema)?.id;
+  if (rootMetaId !== void 0 && result.id === rootMetaId)
+    delete result.id;
+  const defs = ctx.external?.defs ?? {};
+  for (const entry of ctx.seen.entries()) {
+    const seen = entry[1];
+    if (seen.def && seen.defId) {
+      if (seen.def.id === seen.defId)
+        delete seen.def.id;
+      defs[seen.defId] = seen.def;
+    }
+  }
+  if (ctx.external) ;
+  else {
+    if (Object.keys(defs).length > 0) {
+      if (ctx.target === "draft-2020-12") {
+        result.$defs = defs;
+      } else {
+        result.definitions = defs;
+      }
+    }
+  }
+  try {
+    const finalized = JSON.parse(JSON.stringify(result));
+    Object.defineProperty(finalized, "~standard", {
+      value: {
+        ...schema["~standard"],
+        jsonSchema: {
+          input: createStandardJSONSchemaMethod(schema, "input", ctx.processors),
+          output: createStandardJSONSchemaMethod(schema, "output", ctx.processors)
+        }
+      },
+      enumerable: false,
+      writable: false
+    });
+    return finalized;
+  } catch (_err) {
+    throw new Error("Error converting schema to JSON.");
+  }
+}
+function isTransforming(_schema, _ctx) {
+  const ctx = _ctx ?? { seen: /* @__PURE__ */ new Set() };
+  if (ctx.seen.has(_schema))
+    return false;
+  ctx.seen.add(_schema);
+  const def = _schema._zod.def;
+  if (def.type === "transform")
+    return true;
+  if (def.type === "array")
+    return isTransforming(def.element, ctx);
+  if (def.type === "set")
+    return isTransforming(def.valueType, ctx);
+  if (def.type === "lazy")
+    return isTransforming(def.getter(), ctx);
+  if (def.type === "promise" || def.type === "optional" || def.type === "nonoptional" || def.type === "nullable" || def.type === "readonly" || def.type === "default" || def.type === "prefault") {
+    return isTransforming(def.innerType, ctx);
+  }
+  if (def.type === "intersection") {
+    return isTransforming(def.left, ctx) || isTransforming(def.right, ctx);
+  }
+  if (def.type === "record" || def.type === "map") {
+    return isTransforming(def.keyType, ctx) || isTransforming(def.valueType, ctx);
+  }
+  if (def.type === "pipe") {
+    if (_schema._zod.traits.has("$ZodCodec"))
+      return true;
+    return isTransforming(def.in, ctx) || isTransforming(def.out, ctx);
+  }
+  if (def.type === "object") {
+    for (const key in def.shape) {
+      if (isTransforming(def.shape[key], ctx))
+        return true;
+    }
+    return false;
+  }
+  if (def.type === "union") {
+    for (const option of def.options) {
+      if (isTransforming(option, ctx))
+        return true;
+    }
+    return false;
+  }
+  if (def.type === "tuple") {
+    for (const item of def.items) {
+      if (isTransforming(item, ctx))
+        return true;
+    }
+    if (def.rest && isTransforming(def.rest, ctx))
+      return true;
+    return false;
+  }
+  return false;
+}
+const createToJSONSchemaMethod = (schema, processors = {}) => (params) => {
+  const ctx = initializeContext({ ...params, processors });
+  process$1(schema, ctx);
+  extractDefs(ctx, schema);
+  return finalize(ctx, schema);
 };
-const HANDLE_POSITIONS = ["nw", "ne", "sw", "se", "n", "s", "e", "w"];
+const createStandardJSONSchemaMethod = (schema, io, processors = {}) => (params) => {
+  const { libraryOptions, target } = params ?? {};
+  const ctx = initializeContext({ ...libraryOptions ?? {}, target, io, processors });
+  process$1(schema, ctx);
+  extractDefs(ctx, schema);
+  return finalize(ctx, schema);
+};
+const formatMap = {
+  guid: "uuid",
+  url: "uri",
+  datetime: "date-time",
+  json_string: "json-string",
+  regex: ""
+  // do not set
+};
+const stringProcessor = (schema, ctx, _json, _params) => {
+  const json = _json;
+  json.type = "string";
+  const { minimum, maximum, format, patterns, contentEncoding } = schema._zod.bag;
+  if (typeof minimum === "number")
+    json.minLength = minimum;
+  if (typeof maximum === "number")
+    json.maxLength = maximum;
+  if (format) {
+    json.format = formatMap[format] ?? format;
+    if (json.format === "")
+      delete json.format;
+    if (format === "time") {
+      delete json.format;
+    }
+  }
+  if (contentEncoding)
+    json.contentEncoding = contentEncoding;
+  if (patterns && patterns.size > 0) {
+    const regexes = [...patterns];
+    if (regexes.length === 1)
+      json.pattern = regexes[0].source;
+    else if (regexes.length > 1) {
+      json.allOf = [
+        ...regexes.map((regex) => ({
+          ...ctx.target === "draft-07" || ctx.target === "draft-04" || ctx.target === "openapi-3.0" ? { type: "string" } : {},
+          pattern: regex.source
+        }))
+      ];
+    }
+  }
+};
+const numberProcessor = (schema, ctx, _json, _params) => {
+  const json = _json;
+  const { minimum, maximum, format, multipleOf, exclusiveMaximum, exclusiveMinimum } = schema._zod.bag;
+  if (typeof format === "string" && format.includes("int"))
+    json.type = "integer";
+  else
+    json.type = "number";
+  const exMin = typeof exclusiveMinimum === "number" && exclusiveMinimum >= (minimum ?? Number.NEGATIVE_INFINITY);
+  const exMax = typeof exclusiveMaximum === "number" && exclusiveMaximum <= (maximum ?? Number.POSITIVE_INFINITY);
+  const legacy = ctx.target === "draft-04" || ctx.target === "openapi-3.0";
+  if (exMin) {
+    if (legacy) {
+      json.minimum = exclusiveMinimum;
+      json.exclusiveMinimum = true;
+    } else {
+      json.exclusiveMinimum = exclusiveMinimum;
+    }
+  } else if (typeof minimum === "number") {
+    json.minimum = minimum;
+  }
+  if (exMax) {
+    if (legacy) {
+      json.maximum = exclusiveMaximum;
+      json.exclusiveMaximum = true;
+    } else {
+      json.exclusiveMaximum = exclusiveMaximum;
+    }
+  } else if (typeof maximum === "number") {
+    json.maximum = maximum;
+  }
+  if (typeof multipleOf === "number")
+    json.multipleOf = multipleOf;
+};
+const booleanProcessor = (_schema, _ctx, json, _params) => {
+  json.type = "boolean";
+};
+const neverProcessor = (_schema, _ctx, json, _params) => {
+  json.not = {};
+};
+const unknownProcessor = (_schema, _ctx, _json, _params) => {
+};
+const enumProcessor = (schema, _ctx, json, _params) => {
+  const def = schema._zod.def;
+  const values = getEnumValues(def.entries);
+  if (values.every((v) => typeof v === "number"))
+    json.type = "number";
+  if (values.every((v) => typeof v === "string"))
+    json.type = "string";
+  json.enum = values;
+};
+const literalProcessor = (schema, ctx, json, _params) => {
+  const def = schema._zod.def;
+  const vals = [];
+  for (const val of def.values) {
+    if (val === void 0) {
+      if (ctx.unrepresentable === "throw") {
+        throw new Error("Literal `undefined` cannot be represented in JSON Schema");
+      }
+    } else if (typeof val === "bigint") {
+      if (ctx.unrepresentable === "throw") {
+        throw new Error("BigInt literals cannot be represented in JSON Schema");
+      } else {
+        vals.push(Number(val));
+      }
+    } else {
+      vals.push(val);
+    }
+  }
+  if (vals.length === 0) ;
+  else if (vals.length === 1) {
+    const val = vals[0];
+    json.type = val === null ? "null" : typeof val;
+    if (ctx.target === "draft-04" || ctx.target === "openapi-3.0") {
+      json.enum = [val];
+    } else {
+      json.const = val;
+    }
+  } else {
+    if (vals.every((v) => typeof v === "number"))
+      json.type = "number";
+    if (vals.every((v) => typeof v === "string"))
+      json.type = "string";
+    if (vals.every((v) => typeof v === "boolean"))
+      json.type = "boolean";
+    if (vals.every((v) => v === null))
+      json.type = "null";
+    json.enum = vals;
+  }
+};
+const customProcessor = (_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("Custom types cannot be represented in JSON Schema");
+  }
+};
+const transformProcessor = (_schema, ctx, _json, _params) => {
+  if (ctx.unrepresentable === "throw") {
+    throw new Error("Transforms cannot be represented in JSON Schema");
+  }
+};
+const arrayProcessor = (schema, ctx, _json, params) => {
+  const json = _json;
+  const def = schema._zod.def;
+  const { minimum, maximum } = schema._zod.bag;
+  if (typeof minimum === "number")
+    json.minItems = minimum;
+  if (typeof maximum === "number")
+    json.maxItems = maximum;
+  json.type = "array";
+  json.items = process$1(def.element, ctx, {
+    ...params,
+    path: [...params.path, "items"]
+  });
+};
+const objectProcessor = (schema, ctx, _json, params) => {
+  const json = _json;
+  const def = schema._zod.def;
+  json.type = "object";
+  json.properties = {};
+  const shape = def.shape;
+  for (const key in shape) {
+    json.properties[key] = process$1(shape[key], ctx, {
+      ...params,
+      path: [...params.path, "properties", key]
+    });
+  }
+  const allKeys = new Set(Object.keys(shape));
+  const requiredKeys = new Set([...allKeys].filter((key) => {
+    const v = def.shape[key]._zod;
+    if (ctx.io === "input") {
+      return v.optin === void 0;
+    } else {
+      return v.optout === void 0;
+    }
+  }));
+  if (requiredKeys.size > 0) {
+    json.required = Array.from(requiredKeys);
+  }
+  if (def.catchall?._zod.def.type === "never") {
+    json.additionalProperties = false;
+  } else if (!def.catchall) {
+    if (ctx.io === "output")
+      json.additionalProperties = false;
+  } else if (def.catchall) {
+    json.additionalProperties = process$1(def.catchall, ctx, {
+      ...params,
+      path: [...params.path, "additionalProperties"]
+    });
+  }
+};
+const unionProcessor = (schema, ctx, json, params) => {
+  const def = schema._zod.def;
+  const isExclusive = def.inclusive === false;
+  const options = def.options.map((x, i) => process$1(x, ctx, {
+    ...params,
+    path: [...params.path, isExclusive ? "oneOf" : "anyOf", i]
+  }));
+  if (isExclusive) {
+    json.oneOf = options;
+  } else {
+    json.anyOf = options;
+  }
+};
+const intersectionProcessor = (schema, ctx, json, params) => {
+  const def = schema._zod.def;
+  const a = process$1(def.left, ctx, {
+    ...params,
+    path: [...params.path, "allOf", 0]
+  });
+  const b = process$1(def.right, ctx, {
+    ...params,
+    path: [...params.path, "allOf", 1]
+  });
+  const isSimpleIntersection = (val) => "allOf" in val && Object.keys(val).length === 1;
+  const allOf = [
+    ...isSimpleIntersection(a) ? a.allOf : [a],
+    ...isSimpleIntersection(b) ? b.allOf : [b]
+  ];
+  json.allOf = allOf;
+};
+const tupleProcessor = (schema, ctx, _json, params) => {
+  const json = _json;
+  const def = schema._zod.def;
+  json.type = "array";
+  const prefixPath = ctx.target === "draft-2020-12" ? "prefixItems" : "items";
+  const restPath = ctx.target === "draft-2020-12" ? "items" : ctx.target === "openapi-3.0" ? "items" : "additionalItems";
+  const prefixItems = def.items.map((x, i) => process$1(x, ctx, {
+    ...params,
+    path: [...params.path, prefixPath, i]
+  }));
+  const rest = def.rest ? process$1(def.rest, ctx, {
+    ...params,
+    path: [...params.path, restPath, ...ctx.target === "openapi-3.0" ? [def.items.length] : []]
+  }) : null;
+  if (ctx.target === "draft-2020-12") {
+    json.prefixItems = prefixItems;
+    if (rest) {
+      json.items = rest;
+    }
+  } else if (ctx.target === "openapi-3.0") {
+    json.items = {
+      anyOf: prefixItems
+    };
+    if (rest) {
+      json.items.anyOf.push(rest);
+    }
+    json.minItems = prefixItems.length;
+    if (!rest) {
+      json.maxItems = prefixItems.length;
+    }
+  } else {
+    json.items = prefixItems;
+    if (rest) {
+      json.additionalItems = rest;
+    }
+  }
+  const { minimum, maximum } = schema._zod.bag;
+  if (typeof minimum === "number")
+    json.minItems = minimum;
+  if (typeof maximum === "number")
+    json.maxItems = maximum;
+};
+const recordProcessor = (schema, ctx, _json, params) => {
+  const json = _json;
+  const def = schema._zod.def;
+  json.type = "object";
+  const keyType = def.keyType;
+  const keyBag = keyType._zod.bag;
+  const patterns = keyBag?.patterns;
+  if (def.mode === "loose" && patterns && patterns.size > 0) {
+    const valueSchema = process$1(def.valueType, ctx, {
+      ...params,
+      path: [...params.path, "patternProperties", "*"]
+    });
+    json.patternProperties = {};
+    for (const pattern of patterns) {
+      json.patternProperties[pattern.source] = valueSchema;
+    }
+  } else {
+    if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") {
+      json.propertyNames = process$1(def.keyType, ctx, {
+        ...params,
+        path: [...params.path, "propertyNames"]
+      });
+    }
+    json.additionalProperties = process$1(def.valueType, ctx, {
+      ...params,
+      path: [...params.path, "additionalProperties"]
+    });
+  }
+  const keyValues = keyType._zod.values;
+  if (keyValues) {
+    const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
+    if (validKeyValues.length > 0) {
+      json.required = validKeyValues;
+    }
+  }
+};
+const nullableProcessor = (schema, ctx, json, params) => {
+  const def = schema._zod.def;
+  const inner = process$1(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema);
+  if (ctx.target === "openapi-3.0") {
+    seen.ref = def.innerType;
+    json.nullable = true;
+  } else {
+    json.anyOf = [inner, { type: "null" }];
+  }
+};
+const nonoptionalProcessor = (schema, ctx, _json, params) => {
+  const def = schema._zod.def;
+  process$1(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema);
+  seen.ref = def.innerType;
+};
+const defaultProcessor = (schema, ctx, json, params) => {
+  const def = schema._zod.def;
+  process$1(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema);
+  seen.ref = def.innerType;
+  json.default = JSON.parse(JSON.stringify(def.defaultValue));
+};
+const prefaultProcessor = (schema, ctx, json, params) => {
+  const def = schema._zod.def;
+  process$1(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema);
+  seen.ref = def.innerType;
+  if (ctx.io === "input")
+    json._prefault = JSON.parse(JSON.stringify(def.defaultValue));
+};
+const catchProcessor = (schema, ctx, json, params) => {
+  const def = schema._zod.def;
+  process$1(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema);
+  seen.ref = def.innerType;
+  let catchValue;
+  try {
+    catchValue = def.catchValue(void 0);
+  } catch {
+    throw new Error("Dynamic catch values are not supported in JSON Schema");
+  }
+  json.default = catchValue;
+};
+const pipeProcessor = (schema, ctx, _json, params) => {
+  const def = schema._zod.def;
+  const inIsTransform = def.in._zod.traits.has("$ZodTransform");
+  const innerType = ctx.io === "input" ? inIsTransform ? def.out : def.in : def.out;
+  process$1(innerType, ctx, params);
+  const seen = ctx.seen.get(schema);
+  seen.ref = innerType;
+};
+const readonlyProcessor = (schema, ctx, json, params) => {
+  const def = schema._zod.def;
+  process$1(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema);
+  seen.ref = def.innerType;
+  json.readOnly = true;
+};
+const optionalProcessor = (schema, ctx, _json, params) => {
+  const def = schema._zod.def;
+  process$1(def.innerType, ctx, params);
+  const seen = ctx.seen.get(schema);
+  seen.ref = def.innerType;
+};
+const ZodISODateTime = /* @__PURE__ */ $constructor("ZodISODateTime", (inst, def) => {
+  $ZodISODateTime.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+function datetime(params) {
+  return /* @__PURE__ */ _isoDateTime(ZodISODateTime, params);
+}
+const ZodISODate = /* @__PURE__ */ $constructor("ZodISODate", (inst, def) => {
+  $ZodISODate.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+function date(params) {
+  return /* @__PURE__ */ _isoDate(ZodISODate, params);
+}
+const ZodISOTime = /* @__PURE__ */ $constructor("ZodISOTime", (inst, def) => {
+  $ZodISOTime.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+function time(params) {
+  return /* @__PURE__ */ _isoTime(ZodISOTime, params);
+}
+const ZodISODuration = /* @__PURE__ */ $constructor("ZodISODuration", (inst, def) => {
+  $ZodISODuration.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+function duration(params) {
+  return /* @__PURE__ */ _isoDuration(ZodISODuration, params);
+}
+const initializer = (inst, issues) => {
+  $ZodError.init(inst, issues);
+  inst.name = "ZodError";
+  Object.defineProperties(inst, {
+    format: {
+      value: (mapper) => formatError(inst, mapper)
+      // enumerable: false,
+    },
+    flatten: {
+      value: (mapper) => flattenError(inst, mapper)
+      // enumerable: false,
+    },
+    addIssue: {
+      value: (issue2) => {
+        inst.issues.push(issue2);
+        inst.message = JSON.stringify(inst.issues, jsonStringifyReplacer, 2);
+      }
+      // enumerable: false,
+    },
+    addIssues: {
+      value: (issues2) => {
+        inst.issues.push(...issues2);
+        inst.message = JSON.stringify(inst.issues, jsonStringifyReplacer, 2);
+      }
+      // enumerable: false,
+    },
+    isEmpty: {
+      get() {
+        return inst.issues.length === 0;
+      }
+      // enumerable: false,
+    }
+  });
+};
+const ZodRealError = /* @__PURE__ */ $constructor("ZodError", initializer, {
+  Parent: Error
+});
+const parse = /* @__PURE__ */ _parse(ZodRealError);
+const parseAsync = /* @__PURE__ */ _parseAsync(ZodRealError);
+const safeParse = /* @__PURE__ */ _safeParse(ZodRealError);
+const safeParseAsync = /* @__PURE__ */ _safeParseAsync(ZodRealError);
+const encode = /* @__PURE__ */ _encode(ZodRealError);
+const decode = /* @__PURE__ */ _decode(ZodRealError);
+const encodeAsync = /* @__PURE__ */ _encodeAsync(ZodRealError);
+const decodeAsync = /* @__PURE__ */ _decodeAsync(ZodRealError);
+const safeEncode = /* @__PURE__ */ _safeEncode(ZodRealError);
+const safeDecode = /* @__PURE__ */ _safeDecode(ZodRealError);
+const safeEncodeAsync = /* @__PURE__ */ _safeEncodeAsync(ZodRealError);
+const safeDecodeAsync = /* @__PURE__ */ _safeDecodeAsync(ZodRealError);
+const _installedGroups = /* @__PURE__ */ new WeakMap();
+function _installLazyMethods(inst, group, methods) {
+  const proto = Object.getPrototypeOf(inst);
+  let installed = _installedGroups.get(proto);
+  if (!installed) {
+    installed = /* @__PURE__ */ new Set();
+    _installedGroups.set(proto, installed);
+  }
+  if (installed.has(group))
+    return;
+  installed.add(group);
+  for (const key in methods) {
+    const fn = methods[key];
+    Object.defineProperty(proto, key, {
+      configurable: true,
+      enumerable: false,
+      get() {
+        const bound = fn.bind(this);
+        Object.defineProperty(this, key, {
+          configurable: true,
+          writable: true,
+          enumerable: true,
+          value: bound
+        });
+        return bound;
+      },
+      set(v) {
+        Object.defineProperty(this, key, {
+          configurable: true,
+          writable: true,
+          enumerable: true,
+          value: v
+        });
+      }
+    });
+  }
+}
+const ZodType = /* @__PURE__ */ $constructor("ZodType", (inst, def) => {
+  $ZodType.init(inst, def);
+  Object.assign(inst["~standard"], {
+    jsonSchema: {
+      input: createStandardJSONSchemaMethod(inst, "input"),
+      output: createStandardJSONSchemaMethod(inst, "output")
+    }
+  });
+  inst.toJSONSchema = createToJSONSchemaMethod(inst, {});
+  inst.def = def;
+  inst.type = def.type;
+  Object.defineProperty(inst, "_def", { value: def });
+  inst.parse = (data, params) => parse(inst, data, params, { callee: inst.parse });
+  inst.safeParse = (data, params) => safeParse(inst, data, params);
+  inst.parseAsync = async (data, params) => parseAsync(inst, data, params, { callee: inst.parseAsync });
+  inst.safeParseAsync = async (data, params) => safeParseAsync(inst, data, params);
+  inst.spa = inst.safeParseAsync;
+  inst.encode = (data, params) => encode(inst, data, params);
+  inst.decode = (data, params) => decode(inst, data, params);
+  inst.encodeAsync = async (data, params) => encodeAsync(inst, data, params);
+  inst.decodeAsync = async (data, params) => decodeAsync(inst, data, params);
+  inst.safeEncode = (data, params) => safeEncode(inst, data, params);
+  inst.safeDecode = (data, params) => safeDecode(inst, data, params);
+  inst.safeEncodeAsync = async (data, params) => safeEncodeAsync(inst, data, params);
+  inst.safeDecodeAsync = async (data, params) => safeDecodeAsync(inst, data, params);
+  _installLazyMethods(inst, "ZodType", {
+    check(...chks) {
+      const def2 = this.def;
+      return this.clone(mergeDefs(def2, {
+        checks: [
+          ...def2.checks ?? [],
+          ...chks.map((ch) => typeof ch === "function" ? { _zod: { check: ch, def: { check: "custom" }, onattach: [] } } : ch)
+        ]
+      }), { parent: true });
+    },
+    with(...chks) {
+      return this.check(...chks);
+    },
+    clone(def2, params) {
+      return clone(this, def2, params);
+    },
+    brand() {
+      return this;
+    },
+    register(reg, meta) {
+      reg.add(this, meta);
+      return this;
+    },
+    refine(check, params) {
+      return this.check(refine(check, params));
+    },
+    superRefine(refinement, params) {
+      return this.check(superRefine(refinement, params));
+    },
+    overwrite(fn) {
+      return this.check(/* @__PURE__ */ _overwrite(fn));
+    },
+    optional() {
+      return optional(this);
+    },
+    exactOptional() {
+      return exactOptional(this);
+    },
+    nullable() {
+      return nullable(this);
+    },
+    nullish() {
+      return optional(nullable(this));
+    },
+    nonoptional(params) {
+      return nonoptional(this, params);
+    },
+    array() {
+      return array(this);
+    },
+    or(arg) {
+      return union([this, arg]);
+    },
+    and(arg) {
+      return intersection(this, arg);
+    },
+    transform(tx) {
+      return pipe(this, transform(tx));
+    },
+    default(d) {
+      return _default(this, d);
+    },
+    prefault(d) {
+      return prefault(this, d);
+    },
+    catch(params) {
+      return _catch(this, params);
+    },
+    pipe(target) {
+      return pipe(this, target);
+    },
+    readonly() {
+      return readonly(this);
+    },
+    describe(description) {
+      const cl = this.clone();
+      globalRegistry.add(cl, { description });
+      return cl;
+    },
+    meta(...args) {
+      if (args.length === 0)
+        return globalRegistry.get(this);
+      const cl = this.clone();
+      globalRegistry.add(cl, args[0]);
+      return cl;
+    },
+    isOptional() {
+      return this.safeParse(void 0).success;
+    },
+    isNullable() {
+      return this.safeParse(null).success;
+    },
+    apply(fn) {
+      return fn(this);
+    }
+  });
+  Object.defineProperty(inst, "description", {
+    get() {
+      return globalRegistry.get(inst)?.description;
+    },
+    configurable: true
+  });
+  return inst;
+});
+const _ZodString = /* @__PURE__ */ $constructor("_ZodString", (inst, def) => {
+  $ZodString.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => stringProcessor(inst, ctx, json);
+  const bag = inst._zod.bag;
+  inst.format = bag.format ?? null;
+  inst.minLength = bag.minimum ?? null;
+  inst.maxLength = bag.maximum ?? null;
+  _installLazyMethods(inst, "_ZodString", {
+    regex(...args) {
+      return this.check(/* @__PURE__ */ _regex(...args));
+    },
+    includes(...args) {
+      return this.check(/* @__PURE__ */ _includes(...args));
+    },
+    startsWith(...args) {
+      return this.check(/* @__PURE__ */ _startsWith(...args));
+    },
+    endsWith(...args) {
+      return this.check(/* @__PURE__ */ _endsWith(...args));
+    },
+    min(...args) {
+      return this.check(/* @__PURE__ */ _minLength(...args));
+    },
+    max(...args) {
+      return this.check(/* @__PURE__ */ _maxLength(...args));
+    },
+    length(...args) {
+      return this.check(/* @__PURE__ */ _length(...args));
+    },
+    nonempty(...args) {
+      return this.check(/* @__PURE__ */ _minLength(1, ...args));
+    },
+    lowercase(params) {
+      return this.check(/* @__PURE__ */ _lowercase(params));
+    },
+    uppercase(params) {
+      return this.check(/* @__PURE__ */ _uppercase(params));
+    },
+    trim() {
+      return this.check(/* @__PURE__ */ _trim());
+    },
+    normalize(...args) {
+      return this.check(/* @__PURE__ */ _normalize(...args));
+    },
+    toLowerCase() {
+      return this.check(/* @__PURE__ */ _toLowerCase());
+    },
+    toUpperCase() {
+      return this.check(/* @__PURE__ */ _toUpperCase());
+    },
+    slugify() {
+      return this.check(/* @__PURE__ */ _slugify());
+    }
+  });
+});
+const ZodString = /* @__PURE__ */ $constructor("ZodString", (inst, def) => {
+  $ZodString.init(inst, def);
+  _ZodString.init(inst, def);
+  inst.email = (params) => inst.check(/* @__PURE__ */ _email(ZodEmail, params));
+  inst.url = (params) => inst.check(/* @__PURE__ */ _url(ZodURL, params));
+  inst.jwt = (params) => inst.check(/* @__PURE__ */ _jwt(ZodJWT, params));
+  inst.emoji = (params) => inst.check(/* @__PURE__ */ _emoji(ZodEmoji, params));
+  inst.guid = (params) => inst.check(/* @__PURE__ */ _guid(ZodGUID, params));
+  inst.uuid = (params) => inst.check(/* @__PURE__ */ _uuid(ZodUUID, params));
+  inst.uuidv4 = (params) => inst.check(/* @__PURE__ */ _uuidv4(ZodUUID, params));
+  inst.uuidv6 = (params) => inst.check(/* @__PURE__ */ _uuidv6(ZodUUID, params));
+  inst.uuidv7 = (params) => inst.check(/* @__PURE__ */ _uuidv7(ZodUUID, params));
+  inst.nanoid = (params) => inst.check(/* @__PURE__ */ _nanoid(ZodNanoID, params));
+  inst.guid = (params) => inst.check(/* @__PURE__ */ _guid(ZodGUID, params));
+  inst.cuid = (params) => inst.check(/* @__PURE__ */ _cuid(ZodCUID, params));
+  inst.cuid2 = (params) => inst.check(/* @__PURE__ */ _cuid2(ZodCUID2, params));
+  inst.ulid = (params) => inst.check(/* @__PURE__ */ _ulid(ZodULID, params));
+  inst.base64 = (params) => inst.check(/* @__PURE__ */ _base64(ZodBase64, params));
+  inst.base64url = (params) => inst.check(/* @__PURE__ */ _base64url(ZodBase64URL, params));
+  inst.xid = (params) => inst.check(/* @__PURE__ */ _xid(ZodXID, params));
+  inst.ksuid = (params) => inst.check(/* @__PURE__ */ _ksuid(ZodKSUID, params));
+  inst.ipv4 = (params) => inst.check(/* @__PURE__ */ _ipv4(ZodIPv4, params));
+  inst.ipv6 = (params) => inst.check(/* @__PURE__ */ _ipv6(ZodIPv6, params));
+  inst.cidrv4 = (params) => inst.check(/* @__PURE__ */ _cidrv4(ZodCIDRv4, params));
+  inst.cidrv6 = (params) => inst.check(/* @__PURE__ */ _cidrv6(ZodCIDRv6, params));
+  inst.e164 = (params) => inst.check(/* @__PURE__ */ _e164(ZodE164, params));
+  inst.datetime = (params) => inst.check(datetime(params));
+  inst.date = (params) => inst.check(date(params));
+  inst.time = (params) => inst.check(time(params));
+  inst.duration = (params) => inst.check(duration(params));
+});
+function string(params) {
+  return /* @__PURE__ */ _string(ZodString, params);
+}
+const ZodStringFormat = /* @__PURE__ */ $constructor("ZodStringFormat", (inst, def) => {
+  $ZodStringFormat.init(inst, def);
+  _ZodString.init(inst, def);
+});
+const ZodEmail = /* @__PURE__ */ $constructor("ZodEmail", (inst, def) => {
+  $ZodEmail.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodGUID = /* @__PURE__ */ $constructor("ZodGUID", (inst, def) => {
+  $ZodGUID.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodUUID = /* @__PURE__ */ $constructor("ZodUUID", (inst, def) => {
+  $ZodUUID.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodURL = /* @__PURE__ */ $constructor("ZodURL", (inst, def) => {
+  $ZodURL.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodEmoji = /* @__PURE__ */ $constructor("ZodEmoji", (inst, def) => {
+  $ZodEmoji.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodNanoID = /* @__PURE__ */ $constructor("ZodNanoID", (inst, def) => {
+  $ZodNanoID.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodCUID = /* @__PURE__ */ $constructor("ZodCUID", (inst, def) => {
+  $ZodCUID.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodCUID2 = /* @__PURE__ */ $constructor("ZodCUID2", (inst, def) => {
+  $ZodCUID2.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodULID = /* @__PURE__ */ $constructor("ZodULID", (inst, def) => {
+  $ZodULID.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodXID = /* @__PURE__ */ $constructor("ZodXID", (inst, def) => {
+  $ZodXID.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodKSUID = /* @__PURE__ */ $constructor("ZodKSUID", (inst, def) => {
+  $ZodKSUID.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodIPv4 = /* @__PURE__ */ $constructor("ZodIPv4", (inst, def) => {
+  $ZodIPv4.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodIPv6 = /* @__PURE__ */ $constructor("ZodIPv6", (inst, def) => {
+  $ZodIPv6.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodCIDRv4 = /* @__PURE__ */ $constructor("ZodCIDRv4", (inst, def) => {
+  $ZodCIDRv4.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodCIDRv6 = /* @__PURE__ */ $constructor("ZodCIDRv6", (inst, def) => {
+  $ZodCIDRv6.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodBase64 = /* @__PURE__ */ $constructor("ZodBase64", (inst, def) => {
+  $ZodBase64.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodBase64URL = /* @__PURE__ */ $constructor("ZodBase64URL", (inst, def) => {
+  $ZodBase64URL.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodE164 = /* @__PURE__ */ $constructor("ZodE164", (inst, def) => {
+  $ZodE164.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodJWT = /* @__PURE__ */ $constructor("ZodJWT", (inst, def) => {
+  $ZodJWT.init(inst, def);
+  ZodStringFormat.init(inst, def);
+});
+const ZodNumber = /* @__PURE__ */ $constructor("ZodNumber", (inst, def) => {
+  $ZodNumber.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => numberProcessor(inst, ctx, json);
+  _installLazyMethods(inst, "ZodNumber", {
+    gt(value, params) {
+      return this.check(/* @__PURE__ */ _gt(value, params));
+    },
+    gte(value, params) {
+      return this.check(/* @__PURE__ */ _gte(value, params));
+    },
+    min(value, params) {
+      return this.check(/* @__PURE__ */ _gte(value, params));
+    },
+    lt(value, params) {
+      return this.check(/* @__PURE__ */ _lt(value, params));
+    },
+    lte(value, params) {
+      return this.check(/* @__PURE__ */ _lte(value, params));
+    },
+    max(value, params) {
+      return this.check(/* @__PURE__ */ _lte(value, params));
+    },
+    int(params) {
+      return this.check(int(params));
+    },
+    safe(params) {
+      return this.check(int(params));
+    },
+    positive(params) {
+      return this.check(/* @__PURE__ */ _gt(0, params));
+    },
+    nonnegative(params) {
+      return this.check(/* @__PURE__ */ _gte(0, params));
+    },
+    negative(params) {
+      return this.check(/* @__PURE__ */ _lt(0, params));
+    },
+    nonpositive(params) {
+      return this.check(/* @__PURE__ */ _lte(0, params));
+    },
+    multipleOf(value, params) {
+      return this.check(/* @__PURE__ */ _multipleOf(value, params));
+    },
+    step(value, params) {
+      return this.check(/* @__PURE__ */ _multipleOf(value, params));
+    },
+    finite() {
+      return this;
+    }
+  });
+  const bag = inst._zod.bag;
+  inst.minValue = Math.max(bag.minimum ?? Number.NEGATIVE_INFINITY, bag.exclusiveMinimum ?? Number.NEGATIVE_INFINITY) ?? null;
+  inst.maxValue = Math.min(bag.maximum ?? Number.POSITIVE_INFINITY, bag.exclusiveMaximum ?? Number.POSITIVE_INFINITY) ?? null;
+  inst.isInt = (bag.format ?? "").includes("int") || Number.isSafeInteger(bag.multipleOf ?? 0.5);
+  inst.isFinite = true;
+  inst.format = bag.format ?? null;
+});
+function number(params) {
+  return /* @__PURE__ */ _number(ZodNumber, params);
+}
+const ZodNumberFormat = /* @__PURE__ */ $constructor("ZodNumberFormat", (inst, def) => {
+  $ZodNumberFormat.init(inst, def);
+  ZodNumber.init(inst, def);
+});
+function int(params) {
+  return /* @__PURE__ */ _int(ZodNumberFormat, params);
+}
+const ZodBoolean = /* @__PURE__ */ $constructor("ZodBoolean", (inst, def) => {
+  $ZodBoolean.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => booleanProcessor(inst, ctx, json);
+});
+function boolean(params) {
+  return /* @__PURE__ */ _boolean(ZodBoolean, params);
+}
+const ZodUnknown = /* @__PURE__ */ $constructor("ZodUnknown", (inst, def) => {
+  $ZodUnknown.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => unknownProcessor();
+});
+function unknown() {
+  return /* @__PURE__ */ _unknown(ZodUnknown);
+}
+const ZodNever = /* @__PURE__ */ $constructor("ZodNever", (inst, def) => {
+  $ZodNever.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => neverProcessor(inst, ctx, json);
+});
+function never(params) {
+  return /* @__PURE__ */ _never(ZodNever, params);
+}
+const ZodArray = /* @__PURE__ */ $constructor("ZodArray", (inst, def) => {
+  $ZodArray.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => arrayProcessor(inst, ctx, json, params);
+  inst.element = def.element;
+  _installLazyMethods(inst, "ZodArray", {
+    min(n, params) {
+      return this.check(/* @__PURE__ */ _minLength(n, params));
+    },
+    nonempty(params) {
+      return this.check(/* @__PURE__ */ _minLength(1, params));
+    },
+    max(n, params) {
+      return this.check(/* @__PURE__ */ _maxLength(n, params));
+    },
+    length(n, params) {
+      return this.check(/* @__PURE__ */ _length(n, params));
+    },
+    unwrap() {
+      return this.element;
+    }
+  });
+});
+function array(element, params) {
+  return /* @__PURE__ */ _array(ZodArray, element, params);
+}
+const ZodObject = /* @__PURE__ */ $constructor("ZodObject", (inst, def) => {
+  $ZodObjectJIT.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => objectProcessor(inst, ctx, json, params);
+  defineLazy(inst, "shape", () => {
+    return def.shape;
+  });
+  _installLazyMethods(inst, "ZodObject", {
+    keyof() {
+      return _enum(Object.keys(this._zod.def.shape));
+    },
+    catchall(catchall) {
+      return this.clone({ ...this._zod.def, catchall });
+    },
+    passthrough() {
+      return this.clone({ ...this._zod.def, catchall: unknown() });
+    },
+    loose() {
+      return this.clone({ ...this._zod.def, catchall: unknown() });
+    },
+    strict() {
+      return this.clone({ ...this._zod.def, catchall: never() });
+    },
+    strip() {
+      return this.clone({ ...this._zod.def, catchall: void 0 });
+    },
+    extend(incoming) {
+      return extend(this, incoming);
+    },
+    safeExtend(incoming) {
+      return safeExtend(this, incoming);
+    },
+    merge(other) {
+      return merge(this, other);
+    },
+    pick(mask) {
+      return pick(this, mask);
+    },
+    omit(mask) {
+      return omit(this, mask);
+    },
+    partial(...args) {
+      return partial(ZodOptional, this, args[0]);
+    },
+    required(...args) {
+      return required(ZodNonOptional, this, args[0]);
+    }
+  });
+});
+function object(shape, params) {
+  const def = {
+    type: "object",
+    shape: shape ?? {},
+    ...normalizeParams(params)
+  };
+  return new ZodObject(def);
+}
+const ZodUnion = /* @__PURE__ */ $constructor("ZodUnion", (inst, def) => {
+  $ZodUnion.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => unionProcessor(inst, ctx, json, params);
+  inst.options = def.options;
+});
+function union(options, params) {
+  return new ZodUnion({
+    type: "union",
+    options,
+    ...normalizeParams(params)
+  });
+}
+const ZodIntersection = /* @__PURE__ */ $constructor("ZodIntersection", (inst, def) => {
+  $ZodIntersection.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => intersectionProcessor(inst, ctx, json, params);
+});
+function intersection(left, right) {
+  return new ZodIntersection({
+    type: "intersection",
+    left,
+    right
+  });
+}
+const ZodTuple = /* @__PURE__ */ $constructor("ZodTuple", (inst, def) => {
+  $ZodTuple.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => tupleProcessor(inst, ctx, json, params);
+  inst.rest = (rest) => inst.clone({
+    ...inst._zod.def,
+    rest
+  });
+});
+function tuple(items, _paramsOrRest, _params) {
+  const hasRest = _paramsOrRest instanceof $ZodType;
+  const params = hasRest ? _params : _paramsOrRest;
+  const rest = hasRest ? _paramsOrRest : null;
+  return new ZodTuple({
+    type: "tuple",
+    items,
+    rest,
+    ...normalizeParams(params)
+  });
+}
+const ZodRecord = /* @__PURE__ */ $constructor("ZodRecord", (inst, def) => {
+  $ZodRecord.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => recordProcessor(inst, ctx, json, params);
+  inst.keyType = def.keyType;
+  inst.valueType = def.valueType;
+});
+function record(keyType, valueType, params) {
+  if (!valueType || !valueType._zod) {
+    return new ZodRecord({
+      type: "record",
+      keyType: string(),
+      valueType: keyType,
+      ...normalizeParams(valueType)
+    });
+  }
+  return new ZodRecord({
+    type: "record",
+    keyType,
+    valueType,
+    ...normalizeParams(params)
+  });
+}
+const ZodEnum = /* @__PURE__ */ $constructor("ZodEnum", (inst, def) => {
+  $ZodEnum.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => enumProcessor(inst, ctx, json);
+  inst.enum = def.entries;
+  inst.options = Object.values(def.entries);
+  const keys = new Set(Object.keys(def.entries));
+  inst.extract = (values, params) => {
+    const newEntries = {};
+    for (const value of values) {
+      if (keys.has(value)) {
+        newEntries[value] = def.entries[value];
+      } else
+        throw new Error(`Key ${value} not found in enum`);
+    }
+    return new ZodEnum({
+      ...def,
+      checks: [],
+      ...normalizeParams(params),
+      entries: newEntries
+    });
+  };
+  inst.exclude = (values, params) => {
+    const newEntries = { ...def.entries };
+    for (const value of values) {
+      if (keys.has(value)) {
+        delete newEntries[value];
+      } else
+        throw new Error(`Key ${value} not found in enum`);
+    }
+    return new ZodEnum({
+      ...def,
+      checks: [],
+      ...normalizeParams(params),
+      entries: newEntries
+    });
+  };
+});
+function _enum(values, params) {
+  const entries = Array.isArray(values) ? Object.fromEntries(values.map((v) => [v, v])) : values;
+  return new ZodEnum({
+    type: "enum",
+    entries,
+    ...normalizeParams(params)
+  });
+}
+const ZodLiteral = /* @__PURE__ */ $constructor("ZodLiteral", (inst, def) => {
+  $ZodLiteral.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => literalProcessor(inst, ctx, json);
+  inst.values = new Set(def.values);
+  Object.defineProperty(inst, "value", {
+    get() {
+      if (def.values.length > 1) {
+        throw new Error("This schema contains multiple valid literal values. Use `.values` instead.");
+      }
+      return def.values[0];
+    }
+  });
+});
+function literal(value, params) {
+  return new ZodLiteral({
+    type: "literal",
+    values: Array.isArray(value) ? value : [value],
+    ...normalizeParams(params)
+  });
+}
+const ZodTransform = /* @__PURE__ */ $constructor("ZodTransform", (inst, def) => {
+  $ZodTransform.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => transformProcessor(inst, ctx);
+  inst._zod.parse = (payload, _ctx) => {
+    if (_ctx.direction === "backward") {
+      throw new $ZodEncodeError(inst.constructor.name);
+    }
+    payload.addIssue = (issue$1) => {
+      if (typeof issue$1 === "string") {
+        payload.issues.push(issue(issue$1, payload.value, def));
+      } else {
+        const _issue = issue$1;
+        if (_issue.fatal)
+          _issue.continue = false;
+        _issue.code ?? (_issue.code = "custom");
+        _issue.input ?? (_issue.input = payload.value);
+        _issue.inst ?? (_issue.inst = inst);
+        payload.issues.push(issue(_issue));
+      }
+    };
+    const output = def.transform(payload.value, payload);
+    if (output instanceof Promise) {
+      return output.then((output2) => {
+        payload.value = output2;
+        payload.fallback = true;
+        return payload;
+      });
+    }
+    payload.value = output;
+    payload.fallback = true;
+    return payload;
+  };
+});
+function transform(fn) {
+  return new ZodTransform({
+    type: "transform",
+    transform: fn
+  });
+}
+const ZodOptional = /* @__PURE__ */ $constructor("ZodOptional", (inst, def) => {
+  $ZodOptional.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => optionalProcessor(inst, ctx, json, params);
+  inst.unwrap = () => inst._zod.def.innerType;
+});
+function optional(innerType) {
+  return new ZodOptional({
+    type: "optional",
+    innerType
+  });
+}
+const ZodExactOptional = /* @__PURE__ */ $constructor("ZodExactOptional", (inst, def) => {
+  $ZodExactOptional.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => optionalProcessor(inst, ctx, json, params);
+  inst.unwrap = () => inst._zod.def.innerType;
+});
+function exactOptional(innerType) {
+  return new ZodExactOptional({
+    type: "optional",
+    innerType
+  });
+}
+const ZodNullable = /* @__PURE__ */ $constructor("ZodNullable", (inst, def) => {
+  $ZodNullable.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => nullableProcessor(inst, ctx, json, params);
+  inst.unwrap = () => inst._zod.def.innerType;
+});
+function nullable(innerType) {
+  return new ZodNullable({
+    type: "nullable",
+    innerType
+  });
+}
+const ZodDefault = /* @__PURE__ */ $constructor("ZodDefault", (inst, def) => {
+  $ZodDefault.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => defaultProcessor(inst, ctx, json, params);
+  inst.unwrap = () => inst._zod.def.innerType;
+  inst.removeDefault = inst.unwrap;
+});
+function _default(innerType, defaultValue) {
+  return new ZodDefault({
+    type: "default",
+    innerType,
+    get defaultValue() {
+      return typeof defaultValue === "function" ? defaultValue() : shallowClone(defaultValue);
+    }
+  });
+}
+const ZodPrefault = /* @__PURE__ */ $constructor("ZodPrefault", (inst, def) => {
+  $ZodPrefault.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => prefaultProcessor(inst, ctx, json, params);
+  inst.unwrap = () => inst._zod.def.innerType;
+});
+function prefault(innerType, defaultValue) {
+  return new ZodPrefault({
+    type: "prefault",
+    innerType,
+    get defaultValue() {
+      return typeof defaultValue === "function" ? defaultValue() : shallowClone(defaultValue);
+    }
+  });
+}
+const ZodNonOptional = /* @__PURE__ */ $constructor("ZodNonOptional", (inst, def) => {
+  $ZodNonOptional.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => nonoptionalProcessor(inst, ctx, json, params);
+  inst.unwrap = () => inst._zod.def.innerType;
+});
+function nonoptional(innerType, params) {
+  return new ZodNonOptional({
+    type: "nonoptional",
+    innerType,
+    ...normalizeParams(params)
+  });
+}
+const ZodCatch = /* @__PURE__ */ $constructor("ZodCatch", (inst, def) => {
+  $ZodCatch.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => catchProcessor(inst, ctx, json, params);
+  inst.unwrap = () => inst._zod.def.innerType;
+  inst.removeCatch = inst.unwrap;
+});
+function _catch(innerType, catchValue) {
+  return new ZodCatch({
+    type: "catch",
+    innerType,
+    catchValue: typeof catchValue === "function" ? catchValue : () => catchValue
+  });
+}
+const ZodPipe = /* @__PURE__ */ $constructor("ZodPipe", (inst, def) => {
+  $ZodPipe.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => pipeProcessor(inst, ctx, json, params);
+  inst.in = def.in;
+  inst.out = def.out;
+});
+function pipe(in_, out) {
+  return new ZodPipe({
+    type: "pipe",
+    in: in_,
+    out
+    // ...util.normalizeParams(params),
+  });
+}
+const ZodReadonly = /* @__PURE__ */ $constructor("ZodReadonly", (inst, def) => {
+  $ZodReadonly.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => readonlyProcessor(inst, ctx, json, params);
+  inst.unwrap = () => inst._zod.def.innerType;
+});
+function readonly(innerType) {
+  return new ZodReadonly({
+    type: "readonly",
+    innerType
+  });
+}
+const ZodCustom = /* @__PURE__ */ $constructor("ZodCustom", (inst, def) => {
+  $ZodCustom.init(inst, def);
+  ZodType.init(inst, def);
+  inst._zod.processJSONSchema = (ctx, json, params) => customProcessor(inst, ctx);
+});
+function refine(fn, _params = {}) {
+  return /* @__PURE__ */ _refine(ZodCustom, fn, _params);
+}
+function superRefine(fn, params) {
+  return /* @__PURE__ */ _superRefine(fn, params);
+}
+const SCHEMA_VERSION = 1;
+const SHA256$2 = /^[a-f0-9]{64}$/;
+const CleanPlateChecksSchema = object({
+  size: object({
+    width: number().int().positive(),
+    height: number().int().positive(),
+    expectedWidth: number().int().positive(),
+    expectedHeight: number().int().positive(),
+    ok: boolean(),
+    aspectRatioOk: boolean()
+  }),
+  // 文字残留：在原 mask 字形区域内，clean 结果仍匹配前景色的像素数。
+  textResidue: object({
+    maskedPixels: number().int().nonnegative(),
+    residualForegroundPixels: number().int().nonnegative(),
+    residualRatio: number().min(0)
+  }),
+  // mask 外差异：非字形区域应与源图一致（尺寸归一后比对）。
+  outsideMaskDiff: object({
+    comparedPixels: number().int().nonnegative(),
+    changedPixels: number().int().nonnegative(),
+    changedRatio: number().min(0),
+    meanDelta: number().min(0),
+    threshold: number().int().nonnegative()
+  }),
+  // 容器完整性：字形四周紧邻环（容器填充/边框所在）应基本不变。
+  containerRingDiff: object({
+    ringPixels: number().int().nonnegative(),
+    changedPixels: number().int().nonnegative(),
+    changedRatio: number().min(0)
+  })
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  attemptId: string().min(1),
+  model: string().min(1),
+  promptVersion: string().min(1),
+  size: string().min(1),
+  quality: string().min(1),
+  outputFormat: string().min(1),
+  sourceImageSha256: string().regex(SHA256$2),
+  maskSha256: string().regex(SHA256$2),
+  reviewDocumentSha256: string().regex(SHA256$2),
+  resultSha256: string().regex(SHA256$2),
+  requestId: string().min(1).nullable(),
+  usage: record(string(), unknown()).nullable(),
+  durationMs: number().int().nonnegative().nullable(),
+  checks: CleanPlateChecksSchema
+});
+const BoundingBoxPxSchema = object({
+  x: number().finite().nonnegative(),
+  y: number().finite().nonnegative(),
+  width: number().finite().positive(),
+  height: number().finite().positive()
+});
+const PointPxSchema = object({
+  x: number().finite().nonnegative(),
+  y: number().finite().nonnegative()
+});
+const QuadPxSchema = tuple([
+  PointPxSchema,
+  PointPxSchema,
+  PointPxSchema,
+  PointPxSchema
+]);
+const GlyphHintSchema = object({
+  text: string().min(1),
+  quadPx: QuadPxSchema
+});
+const TextBlockSourceSchema = object({
+  kind: _enum([
+    "offline_ocr",
+    "cloud_vision",
+    "reference_text",
+    "ai_text_assist",
+    "manual"
+  ]),
+  provider: string().min(1),
+  text: string().min(1),
+  confidence: number().min(0).max(1).nullable()
+});
+const StageStatusSchema = _enum([
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "interrupted"
+]);
+const StageRecordSchema = object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  stage: string().min(1),
+  status: StageStatusSchema,
+  inputHash: string().min(1),
+  attempt: number().int().positive(),
+  provider: string().min(1),
+  providerVersion: string().min(1),
+  startedAt: string().datetime().nullable(),
+  endedAt: string().datetime().nullable(),
+  error: string().nullable(),
+  assetPaths: array(string().min(1))
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  slideId: string().min(1),
+  sourceImage: object({
+    path: string().min(1),
+    sha256: string().regex(/^[a-f0-9]{64}$/),
+    width: number().int().positive(),
+    height: number().int().positive()
+  }),
+  stages: array(StageRecordSchema),
+  textBlocksPath: string().min(1).nullable()
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  provider: literal("apple-vision"),
+  image: object({
+    width: number().int().positive(),
+    height: number().int().positive()
+  }),
+  blocks: array(object({
+    id: string().min(1),
+    text: string().min(1),
+    bboxPx: BoundingBoxPxSchema,
+    confidence: number().min(0).max(1),
+    rotationDeg: number().finite().nullable(),
+    glyphHints: array(GlyphHintSchema).default([])
+  }))
+});
+const DoctorCheckSchema = object({
+  id: string().min(1),
+  label: string().min(1),
+  status: _enum(["pass", "warn", "fail"]),
+  message: string().min(1),
+  details: record(string(), unknown()).optional()
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  generatedAt: string().datetime(),
+  checks: array(DoctorCheckSchema),
+  summary: object({
+    pass: number().int().nonnegative(),
+    warn: number().int().nonnegative(),
+    fail: number().int().nonnegative()
+  })
+});
+const SHA256_PATTERN = /^[a-f0-9]{64}$/;
+const SlideStageSchema = _enum([
+  "init",
+  "ocr",
+  "review",
+  "assist-review",
+  "mask",
+  "clean",
+  "accept-clean",
+  "pptx",
+  "accept-pptx",
+  "report"
+]);
+const WorkspaceStageStatusSchema = _enum([
+  "pending",
+  "running",
+  "completed",
+  "failed",
+  "interrupted",
+  "stale"
+]);
+const WorkspaceRelativePathSchema = string().min(1).refine((value) => !value.startsWith("/"), "路径必须是工作区相对路径").refine((value) => !value.includes("\\"), "路径必须使用正斜杠").refine((value) => !/^[a-z]:/iu.test(value), "路径不得包含盘符").refine((value) => !value.split("/").includes(".."), "路径不得离开工作区");
+const WorkspaceAssetSchema = object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  id: string().min(1),
+  path: WorkspaceRelativePathSchema,
+  role: _enum([
+    "source_image",
+    "reference_text",
+    "ocr_result",
+    "assist_review_result",
+    "text_review",
+    "review_validation",
+    "mask",
+    "mask_preview",
+    "mask_overlay",
+    "mask_record",
+    "clean_plate",
+    "clean_record",
+    "clean_check",
+    "clean_acceptance",
+    "pptx",
+    "pptx_check",
+    "pptx_record",
+    "pptx_acceptance",
+    "report",
+    "provider_record",
+    "provider_response"
+  ]),
+  sha256: string().regex(SHA256_PATTERN),
+  byteSize: number().int().nonnegative(),
+  createdAt: string().datetime(),
+  producedBy: SlideStageSchema,
+  attemptId: string().min(1),
+  image: object({
+    width: number().int().positive(),
+    height: number().int().positive(),
+    format: _enum(["png", "jpg", "jpeg"])
+  }).nullable()
+});
+const WorkspaceStageStateSchema = object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  stage: SlideStageSchema,
+  status: WorkspaceStageStatusSchema,
+  latestAttemptId: string().min(1).nullable(),
+  lastSuccessfulAttemptId: string().min(1).nullable(),
+  completedInputFingerprint: string().regex(SHA256_PATTERN).nullable(),
+  invalidatedAt: string().datetime().nullable(),
+  invalidationReason: string().min(1).nullable()
+});
+const WorkspaceStageAttemptSchema = object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  id: string().min(1),
+  stage: SlideStageSchema,
+  number: number().int().positive(),
+  status: _enum(["running", "completed", "failed", "interrupted"]),
+  inputFingerprint: string().regex(SHA256_PATTERN),
+  startedAt: string().datetime(),
+  endedAt: string().datetime().nullable(),
+  provider: string().min(1).nullable(),
+  providerVersion: string().min(1).nullable(),
+  assetIds: array(string().min(1)),
+  error: object({
+    code: string().min(1),
+    message: string().min(1),
+    details: record(string(), unknown()).optional()
+  }).nullable()
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  id: string().min(1),
+  stage: _enum(["assist-review", "clean"]),
+  provider: literal("openai"),
+  endpoint: string().min(1),
+  model: string().min(1),
+  parameters: record(string(), unknown()),
+  promptVersion: string().min(1),
+  sentAssets: array(object({
+    path: WorkspaceRelativePathSchema,
+    sha256: string().regex(SHA256_PATTERN)
+  })),
+  requestId: string().min(1).nullable(),
+  startedAt: string().datetime(),
+  endedAt: string().datetime().nullable(),
+  durationMs: number().int().nonnegative().nullable(),
+  usage: record(string(), unknown()).nullable(),
+  error: object({
+    code: string().min(1),
+    message: string().min(1)
+  }).nullable(),
+  rawResponsePath: WorkspaceRelativePathSchema.nullable(),
+  rawResponseSha256: string().regex(SHA256_PATTERN).nullable(),
+  parsedResponsePath: WorkspaceRelativePathSchema.nullable(),
+  parsedResponseSha256: string().regex(SHA256_PATTERN).nullable()
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  id: string().min(1),
+  stage: _enum(["accept-clean", "accept-pptx"]),
+  artifactAssetId: string().min(1),
+  artifactSha256: string().regex(SHA256_PATTERN),
+  upstreamFingerprint: string().regex(SHA256_PATTERN),
+  acceptedAt: string().datetime(),
+  acceptedBy: string().min(1),
+  note: string(),
+  checklist: record(string(), boolean())
+});
+const StageValidationReportSchema = object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  stage: SlideStageSchema,
+  status: _enum(["passed", "failed", "not_run"]),
+  checks: array(object({
+    id: string().min(1),
+    status: _enum(["passed", "failed", "warning", "not_run"]),
+    message: string().min(1),
+    details: record(string(), unknown()).optional()
+  }))
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  slideId: string().min(1),
+  generatedAt: string().datetime(),
+  status: _enum(["passed", "failed", "incomplete"]),
+  stages: array(StageValidationReportSchema),
+  cleanAcceptanceId: string().min(1).nullable(),
+  pptxAcceptanceId: string().min(1).nullable(),
+  reviewDurationMs: number().int().nonnegative().nullable()
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  slideId: string().min(1),
+  aspectRatio: literal("16:9"),
+  fontFace: literal("Microsoft YaHei"),
+  cloudCalls: literal("explicit_only"),
+  sourceImagePath: WorkspaceRelativePathSchema,
+  referenceTextPath: WorkspaceRelativePathSchema.nullable()
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  workspaceVersion: literal(1),
+  slideId: string().min(1),
+  createdAt: string().datetime(),
+  updatedAt: string().datetime(),
+  configPath: WorkspaceRelativePathSchema,
+  sourceImageAssetId: string().min(1),
+  referenceTextAssetId: string().min(1).nullable(),
+  assets: array(WorkspaceAssetSchema),
+  stages: array(WorkspaceStageStateSchema),
+  attempts: array(WorkspaceStageAttemptSchema)
+}).superRefine((manifest, context) => {
+  const assetIds = /* @__PURE__ */ new Set();
+  for (const asset of manifest.assets) {
+    if (assetIds.has(asset.id)) {
+      context.addIssue({
+        code: "custom",
+        message: `资产 ID 重复：${asset.id}`,
+        path: ["assets"]
+      });
+    }
+    assetIds.add(asset.id);
+  }
+  if (!assetIds.has(manifest.sourceImageAssetId)) {
+    context.addIssue({
+      code: "custom",
+      message: "sourceImageAssetId 未引用有效资产",
+      path: ["sourceImageAssetId"]
+    });
+  }
+  if (manifest.referenceTextAssetId !== null && !assetIds.has(manifest.referenceTextAssetId)) {
+    context.addIssue({
+      code: "custom",
+      message: "referenceTextAssetId 未引用有效资产",
+      path: ["referenceTextAssetId"]
+    });
+  }
+  const stages = /* @__PURE__ */ new Set();
+  for (const state of manifest.stages) {
+    if (stages.has(state.stage)) {
+      context.addIssue({
+        code: "custom",
+        message: `阶段状态重复：${state.stage}`,
+        path: ["stages"]
+      });
+    }
+    stages.add(state.stage);
+  }
+  for (const stage of SlideStageSchema.options) {
+    if (!stages.has(stage)) {
+      context.addIssue({
+        code: "custom",
+        message: `缺少阶段状态：${stage}`,
+        path: ["stages"]
+      });
+    }
+  }
+});
+const DeckSlideEntrySchema = object({
+  slideId: string().min(1),
+  workspacePath: WorkspaceRelativePathSchema,
+  sourceImageName: string().min(1),
+  addedAt: string().datetime(),
+  removedAt: string().datetime().nullable()
+});
+const DeckExportRecordSchema = object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  id: string().min(1),
+  exportedAt: string().datetime(),
+  outputPath: WorkspaceRelativePathSchema,
+  outputSha256: string().regex(SHA256_PATTERN),
+  totalSlides: number().int().nonnegative(),
+  nativeSlides: number().int().nonnegative(),
+  placeholderSlides: number().int().nonnegative(),
+  strict: boolean()
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  deckVersion: literal(1),
+  deckId: string().min(1),
+  name: string().min(1),
+  createdAt: string().datetime(),
+  updatedAt: string().datetime(),
+  aspectRatio: literal("16:9"),
+  fontFace: literal("Microsoft YaHei"),
+  cloudCalls: literal("explicit_only"),
+  slides: array(DeckSlideEntrySchema),
+  exports: array(DeckExportRecordSchema)
+});
+const SHA256$1 = /^[a-f0-9]{64}$/;
+const MaskBlockCoverageSchema = object({
+  blockId: string().min(1),
+  maskedPixels: number().int().nonnegative(),
+  bboxAreaPx: number().int().nonnegative(),
+  // 掩盖像素占该块 bbox 面积的比例；受控膨胀可能略超 1。
+  coverageRatio: number().min(0)
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  algorithmVersion: string().min(1),
+  image: object({
+    width: number().int().positive(),
+    height: number().int().positive()
+  }),
+  sourceImageSha256: string().regex(SHA256$1),
+  // 被消费的 text-blocks.json 内容哈希，与 validate-review 门禁锚点一致。
+  reviewDocumentSha256: string().regex(SHA256$1),
+  reviewValidationSha256: string().regex(SHA256$1),
+  maskedBlockIds: array(string().min(1)),
+  blocks: array(MaskBlockCoverageSchema),
+  totals: object({
+    maskedPixels: number().int().nonnegative(),
+    maskedBlockCount: number().int().nonnegative()
+  }),
+  outputs: object({
+    maskSha256: string().regex(SHA256$1),
+    previewSha256: string().regex(SHA256$1),
+    overlaySha256: string().regex(SHA256$1)
+  })
+});
+const SHA256 = /^[a-f0-9]{64}$/;
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  status: _enum(["passed", "failed"]),
+  checks: array(object({
+    id: string().min(1),
+    status: _enum(["passed", "failed"]),
+    message: string().min(1),
+    details: record(string(), unknown()).optional()
+  })),
+  layout: object({
+    widthEmu: number().int().nonnegative(),
+    heightEmu: number().int().nonnegative(),
+    aspectRatioOk: boolean()
+  }),
+  shapes: object({
+    images: number().int().nonnegative(),
+    textBoxes: number().int().nonnegative(),
+    expectedTextBoxes: number().int().nonnegative()
+  }),
+  fontFace: string().min(1),
+  fontDeclared: boolean(),
+  missingTexts: array(string())
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  attemptId: string().min(1),
+  cleanPlateSha256: string().regex(SHA256),
+  reviewDocumentSha256: string().regex(SHA256),
+  fontFace: string().min(1),
+  // 是否使用了微软雅黑以外的显式备用字体（design §11 要求记录偏离）。
+  fontFallback: boolean(),
+  textBoxCount: number().int().nonnegative(),
+  resultSha256: string().regex(SHA256),
+  checkSha256: string().regex(SHA256),
+  checkStatus: _enum(["passed", "failed"])
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  slideId: string().min(1),
+  generatedAt: string().datetime(),
+  // complete 仅当全部阶段完成、自动检查通过且两道人工门已接受且未 stale。
+  overallStatus: _enum(["complete", "incomplete"]),
+  stages: array(object({
+    stage: string().min(1),
+    status: string().min(1)
+  })),
+  discovery: object({
+    ocrBlockCount: number().int().nonnegative(),
+    reviewBlockCount: number().int().nonnegative(),
+    reviewedLayoutTextCount: number().int().nonnegative(),
+    unreviewedLayoutTextCount: number().int().nonnegative()
+  }),
+  classification: object({
+    layoutText: number().int().nonnegative(),
+    objectIntegratedSymbol: number().int().nonnegative(),
+    uncertain: number().int().nonnegative()
+  }),
+  mask: object({
+    maskedBlockCount: number().int().nonnegative(),
+    maskedPixels: number().int().nonnegative()
+  }).nullable(),
+  // 自动检查区（不代表人工验收）。
+  autoChecks: object({
+    cleanPlate: CleanPlateChecksSchema.nullable(),
+    pptx: object({
+      status: _enum(["passed", "failed"]),
+      checks: array(object({
+        id: string().min(1),
+        status: _enum(["passed", "failed"]),
+        message: string().min(1)
+      }))
+    }).nullable()
+  }),
+  // 人工接受区（与自动检查分开）。
+  manualAcceptance: object({
+    cleanPlate: object({
+      acceptedBy: string().min(1),
+      acceptedAt: string().datetime(),
+      stale: boolean()
+    }).nullable(),
+    pptx: object({
+      acceptedBy: string().min(1),
+      acceptedAt: string().datetime(),
+      stale: boolean()
+    }).nullable()
+  }),
+  providerCalls: array(object({
+    stage: string().min(1),
+    model: string().min(1),
+    requestId: string().min(1).nullable(),
+    durationMs: number().int().nonnegative().nullable(),
+    usage: record(string(), unknown()).nullable()
+  })),
+  manualReview: object({
+    reviewStartedAt: string().datetime().nullable(),
+    cleanAcceptedAt: string().datetime().nullable(),
+    pptxAcceptedAt: string().datetime().nullable(),
+    // 人工复核耗时口径：首次候选（reviewStartedAt）到最终 PPTX 接受（design R4）。
+    reviewToPptxAcceptMs: number().int().nonnegative().nullable()
+  })
+});
+SlideStageSchema.options;
+const TextAssistBlockSchema = object({
+  blockId: string().min(1),
+  correctedText: string().min(1),
+  classification: _enum([
+    "layout_text",
+    "object_integrated_symbol",
+    "uncertain"
+  ]),
+  risks: array(_enum(["low_confidence", "classification_uncertain", "text_uncertain"])),
+  rationale: string()
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  blocks: array(TextAssistBlockSchema)
+});
+const TextBlockStyleSchema = object({
+  fontSizePx: number().finite().positive().nullable(),
+  fontWeight: _enum(["regular", "medium", "semibold", "bold"]).nullable(),
+  colorHex: string().regex(/^#[a-f0-9]{6}$/iu).nullable(),
+  horizontalAlign: _enum(["left", "center", "right"]).nullable(),
+  verticalAlign: _enum(["top", "middle", "bottom"]).nullable(),
+  lineHeight: number().finite().positive().nullable()
+});
+const AutoMaskParamsSchema = object({
+  foregroundColors: array(string().regex(/^#[a-f0-9]{6}$/iu)),
+  colorTolerance: number().finite().nonnegative(),
+  edgeThreshold: number().finite().nonnegative(),
+  minComponentAreaPx: number().finite().nonnegative(),
+  dilationRadiusPx: number().finite().nonnegative(),
+  excludePolygons: array(array(PointPxSchema))
+});
+const RiskAcceptanceSchema = object({
+  acceptedBy: string().min(1),
+  acceptedAt: string().datetime(),
+  note: string()
+});
+const TextReviewBlockSchema = object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  id: string().min(1),
+  text: string(),
+  lines: array(string()),
+  bboxPx: BoundingBoxPxSchema,
+  quadPx: QuadPxSchema.nullable(),
+  rotationDeg: number().finite(),
+  zIndex: number().int().nonnegative(),
+  classification: _enum([
+    "layout_text",
+    "object_integrated_symbol",
+    "uncertain"
+  ]),
+  sources: array(TextBlockSourceSchema),
+  includeInMask: boolean(),
+  reviewStatus: _enum(["unreviewed", "reviewed", "accepted_with_risk"]),
+  riskAcceptance: RiskAcceptanceSchema.nullable(),
+  style: TextBlockStyleSchema,
+  maskParams: AutoMaskParamsSchema,
+  updatedAt: string().datetime().nullable()
+});
+const UnmatchedReferenceCandidateSchema = object({
+  text: string().min(1)
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  slideId: string().min(1),
+  image: object({
+    width: number().int().positive(),
+    height: number().int().positive()
+  }),
+  generatedAt: string().datetime(),
+  // 首次候选生成时间，跨重跑保留，用于人工复核耗时统计。
+  reviewStartedAt: string().datetime().nullable(),
+  blocks: array(TextReviewBlockSchema),
+  unmatchedReferenceCandidates: array(UnmatchedReferenceCandidateSchema)
+});
+function compareBlockSources(block) {
+  const ocr = block.sources.find((source) => source.kind === "offline_ocr")?.text ?? null;
+  const assist = block.sources.find((source) => source.kind === "ai_text_assist")?.text ?? null;
+  if (ocr === null || assist === null) {
+    return { ocr, assist, agrees: false };
+  }
+  return {
+    ocr,
+    assist,
+    agrees: stripWhitespace(ocr) === stripWhitespace(assist)
+  };
+}
+function stripWhitespace(text) {
+  return text.replace(/\s+/gu, "");
+}
+const ReviewViolationSchema = object({
+  blockId: string().min(1).nullable(),
+  field: string().min(1),
+  code: string().min(1),
+  message: string().min(1),
+  severity: _enum(["error", "warning"])
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  slideId: string().min(1),
+  rulesVersion: string().min(1),
+  status: _enum(["passed", "failed"]),
+  checkedAt: string().datetime(),
+  // 被校验的 text-blocks.json 内容哈希，下游 mask/pptx 阶段据此锚定门禁。
+  documentSha256: string().regex(/^[a-f0-9]{64}$/),
+  violations: array(ReviewViolationSchema),
+  summary: object({
+    errors: number().int().nonnegative(),
+    warnings: number().int().nonnegative()
+  })
+});
+const VisionTextCandidateSchema = object({
+  id: string().min(1),
+  text: string().min(1),
+  bboxPx: BoundingBoxPxSchema,
+  quadPx: QuadPxSchema.nullable(),
+  rotationDeg: number().finite().nullable(),
+  isArtText: boolean(),
+  classification: _enum([
+    "layout_text",
+    "object_integrated_symbol",
+    "uncertain"
+  ]),
+  style: object({
+    fontSizePx: number().finite().positive().nullable(),
+    fontWeight: _enum(["regular", "medium", "semibold", "bold"]).nullable(),
+    colorHex: string().regex(/^#[a-f0-9]{6}$/iu).nullable(),
+    horizontalAlign: _enum(["left", "center", "right"]).nullable(),
+    verticalAlign: _enum(["top", "middle", "bottom"]).nullable(),
+    lineBreaks: array(string())
+  }),
+  foregroundColors: array(string().regex(/^#[a-f0-9]{6}$/iu)),
+  risks: array(_enum([
+    "low_confidence",
+    "candidate_conflict",
+    "possible_missing_text",
+    "rotation_uncertain",
+    "classification_uncertain",
+    "art_text_effects"
+  ])),
+  rationale: string()
+});
+object({
+  schemaVersion: literal(SCHEMA_VERSION),
+  image: object({
+    width: number().int().positive(),
+    height: number().int().positive()
+  }),
+  candidates: array(VisionTextCandidateSchema),
+  missingTextHints: array(object({
+    description: string().min(1),
+    bboxPx: BoundingBoxPxSchema.nullable()
+  })),
+  pageRisks: array(string().min(1))
+});
+const REVIEW_PARTITION_ORDER = [
+  "text-pending",
+  "classification-pending",
+  "agreed"
+];
+const REVIEW_PARTITION_LABELS = {
+  "text-pending": "文字待确认",
+  "classification-pending": "分类待确认",
+  agreed: "已一致"
+};
+function partitionOf(block) {
+  if (block.classification !== "layout_text") return "classification-pending";
+  return compareBlockSources(block).agrees ? "agreed" : "text-pending";
+}
+function partitionBlocks(blocks) {
+  const buckets = new Map(
+    REVIEW_PARTITION_ORDER.map((partition) => [partition, []])
+  );
+  for (const block of blocks) {
+    buckets.get(partitionOf(block))?.push(block);
+  }
+  return REVIEW_PARTITION_ORDER.map((partition) => ({
+    partition,
+    blocks: buckets.get(partition) ?? []
+  }));
+}
+function orderedReviewBlocks(blocks) {
+  return partitionBlocks(blocks).flatMap((group) => group.blocks);
+}
+const CURRENT_CLASS = "border-2 border-info-border ring-2 ring-info-border/40 ring-offset-1 ring-offset-canvas";
+const SAME_PARTITION_CLASS = "border border-border-strong";
+const OTHER_PARTITION_CLASS = "border border-border-strong opacity-40";
+const DRAG_THRESHOLD_PX = 3;
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+function translateQuad(quad, dx, dy) {
+  if (quad === null) {
+    return null;
+  }
+  return [
+    { x: quad[0].x + dx, y: quad[0].y + dy },
+    { x: quad[1].x + dx, y: quad[1].y + dy },
+    { x: quad[2].x + dx, y: quad[2].y + dy },
+    { x: quad[3].x + dx, y: quad[3].y + dy }
+  ];
+}
 function TextBlockOverlay({
   block,
   imageWidth,
   imageHeight,
-  selected,
+  current,
+  samePartition,
   scale,
   onClick,
   onUpdate
 }) {
   const { x, y, width, height } = block.bboxPx;
-  const [editing, setEditing] = reactExports.useState(false);
+  const dragRef = reactExports.useRef(null);
+  const suppressClickRef = reactExports.useRef(false);
   const style = {
     left: `${x / imageWidth * 100}%`,
     top: `${y / imageHeight * 100}%`,
     width: `${width / imageWidth * 100}%`,
     height: `${height / imageHeight * 100}%`
   };
-  const unreviewed = block.reviewStatus === "unreviewed";
-  const handleDragStart = reactExports.useCallback(() => {
-  }, []);
-  const handleDrag = reactExports.useCallback(
-    (delta) => {
-      if (!onUpdate) return;
+  const handlePointerDown = reactExports.useCallback(
+    (e) => {
+      if (e.button !== 0 || !onUpdate) {
+        return;
+      }
+      e.stopPropagation();
+      e.currentTarget.setPointerCapture(e.pointerId);
+      dragRef.current = {
+        pointerId: e.pointerId,
+        startClientX: e.clientX,
+        startClientY: e.clientY,
+        originX: block.bboxPx.x,
+        originY: block.bboxPx.y,
+        moved: false
+      };
+    },
+    [block.bboxPx.x, block.bboxPx.y, onUpdate]
+  );
+  const handlePointerMove = reactExports.useCallback(
+    (e) => {
+      const drag = dragRef.current;
+      if (drag === null || drag.pointerId !== e.pointerId || !onUpdate) {
+        return;
+      }
+      e.stopPropagation();
+      const screenDx = e.clientX - drag.startClientX;
+      const screenDy = e.clientY - drag.startClientY;
+      if (!drag.moved && Math.abs(screenDx) < DRAG_THRESHOLD_PX && Math.abs(screenDy) < DRAG_THRESHOLD_PX) {
+        return;
+      }
+      drag.moved = true;
+      const nextX = clamp(
+        drag.originX + screenDx / scale,
+        0,
+        Math.max(0, imageWidth - block.bboxPx.width)
+      );
+      const nextY = clamp(
+        drag.originY + screenDy / scale,
+        0,
+        Math.max(0, imageHeight - block.bboxPx.height)
+      );
+      const stepX = nextX - block.bboxPx.x;
+      const stepY = nextY - block.bboxPx.y;
+      if (stepX === 0 && stepY === 0) {
+        return;
+      }
       onUpdate(block.id, {
-        bboxPx: {
-          x: block.bboxPx.x + delta.dx,
-          y: block.bboxPx.y + delta.dy,
-          width: Math.max(10, block.bboxPx.width + delta.dw),
-          height: Math.max(10, block.bboxPx.height + delta.dh)
-        }
+        bboxPx: { ...block.bboxPx, x: nextX, y: nextY },
+        quadPx: translateQuad(block.quadPx, stepX, stepY)
       });
     },
-    [block.id, block.bboxPx, onUpdate]
+    [
+      block.id,
+      block.bboxPx,
+      block.quadPx,
+      imageWidth,
+      imageHeight,
+      scale,
+      onUpdate
+    ]
   );
-  const handleDragEnd = reactExports.useCallback(() => {
-  }, []);
-  const handleDoubleClick = reactExports.useCallback(
+  const handlePointerUp = reactExports.useCallback(
     (e) => {
+      const drag = dragRef.current;
+      if (drag === null || drag.pointerId !== e.pointerId) {
+        return;
+      }
       e.stopPropagation();
-      if (onUpdate) setEditing(true);
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      suppressClickRef.current = drag.moved;
+      dragRef.current = null;
     },
-    [onUpdate]
+    []
   );
-  const handleTextCommit = reactExports.useCallback(
-    (text) => {
-      setEditing(false);
-      if (!onUpdate) return;
-      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
-      onUpdate(block.id, { text, lines: lines.length > 0 ? lines : [text] });
-    },
-    [block.id, onUpdate]
-  );
-  const handleTextCancel = reactExports.useCallback(() => {
-    setEditing(false);
-  }, []);
+  const handleClick = reactExports.useCallback(() => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    onClick();
+  }, [onClick]);
   return (
-    // 块内会渲染 8 个拖拽手柄按钮与编辑态 textarea，外层用 <button> 构成非法嵌套，
-    // 因此沿用 SlideCard 的做法：div + role="button" 自行补齐键盘可达性。
-    // biome-ignore lint/a11y/useSemanticElements: 见上，语义按钮会导致 button 嵌套
-    /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "div",
+    // 块内不再渲染任何内容：识别文本叠在原图同处文字上会造成双层重影（PRD F-6），
+    // 文本一律由左侧列表呈现，画布只画框。
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "button",
       {
-        role: "button",
-        tabIndex: 0,
+        type: "button",
+        "aria-label": block.text.length > 0 ? block.text : "未识别文字块",
+        "aria-current": current ? "true" : void 0,
         style,
-        onClick,
-        onDoubleClick: handleDoubleClick,
-        onKeyDown: (e) => {
-          if (e.key === "Enter") onClick();
-        },
+        onClick: handleClick,
+        onPointerDown: handlePointerDown,
+        onPointerMove: handlePointerMove,
+        onPointerUp: handlePointerUp,
+        onPointerCancel: handlePointerUp,
         className: cn(
-          "absolute box-border overflow-visible border-2 text-left transition-colors",
-          selected ? "border-info-border bg-info/10" : CLASSIFICATION_BORDER[block.classification],
-          !selected && unreviewed && "border-dashed"
-        ),
-        children: [
-          editing ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-            TextEditor,
-            {
-              text: block.text,
-              onCommit: handleTextCommit,
-              onCancel: handleTextCancel
-            }
-          ) : (
-            // 10px 低于 DESIGN.md 最小字号（legal 13.12px）：这是贴在原图 bbox 上的标注，
-            // 尺寸由识别框决定，用界面字号会溢出小块。属画布标注层，不参与界面排版。
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "block truncate p-0.5 text-[10px] leading-tight text-ink", children: block.text })
-          ),
-          selected && onUpdate && !editing && HANDLE_POSITIONS.map((pos) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-            TextBlockHandle,
-            {
-              position: pos,
-              scale,
-              onDragStart: handleDragStart,
-              onDrag: handleDrag,
-              onDragEnd: handleDragEnd
-            },
-            pos
-          ))
-        ]
+          "absolute box-border bg-transparent p-0 transition-colors",
+          onUpdate ? "cursor-move" : "cursor-pointer",
+          current ? CURRENT_CLASS : samePartition ? SAME_PARTITION_CLASS : OTHER_PARTITION_CLASS
+        )
       }
     )
   );
@@ -17913,7 +23315,7 @@ function TextBlockOverlay({
 function ReviewCanvas({
   imageUrl,
   blocks,
-  selectedBlockId,
+  currentBlockId,
   onSelectBlock,
   onUpdateBlock
 }) {
@@ -17921,14 +23323,33 @@ function ReviewCanvas({
     null
   );
   const {
-    transform,
+    transform: transform2,
     containerRef,
     onWheel,
     onPointerDown,
     onPointerMove,
     onPointerUp,
-    resetView
+    resetView,
+    centerOn
   } = useCanvasTransform(size);
+  const currentPartition = reactExports.useMemo(() => {
+    const currentBlock = blocks.find((block) => block.id === currentBlockId);
+    return currentBlock === void 0 ? null : partitionOf(currentBlock);
+  }, [blocks, currentBlockId]);
+  const blocksRef = reactExports.useRef(blocks);
+  blocksRef.current = blocks;
+  reactExports.useEffect(() => {
+    if (currentBlockId === null || size === null) {
+      return;
+    }
+    const target = blocksRef.current.find(
+      (block) => block.id === currentBlockId
+    );
+    if (target === void 0) {
+      return;
+    }
+    centerOn(target.bboxPx);
+  }, [currentBlockId, size, centerOn]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -17947,7 +23368,7 @@ function ReviewCanvas({
           {
             className: "absolute left-0 top-0 origin-top-left",
             style: {
-              transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`
+              transform: `translate(${transform2.offsetX}px, ${transform2.offsetY}px) scale(${transform2.scale})`
             },
             children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
@@ -17969,8 +23390,9 @@ function ReviewCanvas({
                   block,
                   imageWidth: size.width,
                   imageHeight: size.height,
-                  selected: block.id === selectedBlockId,
-                  scale: transform.scale,
+                  current: block.id === currentBlockId,
+                  samePartition: currentPartition === null || partitionOf(block) === currentPartition,
+                  scale: transform2.scale,
                   onClick: () => onSelectBlock?.(block.id),
                   onUpdate: onUpdateBlock
                 },
@@ -17980,7 +23402,7 @@ function ReviewCanvas({
           }
         ),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute bottom-3 left-3 rounded-sm bg-surface-dark/70 px-2 py-1 text-sm text-on-dark", children: [
-          Math.round(transform.scale * 100),
+          Math.round(transform2.scale * 100),
           "%"
         ] })
       ]
@@ -18084,267 +23506,533 @@ function SliderCompare({
     }
   );
 }
-const NAV_BUTTON = "rounded-sm border border-hairline px-2.5 py-1 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
-function ConfidenceQueue({
-  blocks,
-  selectedBlockId,
-  onSelect
+const CHOICE_BUTTON = "rounded-sm border px-3 py-1 text-sm transition active:border-border-strong";
+function ClassificationRow({
+  block,
+  onUpdateBlock
 }) {
-  const queue = reactExports.useMemo(
-    () => blocks.filter(
-      (b) => b.reviewStatus === "unreviewed" && b.classification === "uncertain"
-    ),
-    [blocks]
-  );
-  const currentIndex = reactExports.useMemo(
-    () => queue.findIndex((b) => b.id === selectedBlockId),
-    [queue, selectedBlockId]
-  );
-  const navigateTo = reactExports.useCallback(
-    (index) => {
-      const block = queue[index];
-      if (block) onSelect(block.id);
-    },
-    [queue, onSelect]
-  );
-  if (queue.length === 0) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "px-4 py-8 text-center text-sm font-medium text-success", children: "所有待定块已处理完毕" });
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 p-6", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "min-w-0 flex-1 text-sm font-medium tracking-[0.16px] text-muted", children: [
-        "低置信度队列 ",
-        queue.length
-      ] }),
+  const handleLayoutText = reactExports.useCallback(() => {
+    onUpdateBlock(block.id, {
+      classification: "layout_text",
+      includeInMask: true
+    });
+  }, [block.id, onUpdateBlock]);
+  const handleObjectSymbol = reactExports.useCallback(() => {
+    onUpdateBlock(block.id, {
+      classification: "object_integrated_symbol",
+      includeInMask: false
+    });
+  }, [block.id, onUpdateBlock]);
+  const isLayoutText = block.classification === "layout_text";
+  const isObjectSymbol = block.classification === "object_integrated_symbol";
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "whitespace-pre-wrap break-words text-sm leading-relaxed text-ink", children: block.text }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2", children: [
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
           type: "button",
-          className: NAV_BUTTON,
-          disabled: currentIndex <= 0,
-          onClick: () => navigateTo(currentIndex - 1),
-          children: "上一个"
+          onClick: handleLayoutText,
+          title: "这是页面版式上的文字，应当抹除并重建为原生文本框（⌥1）",
+          className: cn(
+            CHOICE_BUTTON,
+            isLayoutText ? "border-border-strong bg-surface-strong font-medium text-ink" : "border-hairline bg-canvas text-body"
+          ),
+          children: "改为版式文字"
         }
       ),
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         "button",
         {
           type: "button",
-          className: NAV_BUTTON,
-          disabled: currentIndex >= queue.length - 1,
-          onClick: () => navigateTo(currentIndex + 1),
-          children: "下一个"
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-1", children: queue.map((block, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "button",
-      {
-        type: "button",
-        onClick: () => onSelect(block.id),
-        className: cn(
-          "flex w-full flex-col gap-1 rounded-sm border px-4 py-2 text-left transition",
-          block.id === selectedBlockId ? "border-border-strong bg-surface-strong" : "border-hairline active:border-border-strong"
-        ),
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-baseline gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1 truncate text-sm font-medium text-ink", children: block.text || "（空文本）" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "shrink-0 text-sm font-medium text-muted", children: [
-              "#",
-              index + 1
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "truncate text-sm text-muted", title: block.id, children: block.id })
-        ]
-      }
-    ) }, block.id)) })
-  ] });
-}
-const CLASSIFICATION_OPTIONS = [
-  { value: "layout_text", label: "版式文字" },
-  { value: "object_integrated_symbol", label: "对象符号" },
-  { value: "uncertain", label: "待定" }
-];
-const REVIEW_STATUS_TEXT = {
-  unreviewed: "未复核",
-  reviewed: "已复核",
-  accepted_with_risk: "风险接受"
-};
-const FIELD_LABEL = "text-sm font-medium tracking-[0.16px] text-muted";
-function PropertyPanel({
-  block,
-  onUpdate
-}) {
-  const blockId = block?.id ?? null;
-  const blockIncludeInMask = block?.includeInMask ?? false;
-  const handleClassificationChange = reactExports.useCallback(
-    (classification) => {
-      if (blockId) onUpdate(blockId, { classification });
-    },
-    [blockId, onUpdate]
-  );
-  const handleIncludeInMaskToggle = reactExports.useCallback(() => {
-    if (blockId) onUpdate(blockId, { includeInMask: !blockIncludeInMask });
-  }, [blockId, blockIncludeInMask, onUpdate]);
-  const handleMarkReviewed = reactExports.useCallback(() => {
-    if (blockId) onUpdate(blockId, { reviewStatus: "reviewed" });
-  }, [blockId, onUpdate]);
-  const handleTextChange = reactExports.useCallback(
-    (e) => {
-      if (!blockId) return;
-      const text = e.target.value;
-      const lines = text.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
-      onUpdate(blockId, { text, lines: lines.length > 0 ? lines : [text] });
-    },
-    [blockId, onUpdate]
-  );
-  if (!block) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "px-4 py-8 text-center text-sm font-medium text-muted", children: "选中文字框以编辑属性" });
-  }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-6 p-6", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "文字内容" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "textarea",
-        {
-          className: "w-full rounded-sm border border-hairline bg-canvas px-4 py-3 text-sm leading-relaxed text-ink focus:border-info-border focus:outline-none",
-          rows: 4,
-          value: block.text,
-          onChange: handleTextChange
-        }
-      )
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "分类" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-col gap-1", children: CLASSIFICATION_OPTIONS.map((opt) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          type: "button",
+          onClick: handleObjectSymbol,
+          title: "这是图形对象自带的符号，应当保留在底板位图里（⌥2）",
           className: cn(
-            "rounded-sm border px-4 py-2 text-left text-sm transition",
-            block.classification === opt.value ? "border-border-strong bg-surface-strong font-medium text-ink" : "border-hairline text-body active:border-border-strong"
+            CHOICE_BUTTON,
+            isObjectSymbol ? "border-border-strong bg-surface-strong font-medium text-ink" : "border-hairline bg-canvas text-body"
           ),
-          onClick: () => handleClassificationChange(opt.value),
-          children: opt.label
-        },
-        opt.value
-      )) })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex cursor-pointer items-center gap-3 text-sm text-body", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
-          {
-            id: "include-in-mask",
-            type: "checkbox",
-            checked: block.includeInMask,
-            onChange: handleIncludeInMaskToggle,
-            className: "h-4 w-4 shrink-0 accent-primary"
-          }
-        ),
-        "参与 Mask（该块文字将被抹除）"
-      ] }),
-      block.includeInMask && block.classification !== "layout_text" && // 约束提示用签名色底 + ink 文字：mustard 作为前景色在白底上对比度不足
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "rounded-xs bg-signature-mustard px-2 py-0.5 text-sm font-medium text-ink", children: "仅「版式文字」可参与 Mask，校验会报错" })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "复核状态" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-body", children: REVIEW_STATUS_TEXT[block.reviewStatus] ?? block.reviewStatus }),
-      block.reviewStatus === "unreviewed" && /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "button",
-        {
-          type: "button",
-          onClick: handleMarkReviewed,
-          className: "rounded-sm border border-hairline px-4 py-2 text-sm font-medium text-ink transition active:border-border-strong",
-          children: "标记已复核"
+          children: "改为对象符号"
         }
-      )
-    ] }),
-    block.style.fontSizePx !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "字号" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm text-body", children: [
-        block.style.fontSizePx,
-        "px"
-      ] })
-    ] }),
-    block.style.colorHex !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "颜色" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "flex items-center gap-2 text-sm text-body", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "span",
-          {
-            "aria-hidden": "true",
-            className: "h-4 w-4 rounded-xs border border-hairline",
-            style: { backgroundColor: block.style.colorHex }
-          }
-        ),
-        block.style.colorHex
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "位置（源图像素）" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-2 gap-2 text-sm text-body", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-          "X ",
-          Math.round(block.bboxPx.x)
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-          "Y ",
-          Math.round(block.bboxPx.y)
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-          "宽 ",
-          Math.round(block.bboxPx.width)
-        ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
-          "高 ",
-          Math.round(block.bboxPx.height)
-        ] })
-      ] })
-    ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2 border-t border-hairline pt-4", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: FIELD_LABEL, children: "块 ID" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "break-all text-sm text-muted", children: block.id })
+      ),
+      block.classification === "uncertain" && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium tracking-[0.16px] text-muted", children: "当前为「待定」，必须二选一" })
     ] })
   ] });
 }
-const SOURCE_LABELS = {
-  offline_ocr: "离线 OCR",
-  cloud_vision: "云端视觉",
-  reference_text: "参考文案",
-  manual: "手动"
-};
-function SourceList({ block }) {
-  if (!block) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "px-4 py-8 text-center text-sm font-medium text-muted", children: "选中文字框以查看候选来源" });
+const DIFF_LCS_MAX_CHARS = 400;
+function shouldFallbackToSideBySide(ocr, assist) {
+  return Array.from(ocr).length > DIFF_LCS_MAX_CHARS || Array.from(assist).length > DIFF_LCS_MAX_CHARS;
+}
+function diffChars(ocr, assist) {
+  if (shouldFallbackToSideBySide(ocr, assist)) {
+    return coarseSegments(ocr, assist);
   }
-  if (block.sources.length === 0) {
-    return /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "px-4 py-8 text-center text-sm font-medium text-muted", children: "该文字块没有候选来源记录" });
+  const left = Array.from(ocr);
+  const right = Array.from(assist);
+  const rows = left.length + 1;
+  const columns = right.length + 1;
+  const lcs = new Int32Array(rows * columns);
+  for (let i2 = left.length - 1; i2 >= 0; i2 -= 1) {
+    for (let j2 = right.length - 1; j2 >= 0; j2 -= 1) {
+      lcs[i2 * columns + j2] = left[i2] === right[j2] ? (lcs[(i2 + 1) * columns + (j2 + 1)] ?? 0) + 1 : Math.max(
+        lcs[(i2 + 1) * columns + j2] ?? 0,
+        lcs[i2 * columns + (j2 + 1)] ?? 0
+      );
+    }
   }
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3 p-6", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("h3", { className: "text-sm font-medium tracking-[0.16px] text-muted", children: [
-      "候选来源 ",
-      block.sources.length
+  const segments = [];
+  let i = 0;
+  let j = 0;
+  while (i < left.length && j < right.length) {
+    if (left[i] === right[j]) {
+      append(segments, "same", left[i] ?? "");
+      i += 1;
+      j += 1;
+    } else if ((lcs[(i + 1) * columns + j] ?? 0) >= (lcs[i * columns + (j + 1)] ?? 0)) {
+      append(segments, "ocr-only", left[i] ?? "");
+      i += 1;
+    } else {
+      append(segments, "assist-only", right[j] ?? "");
+      j += 1;
+    }
+  }
+  if (i < left.length) append(segments, "ocr-only", left.slice(i).join(""));
+  if (j < right.length)
+    append(segments, "assist-only", right.slice(j).join(""));
+  return segments;
+}
+function append(segments, kind, text) {
+  if (text === "") return;
+  const last = segments[segments.length - 1];
+  if (last?.kind === kind) {
+    segments[segments.length - 1] = { kind, text: last.text + text };
+    return;
+  }
+  segments.push({ kind, text });
+}
+function coarseSegments(ocr, assist) {
+  if (ocr === assist) {
+    return ocr === "" ? [] : [{ kind: "same", text: ocr }];
+  }
+  const segments = [];
+  append(segments, "ocr-only", ocr);
+  append(segments, "assist-only", assist);
+  return segments;
+}
+const SOURCE_LABEL = "w-14 shrink-0 pt-0.5 text-sm font-medium tracking-[0.16px] text-muted";
+const DIFF_MARK = "rounded-xs bg-signature-coral/15 px-0.5 text-signature-coral";
+function TextDiffRow({
+  block,
+  isCurrent,
+  onUpdateBlock
+}) {
+  const textareaRef = reactExports.useRef(null);
+  const sources = reactExports.useMemo(() => compareBlockSources(block), [block]);
+  const { ocr, assist } = sources;
+  const segments = reactExports.useMemo(
+    () => ocr === null || assist === null ? [] : diffChars(ocr, assist),
+    [ocr, assist]
+  );
+  const fallback = ocr !== null && assist !== null && shouldFallbackToSideBySide(ocr, assist);
+  const edited = assist !== null && block.text !== assist;
+  reactExports.useEffect(() => {
+    if (!isCurrent) return;
+    const node = textareaRef.current;
+    if (node === null) return;
+    node.focus();
+    const end = node.value.length;
+    node.setSelectionRange(end, end);
+  }, [isCurrent]);
+  const handleChange = reactExports.useCallback(
+    (event) => {
+      const text = event.target.value;
+      const lines = text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line.length > 0);
+      onUpdateBlock(block.id, {
+        text,
+        lines: lines.length > 0 ? lines : [text]
+      });
+    },
+    [block.id, onUpdateBlock]
+  );
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-1", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: SOURCE_LABEL, children: "OCR" }),
+      ocr === null ? /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm text-muted", children: "无离线 OCR 候选" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted", children: fallback ? ocr : /* @__PURE__ */ jsxRuntimeExports.jsx(DiffText, { segments, side: "ocr", plain: ocr }) })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-2", children: block.sources.map((source) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-      "li",
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: SOURCE_LABEL, children: edited ? "人工" : "AI" }),
+      isCurrent ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "textarea",
+        {
+          ref: textareaRef,
+          value: block.text,
+          onChange: handleChange,
+          rows: Math.min(4, Math.max(1, block.lines.length)),
+          className: "min-w-0 flex-1 resize-y rounded-sm border border-hairline bg-canvas px-2 py-1 text-sm leading-relaxed text-ink focus:border-info-border focus:outline-none"
+        }
+      ) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "min-w-0 flex-1 whitespace-pre-wrap break-words px-2 py-1 text-sm leading-relaxed text-ink", children: edited || fallback || assist === null ? block.text : /* @__PURE__ */ jsxRuntimeExports.jsx(DiffText, { segments, side: "assist", plain: assist }) })
+    ] })
+  ] });
+}
+function DiffText({
+  segments,
+  side,
+  plain
+}) {
+  const own = side === "ocr" ? "ocr-only" : "assist-only";
+  let offset = 0;
+  const visible = segments.filter((segment) => segment.kind === "same" || segment.kind === own).map((segment) => {
+    const key = `${side}-${offset}-${segment.kind}`;
+    offset += segment.text.length;
+    return { segment, key };
+  });
+  if (visible.length === 0) return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: plain });
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: visible.map(({ segment, key }) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(segment.kind === own && DIFF_MARK), children: segment.text }, key)) });
+}
+const CAPTION = "text-sm font-medium tracking-[0.16px] text-muted";
+const COUNT_BADGE = "shrink-0 rounded-xs bg-surface-strong px-1.5 py-0.5 text-sm font-medium text-ink";
+const BUTTON_COMPACT$1 = "shrink-0 rounded-sm border border-hairline bg-canvas px-2.5 py-1 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
+const REVIEW_STATUS_VIEW = {
+  unreviewed: { label: "未复核", dot: "bg-signature-mustard" },
+  reviewed: { label: "已复核", dot: "bg-success-border" },
+  accepted_with_risk: { label: "风险接受", dot: "bg-signature-coral" }
+};
+const PARTITION_SUMMARY = {
+  "text-pending": "项双源分歧，需逐项核对文字",
+  "classification-pending": "项分类待判定",
+  agreed: "项双源逐字一致"
+};
+function BlockListPanel({
+  blocks,
+  currentBlockId,
+  onSelectBlock,
+  onUpdateBlock,
+  onMarkReviewed,
+  onMarkBlocksReviewed,
+  onDeleteBlock
+}) {
+  const [collapsed, setCollapsed] = reactExports.useState([
+    "agreed"
+  ]);
+  const groups = reactExports.useMemo(() => partitionBlocks(blocks), [blocks]);
+  const ordered = reactExports.useMemo(() => orderedReviewBlocks(blocks), [blocks]);
+  const currentBlock = reactExports.useMemo(
+    () => blocks.find((block) => block.id === currentBlockId) ?? null,
+    [blocks, currentBlockId]
+  );
+  const expandPartition = reactExports.useCallback((partition) => {
+    setCollapsed(
+      (prev) => prev.includes(partition) ? prev.filter((p) => p !== partition) : prev
+    );
+  }, []);
+  const togglePartition = reactExports.useCallback((partition) => {
+    setCollapsed(
+      (prev) => prev.includes(partition) ? prev.filter((p) => p !== partition) : [...prev, partition]
+    );
+  }, []);
+  const moveBy = reactExports.useCallback(
+    (delta) => {
+      if (ordered.length === 0) return;
+      const index = ordered.findIndex((block) => block.id === currentBlockId);
+      const nextIndex = index === -1 ? delta > 0 ? 0 : ordered.length - 1 : Math.min(ordered.length - 1, Math.max(0, index + delta));
+      const target = ordered[nextIndex];
+      if (target === void 0 || target.id === currentBlockId) return;
+      expandPartition(partitionOf(target));
+      onSelectBlock(target.id);
+    },
+    [ordered, currentBlockId, expandPartition, onSelectBlock]
+  );
+  const setClassification = reactExports.useCallback(
+    (block, toLayoutText) => {
+      onUpdateBlock(
+        block.id,
+        toLayoutText ? { classification: "layout_text", includeInMask: true } : {
+          classification: "object_integrated_symbol",
+          includeInMask: false
+        }
+      );
+    },
+    [onUpdateBlock]
+  );
+  const handleKeyDown = reactExports.useCallback(
+    (event) => {
+      if (event.metaKey || event.ctrlKey) return;
+      if (event.key === "Enter" && event.target instanceof HTMLButtonElement) {
+        return;
+      }
+      if (event.altKey) {
+        if (event.code !== "Digit1" && event.code !== "Digit2") return;
+        event.preventDefault();
+        if (currentBlock === null) return;
+        setClassification(currentBlock, event.code === "Digit1");
+        return;
+      }
+      switch (event.key) {
+        case "Tab":
+          event.preventDefault();
+          moveBy(event.shiftKey ? -1 : 1);
+          return;
+        case "ArrowDown":
+          event.preventDefault();
+          moveBy(1);
+          return;
+        case "ArrowUp":
+          event.preventDefault();
+          moveBy(-1);
+          return;
+        case "Enter":
+          if (event.shiftKey) return;
+          event.preventDefault();
+          if (currentBlockId !== null) onMarkReviewed(currentBlockId);
+          moveBy(1);
+          return;
+      }
+    },
+    [currentBlock, currentBlockId, moveBy, onMarkReviewed, setClassification]
+  );
+  return (
+    // 容器只做键盘事件汇聚，本身不是控件；焦点始终落在项内的 textarea 或项卡上
+    // biome-ignore lint/a11y/noStaticElementInteractions: 见上，键盘事件由子项冒泡而来
+    /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "div",
       {
-        className: "flex flex-col gap-1 rounded-sm border border-hairline p-4",
-        children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1 truncate text-sm font-medium text-ink", children: SOURCE_LABELS[source.kind] ?? source.kind }),
-            source.confidence !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "shrink-0 text-sm font-medium text-muted", children: [
-              (source.confidence * 100).toFixed(0),
-              "%"
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm leading-relaxed text-body", children: source.text }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "truncate text-sm text-muted", title: source.provider, children: source.provider })
-        ]
+        className: "flex h-full w-full flex-col bg-surface-soft",
+        onKeyDown: handleKeyDown,
+        children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-1 flex-col gap-6 overflow-y-auto p-4", children: groups.map((group) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+          PartitionSection,
+          {
+            group,
+            collapsed: collapsed.includes(group.partition),
+            currentBlockId,
+            onToggle: togglePartition,
+            onSelectBlock,
+            onUpdateBlock,
+            onMarkReviewed,
+            onMarkBlocksReviewed,
+            onDeleteBlock
+          },
+          group.partition
+        )) })
+      }
+    )
+  );
+}
+function PartitionSection({
+  group,
+  collapsed,
+  currentBlockId,
+  onToggle,
+  onSelectBlock,
+  onUpdateBlock,
+  onMarkReviewed,
+  onMarkBlocksReviewed,
+  onDeleteBlock
+}) {
+  const unreviewedIds = group.blocks.filter((block) => block.reviewStatus === "unreviewed").map((block) => block.id);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "flex flex-col gap-2", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "button",
+        {
+          type: "button",
+          onClick: () => onToggle(group.partition),
+          className: "flex min-w-0 flex-1 items-center gap-2 text-left",
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { "aria-hidden": "true", className: "w-3 shrink-0 text-sm text-muted", children: collapsed ? "▸" : "▾" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("min-w-0 flex-1 truncate", CAPTION), children: REVIEW_PARTITION_LABELS[group.partition] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: COUNT_BADGE, children: group.blocks.length })
+          ]
+        }
+      ),
+      group.partition === "agreed" && /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "button",
+        {
+          type: "button",
+          disabled: unreviewedIds.length === 0,
+          onClick: () => onMarkBlocksReviewed(unreviewedIds),
+          title: "把本区所有未复核项标为已复核（不写人工编辑痕迹）",
+          className: BUTTON_COMPACT$1,
+          children: [
+            "全部通过",
+            unreviewedIds.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-1 text-sm text-muted", children: unreviewedIds.length })
+          ]
+        }
+      )
+    ] }),
+    group.blocks.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+      "p",
+      {
+        className: cn(
+          "rounded-sm border border-hairline bg-canvas px-3 py-2",
+          CAPTION
+        ),
+        children: "无"
+      }
+    ) : collapsed ? /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "rounded-sm border border-hairline bg-canvas px-3 py-2 text-sm text-body", children: [
+      group.blocks.length,
+      PARTITION_SUMMARY[group.partition],
+      unreviewedIds.length > 0 && ` · ${unreviewedIds.length} 项待确认`
+    ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-2", children: group.blocks.map((block) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+      ReviewRow,
+      {
+        block,
+        partition: group.partition,
+        isCurrent: block.id === currentBlockId,
+        onSelectBlock,
+        onUpdateBlock,
+        onMarkReviewed,
+        onDeleteBlock
       },
-      `${source.kind}-${source.provider}-${source.text}`
+      block.id
     )) })
   ] });
+}
+function ReviewRow({
+  block,
+  partition,
+  isCurrent,
+  onSelectBlock,
+  onUpdateBlock,
+  onMarkReviewed,
+  onDeleteBlock
+}) {
+  const itemRef = reactExports.useRef(null);
+  const [confirmingDelete, setConfirmingDelete] = reactExports.useState(false);
+  const manageFocus = partition !== "text-pending";
+  reactExports.useEffect(() => {
+    if (!isCurrent) return;
+    itemRef.current?.scrollIntoView({ block: "nearest" });
+    if (manageFocus) itemRef.current?.focus();
+  }, [isCurrent, manageFocus]);
+  reactExports.useEffect(() => {
+    if (!isCurrent) setConfirmingDelete(false);
+  }, [isCurrent]);
+  const status = REVIEW_STATUS_VIEW[block.reviewStatus];
+  const willGhost = block.classification === "layout_text" && !block.includeInMask;
+  return (
+    // 整卡可点选：非当前项的正文是只读段落、没有可聚焦元素，仅靠 onFocusCapture
+    // 会让「点一下这条文字把它设为当前项」失效，只能去点卡内按钮才切得动。
+    // biome-ignore lint/a11y/useKeyWithClickEvents: 项卡的键盘等价物是列表级 Tab/↑↓ 导航
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "li",
+      {
+        ref: itemRef,
+        tabIndex: -1,
+        onClick: () => onSelectBlock(block.id),
+        onFocusCapture: () => onSelectBlock(block.id),
+        className: cn(
+          "flex flex-col gap-2 rounded-sm border px-3 py-2 transition focus:outline-none",
+          isCurrent ? "border-border-strong bg-surface-strong" : "border-hairline bg-canvas"
+        ),
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("flex shrink-0 items-center gap-1.5", CAPTION), children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "span",
+                {
+                  "aria-hidden": "true",
+                  className: cn("h-2 w-2 rounded-full", status.dot)
+                }
+              ),
+              status.label
+            ] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1 truncate text-sm text-muted", children: block.id }),
+            block.reviewStatus === "unreviewed" && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => onMarkReviewed(block.id),
+                className: BUTTON_COMPACT$1,
+                children: "标记已复核"
+              }
+            ),
+            confirmingDelete ? /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => onDeleteBlock(block.id),
+                  className: "shrink-0 rounded-sm border border-signature-coral bg-canvas px-2.5 py-1 text-sm font-medium text-signature-coral transition active:bg-surface-strong",
+                  children: "确认删除"
+                }
+              ),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setConfirmingDelete(false),
+                  className: BUTTON_COMPACT$1,
+                  children: "取消"
+                }
+              )
+            ] }) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => setConfirmingDelete(true),
+                title: "删除重复或碎片块；删除后该块不再进入 mask 与 PPTX",
+                className: BUTTON_COMPACT$1,
+                children: "删除此块"
+              }
+            )
+          ] }),
+          partition === "text-pending" ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+            TextDiffRow,
+            {
+              block,
+              isCurrent,
+              onUpdateBlock
+            }
+          ) : partition === "classification-pending" ? /* @__PURE__ */ jsxRuntimeExports.jsx(ClassificationRow, { block, onUpdateBlock }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "whitespace-pre-wrap break-words text-sm leading-relaxed text-ink", children: block.text }),
+          willGhost && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-wrap items-center gap-2 rounded-xs bg-signature-coral/10 px-2 py-1", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0 flex-1 text-sm font-medium text-signature-coral", children: "会重影：这块字未参与去字，导出后底板里的原字与新建文本框会叠在一起" }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                type: "button",
+                onClick: () => onUpdateBlock(block.id, { includeInMask: true }),
+                className: BUTTON_COMPACT$1,
+                children: "修正为参与去字"
+              }
+            )
+          ] })
+        ]
+      }
+    )
+  );
+}
+const SHORTCUTS = [
+  { keys: "Tab / ↓", hint: "下一项" },
+  { keys: "⇧Tab / ↑", hint: "上一项" },
+  { keys: "直接打字", hint: "编辑当前项文字" },
+  { keys: "⇧Enter", hint: "换行" },
+  { keys: "Enter", hint: "标记已复核并前进" },
+  { keys: "⌥1", hint: "改为版式文字" },
+  { keys: "⌥2", hint: "改为对象符号" },
+  { keys: "⌘S", hint: "保存" }
+];
+function ReviewShortcutBar({
+  className
+}) {
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      className: cn(
+        "flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-hairline bg-canvas px-6 py-2",
+        className
+      ),
+      children: SHORTCUTS.map((shortcut) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+        "span",
+        {
+          className: "flex items-center gap-1.5 text-sm font-medium tracking-[0.16px] text-muted",
+          children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("kbd", { className: "rounded-xs bg-surface-strong px-1.5 py-0.5 font-sans text-sm text-ink", children: shortcut.keys }),
+            shortcut.hint
+          ]
+        },
+        shortcut.keys
+      ))
+    }
+  );
 }
 const CLEAN_CHECKLIST = [
   { key: "noTextResidue", label: "文字已完全去除，无残影或重影" },
@@ -18871,6 +24559,47 @@ function adjacentSlides(slides, slideId) {
     total: ordered.length
   };
 }
+const MANUAL_SOURCE_PROVIDER = "desktop-review";
+function withManualSource(sources, text) {
+  if (text.length === 0) {
+    return sources.filter((source) => source.kind !== "manual");
+  }
+  const manual = {
+    kind: "manual",
+    provider: MANUAL_SOURCE_PROVIDER,
+    text,
+    confidence: null
+  };
+  const index = sources.findIndex((source) => source.kind === "manual");
+  if (index === -1) return [...sources, manual];
+  return sources.map((source, i) => i === index ? manual : source);
+}
+function applyManualEdit(block, patch, now) {
+  const merged = { ...block, ...patch };
+  return {
+    ...merged,
+    sources: withManualSource(merged.sources, merged.text),
+    updatedAt: now
+  };
+}
+function markBlocksReviewedById(blocks, blockIds) {
+  const targets = new Set(blockIds);
+  const changed = blocks.filter(
+    (block) => targets.has(block.id) && block.reviewStatus === "unreviewed"
+  ).length;
+  if (changed === 0) return { blocks, changed: 0 };
+  return {
+    blocks: blocks.map(
+      (block) => targets.has(block.id) && block.reviewStatus === "unreviewed" ? { ...block, reviewStatus: "reviewed" } : block
+    ),
+    changed
+  };
+}
+function deleteBlockById(blocks, blockId) {
+  const next = blocks.filter((block) => block.id !== blockId);
+  if (next.length === blocks.length) return { blocks, deleted: false };
+  return { blocks: next, deleted: true };
+}
 const INITIAL_STATE = {
   slideId: null,
   workspacePath: null,
@@ -18915,11 +24644,39 @@ const useSlideStore = create((set, get) => ({
     if (reviewDocument === null) {
       return;
     }
+    const now = (/* @__PURE__ */ new Date()).toISOString();
     const blocks = reviewDocument.blocks.map(
-      (block) => block.id === blockId ? { ...block, ...patch } : block
+      (block) => block.id === blockId ? applyManualEdit(block, patch, now) : block
     );
     set({
       reviewDocument: { ...reviewDocument, blocks },
+      dirty: true
+    });
+  },
+  markBlockReviewed(blockId) {
+    get().markBlocksReviewed([blockId]);
+  },
+  markBlocksReviewed(blockIds) {
+    const { reviewDocument } = get();
+    if (reviewDocument === null) return 0;
+    const { blocks, changed } = markBlocksReviewedById(
+      reviewDocument.blocks,
+      blockIds
+    );
+    if (changed === 0) return 0;
+    set({
+      reviewDocument: { ...reviewDocument, blocks: [...blocks] },
+      dirty: true
+    });
+    return changed;
+  },
+  deleteBlock(blockId) {
+    const { reviewDocument } = get();
+    if (reviewDocument === null) return;
+    const { blocks, deleted } = deleteBlockById(reviewDocument.blocks, blockId);
+    if (!deleted) return;
+    set({
+      reviewDocument: { ...reviewDocument, blocks: [...blocks] },
       dirty: true
     });
   },
@@ -18950,12 +24707,7 @@ const useSlideStore = create((set, get) => ({
     set({ ...INITIAL_STATE });
   }
 }));
-const SIDEBAR_TABS = [
-  ["properties", "属性"],
-  ["sources", "来源"],
-  ["queue", "低置信度"]
-];
-function SlidePage() {
+function ReviewPage() {
   const selectedSlideId = useUIStore((s) => s.selectedSlideId);
   const selectedBlockId = useUIStore((s) => s.selectedBlockId);
   const selectBlock = useUIStore((s) => s.selectBlock);
@@ -18968,6 +24720,9 @@ function SlidePage() {
   const reloadImages = useSlideStore((s) => s.reloadImages);
   const saveReview = useSlideStore((s) => s.saveReview);
   const updateBlock = useSlideStore((s) => s.updateBlock);
+  const markBlockReviewed = useSlideStore((s) => s.markBlockReviewed);
+  const markBlocksReviewed = useSlideStore((s) => s.markBlocksReviewed);
+  const deleteBlock = useSlideStore((s) => s.deleteBlock);
   const markAllReviewed = useSlideStore((s) => s.markAllReviewed);
   const reset = useSlideStore((s) => s.reset);
   const reviewDocument = useSlideStore((s) => s.reviewDocument);
@@ -19001,7 +24756,6 @@ function SlidePage() {
     [slides, sessionResults, slideId]
   );
   const [viewMode, setViewMode] = reactExports.useState("canvas");
-  const [sidebarTab, setSidebarTab] = reactExports.useState("properties");
   const [submitting, setSubmitting] = reactExports.useState(false);
   const [notice, setNotice] = reactExports.useState(null);
   const canCompare = sourceImageUrl !== null && cleanPlateUrl !== null;
@@ -19024,9 +24778,19 @@ function SlidePage() {
     }
     setViewMode("accept");
   }, [gateSignature]);
-  const blocks = reviewDocument?.blocks ?? [];
-  const selectedBlock = blocks.find((b) => b.id === selectedBlockId) ?? null;
+  const blocks = reactExports.useMemo(
+    () => reviewDocument?.blocks ?? [],
+    [reviewDocument?.blocks]
+  );
   const unreviewedCount = countUnreviewed(blocks);
+  reactExports.useEffect(() => {
+    if (blocks.length === 0) return;
+    if (selectedBlockId !== null && blocks.some((block) => block.id === selectedBlockId)) {
+      return;
+    }
+    const first = orderedReviewBlocks(blocks)[0];
+    selectBlock(first?.id ?? null);
+  }, [blocks, selectedBlockId, selectBlock]);
   const handleBlockUpdate = reactExports.useCallback(
     (blockId, patch) => {
       updateBlock(blockId, patch);
@@ -19194,68 +24958,50 @@ function SlidePage() {
       ),
       startError !== null && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral", children: startError })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-h-0 flex-1", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "relative min-w-0 flex-1", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "flex h-full items-center justify-center text-sm font-medium text-muted", children: "加载中…" }) : viewMode === "accept" && acceptGate !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-        AcceptFlow,
-        {
-          gate: acceptGate,
-          sourceImageUrl,
-          cleanPlateUrl,
-          submitting,
-          disabled: pageBusy,
-          onAccept: (note) => void handleAccept(note),
-          onRejectRerun: rerunFrom
-        }
-      ) : viewMode === "compare" && sourceImageUrl !== null && cleanPlateUrl !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center overflow-auto bg-surface-strong p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-5xl overflow-hidden rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-        SliderCompare,
-        {
-          sourceImageUrl,
-          cleanPlateUrl
-        }
-      ) }) }) : sourceImageUrl !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-        ReviewCanvas,
-        {
-          imageUrl: sourceImageUrl,
-          blocks,
-          selectedBlockId,
-          onSelectBlock: selectBlock,
-          onUpdateBlock: handleBlockUpdate
-        }
-      ) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "flex h-full items-center justify-center text-sm font-medium text-muted", children: "暂无源图，请先执行「文字识别」阶段" }) }),
-      viewMode !== "accept" && /* @__PURE__ */ jsxRuntimeExports.jsxs("aside", { className: "flex w-80 shrink-0 flex-col border-l border-hairline bg-surface-soft", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex shrink-0 border-b border-hairline", children: SIDEBAR_TABS.map(([tab, label]) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-0 flex-1 flex-col", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "flex h-full items-center justify-center text-sm font-medium text-muted", children: "加载中…" }) : viewMode === "accept" && acceptGate !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+      AcceptFlow,
+      {
+        gate: acceptGate,
+        sourceImageUrl,
+        cleanPlateUrl,
+        submitting,
+        disabled: pageBusy,
+        onAccept: (note) => void handleAccept(note),
+        onRejectRerun: rerunFrom
+      }
+    ) : viewMode === "compare" && sourceImageUrl !== null && cleanPlateUrl !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center overflow-auto bg-surface-strong p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-5xl overflow-hidden rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+      SliderCompare,
+      {
+        sourceImageUrl,
+        cleanPlateUrl
+      }
+    ) }) }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-h-0 flex-1", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[480px] shrink-0 border-r border-hairline", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+          BlockListPanel,
           {
-            type: "button",
-            className: cn(
-              "flex-1 py-3 text-sm transition",
-              sidebarTab === tab ? "border-b-2 border-primary font-medium text-ink" : "text-muted active:bg-surface-strong"
-            ),
-            onClick: () => setSidebarTab(tab),
-            children: label
-          },
-          tab
-        )) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "min-h-0 flex-1 overflow-y-auto", children: [
-          sidebarTab === "properties" && /* @__PURE__ */ jsxRuntimeExports.jsx(
-            PropertyPanel,
-            {
-              block: selectedBlock,
-              onUpdate: handleBlockUpdate
-            }
-          ),
-          sidebarTab === "sources" && /* @__PURE__ */ jsxRuntimeExports.jsx(SourceList, { block: selectedBlock }),
-          sidebarTab === "queue" && /* @__PURE__ */ jsxRuntimeExports.jsx(
-            ConfidenceQueue,
-            {
-              blocks,
-              selectedBlockId,
-              onSelect: selectBlock
-            }
-          )
-        ] })
-      ] })
-    ] })
+            blocks,
+            currentBlockId: selectedBlockId,
+            onSelectBlock: selectBlock,
+            onUpdateBlock: handleBlockUpdate,
+            onMarkReviewed: markBlockReviewed,
+            onMarkBlocksReviewed: markBlocksReviewed,
+            onDeleteBlock: deleteBlock
+          }
+        ) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("main", { className: "relative min-w-0 flex-1", children: sourceImageUrl !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+          ReviewCanvas,
+          {
+            imageUrl: sourceImageUrl,
+            blocks,
+            currentBlockId: selectedBlockId,
+            onSelectBlock: selectBlock,
+            onUpdateBlock: handleBlockUpdate
+          }
+        ) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "flex h-full items-center justify-center text-sm font-medium text-muted", children: "暂无源图，请先执行「文字识别」阶段" }) })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx(ReviewShortcutBar, {})
+    ] }) })
   ] });
 }
 function App() {
@@ -19263,9 +25009,9 @@ function App() {
   const selectedSlideId = useUIStore((s) => s.selectedSlideId);
   useRunBridge();
   return /* @__PURE__ */ jsxRuntimeExports.jsx(AppShell, { children: currentView === "slide" ? (
-    // key 绑定页 id：换页即重挂载，视图态/侧边栏页签/临时提示自然回到初始值，
-    // 不必在 SlidePage 里写"切页重置"的 effect
-    /* @__PURE__ */ jsxRuntimeExports.jsx(SlidePage, {}, selectedSlideId ?? "none")
+    // key 绑定页 id：换页即重挂载，视图态与临时提示自然回到初始值，
+    // 不必在 ReviewPage 里写"切页重置"的 effect
+    /* @__PURE__ */ jsxRuntimeExports.jsx(ReviewPage, {}, selectedSlideId ?? "none")
   ) : /* @__PURE__ */ jsxRuntimeExports.jsx(ConsolePage, {}) });
 }
 const root = document.getElementById("root");

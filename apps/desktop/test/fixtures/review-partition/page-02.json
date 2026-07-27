@@ -1,0 +1,4953 @@
+{
+  "schemaVersion": 1,
+  "slideId": "235c9b06-4336-42ec-9bfa-633858b3c37f",
+  "image": {
+    "width": 1820,
+    "height": 1024
+  },
+  "generatedAt": "2026-07-25T03:56:45.231Z",
+  "reviewStartedAt": "2026-07-25T03:56:45.231Z",
+  "blocks": [
+    {
+      "schemaVersion": 1,
+      "id": "block-001",
+      "text": "青花瓷",
+      "lines": [
+        "青花瓷"
+      ],
+      "bboxPx": {
+        "x": 195.75581059775243,
+        "y": 36.999998984194235,
+        "width": 306.86047363281256,
+        "height": 122
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 0,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "青花瓷",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "青花瓷",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-002",
+      "text": "② 材质说明",
+      "lines": [
+        "② 材质说明"
+      ],
+      "bboxPx": {
+        "x": 1039.5897299437895,
+        "y": 58.05638961745524,
+        "width": 113.8147277832032,
+        "height": 24.12494659423828
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 1,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "② 材质说明",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "② 材质说明",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-003",
+      "text": "③ 纹样寓意",
+      "lines": [
+        "③ 纹样寓意"
+      ],
+      "bboxPx": {
+        "x": 1343.837210893284,
+        "y": 60.857881026958125,
+        "width": 116.39534759521499,
+        "height": 24.14211940765381
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 2,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "③ 纹样寓意",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "③ 纹样寓意",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-004",
+      "text": "图",
+      "lines": [
+        "图"
+      ],
+      "bboxPx": {
+        "x": 507.9069770760598,
+        "y": 87.31783015529061,
+        "width": 21.162790298461932,
+        "height": 26.45994758605957
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 3,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "图",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "图",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-005",
+      "text": "瓷胎",
+      "lines": [
+        "瓷胎"
+      ],
+      "bboxPx": {
+        "x": 1100.4651176522605,
+        "y": 102.9999999736641,
+        "width": 37.03488159179684,
+        "height": 21.361757278442383
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 4,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "瓷胎",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "瓷胎",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-006",
+      "text": "鉴",
+      "lines": [
+        "鉴"
+      ],
+      "bboxPx": {
+        "x": 507.9069770760598,
+        "y": 113.77777802058438,
+        "width": 21.162790298461932,
+        "height": 23.81395339965809
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 5,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "鉴",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "鉴",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-007",
+      "text": "缠枝莲纹",
+      "lines": [
+        "缠枝莲纹"
+      ],
+      "bboxPx": {
+        "x": 1417.8745197473681,
+        "y": 105.72570658787708,
+        "width": 74.1346817016601,
+        "height": 21.39613151550293
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 6,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "缠枝莲纹",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "缠枝莲纹",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-008",
+      "text": "选用优质高岭土为胎，胎质细腻坚致，",
+      "lines": [
+        "选用优质高岭土为胎，胎质细腻坚致，"
+      ],
+      "bboxPx": {
+        "x": 1103.1104682850314,
+        "y": 129.65374708934223,
+        "width": 182.5290679931641,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 7,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "选用优质高岭土为胎，胎质细腻堅致，",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "选用优质高岭土为胎，胎质细腻坚致，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-009",
+      "text": "象征洁净高雅、连绵不绝，",
+      "lines": [
+        "象征洁净高雅、连绵不绝，"
+      ],
+      "bboxPx": {
+        "x": 1420.5523259145166,
+        "y": 132.00000017638843,
+        "width": 140.20349121093747,
+        "height": 19
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 8,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "象衽鲍洁高雅、连锦不绝，",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "象征洁净高雅、连绵不绝，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-010",
+      "text": "胎体洁白，敲击声清脆。",
+      "lines": [
+        "胎体洁白，敲击声清脆。"
+      ],
+      "bboxPx": {
+        "x": 1103.1104687503348,
+        "y": 145.5297158059658,
+        "width": 126.97673797607416,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 9,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "胎体洁白，敲击声清脆。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "胎体洁白，敲击声清脆。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-011",
+      "text": "寓意吉祥长寿。",
+      "lines": [
+        "寓意吉祥长寿。"
+      ],
+      "bboxPx": {
+        "x": 1420.5174068398042,
+        "y": 150.66592013564366,
+        "width": 82.0756530761719,
+        "height": 18.83353328704834
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 10,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "窝意吉祥长寿。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "寓意吉祥长寿。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-012",
+      "text": "青花瓷，以钴料绘纹，施透明釉，",
+      "lines": [
+        "青花瓷，以钴料绘纹，施透明釉，"
+      ],
+      "bboxPx": {
+        "x": 208.9825643420088,
+        "y": 164.00000041661337,
+        "width": 248.66278076171878,
+        "height": 24
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 11,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "青花瓷，以钻料绘纹，施透明釉，",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "青花瓷，以钴料绘纹，施透明釉，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-013",
+      "text": "高温一次烧成。色泽青翠雅致，",
+      "lines": [
+        "高温一次烧成。色泽青翠雅致，"
+      ],
+      "bboxPx": {
+        "x": 208.98255780931686,
+        "y": 193.00000021141364,
+        "width": 243.37208557128906,
+        "height": 21.325580596923828
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 12,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "高温一次烧成。色泽青翠雅致，",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "高温一次烧成。色泽青翠雅致，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-014",
+      "text": "白釉",
+      "lines": [
+        "白釉"
+      ],
+      "bboxPx": {
+        "x": 1100.4651170350123,
+        "y": 195.80361742489617,
+        "width": 37.03488159179684,
+        "height": 21.196382522583008
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 13,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "白釉",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "白釉",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-015",
+      "text": "云纹",
+      "lines": [
+        "云纹"
+      ],
+      "bboxPx": {
+        "x": 1417.9069774384038,
+        "y": 195.80361805575046,
+        "width": 37.03488159179684,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 14,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "云纹",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "云纹",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-016",
+      "text": "纹样清雅流畅，具有悠久的历史",
+      "lines": [
+        "纹样清雅流畅，具有悠久的历史"
+      ],
+      "bboxPx": {
+        "x": 208.9825596823447,
+        "y": 219.61757199924227,
+        "width": 251.30813598632815,
+        "height": 21.38242816925049
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 15,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "纹样清雅流畅，具有悠久的历史",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "纹样清雅流畅，具有悠久的历史",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-017",
+      "text": "施透明釉，釉面莹润光洁，呈色纯净，",
+      "lines": [
+        "施透明釉，釉面莹润光洁，呈色纯净，"
+      ],
+      "bboxPx": {
+        "x": 1100.465118011401,
+        "y": 219.6175713818435,
+        "width": 187.8197631835937,
+        "height": 21.38242816925049
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 16,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "旋透明釉，稍面登润光洁，呈色纯净，",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "施透明釉，釉面莹润光洁，呈色纯净，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-018",
+      "text": "寓意高升、如意、",
+      "lines": [
+        "寓意高升、如意、"
+      ],
+      "bboxPx": {
+        "x": 1420.5227991746551,
+        "y": 219.4731679247177,
+        "width": 90.00091552734362,
+        "height": 18.81077003479004
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 17,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "您征高升、如恋、",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "寓意高升、如意、",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-019",
+      "text": "与深厚的文化内涵。",
+      "lines": [
+        "与深厚的文化内涵。"
+      ],
+      "bboxPx": {
+        "x": 211.62791370400305,
+        "y": 245.9999996845729,
+        "width": 148.1395263671875,
+        "height": 21.2454776763916
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 18,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "与深厚的文化内涵。",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "与深厚的文化内涵。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-020",
+      "text": "增强器物的质感与耐久性。",
+      "lines": [
+        "增强器物的质感与耐久性。"
+      ],
+      "bboxPx": {
+        "x": 1103.1104686100334,
+        "y": 240.78553003507864,
+        "width": 137.558135986328,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 19,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "清强器物的质感与耐久性。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "增强器物的质感与耐久性。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-021",
+      "text": "自在与祥瑞。",
+      "lines": [
+        "自在与祥瑞。"
+      ],
+      "bboxPx": {
+        "x": 1420.5128452118947,
+        "y": 237.96679200783637,
+        "width": 68.8580322265625,
+        "height": 16.221454620361328
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 20,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "自在与样璃。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "自在与祥瑞。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-022",
+      "text": "回纹",
+      "lines": [
+        "回纹"
+      ],
+      "bboxPx": {
+        "x": 1423.1976741089093,
+        "y": 277.8294573277625,
+        "width": 31.74418640136706,
+        "height": 16.17054271697998
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 21,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "回纹",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "回纹",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-023",
+      "text": "钴料青花",
+      "lines": [
+        "钴料青花"
+      ],
+      "bboxPx": {
+        "x": 1100.4651174836504,
+        "y": 288.0000000853545,
+        "width": 68.7790679931641,
+        "height": 24.22739028930664
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 22,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "钻料青花",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "钴料青花",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-024",
+      "text": "寓意绵延流长、",
+      "lines": [
+        "寓意绵延流长、"
+      ],
+      "bboxPx": {
+        "x": 1420.4960138994306,
+        "y": 298.711082975688,
+        "width": 79.47309112548834,
+        "height": 16.44863510131836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 23,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "窝意派逅流长、",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "寓意绵延流长、",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-025",
+      "text": "以钴为呈色剂，发色青翠、沉静、",
+      "lines": [
+        "以钴为呈色剂，发色青翠、沉静、"
+      ],
+      "bboxPx": {
+        "x": 1100.465123152832,
+        "y": 314.87338533223624,
+        "width": 166.656967163086,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 24,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "以钻为呈色刻，发色青翠、沉静、",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "以钴为呈色剂，发色青翠、沉静、",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-026",
+      "text": "器型结构",
+      "lines": [
+        "器型结构"
+      ],
+      "bboxPx": {
+        "x": 246.01744181237848,
+        "y": 325.0000004354056,
+        "width": 84.65116119384768,
+        "height": 24.27131748199463
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 25,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "器型结构",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "器型结构",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-027",
+      "text": "生生不息、福寿绵长。",
+      "lines": [
+        "生生不息、福寿绵长。"
+      ],
+      "bboxPx": {
+        "x": 1417.906979970192,
+        "y": 317.51937987453255,
+        "width": 119.04069519042959,
+        "height": 15.875968933105469
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 26,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "生生不息、福寿锦长。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "生生不息、福寿绵长。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-028",
+      "text": "层次丰富，久经岁月而不褪色。",
+      "lines": [
+        "层次丰富，久经岁月而不褪色。"
+      ],
+      "bboxPx": {
+        "x": 1103.1104700240999,
+        "y": 332.99999964293715,
+        "width": 156.07557678222662,
+        "height": 19
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 27,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "层次丰富，久经岁月而不凝色。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "层次丰富，久经岁月而不褪色。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-029",
+      "text": "龙凤纹（可见隐含）",
+      "lines": [
+        "龙凤纹（可见隐含）"
+      ],
+      "bboxPx": {
+        "x": 1417.9069811889467,
+        "y": 354.5633080629116,
+        "width": 142.84883117675778,
+        "height": 21.436692237854004
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 28,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "龙凤纹（可见隐含）",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "龙凤纹（可见隐含）",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-030",
+      "text": "◎",
+      "lines": [
+        "◎"
+      ],
+      "bboxPx": {
+        "x": 219.56395374422792,
+        "y": 381.0232556450751,
+        "width": 15.87209224700927,
+        "height": 15.875968933105469
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 29,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "◎",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "◎",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-031",
+      "text": "口沿",
+      "lines": [
+        "口沿"
+      ],
+      "bboxPx": {
+        "x": 243.37209383056074,
+        "y": 378.0000004040238,
+        "width": 34.38953399658205,
+        "height": 19
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 30,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "口沿",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "口沿",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-032",
+      "text": "龙为祥瑞之首，凤为百鸟之王，",
+      "lines": [
+        "龙为祥瑞之首，凤为百鸟之王，"
+      ],
+      "bboxPx": {
+        "x": 1420.5523279863962,
+        "y": 378.0000001394243,
+        "width": 164.01162719726568,
+        "height": 19
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 31,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "龙沟祥璃之首，风沟百鸟之王，",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "龙为祥瑞之首，凤为百鸟之王，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-033",
+      "text": "烧制工艺",
+      "lines": [
+        "烧制工艺"
+      ],
+      "bboxPx": {
+        "x": 1100.4651170339412,
+        "y": 391.60723482294816,
+        "width": 68.7790679931641,
+        "height": 21.392765045166016
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 32,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "烧制工艺",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "烧制工艺",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-034",
+      "text": "瓶口微撇，口沿光洁莹润。",
+      "lines": [
+        "瓶口微撇，口沿光洁莹润。"
+      ],
+      "bboxPx": {
+        "x": 243.37209660090377,
+        "y": 404.8372096106169,
+        "width": 150.7848815917969,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 33,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "歡口微撤，口沿光洁闺润。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "瓶口微撇，口沿光洁莹润。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-035",
+      "text": "象征天地和合、王者之尊。",
+      "lines": [
+        "象征天地和合、王者之尊。"
+      ],
+      "bboxPx": {
+        "x": 1420.5523309784815,
+        "y": 399.5452196678142,
+        "width": 142.84883117675778,
+        "height": 15.875968933105469
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 34,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "象征天地和合、王者之惚。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "象征天地和合、王者之尊。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-036",
+      "text": "高温还原一次烧成（约1300℃以上），",
+      "lines": [
+        "高温还原一次烧成（约1300℃以上），"
+      ],
+      "bboxPx": {
+        "x": 1100.465122780527,
+        "y": 417.99999967538076,
+        "width": 193.11045837402347,
+        "height": 19
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 35,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "高温还原一次烧成（约1300C以上），",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "高温还原一次烧成（约1300℃以上），",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-037",
+      "text": "釉下彩绘，经久坚固。",
+      "lines": [
+        "釉下彩绘，经久坚固。"
+      ],
+      "bboxPx": {
+        "x": 1100.4651190090729,
+        "y": 436.5891476061381,
+        "width": 119.04069519042979,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 36,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "釉下彩绘，经久坚固。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "釉下彩绘，经久坚固。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-038",
+      "text": "花鸟纹",
+      "lines": [
+        "花鸟纹"
+      ],
+      "bboxPx": {
+        "x": 1417.9069768304898,
+        "y": 438.9999999728499,
+        "width": 55.55232620239251,
+        "height": 21.403100967407227
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 37,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "花鸟纹",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "花鸟纹",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-039",
+      "text": "◎ 颈部",
+      "lines": [
+        "◎ 颈部"
+      ],
+      "bboxPx": {
+        "x": 219.5639548567424,
+        "y": 449.81912166711993,
+        "width": 66.1337203979492,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 38,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "◎ 颈部",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "◎ 颈部",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-040",
+      "text": "寓意平安、富贵吉祥、",
+      "lines": [
+        "寓意平安、富贵吉祥、"
+      ],
+      "bboxPx": {
+        "x": 1417.9069815460687,
+        "y": 462.99999981906853,
+        "width": 142.84883117675798,
+        "height": 19
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 39,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "窩意田车平安、富貴吉祥、",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "寓意平安、富贵吉祥、",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-041",
+      "text": "颈部修长，线条优雅挺拔。",
+      "lines": [
+        "颈部修长，线条优雅挺拔。"
+      ],
+      "bboxPx": {
+        "x": 243.37210108068746,
+        "y": 476.0000001752205,
+        "width": 153.43022155761722,
+        "height": 19
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 40,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "红颈修长，线条优雅挺拔。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "颈部修长，线条优雅挺拔。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-042",
+      "text": "生活美好。",
+      "lines": [
+        "生活美好。"
+      ],
+      "bboxPx": {
+        "x": 1417.9069763272137,
+        "y": 481.5710598831406,
+        "width": 58.197673797607294,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 41,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "生活美好。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "生活美好。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-043",
+      "text": "◎ 肩部",
+      "lines": [
+        "◎ 肩部"
+      ],
+      "bboxPx": {
+        "x": 216.91860507563345,
+        "y": 521.0000002062279,
+        "width": 60.843021392822266,
+        "height": 21.428940773010254
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 42,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "◎ 肩部",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "◎ 肩部",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-044",
+      "text": "④",
+      "lines": [
+        "④"
+      ],
+      "bboxPx": {
+        "x": 1039.6220934232717,
+        "y": 537.1369507106101,
+        "width": 18.51744079589842,
+        "height": 23.813953399658203
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 43,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "④",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "④",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-045",
+      "text": "色彩含义",
+      "lines": [
+        "色彩含义"
+      ],
+      "bboxPx": {
+        "x": 1071.3662792635414,
+        "y": 536.9999996345163,
+        "width": 84.65116119384773,
+        "height": 24
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 44,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "色彩含义",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "色彩含义",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-046",
+      "text": "⑤ 核心特征",
+      "lines": [
+        "⑤ 核心特征"
+      ],
+      "bboxPx": {
+        "x": 1293.5755816453375,
+        "y": 536.9999996565662,
+        "width": 119.04069519042979,
+        "height": 24
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 45,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "⑤ 核心特征",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "⑤ 核心特征",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-047",
+      "text": "肩部丰满，过渡自然。",
+      "lines": [
+        "肩部丰满，过渡自然。"
+      ],
+      "bboxPx": {
+        "x": 243.37209739800937,
+        "y": 547.7209305055696,
+        "width": 126.9767379760742,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 46,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "腐部丰肩，过液自然。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "肩部丰满，过渡自然。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-048",
+      "text": "◎ 腹部",
+      "lines": [
+        "◎ 腹部"
+      ],
+      "bboxPx": {
+        "x": 216.91860507563345,
+        "y": 590.0000001274997,
+        "width": 60.843021392822266,
+        "height": 24
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 47,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "◎腹部",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "◎ 腹部",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-049",
+      "text": "②",
+      "lines": [
+        "②"
+      ],
+      "bboxPx": {
+        "x": 1288.2848839951484,
+        "y": 582.1188632839728,
+        "width": 39.68023300170887,
+        "height": 26.45994758605957
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 48,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "②",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "②",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-050",
+      "text": "釉下彩",
+      "lines": [
+        "釉下彩"
+      ],
+      "bboxPx": {
+        "x": 1327.965118625703,
+        "y": 584.7648585422277,
+        "width": 47.616275787353445,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 49,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "釉下彩",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "釉下彩",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-051",
+      "text": "青",
+      "lines": [
+        "青"
+      ],
+      "bboxPx": {
+        "x": 1100.4651163728622,
+        "y": 595.3488373118798,
+        "width": 21.162790298461932,
+        "height": 26.45994758605957
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 50,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "青",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "青",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-052",
+      "text": "纹样绘于釉下，典雅隽永，永不褪色。",
+      "lines": [
+        "纹样绘于釉下，典雅隽永，永不褪色。"
+      ],
+      "bboxPx": {
+        "x": 1404.6802399886824,
+        "y": 586.9999997237442,
+        "width": 211.62789916992188,
+        "height": 19
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 51,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "纹样绘于釉下，典雅劈永，永不褪色。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "纹样绘于釉下，典雅隽永，永不褪色。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-053",
+      "text": "腹部饱满，曲线圆润。",
+      "lines": [
+        "腹部饱满，曲线圆润。"
+      ],
+      "bboxPx": {
+        "x": 240.726750072398,
+        "y": 618.9999997538296,
+        "width": 129.6220855712891,
+        "height": 19
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 52,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "腹部饱满，曲线圆润。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "腹部饱满，曲线圆润。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-054",
+      "text": "代表宁静、雅致、含蓄，",
+      "lines": [
+        "代表宁静、雅致、含蓄，"
+      ],
+      "bboxPx": {
+        "x": 1100.4651183847768,
+        "y": 624.0000002347599,
+        "width": 129.62208557128895,
+        "height": 19
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 53,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "代表宁静、雅致、含酱，",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "代表宁静、雅致、含蓄，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-055",
+      "text": "④",
+      "lines": [
+        "④"
+      ],
+      "bboxPx": {
+        "x": 1288.284884167168,
+        "y": 621.8087853771788,
+        "width": 29.098836898803746,
+        "height": 31.751937866210938
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 54,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "④",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "④",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-056",
+      "text": "青白对比 青花与白釉形成强烈对比，清新雅致。",
+      "lines": [
+        "青白对比 青花与白釉形成强烈对比，清新雅致。"
+      ],
+      "bboxPx": {
+        "x": 1330.610466950884,
+        "y": 629.7467707892508,
+        "width": 280.40698242187494,
+        "height": 21.25322914123535
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 55,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "青白对比 青花与白釉形成强烈对比，清新雅致。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "青白对比 青花与白釉形成强烈对比，清新雅致。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-057",
+      "text": "体现东方美学中的沉静",
+      "lines": [
+        "体现东方美学中的沉静"
+      ],
+      "bboxPx": {
+        "x": 1103.1104703375443,
+        "y": 642.976744127418,
+        "width": 126.97673797607416,
+        "height": 16.023256301879883
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 56,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "体現东方美孕中的沉憩",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "体现东方美学中的沉静",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-058",
+      "text": "◎ 圈足",
+      "lines": [
+        "◎ 圈足"
+      ],
+      "bboxPx": {
+        "x": 219.56395609900466,
+        "y": 663.9999998723717,
+        "width": 63.48836898803713,
+        "height": 16.020671844482422
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 57,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "◎圈足",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "◎ 圈足",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-059",
+      "text": "与内敛之美。",
+      "lines": [
+        "与内敛之美。"
+      ],
+      "bboxPx": {
+        "x": 1103.1104668631565,
+        "y": 663.9999998944218,
+        "width": 68.7790679931641,
+        "height": 16.020671844482422
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 58,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "与内效之关。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "与内敛之美。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-060",
+      "text": "工笔线描 线条流畅细腻，层次分明，笔法严谨。",
+      "lines": [
+        "工笔线描 线条流畅细腻，层次分明，笔法严谨。"
+      ],
+      "bboxPx": {
+        "x": 1330.6104778806775,
+        "y": 674.7286822479745,
+        "width": 283.0523071289063,
+        "height": 24.27131748199463
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 59,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "工笔线描 錢系流畅细腻，层次分明，笔法严谨。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "工笔线描 线条流畅细腻，层次分明，笔法严谨。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-061",
+      "text": "圈足规整，稳重承托。",
+      "lines": [
+        "圈足规整，稳重承托。"
+      ],
+      "bboxPx": {
+        "x": 240.72674692278716,
+        "y": 690.604651471082,
+        "width": 132.2674407958984,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 60,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "團足規整，稳重承托。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "圈足规整，稳重承托。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-062",
+      "text": "白",
+      "lines": [
+        "白"
+      ],
+      "bboxPx": {
+        "x": 1105.7558144474256,
+        "y": 722.3565900341778,
+        "width": 15.872092247009169,
+        "height": 21.167957305908203
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 61,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "白",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "白",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-063",
+      "text": "东方审美 讲求含蓄、平衡、留白、意境之美。",
+      "lines": [
+        "东方审美 讲求含蓄、平衡、留白、意境之美。"
+      ],
+      "bboxPx": {
+        "x": 1327.9651206503224,
+        "y": 719.7105949904568,
+        "width": 264.5348815917968,
+        "height": 21.28940486907959
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 62,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "东方审美 讲求含蓄、平衡、留白、意境之美。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "东方审美 讲求含蓄、平衡、留白、意境之美。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-064",
+      "text": "• 器",
+      "lines": [
+        "• 器"
+      ],
+      "bboxPx": {
+        "x": 219.56395406447677,
+        "y": 743.5245475685895,
+        "width": 26.453487396240234,
+        "height": 15.875968933105469
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 63,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "•器",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "• 器",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-065",
+      "text": "名：青花缠枝莲纹胆瓶",
+      "lines": [
+        "名：青花缠枝莲纹胆瓶"
+      ],
+      "bboxPx": {
+        "x": 261.8895382677882,
+        "y": 743.5245477008891,
+        "width": 121.68604278564453,
+        "height": 15.875968933105469
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 64,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "名：青花煌枝莲顶搏瓶",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "名：青花缠枝莲纹胆瓶",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-066",
+      "text": "代表纯净、留白与秩序，",
+      "lines": [
+        "代表纯净、留白与秩序，"
+      ],
+      "bboxPx": {
+        "x": 1100.4651216253292,
+        "y": 754.0000002014167,
+        "width": 129.62208557128895,
+        "height": 19
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 65,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "代表纯净、留白与我序，",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "代表纯净、留白与秩序，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-067",
+      "text": "• 时",
+      "lines": [
+        "• 时"
+      ],
+      "bboxPx": {
+        "x": 219.5639541085659,
+        "y": 762.0000002275599,
+        "width": 26.453487396240234,
+        "height": 13.276485443115234
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 66,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "•时",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "• 时",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-068",
+      "text": "代：明代（约15世纪）",
+      "lines": [
+        "代：明代（约15世纪）"
+      ],
+      "bboxPx": {
+        "x": 259.2441853044945,
+        "y": 761.9999998168726,
+        "width": 119.04069519042969,
+        "height": 13.276485919952393
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 67,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "代：明代（约15世纪）",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "代：明代（约15世纪）",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-069",
+      "text": "体现简约、克制与",
+      "lines": [
+        "体现简约、克制与"
+      ],
+      "bboxPx": {
+        "x": 1100.426768717653,
+        "y": 769.7741499421101,
+        "width": 100.59995269775386,
+        "height": 18.942655563354492
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 68,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "体現简约、克制与",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "体现简约、克制与",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-070",
+      "text": "袖",
+      "lines": [
+        "袖"
+      ],
+      "bboxPx": {
+        "x": 1288.284883773034,
+        "y": 762.0465122596834,
+        "width": 23.808139801025444,
+        "height": 26.45994758605957
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 69,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "袖",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "袖",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-071",
+      "text": "经典器韵",
+      "lines": [
+        "经典器韵"
+      ],
+      "bboxPx": {
+        "x": 1327.9119912199103,
+        "y": 764.5165607054585,
+        "width": 60.94927215576168,
+        "height": 18.873855590820312
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 70,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "经典器韵",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "经典器韵",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-072",
+      "text": "器型端庄，釉色温润，彰显时代风格",
+      "lines": [
+        "器型端庄，釉色温润，彰显时代风格"
+      ],
+      "bboxPx": {
+        "x": 1402.0348872876962,
+        "y": 764.6925067823603,
+        "width": 190.465103149414,
+        "height": 21.307493209838867
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 71,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "器型端庄，釉色温润，彩显时代风格",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "器型端庄，釉色温润，彰显时代风格",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-073",
+      "text": "• 尺",
+      "lines": [
+        "• 尺"
+      ],
+      "bboxPx": {
+        "x": 219.5639536456299,
+        "y": 780.5684757350097,
+        "width": 26.453487396240263,
+        "height": 13.431524276733398
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 72,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "•尺",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "• 尺",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-074",
+      "text": "寸：高35.8厘米",
+      "lines": [
+        "寸：高35.8厘米"
+      ],
+      "bboxPx": {
+        "x": 259.24418491175174,
+        "y": 777.922480782026,
+        "width": 97.87790679931642,
+        "height": 16.077519416809082
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 73,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "寸：高35.8厘米",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "寸：高35.8厘米",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-075",
+      "text": "无限的美学空间。",
+      "lines": [
+        "无限的美学空间。"
+      ],
+      "bboxPx": {
+        "x": 1103.0468052187216,
+        "y": 788.1829593523057,
+        "width": 92.71453094482425,
+        "height": 19.16896343231201
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 74,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "无限的美骅空间。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "无限的美学空间。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-076",
+      "text": "与工艺高度。",
+      "lines": [
+        "与工艺高度。"
+      ],
+      "bboxPx": {
+        "x": 1404.6178938684438,
+        "y": 785.6354669671055,
+        "width": 66.2583999633789,
+        "height": 18.971960067749023
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 75,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "与工艺商度。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "与工艺高度。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-077",
+      "text": "藏：某某博物馆藏",
+      "lines": [
+        "藏：某某博物馆藏"
+      ],
+      "bboxPx": {
+        "x": 259.24418967360475,
+        "y": 796.0000000822431,
+        "width": 105.81394958496094,
+        "height": 16.32041358947754
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 76,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "茙：菜某博物馆薇",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "藏：某某博物馆藏",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-078",
+      "text": "注：以上信息为典型器物特征的示意参考。",
+      "lines": [
+        "注：以上信息为典型器物特征的示意参考。"
+      ],
+      "bboxPx": {
+        "x": 201.0465155604105,
+        "y": 843.9999999289216,
+        "width": 201.0465087890625,
+        "height": 16
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 77,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "注：以上信息为典型器物特伍的示意参者。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "注：以上信息为典型器物特征的示意参考。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-079",
+      "text": "历史脉络",
+      "lines": [
+        "历史脉络"
+      ],
+      "bboxPx": {
+        "x": 238.03500581216667,
+        "y": 878.289208700751,
+        "width": 82.09859466552733,
+        "height": 21.530109405517578
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 78,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "历史脉络",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "历史脉络",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-080",
+      "text": "•",
+      "lines": [
+        "•"
+      ],
+      "bboxPx": {
+        "x": 246.01744163948382,
+        "y": 902.2842377994369,
+        "width": 15.87209320068353,
+        "height": 13.229973793029785
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 79,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "•",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "•",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-081",
+      "text": "鉴赏与收藏",
+      "lines": [
+        "鉴赏与收藏"
+      ],
+      "bboxPx": {
+        "x": 1031.6860476526288,
+        "y": 902.0000000411217,
+        "width": 89.94185638427732,
+        "height": 24.098191261291504
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 80,
+      "classification": "object_integrated_symbol",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "鉴赏与收藏",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "鉴赏与收藏",
+          "confidence": null
+        }
+      ],
+      "includeInMask": false,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-082",
+      "text": "唐代（萌芽）",
+      "lines": [
+        "唐代（萌芽）"
+      ],
+      "bboxPx": {
+        "x": 227.50000099748596,
+        "y": 920.8062017704792,
+        "width": 82.00581359863278,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 81,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "唐代（萌芽）",
+          "confidence": 1
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "唐代（萌芽）",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-083",
+      "text": "元代（成熟）",
+      "lines": [
+        "元代（成熟）"
+      ],
+      "bboxPx": {
+        "x": 412.6744173674771,
+        "y": 923.0000003966243,
+        "width": 79.360466003418,
+        "height": 16.32816505432129
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 82,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "元代（成燕）",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "元代（成熟）",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-084",
+      "text": "明代（鼎盛）",
+      "lines": [
+        "明代（鼎盛）"
+      ],
+      "bboxPx": {
+        "x": 589.7750985593013,
+        "y": 922.7076029124404,
+        "width": 82.2811965942383,
+        "height": 17.36515522003174
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 83,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "明代（鼎盛）",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "明代（鼎盛）",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-085",
+      "text": "清代（精进）",
+      "lines": [
+        "清代（精进）"
+      ],
+      "bboxPx": {
+        "x": 759.2151166291048,
+        "y": 920.8062017704792,
+        "width": 79.36046600341795,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 84,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "清代（精进）",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "清代（精进）",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-086",
+      "text": "青花瓷是中国瓷器的瑰宝，集实用、艺术与文化于一体，体现了中华文明的审美理想与工艺智慧。",
+      "lines": [
+        "青花瓷是中国瓷器的瑰宝，集实用、艺术与文化于一体，体现了中华文明的审美理想与工艺智慧。"
+      ],
+      "bboxPx": {
+        "x": 1034.3314146619957,
+        "y": 928.744186365828,
+        "width": 494.680206298828,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 85,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "青花瓷是中国瓷器的瑰宝，集实用、艺术与文化于一体，体現了中华文明的审美理想与工艺智巷。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "青花瓷是中国瓷器的瑰宝，集实用、艺术与文化于一体，体现了中华文明的审美理想与工艺智慧。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-087",
+      "text": "青花技法初现，",
+      "lines": [
+        "青花技法初现，"
+      ],
+      "bboxPx": {
+        "x": 224.8186364999649,
+        "y": 944.4443394155089,
+        "width": 76.78714752197266,
+        "height": 16.227599143981934
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 86,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "青花枝术视况，",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "青花技法初现，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-088",
+      "text": "青花瓷成熟，纹样多样，",
+      "lines": [
+        "青花瓷成熟，纹样多样，"
+      ],
+      "bboxPx": {
+        "x": 399.4476776446106,
+        "y": 944.620155347051,
+        "width": 119.04069519042963,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 87,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "青花瓷成熬，纹样多祥，",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "青花瓷成熟，纹样多样，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-089",
+      "text": "青花瓷进入鼎盛时期，",
+      "lines": [
+        "青花瓷进入鼎盛时期，"
+      ],
+      "bboxPx": {
+        "x": 579.3313992772812,
+        "y": 944.620155002181,
+        "width": 108.45929718017574,
+        "height": 15.875968933105469
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 88,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "青花瓷进入暑盛时期，",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "青花瓷进入鼎盛时期，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-090",
+      "text": "青花工艺日益精湛，",
+      "lines": [
+        "青花工艺日益精湛，"
+      ],
+      "bboxPx": {
+        "x": 751.2790704255655,
+        "y": 944.620155002181,
+        "width": 95.23255920410158,
+        "height": 15.875968933105469
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 89,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "青花工艺斩益水纺，",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "青花工艺日益精湛，",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-091",
+      "text": "鉴赏时可从胎釉、发色、纹饰、器型、工艺等方面综合考量，具有极高的历史、艺术与收藏价值。",
+      "lines": [
+        "鉴赏时可从胎釉、发色、纹饰、器型、工艺等方面综合考量，具有极高的历史、艺术与收藏价值。"
+      ],
+      "bboxPx": {
+        "x": 1034.331407763596,
+        "y": 949.9121450111338,
+        "width": 489.38952636718756,
+        "height": 18.521963119506836
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 90,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "鉴赏时可从胎袖、发色、纹饰、器型、工艺等方面综合考量，具有机高的历史、艺术与收解价值。",
+          "confidence": 0.5
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "鉴赏时可从胎釉、发色、纹饰、器型、工艺等方面综合考量，具有极高的历史、艺术与收藏价值。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-092",
+      "text": "以钴料彩绘为主。",
+      "lines": [
+        "以钴料彩绘为主。"
+      ],
+      "bboxPx": {
+        "x": 224.85465228108728,
+        "y": 962.9999995731664,
+        "width": 92.58720397949219,
+        "height": 16.018088340759277
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 91,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "以始料彩绘为主。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "以钴料彩绘为主。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-093",
+      "text": "工艺水平显著提高。",
+      "lines": [
+        "工艺水平显著提高。"
+      ],
+      "bboxPx": {
+        "x": 399.4476732838448,
+        "y": 960.0000002150457,
+        "width": 97.87790679931642,
+        "height": 19.01808738708496
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 92,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "工艺水平里箬提高。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "工艺水平显著提高。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-094",
+      "text": "器型丰富，纹饰繁缛。",
+      "lines": [
+        "器型丰富，纹饰繁缛。"
+      ],
+      "bboxPx": {
+        "x": 579.3314003942813,
+        "y": 960.0000000717209,
+        "width": 111.10464477539062,
+        "height": 19.01808738708496
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 93,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "器型丰富，纹饰舫翊。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "器型丰富，纹饰繁缛。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    },
+    {
+      "schemaVersion": 1,
+      "id": "block-095",
+      "text": "风格多元，装饰华美。",
+      "lines": [
+        "风格多元，装饰华美。"
+      ],
+      "bboxPx": {
+        "x": 748.6337253105903,
+        "y": 960.0000000717209,
+        "width": 108.45929718017574,
+        "height": 19.01808738708496
+      },
+      "quadPx": null,
+      "rotationDeg": 0,
+      "zIndex": 94,
+      "classification": "layout_text",
+      "sources": [
+        {
+          "kind": "offline_ocr",
+          "provider": "apple-vision",
+          "text": "风能多元，菜饰华吳。",
+          "confidence": 0.3
+        },
+        {
+          "kind": "ai_text_assist",
+          "provider": "openai-text-assist",
+          "text": "风格多元，装饰华美。",
+          "confidence": null
+        }
+      ],
+      "includeInMask": true,
+      "reviewStatus": "reviewed",
+      "riskAcceptance": null,
+      "style": {
+        "fontSizePx": null,
+        "fontWeight": null,
+        "colorHex": null,
+        "horizontalAlign": null,
+        "verticalAlign": null,
+        "lineHeight": null
+      },
+      "maskParams": {
+        "foregroundColors": [],
+        "colorTolerance": 32,
+        "edgeThreshold": 0.5,
+        "minComponentAreaPx": 4,
+        "dilationRadiusPx": 1,
+        "excludePolygons": []
+      },
+      "updatedAt": null
+    }
+  ],
+  "unmatchedReferenceCandidates": []
+}
