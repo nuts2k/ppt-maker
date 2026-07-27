@@ -100,7 +100,26 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 
 **回滚点**：B 阶段单独 commit。
 
+### A/B 阶段已完成（commit e03af4a、a0de457）
+
+**实施中发现的计划缺口与用户决策（2026-07-26）**：`design.md §3.2` 只写了改 `assertAcceptedCleanPlate`，但那不是唯一拦截点——`packages/core/src/stage-graph.ts` 声明 `pptx: ["accept-clean"]`，而 `runSlidePptx` 在调 `assertAcceptedCleanPlate` **之前**先跑 `assertStageDependenciesCompleted(stages, "pptx")`（`apps/cli/src/pptx/run.ts`）。只改断言会让 accept-clean 直通后 pptx 在依赖图层被拒。
+
+**用户已确认采用方案**：把 `STAGE_DEPENDENCIES.pptx` 改为 `["clean"]`。
+
+- 这使 `check.jsonl` 里「检查 STAGE_DEPENDENCIES 未被改动」一条**作废**，改为核对下面的安全属性。
+- 安全属性核对（已由测试与真实工作区实测覆盖）：`clean` 失效仍直接连带 pptx 及下游失效；`deck export --strict` 仍要求每页 `accept-pptx` completed；mask/pptx 的复核兜底门禁原样保留。
+- 已知语义收窄：`getDownstreamStages("accept-clean")` 变空，即单独失效 accept-clean 不再连带失效 pptx。新流程下 accept-clean 只在最终确认时写入，此行为可接受。
+- 不需要 manifest 迁移：阶段枚举与状态结构均未变。
+
+其余落地差异：`assertAcceptedCleanPlate` 改名为 `assertUsableCleanPlate`（`apps/cli/src/deck/export.ts` 的调用点同步更新）；A5 的公式落在新建的 `packages/core/src/pptx-text-style.ts`，`synthesize.ts` 改为 import 并重新导出。
+
 ## 阶段 C — 文本复核界面（R3、design §4.1–4.2）
+
+> **阶段 A 已提供、C 直接从 `@ppt-maker/core` import，勿重写**：
+> `compareBlockSources(block): BlockSourceTexts`（C1 分区判据的唯一来源）、
+> `resolveFontSizePt` / `fontSizePtFromPx` / `toAlign` / `toValign` / `toBold`（D1 合成预览用）。
+> 阶段 B 已提供：`gate: "human-edit"` + `stoppedAt: "review"`（C15 与 D7 按此定位界面）、
+> `slide accept-final`（D4 的 IPC 直接调 `runAcceptFinal`）。
 
 - [ ] C1 新增 `lib/review-partition.ts`：`partitionOf(block)` 三分区派生（object_symbol 与 uncertain → 分类待确认；layout_text 按 `compareBlockSources().agrees` 二分）。测试断言用 `research/data-snapshot` 的实测值：page-01 = 25 / 16 / 19，page-02 = 45 / 18 / 32
 - [ ] C2 新增 `lib/text-diff.ts`：字符级 LCS diff，输出分段（相同 / 仅在 OCR / 仅在 assist）

@@ -106,3 +106,37 @@ V1 桌面工作台被判定用户体验不合格（无批量执行、无进度/�
 ### Next Steps
 
 - None - task complete
+
+---
+
+## 2026-07-26 — 复核链路简化 阶段 A + B
+
+### Summary
+
+任务 `07-26-review-flow-simplification` 的后端两阶段落地。阶段 A（core 契约）：新增 `LAYOUT_TEXT_MUST_BE_MASKED` 校验堵死「版式文字未入 mask → 导出重影」这条此前无任何一层报错的静默漏洞（PRD F-8），`REVIEW_VALIDATION_RULES_VERSION` 升 v2，`buildFreshBlock` 的 `includeInMask` 默认值改为随分类走，新增 `compareBlockSources` 作为双源比对的唯一判据，把 `resolveFontSizePt`/`toAlign`/`toValign`/`toBold`/`fontSizePtFromPx` 从 `apps/cli/src/pptx/synthesize.ts` 纯搬迁到 `packages/core/src/pptx-text-style.ts` 供合成预览与导出同源。阶段 B（CLI 门）：mask 前插入 human-edit 门（此前靠 mask 抛 `INVALID_STAGE_STATE` 代偿，用户看到的是「阶段执行失败」而非「等你复核」，即 F-11），accept-clean 直通不再设停点，新增 `slide accept-final` 一次写入两条验收记录且重试幂等。
+
+**实施中发现的计划缺口**：design §3.2 只写了改 `assertAcceptedCleanPlate`，但 `STAGE_DEPENDENCIES.pptx = ["accept-clean"]` 会让 `assertStageDependenciesCompleted` 先一步拒绝——只改断言不够。用户当场确认采用「改依赖图为 `pptx: ["clean"]`」方案。安全属性经测试与实测核对未削弱：clean 失效仍连带 pptx 及下游失效，`deck export --strict` 仍要求每页 accept-pptx completed，mask/pptx 兜底门禁原样保留。已知语义收窄：单独失效 accept-clean 不再连带失效 pptx（新流程下 accept-clean 只在最终确认时写入，可接受）。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e03af4a` | feat(core): 阶段 A — 堵死 layout_text 重影漏洞并把字号公式提到 core |
+| `a0de457` | feat(cli): 阶段 B — 五个人工门收敛为文本复核门 + 最终产物确认 |
+
+### Testing
+
+- 全量 38 个测试文件 / 316 例通过（基线 36/294，新增 22 例、2 例既有断言按新契约更新）
+- `pnpm format:check` / `typecheck` / `build` 全绿
+- `measure.py` 数据快照复现 PRD 分区数字：page-01 = 25/16/19，page-02 = 45/18/32
+- 真实工作区实测（`~/test/ppttest-2026-07-25` 副本，原始未动）：block-045 被新校验拦下且 rulesVersion 为 v2；human-edit 门正确停顿并报待复核数；accept-clean 置 pending 时 pptx 仍能合成；accept-final 重复调用 ID 不变、attempt 不增；`deck export --strict` 拒绝未验收页、验收后导出 2 页原生
+
+### Status
+
+[WIP] 阶段 A、B 完成；C（文本复核界面 15 项）、D（最终确认页 9 项）、E（走查收尾 6 项）待做
+
+### Next Steps
+
+- 阶段 C 从 C1 `lib/review-partition.ts` 起，分区判据必须 import core 的 `compareBlockSources`，勿重写
+- 实现前先读 `DESIGN.md` 与 `.trellis/spec/frontend/`（component-guidelines、state-management、type-safety）
+- 环境已就绪：依赖已装、`~/test/ppttest-2026-07-25.bak-baseline` 为基线备份

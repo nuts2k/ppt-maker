@@ -1,6 +1,6 @@
 {"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "质量门命令集（format:check / typecheck / test / build）与 Node 版本要求，本任务横跨三层必须全量跑通"}
 {"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "验收核心是三处静默失败被堵死：human-edit 门是否真的停下并给出可操作提示、layout_text 未入 mask 是否报 error、object_symbol 是否全部进入分类待确认分区"}
-{"file": ".trellis/spec/backend/contracts.md", "reason": "检查 SlideStage 枚举与 STAGE_DEPENDENCIES 未被改动、既有 manifest 无需迁移、accept-final 写入的两条记录结构与 CLI 单步写入完全一致"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "核对 SlideStage 枚举未变、既有 manifest 无需迁移、accept-final 写入的两条记录结构与 CLI 单步写入完全一致；注意 STAGE_DEPENDENCIES.pptx 已按用户 2026-07-26 决策从 accept-clean 改为 clean（见 implement.md「A/B 阶段已完成」段），检查点改为：clean 失效仍连带 pptx 及下游失效、deck export --strict 仍要求每页 accept-pptx completed"}
 {"file": ".trellis/spec/backend/error-handling.md", "reason": "检查 human-edit 门与新校验码未吞错、未改写既有稳定错误码，mask/pptx 兜底门禁仍然有效"}
 {"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "检查提到 core 的公式在 cli 与 renderer 两侧确为同一实现、renderer 无对 IPC payload 的本地强转"}
 {"file": "DESIGN.md", "reason": "视觉合规检查：token 对应、无新增 hover 态、display 字重 ≤500、diff 与失败态仅用文档内签名色板"}
