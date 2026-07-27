@@ -13,6 +13,7 @@ import { runAcceptPptx } from "../src/pptx/accept.js";
 import { runSlidePptx } from "../src/pptx/run.js";
 import type { OpenAiImageEditor } from "../src/providers/openai-image.js";
 import { runSlideReport } from "../src/report/run.js";
+import { runAcceptFinal } from "../src/slide/accept-final.js";
 import { runSlideOcr } from "../src/slide/ocr.js";
 import { runSlideReview } from "../src/slide/review.js";
 import { runSlideRunFrom } from "../src/slide/run-from.js";
@@ -176,7 +177,8 @@ async function setupReviewedMask(): Promise<{
   return { workspacePath, reviewPath: review.outputPath };
 }
 
-async function setupThroughPptx(): Promise<{
+// 跑到 pptx 但不做任何人工验收——最终产物确认前的真实状态。
+async function setupThroughPptxUnaccepted(): Promise<{
   workspacePath: string;
   reviewPath: string;
 }> {
@@ -190,13 +192,24 @@ async function setupThroughPptx(): Promise<{
     confirmUpload: true,
     edit: fakeEditor(cleanBuffer),
   });
-  await runAcceptClean({ workspacePath, acceptedBy: "dev" });
   await runSlidePptx({
     workspacePath,
     fontFace: FONT,
     doctorReport: fontReadyReport(),
   });
   return { workspacePath, reviewPath };
+}
+
+async function setupThroughPptx(): Promise<{
+  workspacePath: string;
+  reviewPath: string;
+}> {
+  const setup = await setupThroughPptxUnaccepted();
+  await runAcceptClean({
+    workspacePath: setup.workspacePath,
+    acceptedBy: "dev",
+  });
+  return setup;
 }
 
 describe("变更粒度失效矩阵", () => {
@@ -273,12 +286,122 @@ describe("slide run --from 停止点", () => {
     expect(result.gate).toBe("upload");
   });
 
-  it("run --from pptx 执行 pptx 后停在人工接受门", async () => {
+  it("run --from pptx 执行 pptx 后停在最终确认门", async () => {
     const { workspacePath } = await setupThroughPptx();
     const result = await runSlideRunFrom("pptx", { workspacePath });
     expect(result.executed).toEqual(["pptx"]);
     expect(result.stoppedAt).toBe("accept-pptx");
     expect(result.gate).toBe("manual");
+    expect(result.nextCommand).toContain("accept-final");
+  });
+
+  // B7：mask 会把版式文字从底板抹掉，抹之前必须有人确认过文字内容。
+  // 此前这一步靠 mask/run.ts 抛 INVALID_STAGE_STATE 代偿，表现为「阶段执行失败」
+  // 而非「停下等人复核」（PRD F-11）。
+  it("存在未复核版式文字时停在文本复核门", async () => {
+    const { workspacePath, reviewPath } = await setupReviewedMask();
+    await editReview(reviewPath, (doc) => {
+      const title = doc.blocks[0];
+      if (title !== undefined) {
+        title.reviewStatus = "unreviewed";
+      }
+    });
+    await runSlideValidateReview({ workspacePath });
+
+    const result = await runSlideRunFrom("mask", { workspacePath });
+    expect(result.gate).toBe("human-edit");
+    // 语义是回到 review 产物做人工复核，而不是「mask 阶段出错」。
+    expect(result.stoppedAt).toBe("review");
+    expect(result.executed).toEqual([]);
+    expect(result.message).toContain("1");
+  });
+
+  // B8：复核齐备后 accept-clean 不再产生停顿，一路直通到最终确认。
+  it("复核齐备后直通至最终确认门且 accept-clean 未停顿", async () => {
+    const { workspacePath } = await setupReviewedMask();
+    const cleanBuffer = await buildFakeCleanPlate(
+      join(workspacePath, "inputs/source.png"),
+      join(workspacePath, "stages/mask/mask.png"),
+    );
+    await runSlideClean({
+      workspacePath,
+      confirmUpload: true,
+      edit: fakeEditor(cleanBuffer),
+    });
+
+    const result = await runSlideRunFrom("clean", {
+      workspacePath,
+      confirmUpload: true,
+    });
+    expect(result.stoppedAt).toBe("accept-pptx");
+    expect(result.gate).toBe("manual");
+    expect(result.executed).toContain("pptx");
+    // clean 未验收也能合成 PPTX：验收统一移到最终产物确认。
+    const loaded = await loadSlideWorkspace(workspacePath);
+    expect(
+      loaded.manifest.stages.find((state) => state.stage === "accept-clean")
+        ?.status,
+    ).not.toBe("completed");
+  });
+
+  // B10：既有已完成页走新逻辑不产生任何停顿。
+  it("两个验收均已完成的页继续 run 不停顿", async () => {
+    const { workspacePath } = await setupThroughPptx();
+    await runAcceptPptx({ workspacePath, acceptedBy: "dev" });
+    const result = await runSlideRunFrom("pptx", { workspacePath });
+    expect(result.gate).toBeNull();
+    expect(result.stoppedAt).toBeNull();
+  });
+});
+
+describe("slide accept-final", () => {
+  // B9：一次动作写入两条验收记录，结构与单步 accept-clean / accept-pptx 一致。
+  it("写入 clean 与 pptx 两条验收记录且结构与单步一致", async () => {
+    const { workspacePath } = await setupThroughPptxUnaccepted();
+    const result = await runAcceptFinal({ workspacePath, acceptedBy: "dev" });
+    expect(result.cleanAcceptanceId).toBe("accept-clean-001");
+    expect(result.pptxAcceptanceId).toBe("accept-pptx-001");
+
+    const loaded = await loadSlideWorkspace(workspacePath);
+    for (const stage of ["accept-clean", "accept-pptx"] as const) {
+      const state = loaded.manifest.stages.find(
+        (candidate) => candidate.stage === stage,
+      );
+      expect(state?.status).toBe("completed");
+      expect(state?.lastSuccessfulAttemptId).not.toBeNull();
+    }
+    const cleanAcceptance = JSON.parse(
+      await readFile(join(workspacePath, "stages/clean/accepted.json"), "utf8"),
+    ) as { stage: string; note: string; checklist: Record<string, boolean> };
+    const pptxAcceptance = JSON.parse(
+      await readFile(join(workspacePath, "stages/pptx/accepted.json"), "utf8"),
+    ) as { stage: string; note: string; checklist: Record<string, boolean> };
+    expect(cleanAcceptance.stage).toBe("accept-clean");
+    expect(pptxAcceptance.stage).toBe("accept-pptx");
+    expect(cleanAcceptance.note).toContain("经最终产物确认统一验收：");
+    expect(pptxAcceptance.note).toContain("经最终产物确认统一验收：");
+    // 清单沿用各自的 DEFAULT_CHECKLIST，与单步验收写入的内容一致。
+    expect(cleanAcceptance.checklist.noTextResidue).toBe(true);
+    expect(pptxAcceptance.checklist.opensInPowerPoint).toBe(true);
+  });
+
+  it("重复调用幂等：状态不变且不追加 attempt", async () => {
+    const { workspacePath } = await setupThroughPptxUnaccepted();
+    const first = await runAcceptFinal({ workspacePath, acceptedBy: "dev" });
+    const afterFirst = await loadSlideWorkspace(workspacePath);
+    const countAttempts = (manifest: typeof afterFirst.manifest): number =>
+      manifest.attempts.filter(
+        (attempt) =>
+          attempt.stage === "accept-clean" || attempt.stage === "accept-pptx",
+      ).length;
+
+    const second = await runAcceptFinal({ workspacePath, acceptedBy: "dev" });
+    const afterSecond = await loadSlideWorkspace(workspacePath);
+    expect(second.cleanAcceptanceId).toBe(first.cleanAcceptanceId);
+    expect(second.pptxAcceptanceId).toBe(first.pptxAcceptanceId);
+    expect(countAttempts(afterSecond.manifest)).toBe(
+      countAttempts(afterFirst.manifest),
+    );
   });
 });
 

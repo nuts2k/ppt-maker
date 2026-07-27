@@ -9,7 +9,7 @@ import {
   SCHEMA_VERSION,
   TextReviewDocumentSchema,
 } from "@ppt-maker/core";
-import { assertAcceptedCleanPlate, selectTextBoxBlocks } from "../pptx/run.js";
+import { assertUsableCleanPlate, selectTextBoxBlocks } from "../pptx/run.js";
 import { sampleBlockColors } from "../pptx/sample-color.js";
 import {
   type DeckSlideInput,
@@ -67,7 +67,7 @@ async function buildNativeSlide(
     });
   }
   await assertWorkspaceAssetIntegrity(workspace.path, source);
-  const cleanAsset = await assertAcceptedCleanPlate(
+  const cleanAsset = await assertUsableCleanPlate(
     workspace.path,
     workspace.manifest,
   );

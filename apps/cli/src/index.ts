@@ -23,6 +23,7 @@ import { runSlidePptx } from "./pptx/run.js";
 import { createPptxProbe } from "./pptx.js";
 import { OPENAI_IMAGE_MODEL } from "./providers/openai-image.js";
 import { formatSlideReport, runSlideReport } from "./report/run.js";
+import { runAcceptFinal } from "./slide/accept-final.js";
 import { runAssistReview } from "./slide/assist-review.js";
 import { runSlideOcr } from "./slide/ocr.js";
 import { runSlideReview } from "./slide/review.js";
@@ -256,6 +257,26 @@ slide
       });
       process.stderr.write(`${result.autoCheckSummary}\n`);
       process.stdout.write(`${result.acceptedPath}\n`);
+    },
+  );
+
+slide
+  .command("accept-final")
+  .argument("<workspace>", "页面工作区")
+  .option("--by <name>", "接受者标识")
+  .option("--note <text>", "最终产物确认备注")
+  .description("最终产物确认：一次性记录 clean plate 与 PPTX 的人工验收")
+  .action(
+    async (workspace: string, options: { by?: string; note?: string }) => {
+      const result = await runAcceptFinal({
+        workspacePath: resolve(workspace),
+        ...(options.by === undefined ? {} : { acceptedBy: options.by }),
+        ...(options.note === undefined ? {} : { note: options.note }),
+      });
+      process.stderr.write(`当前自动检查：${result.autoCheckSummary}\n`);
+      process.stdout.write(
+        `${result.cleanAcceptanceId} ${result.pptxAcceptanceId}\n`,
+      );
     },
   );
 

@@ -82,17 +82,17 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 
 ## 阶段 B — CLI 门与验收（R1、design §3）
 
-- [ ] B1 `run-from.ts` 在 `mask` 分支前插入 human-edit 门判定（`stoppedAt: "review"`、`gate: "human-edit"`、消息含待复核块数）
-- [ ] B2 `run-from.ts` 拆分 `accept-clean || accept-pptx` 分支：`accept-clean` 直接跳过不返回门；`accept-pptx` 保留 `manual` 门
-- [ ] B3 `pptx/run.ts` 的 `assertAcceptedCleanPlate` 改为断言「`clean` 阶段 completed 且产物哈希匹配、非 stale」，移除「人工已接受」前置；人工已接受的断言移入 B4。**用户已于 2026-07-26 确认此改动可执行（PRD R1.4），按计划推进，不必再次征询**
-- [ ] B4 新增 `apps/cli/src/slide/accept-final.ts`：顺序调 `runAcceptClean` + `runAcceptPptx`，note 统一前缀「经最终产物确认统一验收：」，失败不回滚（重试幂等）
-- [ ] B5 CLI 注册 `slide accept-final <workspace>`；`accept-clean` / `accept-pptx` 子命令保留
-- [ ] B6 `mask/run.ts:155` 与 `pptx/run.ts:103` 的复核门禁保留为兜底，不改动
-- [ ] B7 测试：新页 `runSlideRunFrom("ocr")` 在存在未复核 layout_text 时返回 `gate: "human-edit"` 且 `stoppedAt: "review"`
-- [ ] B8 测试：全部复核后继续 run 直通至停在 `accept-pptx`，`accept-clean` 未产生停顿
-- [ ] B9 测试：`runAcceptFinal` 写入两条验收记录，结构与单步 `runAcceptClean` / `runAcceptPptx` 一致；重复调用幂等
-- [ ] B10 测试：既有已完成页（两个 accept 均 completed）走新逻辑不产生任何停顿
-- [ ] B11 测试（B3 批准的前提条件）：`accept-pptx` 未 completed 的页在 `deck export --strict` 下仍被拒绝；`pptx` 阶段在 `clean` 为 stale 时仍拒绝生成
+- [x] B1 `run-from.ts` 在 `mask` 分支前插入 human-edit 门判定（`stoppedAt: "review"`、`gate: "human-edit"`、消息含待复核块数）
+- [x] B2 `run-from.ts` 拆分 `accept-clean || accept-pptx` 分支：`accept-clean` 直接跳过不返回门；`accept-pptx` 保留 `manual` 门
+- [x] B3 `pptx/run.ts` 的 `assertAcceptedCleanPlate` 改为断言「`clean` 阶段 completed 且产物哈希匹配、非 stale」，移除「人工已接受」前置；人工已接受的断言移入 B4。**用户已于 2026-07-26 确认此改动可执行（PRD R1.4），按计划推进，不必再次征询**
+- [x] B4 新增 `apps/cli/src/slide/accept-final.ts`：顺序调 `runAcceptClean` + `runAcceptPptx`，note 统一前缀「经最终产物确认统一验收：」，失败不回滚（重试幂等）
+- [x] B5 CLI 注册 `slide accept-final <workspace>`；`accept-clean` / `accept-pptx` 子命令保留
+- [x] B6 `mask/run.ts:155` 与 `pptx/run.ts:103` 的复核门禁保留为兜底，不改动
+- [x] B7 测试：新页 `runSlideRunFrom("ocr")` 在存在未复核 layout_text 时返回 `gate: "human-edit"` 且 `stoppedAt: "review"`
+- [x] B8 测试：全部复核后继续 run 直通至停在 `accept-pptx`，`accept-clean` 未产生停顿
+- [x] B9 测试：`runAcceptFinal` 写入两条验收记录，结构与单步 `runAcceptClean` / `runAcceptPptx` 一致；重复调用幂等
+- [x] B10 测试：既有已完成页（两个 accept 均 completed）走新逻辑不产生任何停顿
+- [x] B11 测试（B3 批准的前提条件）：`accept-pptx` 未 completed 的页在 `deck export --strict` 下仍被拒绝；`pptx` 阶段在 `clean` 为 stale 时仍拒绝生成
 
 **验证**：`pnpm test` + 用备份工作区跑一次 `slide run --from ocr --confirm-api --confirm-upload`，确认停在 human-edit 门（page-02 应先因 A1 校验在 `validation-failed` 停下，这是 R4.3 的预期行为）。
 

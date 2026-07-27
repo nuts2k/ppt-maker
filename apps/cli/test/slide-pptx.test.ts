@@ -297,8 +297,9 @@ describe("slide pptx", () => {
     ).rejects.toThrow("未复核");
   });
 
-  it("clean plate 未接受时拒绝导出", async () => {
-    // 只跑到 mask，不做 clean/accept-clean。
+  it("clean plate 未生成时拒绝导出", async () => {
+    // 只跑到 mask，不做 clean。人工验收已移到 accept-final，
+    // 但底板产物本身仍是 pptx 的硬前置（design §3.2）。
     const parent = await mkdtemp(join(tmpdir(), "ppt-maker-slide-pptx-"));
     const workspacePath = join(parent, "slide");
     const binaryPath = await createFakeVisionBinary(parent, DEFAULT_BLOCKS);
@@ -331,10 +332,10 @@ describe("slide pptx", () => {
         fontFace: FONT,
         doctorReport: fontReadyReport(),
       }),
-    ).rejects.toThrow("accept-clean");
+    ).rejects.toThrow("clean");
   });
 
-  it("clean 接受记录因上游变化 stale 后拒绝导出", async () => {
+  it("clean 因上游变化 stale 后拒绝导出", async () => {
     const { workspacePath, reviewPath } = await prepareAcceptedClean();
     // accept-clean 此时 completed；改 mask 参数 → 重跑 validate/mask（指纹变化）
     // → invalidateStageAndDownstream 使 clean 与 accept-clean stale（未重新 clean/accept）。
@@ -354,6 +355,11 @@ describe("slide pptx", () => {
     await runSlideMask({ workspacePath });
 
     const loaded = await loadSlideWorkspace(workspacePath);
+    // clean 与 accept-clean 同时 stale；pptx 现在只依赖 clean，
+    // 安全属性由 clean 这条边保住（design §3.2 的方案一）。
+    expect(
+      loaded.manifest.stages.find((state) => state.stage === "clean")?.status,
+    ).toBe("stale");
     expect(
       loaded.manifest.stages.find((state) => state.stage === "accept-clean")
         ?.status,
@@ -364,7 +370,7 @@ describe("slide pptx", () => {
         fontFace: FONT,
         doctorReport: fontReadyReport(),
       }),
-    ).rejects.toThrow("accept-clean");
+    ).rejects.toThrow("clean");
   });
 
   it("坐标与样式映射到英寸/磅", async () => {

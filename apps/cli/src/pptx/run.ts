@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import {
-  ArtifactAcceptanceSchema,
   assertStageDependenciesCompleted,
   DEFAULT_FONT_FACE,
   type DoctorReport,
@@ -119,55 +118,38 @@ export function selectTextBoxBlocks(
   return blocks.filter((block) => block.classification === "layout_text");
 }
 
-// 门禁：clean plate 必须存在有效且非 stale 的人工接受记录，且接受哈希锚定当前产物。
-export async function assertAcceptedCleanPlate(
+// 门禁：clean 阶段必须成功完成且未失效，产物完整性与阶段记录一致。
+// 「人工已接受」不再是 PPTX 生成的前置——验收统一移到最终产物确认（design §3.2），
+// 由 accept-final 一次写入 clean 与 pptx 两条记录；deck export --strict 仍要求 accept-pptx。
+export async function assertUsableCleanPlate(
   workspacePath: string,
   manifest: SlideWorkspaceManifest,
 ): Promise<WorkspaceAsset> {
-  const acceptState = manifest.stages.find(
-    (state) => state.stage === "accept-clean",
-  );
-  if (acceptState?.status !== "completed") {
+  const cleanState = manifest.stages.find((state) => state.stage === "clean");
+  if (
+    cleanState?.status !== "completed" ||
+    cleanState.lastSuccessfulAttemptId === null
+  ) {
     throw new FoundationError(
       "INVALID_STAGE_STATE",
-      "clean plate 未接受或接受记录已 stale，无法导出 PPTX",
-      { acceptCleanStatus: acceptState?.status ?? "missing" },
+      "clean plate 未生成或已失效，无法导出 PPTX",
+      { cleanStatus: cleanState?.status ?? "missing" },
     );
   }
-  const acceptanceAsset = manifest.assets.find(
-    (asset) => asset.role === "clean_acceptance",
-  );
-  if (acceptanceAsset === undefined) {
-    throw new FoundationError(
-      "INVALID_STAGE_STATE",
-      "缺少 clean plate 接受记录",
-    );
-  }
-  await assertWorkspaceAssetIntegrity(workspacePath, acceptanceAsset);
-  const acceptance = ArtifactAcceptanceSchema.parse(
-    JSON.parse(
-      await readFile(
-        resolveWorkspacePath(workspacePath, acceptanceAsset.path),
-        "utf8",
-      ),
-    ),
-  );
+  // 只有当前 clean 尝试的产物可用，避免用上一轮遗留的底板合成。
   const cleanAsset = manifest.assets.find(
-    (asset) => asset.id === acceptance.artifactAssetId,
+    (asset) =>
+      asset.role === "clean_plate" &&
+      asset.attemptId === cleanState.lastSuccessfulAttemptId,
   );
   if (cleanAsset === undefined) {
     throw new FoundationError(
       "INVALID_STAGE_STATE",
-      "接受记录引用的 clean plate 产物不存在",
+      "未找到当前 clean 尝试的 clean plate 产物",
+      { attemptId: cleanState.lastSuccessfulAttemptId },
     );
   }
   await assertWorkspaceAssetIntegrity(workspacePath, cleanAsset);
-  if (acceptance.artifactSha256 !== cleanAsset.sha256) {
-    throw new FoundationError(
-      "ASSET_INTEGRITY_MISMATCH",
-      "clean plate 接受记录的哈希与当前产物不一致",
-    );
-  }
   return cleanAsset;
 }
 
@@ -190,7 +172,7 @@ export async function runSlidePptx(
   if (source.image === null) {
     throw new FoundationError("INVALID_WORKSPACE", "源图资产缺少尺寸元数据");
   }
-  const cleanAsset = await assertAcceptedCleanPlate(
+  const cleanAsset = await assertUsableCleanPlate(
     workspace.path,
     workspace.manifest,
   );

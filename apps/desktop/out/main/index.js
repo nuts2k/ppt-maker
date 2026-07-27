@@ -3,7 +3,7 @@ import { config } from "dotenv";
 import { ipcMain, dialog, app, BrowserWindow } from "electron";
 import { mkdir, appendFile, readFile, mkdtemp, copyFile, rename, rm, writeFile, stat, readdir, access } from "node:fs/promises";
 import { randomUUID, createHash } from "node:crypto";
-import { assertWideAspectRatio, validateWideAspectRatio, SlideWorkspaceManifestSchema, SlideWorkspaceConfigSchema, FoundationError, SCHEMA_VERSION, createInitialStageStates, DeckManifestSchema, DEFAULT_FONT_FACE, DoctorReportSchema, SUPPORTED_NODE_MAJOR, SUPPORTED_PNPM_MAJOR, PPTX_WIDE_HEIGHT_INCHES, PPTX_WIDE_WIDTH_INCHES, pixelsToPptxBox, toValign, toAlign, toBold, resolveFontSizePt, ArtifactAcceptanceSchema, assertStageDependenciesCompleted, TextReviewDocumentSchema, isStageReusable, PptxCheckReportSchema, invalidateStageAndDownstream, PptxSynthesisRecordSchema, DeckExportRecordSchema, SLIDE_STAGE_ORDER, CleanAttemptRecordSchema, validateTextReviewDocument, ProviderCallRecordSchema, OcrProbeResponseSchema, MASK_ALGORITHM_VERSION, maskInvalidationProjection, MaskRecordSchema, TextReviewValidationReportSchema, SlideReportSchema, TextAssistResultSchema, TEXT_MERGE_ALGORITHM_VERSION, mergeTextBlockCandidates, REVIEW_VALIDATION_RULES_VERSION } from "@ppt-maker/core";
+import { assertWideAspectRatio, validateWideAspectRatio, SlideWorkspaceManifestSchema, SlideWorkspaceConfigSchema, FoundationError, SCHEMA_VERSION, createInitialStageStates, DeckManifestSchema, DEFAULT_FONT_FACE, DoctorReportSchema, SUPPORTED_NODE_MAJOR, SUPPORTED_PNPM_MAJOR, PPTX_WIDE_HEIGHT_INCHES, PPTX_WIDE_WIDTH_INCHES, pixelsToPptxBox, toValign, toAlign, toBold, resolveFontSizePt, assertStageDependenciesCompleted, TextReviewDocumentSchema, isStageReusable, PptxCheckReportSchema, invalidateStageAndDownstream, PptxSynthesisRecordSchema, DeckExportRecordSchema, SLIDE_STAGE_ORDER, CleanAttemptRecordSchema, ArtifactAcceptanceSchema, validateTextReviewDocument, ProviderCallRecordSchema, OcrProbeResponseSchema, MASK_ALGORITHM_VERSION, maskInvalidationProjection, MaskRecordSchema, TextReviewValidationReportSchema, SlideReportSchema, TextAssistResultSchema, TEXT_MERGE_ALGORITHM_VERSION, mergeTextBlockCandidates, REVIEW_VALIDATION_RULES_VERSION } from "@ppt-maker/core";
 import { imageSize } from "image-size";
 import { execFileSync, execFile } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -1066,51 +1066,26 @@ function selectTextBoxBlocks(blocks) {
   }
   return blocks.filter((block) => block.classification === "layout_text");
 }
-async function assertAcceptedCleanPlate(workspacePath, manifest) {
-  const acceptState = manifest.stages.find(
-    (state) => state.stage === "accept-clean"
-  );
-  if (acceptState?.status !== "completed") {
+async function assertUsableCleanPlate(workspacePath, manifest) {
+  const cleanState = manifest.stages.find((state) => state.stage === "clean");
+  if (cleanState?.status !== "completed" || cleanState.lastSuccessfulAttemptId === null) {
     throw new FoundationError(
       "INVALID_STAGE_STATE",
-      "clean plate 未接受或接受记录已 stale，无法导出 PPTX",
-      { acceptCleanStatus: acceptState?.status ?? "missing" }
+      "clean plate 未生成或已失效，无法导出 PPTX",
+      { cleanStatus: cleanState?.status ?? "missing" }
     );
   }
-  const acceptanceAsset = manifest.assets.find(
-    (asset) => asset.role === "clean_acceptance"
-  );
-  if (acceptanceAsset === void 0) {
-    throw new FoundationError(
-      "INVALID_STAGE_STATE",
-      "缺少 clean plate 接受记录"
-    );
-  }
-  await assertWorkspaceAssetIntegrity(workspacePath, acceptanceAsset);
-  const acceptance = ArtifactAcceptanceSchema.parse(
-    JSON.parse(
-      await readFile(
-        resolveWorkspacePath(workspacePath, acceptanceAsset.path),
-        "utf8"
-      )
-    )
-  );
   const cleanAsset = manifest.assets.find(
-    (asset) => asset.id === acceptance.artifactAssetId
+    (asset) => asset.role === "clean_plate" && asset.attemptId === cleanState.lastSuccessfulAttemptId
   );
   if (cleanAsset === void 0) {
     throw new FoundationError(
       "INVALID_STAGE_STATE",
-      "接受记录引用的 clean plate 产物不存在"
+      "未找到当前 clean 尝试的 clean plate 产物",
+      { attemptId: cleanState.lastSuccessfulAttemptId }
     );
   }
   await assertWorkspaceAssetIntegrity(workspacePath, cleanAsset);
-  if (acceptance.artifactSha256 !== cleanAsset.sha256) {
-    throw new FoundationError(
-      "ASSET_INTEGRITY_MISMATCH",
-      "clean plate 接受记录的哈希与当前产物不一致"
-    );
-  }
   return cleanAsset;
 }
 async function runSlidePptx(options) {
@@ -1128,7 +1103,7 @@ async function runSlidePptx(options) {
   if (source.image === null) {
     throw new FoundationError("INVALID_WORKSPACE", "源图资产缺少尺寸元数据");
   }
-  const cleanAsset = await assertAcceptedCleanPlate(
+  const cleanAsset = await assertUsableCleanPlate(
     workspace.path,
     workspace.manifest
   );
@@ -1469,7 +1444,7 @@ async function buildNativeSlide(slideWorkspacePath, pageLabel) {
     });
   }
   await assertWorkspaceAssetIntegrity(workspace.path, source);
-  const cleanAsset = await assertAcceptedCleanPlate(
+  const cleanAsset = await assertUsableCleanPlate(
     workspace.path,
     workspace.manifest
   );
@@ -4259,7 +4234,7 @@ async function assistReviewText(options) {
     rawResponse: response.rawResponse
   };
 }
-const REVIEW_PATH = "stages/review/text-blocks.json";
+const REVIEW_PATH$1 = "stages/review/text-blocks.json";
 function replaceStageState$2(states, replacement) {
   return states.map(
     (state) => state.stage === replacement.stage ? replacement : state
@@ -4381,7 +4356,7 @@ async function runAssistReview(options) {
     );
   }
   if (isStageReusable(previousState, inputFingerprint) && previousState.lastSuccessfulAttemptId !== null) {
-    const outputPath = resolveWorkspacePath(workspace.path, REVIEW_PATH);
+    const outputPath = resolveWorkspacePath(workspace.path, REVIEW_PATH$1);
     const doc = TextReviewDocumentSchema.parse(
       JSON.parse(await readFile(outputPath, "utf8"))
     );
@@ -4400,7 +4375,7 @@ async function runAssistReview(options) {
     };
   }
   const reviewContent = await readFile(
-    resolveWorkspacePath(workspace.path, REVIEW_PATH),
+    resolveWorkspacePath(workspace.path, REVIEW_PATH$1),
     "utf8"
   );
   const document = TextReviewDocumentSchema.parse(JSON.parse(reviewContent));
@@ -4480,7 +4455,7 @@ async function runAssistReview(options) {
       analysis.result
     );
     const updatedDocument = TextReviewDocumentSchema.parse(documentJson);
-    const outputPath = resolveWorkspacePath(workspace.path, REVIEW_PATH);
+    const outputPath = resolveWorkspacePath(workspace.path, REVIEW_PATH$1);
     await writeJsonAtomic(outputPath, updatedDocument);
     const endedAt = (/* @__PURE__ */ new Date()).toISOString();
     const [reviewAssetNew, aiResultAsset, rawResponseAsset] = await Promise.all(
@@ -4488,7 +4463,7 @@ async function runAssistReview(options) {
         createWorkspaceAsset(outputPath, {
           schemaVersion: SCHEMA_VERSION,
           id: `asset-${attemptId}-text-review`,
-          path: REVIEW_PATH,
+          path: REVIEW_PATH$1,
           role: "text_review",
           createdAt: endedAt,
           producedBy: "assist-review",
@@ -4532,7 +4507,7 @@ async function runAssistReview(options) {
       model: OPENAI_TEXT_ASSIST_MODEL,
       parameters: { store: false },
       promptVersion: TEXT_ASSIST_PROMPT_VERSION,
-      sentAssets: [{ path: REVIEW_PATH, sha256: reviewAsset.sha256 }],
+      sentAssets: [{ path: REVIEW_PATH$1, sha256: reviewAsset.sha256 }],
       requestId: analysis.requestId,
       startedAt,
       endedAt,
@@ -4605,7 +4580,7 @@ async function runAssistReview(options) {
       model: OPENAI_TEXT_ASSIST_MODEL,
       parameters: { store: false },
       promptVersion: TEXT_ASSIST_PROMPT_VERSION,
-      sentAssets: [{ path: REVIEW_PATH, sha256: reviewAsset.sha256 }],
+      sentAssets: [{ path: REVIEW_PATH$1, sha256: reviewAsset.sha256 }],
       requestId: null,
       startedAt,
       endedAt,
@@ -5250,6 +5225,7 @@ async function runSlideValidateReview(options) {
   });
   return { reportPath, report };
 }
+const REVIEW_PATH = "stages/review/text-blocks.json";
 const RUN_SEQUENCE = [
   "ocr",
   "review",
@@ -5264,6 +5240,16 @@ const RUN_SEQUENCE = [
 ];
 function stageState(manifest, stage) {
   return manifest.stages.find((state) => state.stage === stage);
+}
+async function countPendingReviewBlocks(workspacePath) {
+  const document = TextReviewDocumentSchema.parse(
+    JSON.parse(
+      await readFile(resolveWorkspacePath(workspacePath, REVIEW_PATH), "utf8")
+    )
+  );
+  return document.blocks.filter(
+    (block) => block.classification === "layout_text" && block.reviewStatus === "unreviewed"
+  ).length;
 }
 async function runSlideRunFrom(from, options) {
   const startIndex = RUN_SEQUENCE.indexOf(from);
@@ -5322,6 +5308,16 @@ async function runSlideRunFrom(from, options) {
           };
         }
       } else if (stage === "mask") {
+        const pending = await countPendingReviewBlocks(options.workspacePath);
+        if (pending > 0) {
+          return {
+            executed,
+            stoppedAt: "review",
+            gate: "human-edit",
+            nextCommand: null,
+            message: `有 ${pending} 个版式目标文字待人工复核`
+          };
+        }
         await runSlideMask({ workspacePath: options.workspacePath });
         executed.push(stage);
       } else if (stage === "pptx") {
@@ -5348,15 +5344,15 @@ async function runSlideRunFrom(from, options) {
             };
           }
         }
-      } else if (stage === "accept-clean" || stage === "accept-pptx") {
+      } else if (stage === "accept-clean") {
+      } else if (stage === "accept-pptx") {
         if (stageState(workspace.manifest, stage)?.status !== "completed") {
-          const command = stage === "accept-clean" ? `ppt-maker slide accept-clean ${options.workspacePath}` : `ppt-maker slide accept-pptx ${options.workspacePath}`;
           return {
             executed,
             stoppedAt: stage,
             gate: "manual",
-            nextCommand: command,
-            message: stage === "accept-clean" ? "请人工核对 clean plate 后运行 accept-clean" : "请在 PowerPoint for Mac 检查后运行 accept-pptx"
+            nextCommand: `ppt-maker slide accept-final ${options.workspacePath}`,
+            message: "请核对最终产物（合成预览或 PowerPoint for Mac）后运行 accept-final 一次性验收 clean 与 PPTX"
           };
         }
       }

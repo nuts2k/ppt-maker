@@ -17,7 +17,9 @@ const STAGE_DEPENDENCIES: Readonly<Record<SlideStage, readonly SlideStage[]>> =
     mask: ["assist-review"],
     clean: ["mask"],
     "accept-clean": ["clean"],
-    pptx: ["accept-clean"],
+    // pptx 只依赖 clean 产物本身：人工验收已收敛到最终产物确认这一个停点，
+    // 先出 PPTX、再一次性验收 clean 与 pptx（design §3.2）。
+    pptx: ["clean"],
     "accept-pptx": ["pptx"],
     report: ["accept-pptx"],
   };

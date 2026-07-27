@@ -1,4 +1,9 @@
-import { FoundationError, type SlideWorkspaceManifest } from "@ppt-maker/core";
+import { readFile } from "node:fs/promises";
+import {
+  FoundationError,
+  type SlideWorkspaceManifest,
+  TextReviewDocumentSchema,
+} from "@ppt-maker/core";
 import { runSlideClean } from "../clean/run.js";
 import { runSlideMask } from "../mask/run.js";
 import { runSlidePptx } from "../pptx/run.js";
@@ -7,7 +12,9 @@ import { runAssistReview } from "./assist-review.js";
 import { runSlideOcr } from "./ocr.js";
 import { runSlideReview } from "./review.js";
 import { runSlideValidateReview } from "./validate-review.js";
-import { loadSlideWorkspace } from "./workspace.js";
+import { loadSlideWorkspace, resolveWorkspacePath } from "./workspace.js";
+
+const REVIEW_PATH = "stages/review/text-blocks.json";
 
 const RUN_SEQUENCE = [
   "ocr",
@@ -49,6 +56,22 @@ export interface RunFromResult {
 
 function stageState(manifest: SlideWorkspaceManifest, stage: string) {
   return manifest.stages.find((state) => state.stage === stage);
+}
+
+// 统计仍待人工复核的版式目标文字数量，供 mask 前的文本复核门判定。
+async function countPendingReviewBlocks(
+  workspacePath: string,
+): Promise<number> {
+  const document = TextReviewDocumentSchema.parse(
+    JSON.parse(
+      await readFile(resolveWorkspacePath(workspacePath, REVIEW_PATH), "utf8"),
+    ),
+  );
+  return document.blocks.filter(
+    (block) =>
+      block.classification === "layout_text" &&
+      block.reviewStatus === "unreviewed",
+  ).length;
 }
 
 export async function runSlideRunFrom(
@@ -117,6 +140,19 @@ export async function runSlideRunFrom(
           };
         }
       } else if (stage === "mask") {
+        // 文本复核门：mask 会把版式文字从底板上抹掉，抹之前必须由人确认文字内容。
+        // stoppedAt 取 "review" 而非 "mask"——语义是回到 review 产物做人工复核，
+        // 待办队列与 rerunFrom 都按 stoppedAt 定位界面（design §3.1）。
+        const pending = await countPendingReviewBlocks(options.workspacePath);
+        if (pending > 0) {
+          return {
+            executed,
+            stoppedAt: "review",
+            gate: "human-edit",
+            nextCommand: null,
+            message: `有 ${pending} 个版式目标文字待人工复核`,
+          };
+        }
         await runSlideMask({ workspacePath: options.workspacePath });
         executed.push(stage);
       } else if (stage === "pptx") {
@@ -143,21 +179,18 @@ export async function runSlideRunFrom(
             };
           }
         }
-      } else if (stage === "accept-clean" || stage === "accept-pptx") {
+      } else if (stage === "accept-clean") {
+        // clean plate 不再单独设停点：底板质量由最终产物确认时连同 PPTX 一起判断
+        // （design §3.2）。此处直接跳过，也不标 completed——accept-final 才写记录。
+      } else if (stage === "accept-pptx") {
         if (stageState(workspace.manifest, stage)?.status !== "completed") {
-          const command =
-            stage === "accept-clean"
-              ? `ppt-maker slide accept-clean ${options.workspacePath}`
-              : `ppt-maker slide accept-pptx ${options.workspacePath}`;
           return {
             executed,
             stoppedAt: stage,
             gate: "manual",
-            nextCommand: command,
+            nextCommand: `ppt-maker slide accept-final ${options.workspacePath}`,
             message:
-              stage === "accept-clean"
-                ? "请人工核对 clean plate 后运行 accept-clean"
-                : "请在 PowerPoint for Mac 检查后运行 accept-pptx",
+              "请核对最终产物（合成预览或 PowerPoint for Mac）后运行 accept-final 一次性验收 clean 与 PPTX",
           };
         }
       }
