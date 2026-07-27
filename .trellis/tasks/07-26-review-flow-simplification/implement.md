@@ -68,13 +68,13 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 
 ## 阶段 A — core 契约与校验（R4、design §2）
 
-- [ ] A1 `packages/core/src/text-blocks.ts` 新增 `LAYOUT_TEXT_MUST_BE_MASKED` 校验规则（`layout_text && !includeInMask` → error）
-- [ ] A2 `REVIEW_VALIDATION_RULES_VERSION` 升为 `review-validation-v2`
-- [ ] A3 `buildFreshBlock` 的 `includeInMask` 改为 `classification === "layout_text"`
-- [ ] A4 新增 `compareBlockSources(block): BlockSourceTexts`（去空白后逐字比较 `offline_ocr` 与 `ai_text_assist` 来源文本）
-- [ ] A5 从 `apps/cli/src/pptx/synthesize.ts` 把 `resolveFontSizePt` / `toAlign` / `toValign` / `toBold` / `fontSizePtFromPx` 提到 core 并从 core 重新导出；`synthesize.ts` 改为 import（**不改变任何计算逻辑**）
-- [ ] A6 测试：`LAYOUT_TEXT_MUST_BE_MASKED` 命中与不命中各一例（命中样本取 `research/data-snapshot/page-02` 的 `block-045`）；`buildFreshBlock` 三种分类的 `includeInMask` 默认值；`compareBlockSources` 覆盖一致 / 分歧 / 缺一个来源三种情形（分歧样本取 `page-02` 的 `block-009`：`象衽鲍洁高雅、连锦不绝，` → `象征洁净高雅、连绵不绝，`）
-- [ ] A7 测试：A5 迁移后 `resolveFontSizePt` 对 `fontSizePx` 非空与为空（按行数估算）两条路径结果与迁移前一致
+- [x] A1 `packages/core/src/text-blocks.ts` 新增 `LAYOUT_TEXT_MUST_BE_MASKED` 校验规则（`layout_text && !includeInMask` → error）
+- [x] A2 `REVIEW_VALIDATION_RULES_VERSION` 升为 `review-validation-v2`
+- [x] A3 `buildFreshBlock` 的 `includeInMask` 改为 `classification === "layout_text"`
+- [x] A4 新增 `compareBlockSources(block): BlockSourceTexts`（去空白后逐字比较 `offline_ocr` 与 `ai_text_assist` 来源文本）
+- [x] A5 从 `apps/cli/src/pptx/synthesize.ts` 把 `resolveFontSizePt` / `toAlign` / `toValign` / `toBold` / `fontSizePtFromPx` 提到 core 并从 core 重新导出；`synthesize.ts` 改为 import（**不改变任何计算逻辑**）
+- [x] A6 测试：`LAYOUT_TEXT_MUST_BE_MASKED` 命中与不命中各一例（命中样本取 `research/data-snapshot/page-02` 的 `block-045`）；`buildFreshBlock` 三种分类的 `includeInMask` 默认值；`compareBlockSources` 覆盖一致 / 分歧 / 缺一个来源三种情形（分歧样本取 `page-02` 的 `block-009`：`象衽鲍洁高雅、连锦不绝，` → `象征洁净高雅、连绵不绝，`）
+- [x] A7 测试：A5 迁移后 `resolveFontSizePt` 对 `fontSizePx` 非空与为空（按行数估算）两条路径结果与迁移前一致
 
 **验证**：`pnpm typecheck && pnpm test`。预期既有测试中依赖 `includeInMask: false` 默认值的用例需同步更新——更新时确认是断言过时而非行为回退。
 

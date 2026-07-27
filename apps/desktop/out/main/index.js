@@ -3,7 +3,7 @@ import { config } from "dotenv";
 import { ipcMain, dialog, app, BrowserWindow } from "electron";
 import { mkdir, appendFile, readFile, mkdtemp, copyFile, rename, rm, writeFile, stat, readdir, access } from "node:fs/promises";
 import { randomUUID, createHash } from "node:crypto";
-import { assertWideAspectRatio, validateWideAspectRatio, SlideWorkspaceManifestSchema, SlideWorkspaceConfigSchema, FoundationError, SCHEMA_VERSION, createInitialStageStates, DeckManifestSchema, DEFAULT_FONT_FACE, DoctorReportSchema, SUPPORTED_NODE_MAJOR, SUPPORTED_PNPM_MAJOR, PPTX_WIDE_WIDTH_INCHES, PPTX_WIDE_HEIGHT_INCHES, pixelsToPptxBox, ArtifactAcceptanceSchema, assertStageDependenciesCompleted, TextReviewDocumentSchema, isStageReusable, PptxCheckReportSchema, invalidateStageAndDownstream, PptxSynthesisRecordSchema, DeckExportRecordSchema, SLIDE_STAGE_ORDER, CleanAttemptRecordSchema, validateTextReviewDocument, ProviderCallRecordSchema, OcrProbeResponseSchema, MASK_ALGORITHM_VERSION, maskInvalidationProjection, MaskRecordSchema, TextReviewValidationReportSchema, SlideReportSchema, TextAssistResultSchema, TEXT_MERGE_ALGORITHM_VERSION, mergeTextBlockCandidates, REVIEW_VALIDATION_RULES_VERSION } from "@ppt-maker/core";
+import { assertWideAspectRatio, validateWideAspectRatio, SlideWorkspaceManifestSchema, SlideWorkspaceConfigSchema, FoundationError, SCHEMA_VERSION, createInitialStageStates, DeckManifestSchema, DEFAULT_FONT_FACE, DoctorReportSchema, SUPPORTED_NODE_MAJOR, SUPPORTED_PNPM_MAJOR, PPTX_WIDE_HEIGHT_INCHES, PPTX_WIDE_WIDTH_INCHES, pixelsToPptxBox, toValign, toAlign, toBold, resolveFontSizePt, ArtifactAcceptanceSchema, assertStageDependenciesCompleted, TextReviewDocumentSchema, isStageReusable, PptxCheckReportSchema, invalidateStageAndDownstream, PptxSynthesisRecordSchema, DeckExportRecordSchema, SLIDE_STAGE_ORDER, CleanAttemptRecordSchema, validateTextReviewDocument, ProviderCallRecordSchema, OcrProbeResponseSchema, MASK_ALGORITHM_VERSION, maskInvalidationProjection, MaskRecordSchema, TextReviewValidationReportSchema, SlideReportSchema, TextAssistResultSchema, TEXT_MERGE_ALGORITHM_VERSION, mergeTextBlockCandidates, REVIEW_VALIDATION_RULES_VERSION } from "@ppt-maker/core";
 import { imageSize } from "image-size";
 import { execFileSync, execFile } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -959,26 +959,6 @@ async function sampleBlockColor(sourcePath, maskPath, bbox, srcW, srcH, maskW, m
   return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 const PptxGenJS$1 = PptxGenJSModule.default;
-function fontSizePtFromPx(fontSizePx, imageWidth) {
-  return fontSizePx * 72 * PPTX_WIDE_WIDTH_INCHES / imageWidth;
-}
-function resolveFontSizePt(block, imageWidth) {
-  if (block.style.fontSizePx !== null) {
-    return fontSizePtFromPx(block.style.fontSizePx, imageWidth);
-  }
-  const lineCount = Math.max(1, block.lines.length);
-  const estimatedPx = block.bboxPx.height / lineCount * 0.65;
-  return fontSizePtFromPx(estimatedPx, imageWidth);
-}
-function toBold(weight) {
-  return weight === "semibold" || weight === "bold";
-}
-function toAlign(align) {
-  return align ?? "left";
-}
-function toValign(align) {
-  return align === "middle" ? "middle" : "top";
-}
 function normalizeRotation(rotationDeg) {
   const wrapped = rotationDeg % 360;
   return wrapped < 0 ? wrapped + 360 : wrapped;

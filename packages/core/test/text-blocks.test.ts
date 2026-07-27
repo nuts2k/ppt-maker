@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  compareBlockSources,
   maskInvalidationProjection,
   mergeTextBlockCandidates,
   type OcrProbeResponse,
@@ -138,6 +139,8 @@ describe("mergeTextBlockCandidates", () => {
     expect(document.blocks).toHaveLength(1);
     const block = document.blocks[0] as TextReviewBlock;
     expect(block.classification).toBe("layout_text");
+    // 版式目标文字默认入 mask，否则合成后原图文字与新文本框重影（design §2.2）。
+    expect(block.includeInMask).toBe(true);
     expect(block.quadPx).toEqual(quad);
     expect(block.maskParams.foregroundColors).toEqual(["#ffffff"]);
     expect(block.sources.map((source) => source.kind)).toEqual([
@@ -566,5 +569,132 @@ describe("maskInvalidationProjection 变更粒度矩阵", () => {
       block.maskParams.colorTolerance = 32;
     });
     expect(after).not.toBe(before);
+  });
+});
+
+describe("buildFreshBlock 的 includeInMask 默认值", () => {
+  function freshBlockOf(
+    classification: VisionTextCandidate["classification"],
+  ): TextReviewBlock {
+    const document = mergeBase({
+      analysis: visionResult([
+        visionCandidate({ id: "cand-0", classification }),
+      ]),
+    });
+    return document.blocks[0] as TextReviewBlock;
+  }
+
+  it("layout_text 默认参与 mask", () => {
+    expect(freshBlockOf("layout_text").includeInMask).toBe(true);
+  });
+
+  it("object_integrated_symbol 默认不参与 mask", () => {
+    expect(freshBlockOf("object_integrated_symbol").includeInMask).toBe(false);
+  });
+
+  it("uncertain 默认不参与 mask", () => {
+    expect(freshBlockOf("uncertain").includeInMask).toBe(false);
+  });
+});
+
+describe("compareBlockSources", () => {
+  function blockWithSources(
+    sources: TextReviewBlock["sources"],
+  ): TextReviewBlock {
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      id: "block-009",
+      text: "文本",
+      lines: ["文本"],
+      bboxPx: { x: 0, y: 0, width: 100, height: 20 },
+      quadPx: null,
+      rotationDeg: 0,
+      zIndex: 0,
+      classification: "layout_text",
+      sources,
+      includeInMask: true,
+      reviewStatus: "unreviewed",
+      riskAcceptance: null,
+      style: {
+        fontSizePx: null,
+        fontWeight: null,
+        colorHex: null,
+        horizontalAlign: null,
+        verticalAlign: null,
+        lineHeight: null,
+      },
+      maskParams: {
+        foregroundColors: [],
+        colorTolerance: 32,
+        edgeThreshold: 0.5,
+        minComponentAreaPx: 4,
+        dilationRadiusPx: 1,
+        excludePolygons: [],
+      },
+      updatedAt: null,
+    };
+  }
+
+  function ocrSource(text: string): TextReviewBlock["sources"][number] {
+    return {
+      kind: "offline_ocr",
+      provider: "apple-vision",
+      text,
+      confidence: 0.9,
+    };
+  }
+
+  function assistSource(text: string): TextReviewBlock["sources"][number] {
+    return {
+      kind: "ai_text_assist",
+      provider: "openai",
+      text,
+      confidence: null,
+    };
+  }
+
+  it("两来源去空白后一致时 agrees 为 true", () => {
+    const result = compareBlockSources(
+      blockWithSources([
+        ocrSource("象征洁净高雅、 连绵不绝，"),
+        assistSource("象征洁净高雅、连绵不绝，"),
+      ]),
+    );
+    expect(result.agrees).toBe(true);
+    expect(result.ocr).toBe("象征洁净高雅、 连绵不绝，");
+    expect(result.assist).toBe("象征洁净高雅、连绵不绝，");
+  });
+
+  // 样本取自 research/data-snapshot/page-02 的 block-009（PRD F-9）。
+  it("两来源逐字分歧时 agrees 为 false", () => {
+    const result = compareBlockSources(
+      blockWithSources([
+        ocrSource("象衽鲍洁高雅、连锦不绝，"),
+        assistSource("象征洁净高雅、连绵不绝，"),
+      ]),
+    );
+    expect(result.agrees).toBe(false);
+  });
+
+  it("缺少任一来源时 agrees 为 false 且缺失侧为 null", () => {
+    const onlyOcr = compareBlockSources(
+      blockWithSources([ocrSource("只有 OCR")]),
+    );
+    expect(onlyOcr).toEqual({ ocr: "只有 OCR", assist: null, agrees: false });
+
+    const onlyAssist = compareBlockSources(
+      blockWithSources([assistSource("只有助手")]),
+    );
+    expect(onlyAssist).toEqual({
+      ocr: null,
+      assist: "只有助手",
+      agrees: false,
+    });
+
+    expect(compareBlockSources(blockWithSources([]))).toEqual({
+      ocr: null,
+      assist: null,
+      agrees: false,
+    });
   });
 });

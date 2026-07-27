@@ -9,6 +9,7 @@ import {
 const IMAGE = { width: 1600, height: 900 };
 
 function block(overrides: Partial<TextReviewBlock> = {}): TextReviewBlock {
+  const classification = overrides.classification ?? "layout_text";
   return {
     schemaVersion: SCHEMA_VERSION,
     id: overrides.id ?? "block-001",
@@ -18,9 +19,10 @@ function block(overrides: Partial<TextReviewBlock> = {}): TextReviewBlock {
     quadPx: overrides.quadPx ?? null,
     rotationDeg: overrides.rotationDeg ?? 0,
     zIndex: overrides.zIndex ?? 0,
-    classification: overrides.classification ?? "layout_text",
+    classification,
     sources: overrides.sources ?? [],
-    includeInMask: overrides.includeInMask ?? false,
+    // 版式目标文字必须入 mask（LAYOUT_TEXT_MUST_BE_MASKED），默认值随分类走。
+    includeInMask: overrides.includeInMask ?? classification === "layout_text",
     reviewStatus: overrides.reviewStatus ?? "reviewed",
     riskAcceptance: overrides.riskAcceptance ?? null,
     style: overrides.style ?? {
@@ -84,6 +86,47 @@ describe("validateTextReviewDocument", () => {
         ]),
       ),
     ).toContain("MASK_REQUIRES_LAYOUT_TEXT");
+  });
+
+  // 样本取自 research/data-snapshot/page-02 的 block-045「色彩含义」：
+  // 分类为 layout_text 但未入 mask，导出后原图文字与新文本框重影（PRD F-8）。
+  it("版式目标文字未参与 mask 属违规", () => {
+    expect(
+      codes(
+        documentWith([
+          block({
+            id: "block-045",
+            text: "色彩含义",
+            lines: ["色彩含义"],
+            classification: "layout_text",
+            includeInMask: false,
+          }),
+        ]),
+      ),
+    ).toContain("LAYOUT_TEXT_MUST_BE_MASKED");
+  });
+
+  it("版式目标文字已参与 mask 不违规", () => {
+    expect(
+      codes(
+        documentWith([
+          block({ classification: "layout_text", includeInMask: true }),
+        ]),
+      ),
+    ).not.toContain("LAYOUT_TEXT_MUST_BE_MASKED");
+  });
+
+  it("非版式文字未参与 mask 不触发该规则", () => {
+    expect(
+      codes(
+        documentWith([
+          block({
+            classification: "object_integrated_symbol",
+            includeInMask: false,
+          }),
+        ]),
+      ),
+    ).not.toContain("LAYOUT_TEXT_MUST_BE_MASKED");
   });
 
   it("bbox 越界属违规", () => {

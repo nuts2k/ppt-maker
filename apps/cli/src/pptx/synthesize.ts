@@ -5,9 +5,22 @@ import {
   PPTX_WIDE_HEIGHT_INCHES,
   PPTX_WIDE_WIDTH_INCHES,
   pixelsToPptxBox,
+  resolveFontSizePt,
   type TextReviewBlock,
+  toAlign,
+  toBold,
+  toValign,
 } from "@ppt-maker/core";
 import * as PptxGenJSModule from "pptxgenjs";
+
+// 字号与对齐公式已迁至 core（design §4.3），此处重新导出以保持既有导入路径。
+export {
+  fontSizePtFromPx,
+  resolveFontSizePt,
+  toAlign,
+  toBold,
+  toValign,
+} from "@ppt-maker/core";
 
 interface TextOptions {
   x: number;
@@ -49,42 +62,6 @@ interface SynthPresentation {
 
 const PptxGenJS =
   PptxGenJSModule.default as unknown as new () => SynthPresentation;
-
-// 源图像素字号 → PPT 磅：源图宽映射到版面宽，16:9 下水平/垂直每英寸像素相同，缩放一致。
-function fontSizePtFromPx(fontSizePx: number, imageWidth: number): number {
-  return (fontSizePx * 72 * PPTX_WIDE_WIDTH_INCHES) / imageWidth;
-}
-
-export function resolveFontSizePt(
-  block: TextReviewBlock,
-  imageWidth: number,
-): number {
-  if (block.style.fontSizePx !== null) {
-    return fontSizePtFromPx(block.style.fontSizePx, imageWidth);
-  }
-  // 缺省时按 bbox 高度与行数估算单行字高。
-  const lineCount = Math.max(1, block.lines.length);
-  const estimatedPx = (block.bboxPx.height / lineCount) * 0.65;
-  return fontSizePtFromPx(estimatedPx, imageWidth);
-}
-
-export function toBold(
-  weight: TextReviewBlock["style"]["fontWeight"],
-): boolean {
-  return weight === "semibold" || weight === "bold";
-}
-
-export function toAlign(
-  align: TextReviewBlock["style"]["horizontalAlign"],
-): "left" | "center" | "right" {
-  return align ?? "left";
-}
-
-export function toValign(
-  align: TextReviewBlock["style"]["verticalAlign"],
-): "top" | "middle" {
-  return align === "middle" ? "middle" : "top";
-}
 
 export function normalizeRotation(rotationDeg: number): number {
   const wrapped = rotationDeg % 360;

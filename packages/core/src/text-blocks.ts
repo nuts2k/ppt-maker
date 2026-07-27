@@ -262,7 +262,8 @@ function buildFreshBlock(
     zIndex,
     classification,
     sources: cluster.members.map((candidate) => candidate.source),
-    includeInMask: false,
+    // 版式目标文字必须进入 mask，否则合成后原图文字与新文本框重影（design §2.2）。
+    includeInMask: classification === "layout_text",
     reviewStatus: "unreviewed",
     riskAcceptance: null,
     style: vision?.style ?? EMPTY_STYLE,
@@ -439,8 +440,37 @@ export function maskInvalidationProjection(
   return JSON.stringify({ image: document.image, blocks });
 }
 
+// 双源文本比对结果：OCR 与 AI 文本助手对同一块的识别文本及是否一致。
+export interface BlockSourceTexts {
+  readonly ocr: string | null;
+  readonly assist: string | null;
+  readonly agrees: boolean;
+}
+
+// 比较口径：去除所有空白字符后逐字相等（与 PRD F-9 的测量口径一致）。
+// 任一来源缺失时 agrees 为 false——无从比对不等于已确认一致。
+export function compareBlockSources(block: TextReviewBlock): BlockSourceTexts {
+  const ocr =
+    block.sources.find((source) => source.kind === "offline_ocr")?.text ?? null;
+  const assist =
+    block.sources.find((source) => source.kind === "ai_text_assist")?.text ??
+    null;
+  if (ocr === null || assist === null) {
+    return { ocr, assist, agrees: false };
+  }
+  return {
+    ocr,
+    assist,
+    agrees: stripWhitespace(ocr) === stripWhitespace(assist),
+  };
+}
+
+function stripWhitespace(text: string): string {
+  return text.replace(/\s+/gu, "");
+}
+
 // review 校验规则版本，写入校验报告，规则演进时可与旧报告区分。
-export const REVIEW_VALIDATION_RULES_VERSION = "review-validation-v1";
+export const REVIEW_VALIDATION_RULES_VERSION = "review-validation-v2";
 
 // 旋转角度的合法性上界（度），超出视为数据错误而非有效版式。
 export const ROTATION_LIMIT_DEG = 360;
@@ -545,6 +575,17 @@ export function validateTextReviewDocument(
         field: "includeInMask",
         code: "MASK_REQUIRES_LAYOUT_TEXT",
         message: `分类为 ${block.classification} 的文字块不得参与 mask`,
+        severity: "error",
+      });
+    }
+
+    // 反向约束：版式目标文字不入 mask，导出后原图文字与新文本框会重影。
+    if (block.classification === "layout_text" && !block.includeInMask) {
+      violations.push({
+        blockId: block.id,
+        field: "includeInMask",
+        code: "LAYOUT_TEXT_MUST_BE_MASKED",
+        message: "版式目标文字必须参与 mask，否则导出后文字会与背景重影",
         severity: "error",
       });
     }

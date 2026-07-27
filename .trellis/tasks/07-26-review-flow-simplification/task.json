@@ -3,7 +3,7 @@
   "name": "review-flow-simplification",
   "title": "复核链路简化与文本复核体验重构",
   "description": "把 M4 复核链路从五个人工门收敛为文本复核门 + 最终产物确认两个停点，重构文本复核为列表主导的双源 diff 校对，并堵死 object_symbol 误判漏字与 layout_text 未入 mask 重影两处静默质量漏洞。",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,
