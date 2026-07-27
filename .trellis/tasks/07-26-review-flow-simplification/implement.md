@@ -30,20 +30,35 @@ node apps/cli/dist/index.js doctor
 `prd.md` 与 `design.md` 的全部证据来自真实工作区 `~/test/ppttest-2026-07-25`（29 MB，含源图与 clean plate），**该工作区不在仓库内**。
 
 - **仓库内已有的部分**：`research/data-snapshot/`（216 KB，两页 `text-blocks.json` + clean 检查指标）与 `research/measure.py`。阶段 A、B 的全部测试和阶段 C 的分区计数验证只需要这些，跑 `python3 .trellis/tasks/07-26-review-flow-simplification/research/measure.py` 即可复现 PRD 的每个数字。
-- **必须带过去的部分**：视觉走查（C9–C11 画布标注、D1–D3 合成预览、R2.2 滑块对比）与端到端门停顿走查（E1）需要含图片的完整工作区。**今晚把 `~/test/ppttest-2026-07-25` 整个目录拷到另一台机器**，或在那台机器上重新 `deck init` + 跑 pipeline（有 API 调用成本）。
+- **必须带过去的部分**：视觉走查（C9–C11 画布标注、D1–D3 合成预览、R2.2 滑块对比）与端到端门停顿走查（E1）需要含图片的完整工作区。整目录拷过去，或在新机器上重新 `deck init` + 跑 pipeline（有 API 调用成本）。
 
 详见 `research/README.md` 的「快照能做什么、不能做什么」。
 
+### 换机清单（2026-07-26 晚，C 完成后切到另一台机器）
+
+仓库外的东西一样都不会跟着 git 走，逐项确认：
+
+| 项 | 位置 | 处理 |
+|---|---|---|
+| **代码提交** | 7 个提交（含阶段 A/B/C）曾长期滞留本地 | `git push origin main`，新机器 `git clone` 或 `git pull` |
+| **`.env`** | 仓库根，**已 gitignore** | 手动重建：`OPENAI_API_KEY` 与 `OPENAI_BASE_URL`（用的是第三方兼容端点，两个都要），照 `.env.example` 的键名 |
+| **真实工作区** | `~/test/ppttest-2026-07-25`（29 MB） | 整目录拷过去。**它已含 2026-07-26 走查的改动**：page-02 的 `block-031/039/045/079/081` 已改分类并入 mask，但受下述「遗留缺陷」影响，mask 及下游产物尚未跟着更新，manifest 仍显示全部 completed |
+| **工作区备份** | `~/test/ppttest-2026-07-25.bak-baseline`（未改动的基线）与 `.bak-225336`（走查前） | 各 29 MB，按需拷；基线那份值得留 |
+| **Trellis 当前任务指针** | 会话级，不随仓库走 | 新机器执行 `python3 ./.trellis/scripts/task.py start 07-26-review-flow-simplification` |
+| **跨会话记忆** | `~/.claude/projects/.../memory/` | **不会跟着仓库走**。所有接续所需信息都已写进本文件，以它为准 |
+
+新机器首次准备照上面「环境」与「首次准备」两节做一遍。本机 `doctor` 基线：5 通过 / 1 警告（Node v25.6.1 偏离 24 LTS，不阻塞）/ 0 失败；微软雅黑走的是 PowerPoint 内置 `msyh.ttc`，所以 **PowerPoint for Mac 必须装**，否则字体检查直接失败、PPTX 导出被阻止。
+
 ### Trellis 状态
 
-任务当前为 `planning`。明天开工顺序：
+任务为 `in_progress`。阶段 A（`e03af4a`）、B（`a0de457`）、C（`1cbd994`）已完成，另有三个走查修复与文档提交（`d489777`、`5d2565c`、`e3b5d22`）。**下一步从阶段 D1 起**。
 
 ```bash
-python3 ./.trellis/scripts/task.py current      # 确认指向 07-26-review-flow-simplification
-python3 ./.trellis/scripts/task.py start        # 状态转 in_progress，之后才能改代码
+python3 ./.trellis/scripts/task.py start 07-26-review-flow-simplification
+python3 ./.trellis/scripts/task.py current      # 确认指向本任务
 ```
 
-开工前重读 `prd.md` 的决策表（D1–D8）与本文件的「复核门与既有约束的关系」。
+开工前重读 `prd.md` 的决策表（D1–D8）、本文件的「A/B 阶段已完成」「C 阶段已完成」两节与「复核门与既有约束的关系」。阶段 D 会用到阶段 A 提到 core 的公式（`packages/core/src/pptx-text-style.ts` 的 `resolveFontSizePt` / `toAlign` / `toValign` / `toBold`），与 `synthesize.ts` 同源，**勿重写**。
 
 ## 验证命令
 
