@@ -17,6 +17,7 @@ import {
   computeStageDurations,
   deriveStageDetails,
   extractLastError,
+  readPendingTextReview,
 } from "../slide-detail.js";
 import type {
   ActivityResult,
@@ -52,50 +53,55 @@ async function buildDeckStatusDetailed(
   const status = await deckStatus(abs);
   const deck = await loadDeckWorkspace(abs);
 
-  const slides: SlideDetail[] = [];
-  for (const slide of status.slides) {
-    const absWorkspacePath = resolveDeckPath(deck.path, slide.workspacePath);
-    const pageLabel = basename(slide.workspacePath);
+  // 逐页读盘互不依赖，并发展开；结果顺序由 map 保证，与 status.slides 一致
+  const slides: SlideDetail[] = await Promise.all(
+    status.slides.map(async (slide): Promise<SlideDetail> => {
+      const absWorkspacePath = resolveDeckPath(deck.path, slide.workspacePath);
+      const pageLabel = basename(slide.workspacePath);
 
-    if (slide.removed) {
-      slides.push({
-        ...slide,
-        absWorkspacePath,
-        pageLabel,
-        stages: [],
-        lastError: null,
-        stageDurations: {},
-      });
-      continue;
-    }
+      if (slide.removed) {
+        return {
+          ...slide,
+          absWorkspacePath,
+          pageLabel,
+          stages: [],
+          lastError: null,
+          stageDurations: {},
+          pendingTextReview: 0,
+        };
+      }
 
-    try {
-      const workspace = await loadSlideWorkspace(absWorkspacePath);
-      slides.push({
-        ...slide,
-        absWorkspacePath,
-        pageLabel,
-        stages: deriveStageDetails(workspace.manifest),
-        lastError: extractLastError(workspace.manifest),
-        stageDurations: computeStageDurations(workspace.manifest),
-      });
-    } catch (error) {
-      // 单页 manifest 损坏不应让整个 deck 无法打开
-      slides.push({
-        ...slide,
-        absWorkspacePath,
-        pageLabel,
-        stages: [],
-        lastError: {
-          stage: slide.currentStage,
-          code: "WORKSPACE_LOAD_FAILED",
-          message: error instanceof Error ? error.message : String(error),
-          at: new Date().toISOString(),
-        },
-        stageDurations: {},
-      });
-    }
-  }
+      try {
+        const workspace = await loadSlideWorkspace(absWorkspacePath);
+        return {
+          ...slide,
+          absWorkspacePath,
+          pageLabel,
+          stages: deriveStageDetails(workspace.manifest),
+          lastError: extractLastError(workspace.manifest),
+          stageDurations: computeStageDurations(workspace.manifest),
+          // 待办队列「需文本复核」的耐久层判据，manifest 里没有，必须读复核文档
+          pendingTextReview: await readPendingTextReview(absWorkspacePath),
+        };
+      } catch (error) {
+        // 单页 manifest 损坏不应让整个 deck 无法打开
+        return {
+          ...slide,
+          absWorkspacePath,
+          pageLabel,
+          stages: [],
+          lastError: {
+            stage: slide.currentStage,
+            code: "WORKSPACE_LOAD_FAILED",
+            message: error instanceof Error ? error.message : String(error),
+            at: new Date().toISOString(),
+          },
+          stageDurations: {},
+          pendingTextReview: 0,
+        };
+      }
+    }),
+  );
 
   return {
     deckPath,

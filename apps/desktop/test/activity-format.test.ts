@@ -165,17 +165,36 @@ describe("runEventToActivity", () => {
 
     expect(runEventToActivity(base, ctx)?.result).toBe("success");
 
-    expect(
-      runEventToActivity(
-        {
-          ...base,
-          gate: "manual",
-          stoppedAt: "accept-clean",
-          message: "等待验收底图",
-        },
-        ctx,
-      )?.result,
-    ).toBe("gate");
+    // manual 现在只对应最终确认；accept-clean 已不再单独停顿
+    const manual = runEventToActivity(
+      {
+        ...base,
+        gate: "manual",
+        stoppedAt: "accept-pptx",
+        message: "请核对最终产物后运行 accept-final",
+      },
+      ctx,
+    );
+    expect(manual?.result).toBe("gate");
+    expect(manual?.detail).toBe(
+      "page-01 · 停在最终确认：请核对最终产物后运行 accept-final",
+    );
+
+    // 文本复核门是正常人工停点，不是失败
+    const humanEdit = runEventToActivity(
+      {
+        ...base,
+        gate: "human-edit",
+        stoppedAt: "review",
+        message: "有 45 个版式目标文字待人工复核",
+      },
+      ctx,
+    );
+    expect(humanEdit?.result).toBe("gate");
+    expect(humanEdit?.stage).toBe("review");
+    expect(humanEdit?.detail).toBe(
+      "page-01 · 停在文本复核门：有 45 个版式目标文字待人工复核",
+    );
 
     const failure = runEventToActivity(
       {

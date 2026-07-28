@@ -2,20 +2,19 @@ import type { TextReviewBlock } from "@ppt-maker/core";
 import type { RunStage } from "@shared/stages";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReviewCanvas } from "@/components/canvas/ReviewCanvas";
-import { SliderCompare } from "@/components/compare/SliderCompare";
 import { BlockListPanel } from "@/components/review/BlockListPanel";
 import { ReviewShortcutBar } from "@/components/review/ReviewShortcutBar";
-import { AcceptFlow } from "@/components/slide/AcceptFlow";
 import {
   SlideToolbar,
   type SlideViewMode,
 } from "@/components/slide/SlideToolbar";
 import { StageRail } from "@/components/slide/StageRail";
-import { deriveAcceptGate } from "@/lib/accept-gate";
+import { deriveFinalGate } from "@/lib/accept-gate";
 import { orderedReviewBlocks } from "@/lib/review-partition";
 import { countUnreviewed } from "@/lib/review-status";
 import { adjacentSlides } from "@/lib/slide-nav";
 import { cn } from "@/lib/utils";
+import { FinalConfirmPage } from "@/pages/FinalConfirmPage";
 import { useDeckStore } from "@/stores/deck-store";
 import { useRunStore } from "@/stores/run-store";
 import { useSlideStore } from "@/stores/slide-store";
@@ -30,8 +29,10 @@ import { useUIStore } from "@/stores/ui-store";
  * 侧栏」被整体取代——PRD F-6 实测该结构零使用：8 个拖拽手柄、旋转、低置信度
  * 队列全部未被触发，真实行为是「打开 → 全部标记已复核 → 跑下去」。
  *
- * compare / accept 两个视图态在本阶段原样保留：最终确认页（FinalConfirmPage）
- * 属阶段 D，在它落地前 AcceptFlow 仍是唯一的验收路径，此处不能提前拆掉。
+ * 阶段 D 起本页只剩两个视图态：文本复核（列表 + 画布）与最终确认
+ * （FinalConfirmPage）——恰好对应链路仅存的两个人工停点。阶段 C 暂留的
+ * compare / accept 两态在此撤除：滑块对比降级为最终确认页内的一档，
+ * 验收由 FinalConfirmPage 一次写入 accept-clean + accept-pptx 双记录。
  *
  * 本页只订阅非计时字段，耗时展示下沉到 SlideToolbar / StageRail 各自订阅 1s
  * ticker，否则画布会跟着每秒重渲染。
@@ -54,7 +55,6 @@ export function ReviewPage(): React.JSX.Element {
   const markBlockReviewed = useSlideStore((s) => s.markBlockReviewed);
   const markBlocksReviewed = useSlideStore((s) => s.markBlocksReviewed);
   const deleteBlock = useSlideStore((s) => s.deleteBlock);
-  const markAllReviewed = useSlideStore((s) => s.markAllReviewed);
   const reset = useSlideStore((s) => s.reset);
   const reviewDocument = useSlideStore((s) => s.reviewDocument);
   const sourceImageUrl = useSlideStore((s) => s.sourceImageUrl);
@@ -79,8 +79,8 @@ export function ReviewPage(): React.JSX.Element {
   const workspacePath = slide?.absWorkspacePath ?? null;
 
   const sessionResult = slideId === null ? undefined : sessionResults[slideId];
-  const acceptGate = useMemo(
-    () => (slide === null ? null : deriveAcceptGate(slide, sessionResult)),
+  const finalGate = useMemo(
+    () => (slide === null ? null : deriveFinalGate(slide, sessionResult)),
     [slide, sessionResult],
   );
 
@@ -95,14 +95,13 @@ export function ReviewPage(): React.JSX.Element {
     [slides, sessionResults, slideId],
   );
 
-  const [viewMode, setViewMode] = useState<SlideViewMode>("canvas");
+  const [viewMode, setViewMode] = useState<SlideViewMode>("review");
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<{
     readonly ok: boolean;
     readonly message: string;
   } | null>(null);
 
-  const canCompare = sourceImageUrl !== null && cleanPlateUrl !== null;
   // 本页正在执行：禁用执行类动作，避免同一页被重复入队跑两遍
   const pageBusy = runStatus !== "idle" && currentSlideId === slideId;
 
@@ -117,8 +116,8 @@ export function ReviewPage(): React.JSX.Element {
    *
    * 闸门走 run-store 事件、图片走 loadSlide 的一次性快照，两条链路不同步：
    * 进页时 clean 尚未产出，跑完后 workspacePath 未变，加载 effect 不会重跑，
-   * 于是 accept-clean 闸门已经就位而底板仍是 null。拒绝验收后重跑 clean
-   * 拿到新底板，同样依赖这里刷新。
+   * 于是最终确认闸门已经就位而底板仍是 null——合成预览会因此空着。
+   * 「重做底板」重跑 clean 拿到新底板，同样依赖这里刷新。
    */
   const prevPageBusy = useRef(false);
   useEffect(() => {
@@ -127,20 +126,20 @@ export function ReviewPage(): React.JSX.Element {
   }, [pageBusy, reloadImages]);
 
   /**
-   * 闸门变化时切换视图态。签名含 source，因此"拒绝重跑 → 再次停在同一闸门"也会
-   * 重新进入验收布局；用户手动切回复核后签名不变，不会被强行拉回。
+   * 闸门变化时切换视图态。签名含 source，因此"重做底板 → 再次停在最终确认"也会
+   * 重新进入确认页；用户手动切回复核后签名不变，不会被强行拉回。
    */
   const gateSignature =
-    acceptGate === null || slideId === null
+    finalGate === null || slideId === null
       ? null
-      : `${slideId}:${acceptGate.stage}:${acceptGate.source}`;
+      : `${slideId}:${finalGate.source}`;
   useEffect(() => {
     if (gateSignature === null) {
-      // 闸门消失（已验收或产物失效）：验收布局已无意义，退回复核
-      setViewMode((mode) => (mode === "accept" ? "canvas" : mode));
+      // 闸门消失（已完成或产物失效）：确认页已无意义，退回文本复核
+      setViewMode((mode) => (mode === "final" ? "review" : mode));
       return;
     }
-    setViewMode("accept");
+    setViewMode("final");
   }, [gateSignature]);
 
   const blocks = useMemo(
@@ -217,24 +216,26 @@ export function ReviewPage(): React.JSX.Element {
     [deckPath, slideId, runSlide],
   );
 
-  const handleAccept = useCallback(
+  /**
+   * 最终确认「完成」：一次写入 accept-clean 与 accept-pptx 双验收记录。
+   *
+   * 验收后 `report` 仍未跑（`STAGE_DEPENDENCIES` 把它排在 accept-pptx 之后），
+   * 由用户点「运行此页」或批量续跑补上，与 design §6 的收尾一致。
+   */
+  const handleComplete = useCallback(
     async (note: string): Promise<void> => {
-      if (workspacePath === null || acceptGate === null || slideId === null) {
-        return;
-      }
+      if (workspacePath === null || slideId === null) return;
       setSubmitting(true);
       try {
-        const api = window.api;
-        const result =
-          acceptGate.stage === "accept-clean"
-            ? await api.slide.acceptClean(workspacePath, { note })
-            : await api.slide.acceptPptx(workspacePath, { note });
-        // 先清会话层闸门再刷耐久层，否则 deriveAcceptGate 仍会命中已完成的闸门
+        const result = await window.api.slide.acceptFinal(workspacePath, {
+          note,
+        });
+        // 先清会话层闸门再刷耐久层，否则 deriveFinalGate 仍会命中已完成的闸门
         clearSessionResult(slideId);
         await refreshSlide(slideId);
         setNotice({
           ok: true,
-          message: `验收完成 · ${result.autoCheckSummary}`,
+          message: `已完成本页验收 · ${result.autoCheckSummary}`,
         });
       } catch (err) {
         setNotice({
@@ -245,7 +246,7 @@ export function ReviewPage(): React.JSX.Element {
         setSubmitting(false);
       }
     },
-    [workspacePath, acceptGate, slideId, clearSessionResult, refreshSlide],
+    [workspacePath, slideId, clearSessionResult, refreshSlide],
   );
 
   /**
@@ -276,13 +277,50 @@ export function ReviewPage(): React.JSX.Element {
           return;
         }
         clearSessionResult(slideId);
-        setViewMode("canvas");
+        setViewMode("review");
         await refreshSlide(slideId);
         startRun(stage);
       })();
     },
     [slideId, workspacePath, clearSessionResult, refreshSlide, startRun],
   );
+
+  /**
+   * 最终确认页的「回到文本复核」：作废下游产物后切回复核，但**不立即重跑**。
+   *
+   * 与「重做底板」不同，用户此时还没改任何文字，先跑一遍毫无意义；等他改完保存
+   * 再点「运行此页」，断点续跑会从 validate-review 起把改动带到 mask/clean/pptx。
+   *
+   * 失效点取 `mask` 而非 design §4.3 写的 `review`：要的是「让复核改动能传到下游」，
+   * 而失效 review 本身会让续跑从 review 起重做，白白再打一次 assist-review 的付费
+   * 调用，并让刚编辑过的文档重走一遍候选合并。mask 是 review 之后第一个持久阶段，
+   * 失效它即可连带 clean/pptx/accept-* 全部失效，复核文档本身不受影响。
+   */
+  const handleBackToReview = useCallback(() => {
+    if (slideId === null || workspacePath === null) return;
+    void (async (): Promise<void> => {
+      try {
+        await window.api.slide.invalidateStage(
+          workspacePath,
+          "mask",
+          "人工选择回到文本复核，作废去字底板与 PPTX",
+        );
+      } catch (err) {
+        setNotice({
+          ok: false,
+          message: `作废下游产物失败：${err instanceof Error ? err.message : String(err)}`,
+        });
+        return;
+      }
+      clearSessionResult(slideId);
+      setViewMode("review");
+      await refreshSlide(slideId);
+      setNotice({
+        ok: true,
+        message: "已作废去字底板与 PPTX；改完复核内容后点「运行此页」重新生成",
+      });
+    })();
+  }, [slideId, workspacePath, clearSessionResult, refreshSlide]);
 
   const handleNextTodo = useCallback(() => {
     if (nextTodo === null) return;
@@ -313,8 +351,7 @@ export function ReviewPage(): React.JSX.Element {
         pageLabel={slide.pageLabel}
         navigation={navigation}
         viewMode={viewMode}
-        canCompare={canCompare}
-        hasAcceptGate={acceptGate !== null}
+        hasFinalGate={finalGate !== null}
         dirty={dirty}
         unreviewedCount={unreviewedCount}
         pageBusy={pageBusy}
@@ -327,7 +364,6 @@ export function ReviewPage(): React.JSX.Element {
         onNavigate={openSlide}
         onViewModeChange={setViewMode}
         onSave={() => void handleSave()}
-        onMarkAllReviewed={() => markAllReviewed()}
         onRunSlide={() => startRun()}
         onRerunFrom={rerunFrom}
         onNextTodo={handleNextTodo}
@@ -376,27 +412,20 @@ export function ReviewPage(): React.JSX.Element {
           <p className="flex h-full items-center justify-center text-sm font-medium text-muted">
             加载中…
           </p>
-        ) : viewMode === "accept" && acceptGate !== null ? (
-          <AcceptFlow
-            gate={acceptGate}
+        ) : viewMode === "final" && finalGate !== null ? (
+          <FinalConfirmPage
+            workspacePath={workspacePath}
             sourceImageUrl={sourceImageUrl}
             cleanPlateUrl={cleanPlateUrl}
+            blocks={blocks}
+            imageSize={reviewDocument?.image ?? null}
+            busy={pageBusy}
             submitting={submitting}
-            disabled={pageBusy}
-            onAccept={(note) => void handleAccept(note)}
-            onRejectRerun={rerunFrom}
+            gateSource={finalGate.source}
+            onComplete={(note) => void handleComplete(note)}
+            onRedoCleanPlate={() => rerunFrom("clean")}
+            onBackToReview={handleBackToReview}
           />
-        ) : viewMode === "compare" &&
-          sourceImageUrl !== null &&
-          cleanPlateUrl !== null ? (
-          <div className="flex h-full items-center justify-center overflow-auto bg-surface-strong p-6">
-            <div className="w-full max-w-5xl overflow-hidden rounded-md">
-              <SliderCompare
-                sourceImageUrl={sourceImageUrl}
-                cleanPlateUrl={cleanPlateUrl}
-              />
-            </div>
-          </div>
         ) : (
           <>
             {/* 列表在左、画布在右：相对 V1 的「画布 + 320px 侧栏」反转主次关系 */}

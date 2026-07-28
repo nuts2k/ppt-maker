@@ -1,4 +1,8 @@
-import type { TextReviewDocument } from "@ppt-maker/core";
+import type {
+  CleanPlateChecks,
+  PptxCheckReport,
+  TextReviewDocument,
+} from "@ppt-maker/core";
 import type { RunStage } from "../../shared/stages.js";
 
 export interface DeckStatusSlide {
@@ -57,6 +61,14 @@ export interface SlideDetail extends DeckStatusSlide {
   readonly lastError: SlideLastError | null;
   /** stage -> 最近一次成功执行的耗时（毫秒） */
   readonly stageDurations: Readonly<Record<string, number>>;
+  /**
+   * 该页仍待人工复核的版式文字块数（`layout_text` 且 `reviewStatus === "unreviewed"`）。
+   *
+   * 待办队列「需文本复核」分组的耐久层判据——manifest 里没有这个信息，必须由
+   * main 侧读 `stages/review/text-blocks.json` 聚合。读不到（review 未跑完或文件
+   * 缺失）时为 0，此时该页本就不该出现在该分组里。
+   */
+  readonly pendingTextReview: number;
 }
 
 export interface DeckStatusDetailedResult {
@@ -77,6 +89,25 @@ export interface DeckExportResult {
 export interface AcceptOptions {
   readonly acceptedBy?: string;
   readonly note?: string;
+}
+
+/** 最终确认一次写入 accept-clean + accept-pptx 两条验收记录的结果 */
+export interface AcceptFinalResult {
+  readonly cleanAcceptanceId: string;
+  readonly pptxAcceptanceId: string;
+  readonly autoCheckSummary: string;
+}
+
+/**
+ * 最终确认页展示的自动检查结果。
+ *
+ * 两份都是产物目录里的既有记录，main 侧只读不算：pptx 取 `stages/pptx/check.json`，
+ * clean 取当前 attempt 的 `stages/clean/clean-00N/record.json` 的 `checks`。
+ * 阶段未跑或文件缺失时为 null，界面按「暂无」呈现而非报错。
+ */
+export interface FinalChecks {
+  readonly pptx: PptxCheckReport | null;
+  readonly clean: CleanPlateChecks | null;
 }
 
 /** 批量/单页执行的启动参数；省略 slideIds 表示全部未完成的活动页 */
@@ -210,6 +241,17 @@ export interface IpcApi {
       workspacePath: string,
       opts?: AcceptOptions,
     ): Promise<{ acceptedPath: string; autoCheckSummary: string }>;
+    /** 最终确认：一次写入 accept-clean 与 accept-pptx 两条验收记录 */
+    acceptFinal(
+      workspacePath: string,
+      opts?: AcceptOptions,
+    ): Promise<AcceptFinalResult>;
+    /** 用系统默认程序打开该页 PPTX 产物（PowerPoint for Mac 做最终把关） */
+    openPptx(
+      workspacePath: string,
+    ): Promise<{ opened: boolean; message: string }>;
+    /** 读取最终确认页要展示的 pptx 六项检查与 clean 裸指标 */
+    loadFinalChecks(workspacePath: string): Promise<FinalChecks>;
     loadImage(workspacePath: string, role: string): Promise<string | null>;
     /** 拒绝验收：把该阶段及下游标为 stale，让随后的 run 强制重做 */
     invalidateStage(

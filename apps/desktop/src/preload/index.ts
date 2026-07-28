@@ -1,6 +1,7 @@
 import type { TextReviewDocument } from "@ppt-maker/core";
 import { contextBridge, ipcRenderer } from "electron";
 import type {
+  AcceptFinalResult,
   AcceptOptions,
   ActivityRecord,
   DeckExportResult,
@@ -10,6 +11,7 @@ import type {
   DeckStatusDetailedResult,
   DeckStatusResult,
   DoctorReport,
+  FinalChecks,
   IpcApi,
 } from "../main/ipc/channels.js";
 import type { RunStage } from "../shared/stages.js";
@@ -66,6 +68,17 @@ const api: IpcApi = {
       opts?: AcceptOptions,
     ): Promise<{ acceptedPath: string; autoCheckSummary: string }> =>
       ipcRenderer.invoke("slide:accept-pptx", workspacePath, opts),
+    acceptFinal: (
+      workspacePath: string,
+      opts?: AcceptOptions,
+    ): Promise<AcceptFinalResult> =>
+      ipcRenderer.invoke("slide:accept-final", workspacePath, opts),
+    openPptx: (
+      workspacePath: string,
+    ): Promise<{ opened: boolean; message: string }> =>
+      ipcRenderer.invoke("slide:open-pptx", workspacePath),
+    loadFinalChecks: (workspacePath: string): Promise<FinalChecks> =>
+      ipcRenderer.invoke("slide:load-final-checks", workspacePath),
     loadImage: (workspacePath: string, role: string): Promise<string | null> =>
       ipcRenderer.invoke("slide:load-image", workspacePath, role),
     invalidateStage: (

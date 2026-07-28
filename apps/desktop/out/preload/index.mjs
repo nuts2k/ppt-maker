@@ -16,6 +16,9 @@ const api = {
     saveReview: (workspacePath, document) => ipcRenderer.invoke("slide:save-review", workspacePath, document),
     acceptClean: (workspacePath, opts) => ipcRenderer.invoke("slide:accept-clean", workspacePath, opts),
     acceptPptx: (workspacePath, opts) => ipcRenderer.invoke("slide:accept-pptx", workspacePath, opts),
+    acceptFinal: (workspacePath, opts) => ipcRenderer.invoke("slide:accept-final", workspacePath, opts),
+    openPptx: (workspacePath) => ipcRenderer.invoke("slide:open-pptx", workspacePath),
+    loadFinalChecks: (workspacePath) => ipcRenderer.invoke("slide:load-final-checks", workspacePath),
     loadImage: (workspacePath, role) => ipcRenderer.invoke("slide:load-image", workspacePath, role),
     invalidateStage: (workspacePath, stage, reason) => ipcRenderer.invoke(
       "slide:invalidate-stage",

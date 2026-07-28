@@ -16,23 +16,25 @@ import { useUIStore } from "@/stores/ui-store";
  * 队列是控制台的主要驱动入口——用户不必扫完整片卡片网格，从这里逐项点进去处理即可。
  * 数据完全派生自 deck-store（耐久层）+ run-store（会话层），不新增任何持久化。
  *
- * 分组视觉承担"该做什么"的语义：失败/需复核用签名色竖条标出紧迫度，
- * 两个验收组整体落在 cream 卡片上，表达"该你动手了"而非"系统出错了"。
+ * 分组视觉承担"该做什么"的语义：前三组用签名色竖条按紧迫度递减标出，
+ * 最终确认组整体落在 cream 卡片上，表达"产物已就绪、等你拍板"而非"系统出错了"。
+ * cream 卡片只给一个组——两块相邻的 cream 会糊成一片，反而失去强调。
  */
 
 interface TodoQueuePanelProps {
   readonly className?: string;
 }
 
-/** 组 → 项左缘强调竖条；验收组不用竖条（整组已由 cream 卡片承载强调） */
+/** 组 → 项左缘强调竖条；最终确认组不用竖条（整组已由 cream 卡片承载强调） */
 const GROUP_ACCENT: Readonly<Record<TodoGroup, string | null>> = {
   failed: "bg-signature-coral",
-  revalidate: "bg-signature-mustard",
-  "accept-pptx": null,
-  "accept-clean": null,
+  "fix-validation": "bg-signature-mustard",
+  "review-text": "bg-signature-forest",
+  "final-confirm": null,
 };
 
-const ACCEPT_GROUPS: readonly TodoGroup[] = ["accept-pptx", "accept-clean"];
+/** 落在 cream 卡片上的组 */
+const CREAM_GROUPS: readonly TodoGroup[] = ["final-confirm"];
 
 const ICON_BUTTON =
   "rounded-sm border border-hairline px-1.5 py-1 text-sm text-ink transition active:border-border-strong";
@@ -119,13 +121,13 @@ export function TodoQueuePanel({
 
 function QueueGroup({ group }: { group: TodoQueueGroup }): React.JSX.Element {
   const accent = GROUP_ACCENT[group.group];
-  const isAcceptGroup = ACCEPT_GROUPS.includes(group.group);
+  const onCream = CREAM_GROUPS.includes(group.group);
 
   return (
     <section
       className={cn(
         "flex flex-col gap-2",
-        isAcceptGroup && "rounded-md bg-signature-cream p-6",
+        onCream && "rounded-md bg-signature-cream p-6",
       )}
     >
       <div className="flex items-center gap-2">

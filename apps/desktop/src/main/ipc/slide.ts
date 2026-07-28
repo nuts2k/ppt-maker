@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { runAcceptClean } from "@cli/clean/accept.js";
 import { runAcceptPptx } from "@cli/pptx/accept.js";
+import { runAcceptFinal } from "@cli/slide/accept-final.js";
 import { invalidateSlideStage } from "@cli/slide/invalidate.js";
 import { loadSlideWorkspace } from "@cli/slide/workspace.js";
 import {
@@ -10,20 +11,21 @@ import {
   TextReviewDocumentSchema,
   validateTextReviewDocument,
 } from "@ppt-maker/core";
-import { ipcMain } from "electron";
+import { ipcMain, shell } from "electron";
 import { type ActivityLog, buildActivityRecord } from "../activity-log.js";
 import { resolveDeckContext } from "../deck-context.js";
-import type { AcceptOptions, ActivityResult } from "./channels.js";
-
-/**
- * 复核文档在工作区内的相对路径，必须与 CLI 的 `slide/review.ts`、
- * `slide/assist-review.ts`、`slide/validate-review.ts` 三处保持一致。
- *
- * 曾经这里漏写 `stages/` 一层，`load-review` 的 readFile 失败后被 catch 吞成 null，
- * 单页复核画布拿到 0 个文字块、侧边栏三块全空，而控制台没有任何报错——
- * 表现为「点进去什么都没有」。改动此常量前先确认 CLI 侧写入路径。
- */
-const REVIEW_RELATIVE_PATH = ["stages", "review", "text-blocks.json"] as const;
+import {
+  loadTextReviewDocument,
+  REVIEW_RELATIVE_PATH,
+  readFinalChecks,
+  resolvePptxArtifactPath,
+} from "../slide-detail.js";
+import type {
+  AcceptFinalResult,
+  AcceptOptions,
+  ActivityResult,
+  FinalChecks,
+} from "./channels.js";
 
 export function registerSlideHandlers(activityLog: ActivityLog): void {
   async function log(
@@ -55,14 +57,7 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
       _event,
       workspacePath: string,
     ): Promise<TextReviewDocument | null> => {
-      const ws = resolve(workspacePath);
-      const reviewPath = join(ws, ...REVIEW_RELATIVE_PATH);
-      try {
-        const raw = await readFile(reviewPath, "utf-8");
-        return TextReviewDocumentSchema.parse(JSON.parse(raw));
-      } catch {
-        return null;
-      }
+      return loadTextReviewDocument(resolve(workspacePath));
     },
   );
 
@@ -165,6 +160,82 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
         );
         throw error;
       }
+    },
+  );
+
+  /*
+   * 最终确认：一次人工动作写入 accept-clean 与 accept-pptx 两条验收记录。
+   *
+   * 全部落库工作在 CLI 的 runAcceptFinal 内完成（含幂等跳过已 completed 的一侧），
+   * main 只负责调用与活动日志，不在此重写任何验收语义。
+   */
+  ipcMain.handle(
+    "slide:accept-final",
+    async (
+      _event,
+      workspacePath: string,
+      opts?: AcceptOptions,
+    ): Promise<AcceptFinalResult> => {
+      try {
+        const result = await runAcceptFinal({
+          workspacePath: resolve(workspacePath),
+          ...(opts?.acceptedBy ? { acceptedBy: opts.acceptedBy } : {}),
+          ...(opts?.note ? { note: opts.note } : {}),
+        });
+        await log(
+          workspacePath,
+          "accept-final",
+          "accept-final",
+          "success",
+          `最终确认验收：${result.autoCheckSummary}`,
+        );
+        return result;
+      } catch (error) {
+        await log(
+          workspacePath,
+          "accept-final",
+          "accept-final",
+          "failure",
+          `最终确认失败：${error instanceof Error ? error.message : String(error)}`,
+        );
+        throw error;
+      }
+    },
+  );
+
+  /*
+   * 用系统默认程序（macOS 下即 PowerPoint）打开该页 PPTX 做最终把关。
+   *
+   * 打不开不抛错、也不静默：产物未生成或系统拒绝打开都如实回传 message，
+   * 让界面能说清「为什么点了没反应」。shell.openPath 的约定是——返回空串为成功，
+   * 非空串即失败原因。
+   */
+  ipcMain.handle(
+    "slide:open-pptx",
+    async (
+      _event,
+      workspacePath: string,
+    ): Promise<{ opened: boolean; message: string }> => {
+      const ws = resolve(workspacePath);
+      const workspace = await loadSlideWorkspace(ws);
+      const pptxPath = resolvePptxArtifactPath(ws, workspace.manifest);
+      if (pptxPath === null) {
+        return { opened: false, message: "该页尚未生成 PPTX 产物" };
+      }
+      const failure = await shell.openPath(pptxPath);
+      if (failure !== "") {
+        return { opened: false, message: `无法打开 PPTX：${failure}` };
+      }
+      return { opened: true, message: `已用系统默认程序打开：${pptxPath}` };
+    },
+  );
+
+  ipcMain.handle(
+    "slide:load-final-checks",
+    async (_event, workspacePath: string): Promise<FinalChecks> => {
+      const ws = resolve(workspacePath);
+      const workspace = await loadSlideWorkspace(ws);
+      return readFinalChecks(ws, workspace.manifest);
     },
   );
 

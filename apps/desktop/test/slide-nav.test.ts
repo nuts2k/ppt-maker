@@ -26,6 +26,7 @@ function makeSlide(pageLabel: string, removed = false): SlideDetail {
     stages,
     lastError: null,
     stageDurations: {},
+    pendingTextReview: 0,
   };
 }
 

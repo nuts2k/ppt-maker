@@ -21,6 +21,8 @@ interface SlideFixture {
   /** 标记为 completed 的执行阶段，其余为 pending */
   readonly completed?: readonly RunStage[];
   readonly lastError?: SlideLastError;
+  /** 待人工复核的版式文字块数，默认 0 */
+  readonly pendingTextReview?: number;
 }
 
 function makeSlide(fixture: SlideFixture): SlideDetail {
@@ -41,32 +43,39 @@ function makeSlide(fixture: SlideFixture): SlideDetail {
     stages,
     lastError: fixture.lastError ?? null,
     stageDurations: {},
+    pendingTextReview: fixture.pendingTextReview ?? 0,
   };
 }
 
 function sessionResult(slideId: string, gate: string | null): SessionRunResult {
+  const stoppedAt =
+    gate === "validation-failed"
+      ? "validate-review"
+      : gate === "human-edit"
+        ? "review"
+        : null;
   return {
     slideId,
     gate,
-    stoppedAt: gate === "validation-failed" ? "validate-review" : null,
-    message: "停在复核校验",
+    stoppedAt,
+    message: "停在闸门",
     error: null,
   };
 }
 
 /** 跑完全流程的页（所有执行阶段 completed） */
 const ALL_DONE = RUN_STAGE_SEQUENCE;
-/** 跑到 clean 完成、尚未验收底图 */
+/** 复核稿已生成 */
+const THROUGH_REVIEW: RunStage[] = ["ocr", "review", "assist-review"];
+/** 跑到 clean 完成（收敛后 accept-clean 不再单独停顿） */
 const THROUGH_CLEAN: RunStage[] = [
-  "ocr",
-  "review",
-  "assist-review",
+  ...THROUGH_REVIEW,
   "validate-review",
   "mask",
   "clean",
 ];
-/** 跑到 pptx 完成、尚未验收 PPTX */
-const THROUGH_PPTX: RunStage[] = [...THROUGH_CLEAN, "accept-clean", "pptx"];
+/** 跑到 pptx 完成、等待最终确认 */
+const THROUGH_PPTX: RunStage[] = [...THROUGH_CLEAN, "pptx"];
 
 describe("deriveTodoQueue 四组判定", () => {
   it("耐久层 failed 归入失败组，原因取 lastError 的 code + message", () => {
@@ -76,7 +85,7 @@ describe("deriveTodoQueue 四组判定", () => {
           pageLabel: "page-01",
           currentStage: "mask",
           stageStatus: "failed",
-          completed: ["ocr", "review", "assist-review"],
+          completed: THROUGH_REVIEW,
           lastError: {
             stage: "mask",
             code: "MASK_FAILED",
@@ -125,53 +134,91 @@ describe("deriveTodoQueue 四组判定", () => {
     ]);
   });
 
-  it("会话层 validation-failed 归入需复核校验组", () => {
+  it("会话层 validation-failed 归入需修数据错误组", () => {
     const slide = makeSlide({
       pageLabel: "page-01",
       currentStage: "assist-review",
-      completed: ["ocr", "review", "assist-review"],
+      completed: THROUGH_REVIEW,
     });
     const queue = deriveTodoQueue([slide], {
       [slide.slideId]: sessionResult(slide.slideId, "validation-failed"),
     });
 
     expect(queue.total).toBe(1);
-    expect(queue.groups[0]?.group).toBe("revalidate");
-    expect(queue.groups[0]?.label).toBe("需复核校验");
+    expect(queue.groups[0]?.group).toBe("fix-validation");
+    expect(queue.groups[0]?.label).toBe("需修数据错误");
     expect(queue.groups[0]?.items[0]?.stage).toBe("validate-review");
   });
 
-  it("其它 gate（如 manual）不进入需复核校验组", () => {
-    const slide = makeSlide({
-      pageLabel: "page-01",
-      currentStage: "clean",
-      completed: THROUGH_CLEAN,
-    });
-    const queue = deriveTodoQueue([slide], {
-      [slide.slideId]: sessionResult(slide.slideId, "manual"),
-    });
-
-    expect(queue.groups[0]?.group).toBe("accept-clean");
-  });
-
-  it("clean 完成且 accept-clean 未完成 → 待验收底图组", () => {
+  it("review 完成且仍有未复核版式文字 → 需文本复核组，原因带块数", () => {
     const queue = deriveTodoQueue(
       [
         makeSlide({
           pageLabel: "page-01",
-          currentStage: "clean",
-          completed: THROUGH_CLEAN,
+          currentStage: "assist-review",
+          completed: THROUGH_REVIEW,
+          pendingTextReview: 45,
         }),
       ],
       {},
     );
 
-    expect(queue.groups[0]?.group).toBe("accept-clean");
-    expect(queue.groups[0]?.label).toBe("待验收底图");
-    expect(queue.groups[0]?.items[0]?.stage).toBe("accept-clean");
+    expect(queue.groups[0]?.group).toBe("review-text");
+    expect(queue.groups[0]?.label).toBe("需文本复核");
+    expect(queue.groups[0]?.items[0]).toMatchObject({
+      reason: "45 个版式目标文字待复核",
+      stage: "review",
+    });
   });
 
-  it("pptx 完成且 accept-pptx 未完成 → 待验收 PPTX 组", () => {
+  it("pendingTextReview 为 0 时不进需文本复核组", () => {
+    const queue = deriveTodoQueue(
+      [
+        makeSlide({
+          pageLabel: "page-01",
+          currentStage: "assist-review",
+          completed: THROUGH_REVIEW,
+          pendingTextReview: 0,
+        }),
+      ],
+      {},
+    );
+
+    expect(queue.total).toBe(0);
+  });
+
+  it("review 未完成时即便块数非 0 也不进需文本复核组", () => {
+    const queue = deriveTodoQueue(
+      [
+        makeSlide({
+          pageLabel: "page-01",
+          currentStage: "ocr",
+          completed: ["ocr"],
+          pendingTextReview: 12,
+        }),
+      ],
+      {},
+    );
+
+    expect(queue.total).toBe(0);
+  });
+
+  it("会话层 human-edit 命中需文本复核组（耐久块数尚未刷新时的兜底）", () => {
+    const slide = makeSlide({
+      pageLabel: "page-01",
+      currentStage: "assist-review",
+      completed: THROUGH_REVIEW,
+      pendingTextReview: 0,
+    });
+    const queue = deriveTodoQueue([slide], {
+      [slide.slideId]: sessionResult(slide.slideId, "human-edit"),
+    });
+
+    expect(queue.groups[0]?.group).toBe("review-text");
+    expect(queue.groups[0]?.items[0]?.reason).toBe("存在待复核的版式目标文字");
+  });
+
+  it("pptx 完成且 accept-pptx 未完成 → 待最终确认组", () => {
     const queue = deriveTodoQueue(
       [
         makeSlide({
@@ -183,37 +230,38 @@ describe("deriveTodoQueue 四组判定", () => {
       {},
     );
 
-    expect(queue.groups[0]?.group).toBe("accept-pptx");
-    expect(queue.groups[0]?.label).toBe("待验收 PPTX");
-    expect(queue.groups[0]?.items[0]?.stage).toBe("accept-pptx");
+    expect(queue.groups[0]?.group).toBe("final-confirm");
+    expect(queue.groups[0]?.label).toBe("待最终确认");
+    expect(queue.groups[0]?.items[0]).toMatchObject({
+      reason: "PPTX 已生成，等待最终确认",
+      stage: "accept-pptx",
+    });
   });
-});
 
-describe("deriveTodoQueue 优先级与去重", () => {
-  it("同时待验收 clean 与 pptx 时只产出 accept-pptx 一项", () => {
+  it("clean 完成但 pptx 未完成时不产生待办（accept-clean 不再单独停顿）", () => {
     const queue = deriveTodoQueue(
       [
         makeSlide({
           pageLabel: "page-01",
-          currentStage: "pptx",
-          // accept-clean 未完成，但 pptx 已产出：取更接近终点的 accept-pptx
-          completed: [...THROUGH_CLEAN, "pptx"],
+          currentStage: "clean",
+          completed: THROUGH_CLEAN,
         }),
       ],
       {},
     );
 
-    expect(queue.total).toBe(1);
-    expect(queue.groups).toHaveLength(1);
-    expect(queue.groups[0]?.group).toBe("accept-pptx");
+    expect(queue.total).toBe(0);
   });
+});
 
-  it("失败态优先于验收态与会话层 validation-failed", () => {
+describe("deriveTodoQueue 优先级与去重", () => {
+  it("失败态优先于其余全部判据", () => {
     const slide = makeSlide({
       pageLabel: "page-01",
       currentStage: "pptx",
       stageStatus: "failed",
       completed: THROUGH_PPTX,
+      pendingTextReview: 3,
     });
     const queue = deriveTodoQueue([slide], {
       [slide.slideId]: sessionResult(slide.slideId, "validation-failed"),
@@ -223,36 +271,56 @@ describe("deriveTodoQueue 优先级与去重", () => {
     expect(queue.groups[0]?.group).toBe("failed");
   });
 
-  it("validation-failed 优先于验收组", () => {
+  it("validation-failed 优先于需文本复核与待最终确认", () => {
     const slide = makeSlide({
       pageLabel: "page-01",
-      currentStage: "clean",
-      completed: THROUGH_CLEAN,
+      currentStage: "pptx",
+      completed: THROUGH_PPTX,
+      pendingTextReview: 3,
     });
     const queue = deriveTodoQueue([slide], {
       [slide.slideId]: sessionResult(slide.slideId, "validation-failed"),
     });
 
-    expect(queue.groups[0]?.group).toBe("revalidate");
+    expect(queue.total).toBe(1);
+    expect(queue.groups[0]?.group).toBe("fix-validation");
   });
 
-  it("组顺序固定为 failed → revalidate → accept-pptx → accept-clean", () => {
+  it("需文本复核优先于待最终确认（先把文字定下来再看成品）", () => {
+    const queue = deriveTodoQueue(
+      [
+        makeSlide({
+          pageLabel: "page-01",
+          currentStage: "pptx",
+          completed: THROUGH_PPTX,
+          pendingTextReview: 3,
+        }),
+      ],
+      {},
+    );
+
+    expect(queue.total).toBe(1);
+    expect(queue.groups[0]?.group).toBe("review-text");
+  });
+
+  it("组顺序固定为 failed → fix-validation → review-text → final-confirm", () => {
     const revalidating = makeSlide({
       pageLabel: "page-02",
       currentStage: "assist-review",
-      completed: ["ocr", "review", "assist-review"],
+      completed: THROUGH_REVIEW,
     });
     const queue = deriveTodoQueue(
       [
         makeSlide({
           pageLabel: "page-04",
-          currentStage: "clean",
-          completed: THROUGH_CLEAN,
+          currentStage: "pptx",
+          completed: THROUGH_PPTX,
         }),
         makeSlide({
           pageLabel: "page-03",
-          currentStage: "pptx",
-          completed: THROUGH_PPTX,
+          currentStage: "assist-review",
+          completed: THROUGH_REVIEW,
+          pendingTextReview: 7,
         }),
         revalidating,
         makeSlide({
@@ -271,9 +339,9 @@ describe("deriveTodoQueue 优先级与去重", () => {
 
     expect(queue.groups.map((group) => group.group)).toEqual([
       "failed",
-      "revalidate",
-      "accept-pptx",
-      "accept-clean",
+      "fix-validation",
+      "review-text",
+      "final-confirm",
     ]);
     expect(queue.total).toBe(4);
   });
@@ -291,8 +359,8 @@ describe("deriveTodoQueue 过滤与排序", () => {
         }),
         makeSlide({
           pageLabel: "page-02",
-          currentStage: "clean",
-          completed: THROUGH_CLEAN,
+          currentStage: "pptx",
+          completed: THROUGH_PPTX,
           removed: true,
         }),
       ],
@@ -321,18 +389,18 @@ describe("deriveTodoQueue 过滤与排序", () => {
       [
         makeSlide({
           pageLabel: "page-10",
-          currentStage: "clean",
-          completed: THROUGH_CLEAN,
+          currentStage: "pptx",
+          completed: THROUGH_PPTX,
         }),
         makeSlide({
           pageLabel: "page-2",
-          currentStage: "clean",
-          completed: THROUGH_CLEAN,
+          currentStage: "pptx",
+          completed: THROUGH_PPTX,
         }),
         makeSlide({
           pageLabel: "page-1",
-          currentStage: "clean",
-          completed: THROUGH_CLEAN,
+          currentStage: "pptx",
+          completed: THROUGH_PPTX,
         }),
       ],
       {},
@@ -347,19 +415,20 @@ describe("deriveTodoQueue 过滤与排序", () => {
 });
 
 describe("flattenTodoQueue / nextTodoItem（处理下一项）", () => {
-  /** 失败 page-01 → 待验收 PPTX page-03 → 待验收底图 page-04 三项队列 */
+  /** 失败 page-01 → 需文本复核 page-03 → 待最终确认 page-04 三项队列 */
   function mixedQueue() {
     return deriveTodoQueue(
       [
         makeSlide({
           pageLabel: "page-04",
-          currentStage: "clean",
-          completed: THROUGH_CLEAN,
+          currentStage: "pptx",
+          completed: THROUGH_PPTX,
         }),
         makeSlide({
           pageLabel: "page-03",
-          currentStage: "pptx",
-          completed: THROUGH_PPTX,
+          currentStage: "assist-review",
+          completed: THROUGH_REVIEW,
+          pendingTextReview: 5,
         }),
         makeSlide({
           pageLabel: "page-01",
@@ -410,8 +479,8 @@ describe("flattenTodoQueue / nextTodoItem（处理下一项）", () => {
       [
         makeSlide({
           pageLabel: "page-01",
-          currentStage: "clean",
-          completed: THROUGH_CLEAN,
+          currentStage: "pptx",
+          completed: THROUGH_PPTX,
         }),
       ],
       {},

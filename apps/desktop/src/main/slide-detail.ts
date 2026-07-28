@@ -1,15 +1,167 @@
-import type {
-  SlideWorkspaceManifest,
-  WorkspaceStageAttempt,
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+import {
+  CleanAttemptRecordSchema,
+  PptxCheckReportSchema,
+  type SlideWorkspaceManifest,
+  type TextReviewDocument,
+  TextReviewDocumentSchema,
+  type WorkspaceAsset,
+  type WorkspaceStageAttempt,
 } from "@ppt-maker/core";
 import {
   RUN_STAGE_SEQUENCE,
   type RunStage,
   TRANSIENT_STAGES,
 } from "../shared/stages.js";
-import type { SlideLastError, SlideStageDetail } from "./ipc/channels.js";
+import type {
+  FinalChecks,
+  SlideLastError,
+  SlideStageDetail,
+} from "./ipc/channels.js";
 
 const TRANSIENT = new Set<string>(TRANSIENT_STAGES);
+
+/**
+ * 复核文档在工作区内的相对路径，必须与 CLI 的 `slide/review.ts`、
+ * `slide/assist-review.ts`、`slide/validate-review.ts` 三处保持一致。
+ *
+ * 曾经这里漏写 `stages/` 一层，`load-review` 的 readFile 失败后被 catch 吞成 null，
+ * 单页复核画布拿到 0 个文字块、侧边栏三块全空，而控制台没有任何报错——
+ * 表现为「点进去什么都没有」。改动此常量前先确认 CLI 侧写入路径。
+ */
+export const REVIEW_RELATIVE_PATH = [
+  "stages",
+  "review",
+  "text-blocks.json",
+] as const;
+
+/** 文件不存在（正常路径：该阶段还没跑）与其它读取失败的区分 */
+function isMissingFile(error: unknown): boolean {
+  return (error as { code?: string } | null)?.code === "ENOENT";
+}
+
+/**
+ * 读取该页复核文档；文件尚未生成时返回 null。
+ *
+ * **不静默吞掉非 ENOENT 的失败**：路径写错、JSON 损坏、Schema 不匹配都会打到
+ * stderr，否则「点进去什么都没有」将再次无从排查（见静默失败诊断指南）。
+ */
+export async function loadTextReviewDocument(
+  absWorkspacePath: string,
+): Promise<TextReviewDocument | null> {
+  const reviewPath = join(absWorkspacePath, ...REVIEW_RELATIVE_PATH);
+  let raw: string;
+  try {
+    raw = await readFile(reviewPath, "utf-8");
+  } catch (error) {
+    if (!isMissingFile(error)) {
+      console.error("[slide-detail] 复核文档读取失败", reviewPath, error);
+    }
+    return null;
+  }
+  try {
+    return TextReviewDocumentSchema.parse(JSON.parse(raw));
+  } catch (error) {
+    console.error("[slide-detail] 复核文档解析失败", reviewPath, error);
+    return null;
+  }
+}
+
+/**
+ * 仍待人工复核的版式目标文字块数。
+ *
+ * 判据与 CLI 的文本复核门（`slide/run-from.ts` 的 `countPendingReviewBlocks`）
+ * 逐字一致：`layout_text` 且 `reviewStatus === "unreviewed"`。两处若漂移，
+ * 待办队列会把 CLI 根本不会停的页列成「需文本复核」。
+ */
+export function countPendingTextReview(document: TextReviewDocument): number {
+  return document.blocks.filter(
+    (block) =>
+      block.classification === "layout_text" &&
+      block.reviewStatus === "unreviewed",
+  ).length;
+}
+
+/** 读盘版：复核文档缺失或损坏时为 0（此时该页本就不该进「需文本复核」分组） */
+export async function readPendingTextReview(
+  absWorkspacePath: string,
+): Promise<number> {
+  const document = await loadTextReviewDocument(absWorkspacePath);
+  return document === null ? 0 : countPendingTextReview(document);
+}
+
+/**
+ * 某阶段**当前那次成功尝试**产出的资产。
+ *
+ * 必须按 `lastSuccessfulAttemptId` 匹配，不能只按 role 取第一个——真实工作区里
+ * clean 跑过两次，`clean_record` 有 clean-001 与 clean-002 两条，按 role 取到的是
+ * 早已被取代的 clean-001，界面会展示上一版底板的检查指标。
+ */
+function currentSuccessAsset(
+  manifest: SlideWorkspaceManifest,
+  stage: string,
+  role: string,
+): WorkspaceAsset | undefined {
+  const attemptId = manifest.stages.find(
+    (state) => state.stage === stage,
+  )?.lastSuccessfulAttemptId;
+  if (attemptId === null || attemptId === undefined) return undefined;
+  return manifest.assets.find(
+    (asset) => asset.role === role && asset.attemptId === attemptId,
+  );
+}
+
+async function readJsonAsset<T>(
+  absWorkspacePath: string,
+  asset: WorkspaceAsset | undefined,
+  parse: (value: unknown) => T,
+): Promise<T | null> {
+  if (asset === undefined) return null;
+  const filePath = join(absWorkspacePath, asset.path);
+  try {
+    return parse(JSON.parse(await readFile(filePath, "utf-8")));
+  } catch (error) {
+    if (!isMissingFile(error)) {
+      console.error("[slide-detail] 检查记录读取失败", filePath, error);
+    }
+    return null;
+  }
+}
+
+/**
+ * 最终确认页要展示的自动检查：pptx 六项报告与 clean 的四组裸指标。
+ *
+ * 两者都只读既有产物、不重算；阶段未跑或记录缺失时为 null，由界面呈现「暂无」。
+ * clean 侧解析整条 attempt 记录后取 `checks`，与 `clean/accept.ts` 的口径一致。
+ */
+export async function readFinalChecks(
+  absWorkspacePath: string,
+  manifest: SlideWorkspaceManifest,
+): Promise<FinalChecks> {
+  const [pptx, cleanRecord] = await Promise.all([
+    readJsonAsset(
+      absWorkspacePath,
+      currentSuccessAsset(manifest, "pptx", "pptx_check"),
+      (value) => PptxCheckReportSchema.parse(value),
+    ),
+    readJsonAsset(
+      absWorkspacePath,
+      currentSuccessAsset(manifest, "clean", "clean_record"),
+      (value) => CleanAttemptRecordSchema.parse(value),
+    ),
+  ]);
+  return { pptx, clean: cleanRecord === null ? null : cleanRecord.checks };
+}
+
+/** 当前 pptx 成功尝试的产物绝对路径；未生成时为 null */
+export function resolvePptxArtifactPath(
+  absWorkspacePath: string,
+  manifest: SlideWorkspaceManifest,
+): string | null {
+  const asset = currentSuccessAsset(manifest, "pptx", "pptx");
+  return asset === undefined ? null : join(absWorkspacePath, asset.path);
+}
 
 function manifestStatus(
   manifest: SlideWorkspaceManifest,

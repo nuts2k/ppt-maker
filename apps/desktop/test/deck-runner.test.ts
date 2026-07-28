@@ -123,6 +123,12 @@ describe("DeckRunner 端到端", () => {
     expect(records.map((r) => r.kind)).toContain("run-done");
     const ocrRecord = records.find((r) => r.stage === "ocr");
     expect(ocrRecord?.durationMs).toBeGreaterThanOrEqual(0);
+
+    // 停在人工门的记录带闸门前缀且 result 为 gate（不是 failure）——
+    // 前缀文案与 renderer 的即时记录同源（shared/gates.ts）
+    const pageDoneRecord = records.find((r) => r.kind === "page-done");
+    expect(pageDoneRecord?.result).toBe("gate");
+    expect(pageDoneRecord?.detail).toContain("停在 API 调用确认：");
   });
 
   it("断点续跑：二次执行不重做已完成阶段", { timeout: 120_000 }, async () => {

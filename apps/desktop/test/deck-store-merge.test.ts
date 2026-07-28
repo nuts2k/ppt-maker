@@ -26,6 +26,7 @@ function slide(
     stages: [{ stage: "ocr", status: "completed" }],
     lastError: null,
     stageDurations: { ocr: 1200 },
+    pendingTextReview: 0,
     ...overrides,
   };
 }

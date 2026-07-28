@@ -189,19 +189,37 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 
 ## 阶段 D — 最终确认页（R2、design §4.3、§5）
 
-- [ ] D1 新增 `components/final/CompositePreview.tsx`：clean plate 背景 + 绝对定位文本层，字号按 `resolveFontSizePt` × 显示缩放换算，`white-space: pre-wrap` 保留 `lines` 换行
-- [ ] D2 新增 `components/final/CheckSummary.tsx`：pptx 六项 passed/failed + clean 四组裸指标并标注「当前无判定阈值」
-- [ ] D3 新增 `pages/FinalConfirmPage.tsx`：预览 / 滑块对比切换、差异明示提示、三个动作（完成 / 重做底板 / 回到文本复核）
-- [ ] D4 main 新增 `slide:accept-final` IPC；新增 `slide:open-pptx`（`shell.openPath`）
-- [ ] D5 `deck-runner.ts`：`page-done` 的 gate 增加 `human-edit`；ActivityLog 文案更新
-- [ ] D6 `lib/accept-gate.ts` 简化为只推导「待最终确认」单一闸门
-- [ ] D7 `stores/todo-queue.ts` 分组改为：需文本复核 / 需修数据错误 / 待最终确认 / 失败；删除「待验收 clean」
-- [ ] D8 删除 `components/slide/AcceptFlow.tsx`
-- [ ] D9 「重做底板」/「回到文本复核」沿用「先 invalidate 再启动」纪律（避免 `SlidePage.tsx:245` 注释记录的空转）
+- [x] D1 新增 `components/final/CompositePreview.tsx`：clean plate 背景 + 绝对定位文本层，字号按 `resolveFontSizePt` × 显示缩放换算，`white-space: pre-wrap` 保留 `lines` 换行
+- [x] D2 新增 `components/final/CheckSummary.tsx`：pptx 六项 passed/failed + clean 四组裸指标并标注「当前无判定阈值」
+- [x] D3 新增 `pages/FinalConfirmPage.tsx`：预览 / 滑块对比切换、差异明示提示、三个动作（完成 / 重做底板 / 回到文本复核）
+- [x] D4 main 新增 `slide:accept-final` IPC；新增 `slide:open-pptx`（`shell.openPath`）
+- [x] D5 `deck-runner.ts`：`page-done` 的 gate 增加 `human-edit`；ActivityLog 文案更新
+- [x] D6 `lib/accept-gate.ts` 简化为只推导「待最终确认」单一闸门
+- [x] D7 `stores/todo-queue.ts` 分组改为：需文本复核 / 需修数据错误 / 待最终确认 / 失败；删除「待验收 clean」
+- [x] D8 删除 `components/slide/AcceptFlow.tsx`
+- [x] D9 「重做底板」/「回到文本复核」沿用「先 invalidate 再启动」纪律（避免 `SlidePage.tsx:245` 注释记录的空转）
 
 **验证**：备份工作区跑到最终确认，肉眼对比合成预览与 PowerPoint for Mac 中打开的实际 PPTX；确认「完成」后 manifest 两条验收记录齐备且 `deck status` 可读；确认「重做底板」真的重跑而非空转。
 
 **回滚点**：D 阶段单独 commit。
+
+### D 阶段已完成（2026-07-27，工程验证部分）
+
+实施方式：四路并行（main/IPC、展示组件、闸门与队列、确认页），跨轨契约先写进 `channels.ts` 再分发，集成（ReviewPage 接线、SlideToolbar、删除件）由主会话收口。**真实工作区走查尚未做，留在 E1**。
+
+**计划外但必须的新增**：
+
+- **`slide:load-final-checks` IPC**。design §4.3 要求最终确认页展示 pptx 六项与 clean 指标，但 renderer 侧根本没有读取产物记录的通道——既有 IPC 只有 review 文档、图片、失效与验收。新增只读 handler：pptx 取 `stages/pptx/check.json`，clean 取当前 attempt 的 `record.json.checks`，缺失一律 null 而非抛错。
+- **`SlideDetail.pendingTextReview`**。design §3.4 的「需文本复核」耐久判据是「存在 `layout_text && unreviewed` 块」，而 `SlideDetail` 只由 manifest 聚合而来，没有块级信息。改为 main 侧读 `text-blocks.json` 数出该值随详情下发；读不到为 0。
+- **`shared/gates.ts`**。闸门中文文案此前散在 main 的活动日志与 renderer 的即时记录两处，`human-edit` 与 `manual` 语义变更后两侧必须逐字一致（否则同一条事件刷新前后两种说法），抽为单点。
+
+**落地差异与实现决策**：
+
+- **「回到文本复核」失效 `mask` 而非 design §4.3 写的 `review`**。要的效果是「让复核改动传到下游」；失效 `review` 会让续跑从 review 起重做，白白再打一次 assist-review 的付费调用，并让刚编辑过的文档重走一遍候选合并。`mask` 是 review 之后第一个持久阶段，失效它即连带 clean/pptx/accept-* 全部失效，复核文档本身不动。该动作**不自动重跑**（用户此刻尚未改任何字），改完保存再点「运行此页」；「重做底板」则维持「先 invalidate 再启动」的即时重跑。
+- **工具栏「全部标为已复核」连同 `markAllBlocksReviewed` 一并删除**。C 阶段暂留它作为 F-6 的逃生口，D7 收敛后没有保留理由：整页一键标记正是 155 块全 `reviewed` 却无一条 `updatedAt` 的成因。工具栏改为只读展示待复核数——数量仍是「这页还欠多少人工确认」的唯一提示。批量确认只剩「已一致」分区的「全部通过」（`markBlocksReviewedById`，作用域限定双源逐字一致的块）。
+- **`SlideViewMode` 收敛为 `review` / `final`**：`compare` 档降级为最终确认页内部的一档视图，`accept` 档由 `final` 取代，恰好对应链路仅剩的两个人工停点。
+- **`GROUP_ORDER` 把 `failed` 排在最前**，与 design §3.4 表格的列举顺序不同：延续既有约定（最紧急的先处理），不构成语义冲突。
+- **合成预览容器固定 16:9 并让底板拉伸填满**：PPTX 把 clean plate 满铺到 13.333×7.5 英寸版面（`synthesize.ts` 的 `addImage`），而真实底板是 1672×940（PRD F-4 记录的 gpt-image-2 尺寸偏差），不强制 16:9 的话块的百分比定位会与 PPT 版面对不上。
 
 ## 阶段 E — 全链路走查与收尾
 

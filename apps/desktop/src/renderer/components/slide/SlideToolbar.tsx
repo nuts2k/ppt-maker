@@ -30,19 +30,29 @@ const BUTTON_SECONDARY =
 const BUTTON_COMPACT =
   "shrink-0 rounded-sm border border-hairline bg-canvas px-2.5 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
 
-export type SlideViewMode = "canvas" | "compare" | "accept";
+/**
+ * 两个视图态对应链路仅剩的两个人工停点（阶段 D）。
+ *
+ * 阶段 C 暂留的 `compare` 与 `accept` 在此撤除：滑块对比降级为最终确认页内的
+ * 一档视图，验收由 FinalConfirmPage 承担。
+ */
+export type SlideViewMode = "review" | "final";
 
 interface SlideToolbarProps {
   readonly slideId: string;
   readonly pageLabel: string;
   readonly navigation: SlideNavigation;
   readonly viewMode: SlideViewMode;
-  readonly canCompare: boolean;
-  readonly hasAcceptGate: boolean;
+  /** 该页已停在最终确认门；决定「最终确认」档是否出现 */
+  readonly hasFinalGate: boolean;
   readonly dirty: boolean;
   /**
-   * 本页未复核块数。大于 0 时展示批量确认入口——mask 门禁要求参与抹字的块
-   * 全部已确认，而 assist-review 只自动确认高置信块，其余整页几十个需人工放行。
+   * 本页未复核块数，只读展示。
+   *
+   * 阶段 D 撤除了这里的「全部标为已复核」批量入口：PRD F-6 实测真实行为就是
+   * 「打开 → 一键全标 → 跑下去」，155 块无一条 `updatedAt`，该按钮正是文本复核
+   * 被整体架空的逃生口。数量仍要显示——它是「这页还欠多少人工确认」的唯一提示，
+   * 逐项确认在 BlockListPanel 内完成。
    */
   readonly unreviewedCount: number;
   /** 本页正在执行：禁用执行类动作，避免同一页被重复入队 */
@@ -57,7 +67,6 @@ interface SlideToolbarProps {
   readonly onNavigate: (slideId: string) => void;
   readonly onViewModeChange: (mode: SlideViewMode) => void;
   readonly onSave: () => void;
-  readonly onMarkAllReviewed: () => void;
   readonly onRunSlide: () => void;
   readonly onRerunFrom: (stage: RunStage) => void;
   readonly onNextTodo: () => void;
@@ -68,8 +77,7 @@ export function SlideToolbar({
   pageLabel,
   navigation,
   viewMode,
-  canCompare,
-  hasAcceptGate,
+  hasFinalGate,
   dirty,
   unreviewedCount,
   pageBusy,
@@ -78,7 +86,6 @@ export function SlideToolbar({
   onNavigate,
   onViewModeChange,
   onSave,
-  onMarkAllReviewed,
   onRunSlide,
   onRerunFrom,
   onNextTodo,
@@ -113,9 +120,8 @@ export function SlideToolbar({
     readonly label: string;
     readonly available: boolean;
   }> = [
-    { mode: "canvas", label: "画布", available: true },
-    { mode: "compare", label: "对比", available: canCompare },
-    { mode: "accept", label: "验收", available: hasAcceptGate },
+    { mode: "review", label: "文本复核", available: true },
+    { mode: "final", label: "最终确认", available: hasFinalGate },
   ];
 
   return (
@@ -205,20 +211,17 @@ export function SlideToolbar({
         )}
 
         {/*
-          未复核块会让 mask 阶段直接失败（「存在未复核却参与 mask 的文字块」），
-          且失败发生在流水线内部、界面上只表现为「跑了一下没反应」。
-          因此把剩余数量摆在工具栏上，并给出一键放行。
+          未复核块会让执行停在文本复核门（阶段 B 起为显式 human-edit 门，不再是
+          mask 阶段报错）。这里只报数，逐项确认在左侧列表里做。
         */}
         {unreviewedCount > 0 && (
-          <button
-            type="button"
-            onClick={onMarkAllReviewed}
-            title="把本页所有未复核块标为已复核；未复核块会让 mask 阶段失败"
-            className={BUTTON_SECONDARY}
+          <span
+            title="仍待人工确认的文字块数；执行会停在文本复核门直到清零"
+            className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted"
           >
-            全部标为已复核
-            <span className="ml-1 text-sm text-muted">{unreviewedCount}</span>
-          </button>
+            待复核
+            <span className="text-ink">{unreviewedCount}</span>
+          </span>
         )}
 
         {dirty && (

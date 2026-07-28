@@ -3,6 +3,7 @@ import { loadDeckWorkspace, resolveDeckPath } from "@cli/deck/workspace.js";
 import { runSlideRunFrom } from "@cli/slide/run-from.js";
 import { loadSlideWorkspace } from "@cli/slide/workspace.js";
 import type { BrowserWindow } from "electron";
+import { describePageDone } from "../../shared/gates.js";
 import { type RunStage, stageLabel } from "../../shared/stages.js";
 import { type ActivityLog, buildActivityRecord } from "../activity-log.js";
 import type {
@@ -240,6 +241,9 @@ export class DeckRunner {
         },
       });
 
+      // 只有 error 算失败；human-edit（文本复核门）与 manual（最终确认）等
+      // 一律是「正常停在人工门」，计入 gated——把它们记成失败会让待办队列
+      // 把该走的复核流程报成故障。
       const failed = result.gate === "error";
       const gated = !failed && result.gate !== null;
 
@@ -267,7 +271,7 @@ export class DeckRunner {
       this.record(
         "page-done",
         failed ? "failure" : gated ? "gate" : "success",
-        `${item.pageLabel} · ${result.message}`,
+        describePageDone(item.pageLabel, result.gate, result.message),
         {
           slideId: item.slideId,
           pageLabel: item.pageLabel,

@@ -16,6 +16,7 @@ import type {
   ActivityResult,
   DeckRunEvent,
 } from "../../main/ipc/channels.js";
+import { describePageDone } from "../../shared/gates.js";
 import { stageLabel } from "../../shared/stages.js";
 
 /** 按本地日期聚合后的一组记录 */
@@ -37,6 +38,7 @@ const KIND_LABELS: Readonly<Record<string, string>> = {
   "page-done": "页面处理结束",
   "accept-clean": "验收底图",
   "accept-pptx": "验收 PPTX",
+  "accept-final": "最终确认验收",
   export: "导出 PPTX",
 };
 
@@ -131,7 +133,7 @@ export function runEventToActivity(
       return build({
         kind: "page-done",
         result,
-        detail: `${label} · ${event.message}`,
+        detail: describePageDone(label, event.gate, event.message),
         slideId: event.slideId,
         pageLabel: label,
         stage: event.stoppedAt,

@@ -16477,6 +16477,22 @@ const useActivityStore = create((set) => ({
 function toMessage(err) {
   return err instanceof Error ? err.message : String(err);
 }
+const GATE_LABELS = {
+  "human-edit": "停在文本复核门",
+  api: "停在 API 调用确认",
+  upload: "停在上传确认",
+  // manual 现在只对应最终产物确认：accept-clean 已不再单独停顿（design §3.2）
+  manual: "停在最终确认",
+  "validation-failed": "复核校验未通过"
+};
+function gateLabel(gate) {
+  if (gate === null || gate === "error") return null;
+  return GATE_LABELS[gate] ?? null;
+}
+function describePageDone(pageLabel, gate, message) {
+  const label = gateLabel(gate);
+  return label === null ? `${pageLabel} · ${message}` : `${pageLabel} · ${label}：${message}`;
+}
 const RUN_STAGE_SEQUENCE = [
   "ocr",
   "review",
@@ -16514,6 +16530,7 @@ const KIND_LABELS = {
   "page-done": "页面处理结束",
   "accept-clean": "验收底图",
   "accept-pptx": "验收 PPTX",
+  "accept-final": "最终确认验收",
   export: "导出 PPTX"
 };
 function groupByDate(records) {
@@ -16578,7 +16595,7 @@ function runEventToActivity(event, ctx) {
       return build({
         kind: "page-done",
         result,
-        detail: `${label} · ${event.message}`,
+        detail: describePageDone(label, event.gate, event.message),
         slideId: event.slideId,
         pageLabel: label,
         stage: event.stoppedAt
@@ -17229,50 +17246,30 @@ function SlideCardGrid() {
   }
   return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4", children: activeSlides.map((slide) => /* @__PURE__ */ jsxRuntimeExports.jsx(SlideCard, { slide }, slide.slideId)) });
 }
-const ACCEPT_STAGE_PRIORITY = [
-  "accept-pptx",
-  "accept-clean"
-];
-const PRODUCED_STAGE = {
-  "accept-clean": "clean",
-  "accept-pptx": "pptx"
-};
-const REJECT_RERUN_STAGES = {
-  "accept-clean": ["mask", "clean"],
-  "accept-pptx": ["pptx"]
-};
 const MANUAL_GATE = "manual";
-function isAcceptStage(value) {
-  return value === "accept-clean" || value === "accept-pptx";
-}
 function stageStatusOf(slide, stage) {
   return slide.stages.find((detail) => detail.stage === stage)?.status;
 }
-function awaitingAcceptance(slide, acceptStage) {
-  return stageStatusOf(slide, PRODUCED_STAGE[acceptStage]) === "completed" && stageStatusOf(slide, acceptStage) !== "completed";
+function awaitingFinalConfirm(slide) {
+  return stageStatusOf(slide, "pptx") === "completed" && stageStatusOf(slide, "accept-pptx") !== "completed";
 }
-function deriveAcceptGate(slide, sessionResult) {
-  if (sessionResult?.gate === MANUAL_GATE && isAcceptStage(sessionResult.stoppedAt)) {
-    return { stage: sessionResult.stoppedAt, source: "session" };
+function deriveFinalGate(slide, sessionResult) {
+  if (sessionResult?.gate === MANUAL_GATE) {
+    return { source: "session" };
   }
-  for (const stage of ACCEPT_STAGE_PRIORITY) {
-    if (awaitingAcceptance(slide, stage)) {
-      return { stage, source: "durable" };
-    }
-  }
-  return null;
+  return awaitingFinalConfirm(slide) ? { source: "durable" } : null;
 }
 const GROUP_ORDER = [
   "failed",
-  "revalidate",
-  "accept-pptx",
-  "accept-clean"
+  "fix-validation",
+  "review-text",
+  "final-confirm"
 ];
 const GROUP_LABELS = {
   failed: "失败/需重跑",
-  revalidate: "需复核校验",
-  "accept-pptx": "待验收 PPTX",
-  "accept-clean": "待验收底图"
+  "fix-validation": "需修数据错误",
+  "review-text": "需文本复核",
+  "final-confirm": "待最终确认"
 };
 const FAILING_STAGE_STATUSES = /* @__PURE__ */ new Set([
   "failed",
@@ -17285,6 +17282,7 @@ const FAILING_STATUS_TEXT = {
   stale: "上游已变更，需重跑"
 };
 const VALIDATION_FAILED_GATE = "validation-failed";
+const HUMAN_EDIT_GATE = "human-edit";
 const pageLabelCollator$1 = new Intl.Collator("en", { numeric: true });
 function failedReason(slide) {
   if (slide.lastError !== null) {
@@ -17292,6 +17290,13 @@ function failedReason(slide) {
   }
   const text = FAILING_STATUS_TEXT[slide.stageStatus] ?? "需重跑";
   return `阶段「${stageLabel(slide.currentStage)}」${text}`;
+}
+function needsTextReview(slide, sessionResult) {
+  if (sessionResult?.gate === HUMAN_EDIT_GATE) return true;
+  return stageStatusOf(slide, "review") === "completed" && slide.pendingTextReview > 0;
+}
+function textReviewReason(slide) {
+  return slide.pendingTextReview > 0 ? `${slide.pendingTextReview} 个版式目标文字待复核` : "存在待复核的版式目标文字";
 }
 function deriveSlideItem(slide, sessionResult) {
   const base = { slideId: slide.slideId, pageLabel: slide.pageLabel };
@@ -17306,25 +17311,25 @@ function deriveSlideItem(slide, sessionResult) {
   if (sessionResult?.gate === VALIDATION_FAILED_GATE) {
     return {
       ...base,
-      group: "revalidate",
+      group: "fix-validation",
       reason: "复核校验未通过，需修正文字块后重跑",
       stage: "validate-review"
     };
   }
-  if (awaitingAcceptance(slide, "accept-pptx")) {
+  if (needsTextReview(slide, sessionResult)) {
     return {
       ...base,
-      group: "accept-pptx",
-      reason: "PPTX 已生成，等待人工验收",
-      stage: "accept-pptx"
+      group: "review-text",
+      reason: textReviewReason(slide),
+      stage: "review"
     };
   }
-  if (awaitingAcceptance(slide, "accept-clean")) {
+  if (awaitingFinalConfirm(slide)) {
     return {
       ...base,
-      group: "accept-clean",
-      reason: "干净底图已生成，等待人工验收",
-      stage: "accept-clean"
+      group: "final-confirm",
+      reason: "PPTX 已生成，等待最终确认",
+      stage: "accept-pptx"
     };
   }
   return null;
@@ -17365,11 +17370,11 @@ function nextTodoItem(queue, currentSlideId) {
 }
 const GROUP_ACCENT = {
   failed: "bg-signature-coral",
-  revalidate: "bg-signature-mustard",
-  "accept-pptx": null,
-  "accept-clean": null
+  "fix-validation": "bg-signature-mustard",
+  "review-text": "bg-signature-forest",
+  "final-confirm": null
 };
-const ACCEPT_GROUPS = ["accept-pptx", "accept-clean"];
+const CREAM_GROUPS = ["final-confirm"];
 const ICON_BUTTON = "rounded-sm border border-hairline px-1.5 py-1 text-sm text-ink transition active:border-border-strong";
 const COUNT_BADGE$1 = "shrink-0 rounded-xs bg-surface-strong px-1.5 py-0.5 text-sm font-medium text-ink";
 function TodoQueuePanel({
@@ -17439,13 +17444,13 @@ function TodoQueuePanel({
 }
 function QueueGroup({ group }) {
   const accent = GROUP_ACCENT[group.group];
-  const isAcceptGroup = ACCEPT_GROUPS.includes(group.group);
+  const onCream = CREAM_GROUPS.includes(group.group);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "section",
     {
       className: cn(
         "flex flex-col gap-2",
-        isAcceptGroup && "rounded-md bg-signature-cream p-6"
+        onCream && "rounded-md bg-signature-cream p-6"
       ),
       children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
@@ -17569,6 +17574,9 @@ function ConsolePage() {
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 5;
 const ZOOM_SENSITIVITY = 15e-4;
+const FOCUS_BLOCK_HEIGHT_PX = 44;
+const FOCUS_WIDTH_RATIO = 0.8;
+const FOCUS_MAX_SCALE = 3;
 function clampScale(scale) {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, scale));
 }
@@ -17672,26 +17680,32 @@ function useCanvasTransform(content) {
   }, []);
   const contentRef = reactExports.useRef(content ?? null);
   contentRef.current = content ?? null;
-  const centerOn = reactExports.useCallback((bbox) => {
+  const focusOn = reactExports.useCallback((bbox) => {
     const container = containerRef.current;
     if (container === null) {
       return;
     }
     const { clientWidth, clientHeight } = container;
     const content2 = contentRef.current;
-    setTransform((prev) => ({
-      scale: prev.scale,
+    const byHeight = bbox.height > 0 ? FOCUS_BLOCK_HEIGHT_PX / bbox.height : FOCUS_MAX_SCALE;
+    const byWidth = bbox.width > 0 ? clientWidth * FOCUS_WIDTH_RATIO / bbox.width : FOCUS_MAX_SCALE;
+    const fit = computeFit(container, content2).scale;
+    const scale = clampScale(
+      Math.min(FOCUS_MAX_SCALE, Math.max(fit, Math.min(byHeight, byWidth)))
+    );
+    setTransform({
+      scale,
       offsetX: clampAxisOffset(
-        clientWidth / 2 - (bbox.x + bbox.width / 2) * prev.scale,
+        clientWidth / 2 - (bbox.x + bbox.width / 2) * scale,
         clientWidth,
-        (content2?.width ?? 0) * prev.scale
+        (content2?.width ?? 0) * scale
       ),
       offsetY: clampAxisOffset(
-        clientHeight / 2 - (bbox.y + bbox.height / 2) * prev.scale,
+        clientHeight / 2 - (bbox.y + bbox.height / 2) * scale,
         clientHeight,
-        (content2?.height ?? 0) * prev.scale
+        (content2?.height ?? 0) * scale
       )
-    }));
+    });
   }, []);
   return {
     transform: transform2,
@@ -17701,7 +17715,7 @@ function useCanvasTransform(content) {
     onPointerMove,
     onPointerUp,
     resetView,
-    centerOn
+    focusOn
   };
 }
 var _a$1;
@@ -22461,6 +22475,8 @@ function superRefine(fn, params) {
   return /* @__PURE__ */ _superRefine(fn, params);
 }
 const SCHEMA_VERSION = 1;
+const PPTX_WIDE_WIDTH_INCHES = 13.333;
+const DEFAULT_FONT_FACE = "Microsoft YaHei";
 const SHA256$2 = /^[a-f0-9]{64}$/;
 const CleanPlateChecksSchema = object({
   size: object({
@@ -22921,6 +22937,26 @@ object({
   checkSha256: string().regex(SHA256),
   checkStatus: _enum(["passed", "failed"])
 });
+function fontSizePtFromPx(fontSizePx, imageWidth) {
+  return fontSizePx * 72 * PPTX_WIDE_WIDTH_INCHES / imageWidth;
+}
+function resolveFontSizePt(block, imageWidth) {
+  if (block.style.fontSizePx !== null) {
+    return fontSizePtFromPx(block.style.fontSizePx, imageWidth);
+  }
+  const lineCount = Math.max(1, block.lines.length);
+  const estimatedPx = block.bboxPx.height / lineCount * 0.65;
+  return fontSizePtFromPx(estimatedPx, imageWidth);
+}
+function toBold(weight) {
+  return weight === "semibold" || weight === "bold";
+}
+function toAlign(align) {
+  return align ?? "left";
+}
+function toValign(align) {
+  return align === "middle" ? "middle" : "top";
+}
 object({
   schemaVersion: literal(SCHEMA_VERSION),
   slideId: string().min(1),
@@ -23170,9 +23206,23 @@ function partitionBlocks(blocks) {
 function orderedReviewBlocks(blocks) {
   return partitionBlocks(blocks).flatMap((group) => group.blocks);
 }
-const CURRENT_CLASS = "border-2 border-info-border ring-2 ring-info-border/40 ring-offset-1 ring-offset-canvas";
-const SAME_PARTITION_CLASS = "border border-border-strong";
-const OTHER_PARTITION_CLASS = "border border-border-strong opacity-40";
+const INFO_BORDER = "#458fff";
+const CANVAS = "#ffffff";
+const BORDER_STRONG = "#9297a0";
+function annotationStyle(current, samePartition, scale) {
+  const px = (screenPx) => screenPx / Math.max(scale, 0.01);
+  if (current) {
+    return {
+      border: `${px(2)}px solid ${INFO_BORDER}`,
+      backgroundColor: "rgba(69, 143, 255, 0.16)",
+      boxShadow: `0 0 0 ${px(1)}px ${CANVAS}, 0 0 0 ${px(6)}px rgba(69, 143, 255, 0.35)`
+    };
+  }
+  return {
+    border: `${px(1)}px solid ${BORDER_STRONG}`,
+    opacity: samePartition ? 1 : 0.35
+  };
+}
 const DRAG_THRESHOLD_PX = 3;
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
@@ -23205,7 +23255,10 @@ function TextBlockOverlay({
     left: `${x / imageWidth * 100}%`,
     top: `${y / imageHeight * 100}%`,
     width: `${width / imageWidth * 100}%`,
-    height: `${height / imageHeight * 100}%`
+    height: `${height / imageHeight * 100}%`,
+    // 当前项的光晕要盖住相邻框，否则密集区里它会被后面的框压掉
+    zIndex: current ? 2 : 1,
+    ...annotationStyle(current, samePartition, scale)
   };
   const handlePointerDown = reactExports.useCallback(
     (e) => {
@@ -23304,9 +23357,8 @@ function TextBlockOverlay({
         onPointerUp: handlePointerUp,
         onPointerCancel: handlePointerUp,
         className: cn(
-          "absolute box-border bg-transparent p-0 transition-colors",
-          onUpdate ? "cursor-move" : "cursor-pointer",
-          current ? CURRENT_CLASS : samePartition ? SAME_PARTITION_CLASS : OTHER_PARTITION_CLASS
+          "absolute box-border p-0",
+          onUpdate ? "cursor-move" : "cursor-pointer"
         )
       }
     )
@@ -23330,7 +23382,7 @@ function ReviewCanvas({
     onPointerMove,
     onPointerUp,
     resetView,
-    centerOn
+    focusOn
   } = useCanvasTransform(size);
   const currentPartition = reactExports.useMemo(() => {
     const currentBlock = blocks.find((block) => block.id === currentBlockId);
@@ -23348,8 +23400,8 @@ function ReviewCanvas({
     if (target === void 0) {
       return;
     }
-    centerOn(target.bboxPx);
-  }, [currentBlockId, size, centerOn]);
+    focusOn(target.bboxPx);
+  }, [currentBlockId, size, focusOn]);
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     "div",
     {
@@ -23401,107 +23453,11 @@ function ReviewCanvas({
             ]
           }
         ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute bottom-3 left-3 rounded-sm bg-surface-dark/70 px-2 py-1 text-sm text-on-dark", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute bottom-3 left-3 flex items-center gap-2 rounded-sm bg-surface-dark/70 px-2 py-1 text-sm text-on-dark", children: [
           Math.round(transform2.scale * 100),
-          "%"
+          "%",
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "opacity-70", children: "双击恢复整页" })
         ] })
-      ]
-    }
-  );
-}
-function SliderCompare({
-  sourceImageUrl,
-  cleanPlateUrl
-}) {
-  const containerRef = reactExports.useRef(null);
-  const [sliderPos, setSliderPos] = reactExports.useState(50);
-  const [dragging, setDragging] = reactExports.useState(false);
-  const updatePosition = reactExports.useCallback((clientX) => {
-    const container = containerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const percent = Math.max(0, Math.min(100, x / rect.width * 100));
-    setSliderPos(percent);
-  }, []);
-  const handlePointerDown = reactExports.useCallback(
-    (e) => {
-      e.preventDefault();
-      setDragging(true);
-      e.target.setPointerCapture(e.pointerId);
-      updatePosition(e.clientX);
-    },
-    [updatePosition]
-  );
-  const handlePointerMove = reactExports.useCallback(
-    (e) => {
-      if (!dragging) return;
-      updatePosition(e.clientX);
-    },
-    [dragging, updatePosition]
-  );
-  const handlePointerUp = reactExports.useCallback(() => {
-    setDragging(false);
-  }, []);
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
-    "div",
-    {
-      ref: containerRef,
-      className: "relative select-none overflow-hidden",
-      onPointerDown: handlePointerDown,
-      onPointerMove: handlePointerMove,
-      onPointerUp: handlePointerUp,
-      children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "img",
-          {
-            src: cleanPlateUrl,
-            alt: "Clean plate",
-            className: "block w-full",
-            draggable: false
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "img",
-          {
-            src: sourceImageUrl,
-            alt: "原图",
-            className: "absolute inset-0 block w-full",
-            style: { clipPath: `inset(0 ${100 - sliderPos}% 0 0)` },
-            draggable: false
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "div",
-          {
-            className: "absolute top-0 bottom-0 w-0.5 bg-on-primary",
-            style: { left: `${sliderPos}%`, transform: "translateX(-50%)" },
-            children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-1/2 left-1/2 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-on-primary bg-primary/80", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-              "svg",
-              {
-                width: "16",
-                height: "16",
-                viewBox: "0 0 16 16",
-                fill: "none",
-                className: "text-on-primary",
-                role: "img",
-                "aria-label": "拖拽滑块",
-                children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-                  "path",
-                  {
-                    d: "M4 8L2 8M2 8L4 6M2 8L4 10M12 8L14 8M14 8L12 6M14 8L12 10",
-                    stroke: "currentColor",
-                    strokeWidth: "1.5",
-                    strokeLinecap: "round",
-                    strokeLinejoin: "round"
-                  }
-                )
-              }
-            ) })
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-3 left-3 rounded-sm bg-primary/70 px-2 py-0.5 text-sm text-on-primary", children: "原图" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-3 right-3 rounded-sm bg-primary/70 px-2 py-0.5 text-sm text-on-primary", children: "Clean Plate" })
       ]
     }
   );
@@ -23688,7 +23644,7 @@ function DiffText({
   if (visible.length === 0) return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: plain });
   return /* @__PURE__ */ jsxRuntimeExports.jsx(jsxRuntimeExports.Fragment, { children: visible.map(({ segment, key }) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn(segment.kind === own && DIFF_MARK), children: segment.text }, key)) });
 }
-const CAPTION = "text-sm font-medium tracking-[0.16px] text-muted";
+const CAPTION$2 = "text-sm font-medium tracking-[0.16px] text-muted";
 const COUNT_BADGE = "shrink-0 rounded-xs bg-surface-strong px-1.5 py-0.5 text-sm font-medium text-ink";
 const BUTTON_COMPACT$1 = "shrink-0 rounded-sm border border-hairline bg-canvas px-2.5 py-1 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
 const REVIEW_STATUS_VIEW = {
@@ -23838,7 +23794,7 @@ function PartitionSection({
           className: "flex min-w-0 flex-1 items-center gap-2 text-left",
           children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { "aria-hidden": "true", className: "w-3 shrink-0 text-sm text-muted", children: collapsed ? "▸" : "▾" }),
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("min-w-0 flex-1 truncate", CAPTION), children: REVIEW_PARTITION_LABELS[group.partition] }),
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: cn("min-w-0 flex-1 truncate", CAPTION$2), children: REVIEW_PARTITION_LABELS[group.partition] }),
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: COUNT_BADGE, children: group.blocks.length })
           ]
         }
@@ -23863,7 +23819,7 @@ function PartitionSection({
       {
         className: cn(
           "rounded-sm border border-hairline bg-canvas px-3 py-2",
-          CAPTION
+          CAPTION$2
         ),
         children: "无"
       }
@@ -23925,7 +23881,7 @@ function ReviewRow({
         ),
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("flex shrink-0 items-center gap-1.5", CAPTION), children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: cn("flex shrink-0 items-center gap-1.5", CAPTION$2), children: [
               /* @__PURE__ */ jsxRuntimeExports.jsx(
                 "span",
                 {
@@ -24034,154 +23990,15 @@ function ReviewShortcutBar({
     }
   );
 }
-const CLEAN_CHECKLIST = [
-  { key: "noTextResidue", label: "文字已完全去除，无残影或重影" },
-  { key: "containersIntact", label: "容器/边框等版式元素完整未破坏" },
-  { key: "noOutsideEdits", label: "非文字区域未被误改" },
-  { key: "sizeCorrect", label: "尺寸与源图一致（16:9）" }
-];
-const PPTX_CHECKLIST = [
-  { key: "opensInPowerPoint", label: "已在 PowerPoint for Mac 中打开确认" },
-  { key: "aspect16by9", label: "16:9 比例正确" },
-  { key: "textEditable", label: "文本框可编辑" },
-  { key: "fontMicrosoftYaHei", label: "字体为微软雅黑" },
-  { key: "layoutFaithful", label: "版式与源图一致" }
-];
-const GATE_TITLE = {
-  "accept-clean": "验收干净底图",
-  "accept-pptx": "验收 PPTX"
-};
-const GATE_HINT = {
-  "accept-clean": "拖动滑块对比原图与去字底板，确认文字已去净且版式未被破坏后再接受。",
-  "accept-pptx": "在 PowerPoint for Mac 中打开生成的 PPTX 逐项确认后再接受；拒绝将重新生成。"
-};
-const BUTTON_PRIMARY$1 = "rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
-const BUTTON_SECONDARY$1 = "rounded-lg border border-hairline bg-canvas px-4 py-2.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
-function AcceptFlow({
-  gate,
-  sourceImageUrl,
-  cleanPlateUrl,
-  submitting,
-  disabled,
-  onAccept,
-  onRejectRerun
-}) {
-  const checklist = reactExports.useMemo(
-    () => gate.stage === "accept-clean" ? CLEAN_CHECKLIST : PPTX_CHECKLIST,
-    [gate.stage]
-  );
-  const [note, setNote] = reactExports.useState("");
-  const [checked, setChecked] = reactExports.useState({});
-  const toggle = reactExports.useCallback((key) => {
-    setChecked((prev) => ({ ...prev, [key]: prev[key] !== true }));
-  }, []);
-  const allChecked = checklist.every((entry) => checked[entry.key] === true);
-  const actionsDisabled = disabled || submitting;
-  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full min-h-0", children: [
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-w-0 flex-1 items-center justify-center overflow-auto bg-surface-strong p-6", children: gate.stage === "accept-clean" ? sourceImageUrl !== null && cleanPlateUrl !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-5xl overflow-hidden rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-      SliderCompare,
-      {
-        sourceImageUrl,
-        cleanPlateUrl
-      }
-    ) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-muted", children: "缺少原图或去字底板，无法对比；请先重跑 clean 阶段" }) : /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex max-w-xl flex-col gap-4 rounded-md bg-canvas p-8", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-lg font-medium text-ink", children: "PPTX 已生成" }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-sm leading-relaxed text-body", children: [
-        "产物位于该页工作区 ",
-        /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: "stages/pptx/" }),
-        " 下。请在 PowerPoint for Mac 中打开后逐项核对右侧清单；确认无误再接受，验收记录会写入 manifest 并可被 CLI ",
-        /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: "deck status" }),
-        " 读取。"
-      ] }),
-      cleanPlateUrl !== null && /* @__PURE__ */ jsxRuntimeExports.jsxs("figure", { className: "flex flex-col gap-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "img",
-          {
-            src: cleanPlateUrl,
-            alt: "该页干净底图",
-            className: "w-full rounded-sm border border-hairline"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("figcaption", { className: "text-sm font-medium text-muted", children: "该页干净底图 —— PPTX 以此为背景，文字为可编辑文本框" })
-      ] })
-    ] }) }),
-    /* @__PURE__ */ jsxRuntimeExports.jsxs("aside", { className: "flex w-96 shrink-0 flex-col gap-6 overflow-y-auto border-l border-hairline bg-surface-soft p-8", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-lg font-medium text-ink", children: GATE_TITLE[gate.stage] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm leading-relaxed text-body", children: GATE_HINT[gate.stage] }),
-        gate.source === "durable" && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-muted", children: "该页在此前的执行中已停在此闸门，状态由工作区恢复" })
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-3", children: checklist.map((entry) => /* @__PURE__ */ jsxRuntimeExports.jsx("li", { children: /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex cursor-pointer items-start gap-3 text-sm leading-relaxed text-body", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "input",
-          {
-            type: "checkbox",
-            checked: checked[entry.key] === true,
-            disabled: actionsDisabled,
-            onChange: () => toggle(entry.key),
-            className: "mt-0.5 h-4 w-4 shrink-0 accent-primary"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "min-w-0", children: entry.label })
-      ] }) }, entry.key)) }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex flex-col gap-2", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-muted", children: "备注（可选）" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "textarea",
-          {
-            rows: 3,
-            value: note,
-            disabled: actionsDisabled,
-            onChange: (event) => setNote(event.target.value),
-            placeholder: "记录验收判断依据，会随验收记录写入 manifest",
-            className: "w-full rounded-sm border border-hairline bg-canvas px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-info-border focus:outline-none disabled:opacity-40"
-          }
-        )
-      ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx(
-          "button",
-          {
-            type: "button",
-            onClick: () => onAccept(note),
-            disabled: actionsDisabled || !allChecked,
-            title: allChecked ? void 0 : "需逐项确认后才能接受",
-            className: BUTTON_PRIMARY$1,
-            children: submitting ? "提交中…" : "接受并继续"
-          }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-muted", children: "不通过？从以下阶段重跑" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: REJECT_RERUN_STAGES[gate.stage].map((stage) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
-            "button",
-            {
-              type: "button",
-              onClick: () => onRejectRerun(stage),
-              disabled: actionsDisabled,
-              className: BUTTON_SECONDARY$1,
-              children: [
-                "重跑「",
-                STAGE_LABELS[stage],
-                "」"
-              ]
-            },
-            stage
-          )) })
-        ] })
-      ] })
-    ] })
-  ] });
-}
-const BUTTON_PRIMARY = "shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
-const BUTTON_SECONDARY = "shrink-0 rounded-lg border border-hairline bg-canvas px-4 py-2 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
+const BUTTON_PRIMARY$1 = "shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
+const BUTTON_SECONDARY$1 = "shrink-0 rounded-lg border border-hairline bg-canvas px-4 py-2 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
 const BUTTON_COMPACT = "shrink-0 rounded-sm border border-hairline bg-canvas px-2.5 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
 function SlideToolbar({
   slideId,
   pageLabel,
   navigation: navigation2,
   viewMode,
-  canCompare,
-  hasAcceptGate,
+  hasFinalGate,
   dirty,
   unreviewedCount,
   pageBusy,
@@ -24190,7 +24007,6 @@ function SlideToolbar({
   onNavigate,
   onViewModeChange,
   onSave,
-  onMarkAllReviewed,
   onRunSlide,
   onRerunFrom,
   onNextTodo
@@ -24213,9 +24029,8 @@ function SlideToolbar({
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [menuOpen]);
   const viewModes = [
-    { mode: "canvas", label: "画布", available: true },
-    { mode: "compare", label: "对比", available: canCompare },
-    { mode: "accept", label: "验收", available: hasAcceptGate }
+    { mode: "review", label: "文本复核", available: true },
+    { mode: "final", label: "最终确认", available: hasFinalGate }
   ];
   return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex shrink-0 flex-wrap items-center gap-3 border-b border-hairline bg-canvas px-6 py-3", children: [
     /* @__PURE__ */ jsxRuntimeExports.jsx("button", { type: "button", onClick: onBack, className: BUTTON_COMPACT, children: "← 控制台" }),
@@ -24289,20 +24104,18 @@ function SlideToolbar({
           type: "button",
           onClick: onNextTodo,
           title: `${nextTodo.pageLabel} · ${nextTodo.reason}`,
-          className: BUTTON_SECONDARY,
+          className: BUTTON_SECONDARY$1,
           children: "处理下一项"
         }
       ),
       unreviewedCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs(
-        "button",
+        "span",
         {
-          type: "button",
-          onClick: onMarkAllReviewed,
-          title: "把本页所有未复核块标为已复核；未复核块会让 mask 阶段失败",
-          className: BUTTON_SECONDARY,
+          title: "仍待人工确认的文字块数；执行会停在文本复核门直到清零",
+          className: "flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted",
           children: [
-            "全部标为已复核",
-            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-1 text-sm text-muted", children: unreviewedCount })
+            "待复核",
+            /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-ink", children: unreviewedCount })
           ]
         }
       ),
@@ -24323,7 +24136,7 @@ function SlideToolbar({
           onClick: onSave,
           disabled: !dirty,
           title: "保存复核文档（⌘S）",
-          className: BUTTON_SECONDARY,
+          className: BUTTON_SECONDARY$1,
           children: [
             "保存",
             /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "ml-1 text-sm text-muted", children: "⌘S" })
@@ -24337,7 +24150,7 @@ function SlideToolbar({
             type: "button",
             onClick: () => setMenuOpen((open) => !open),
             disabled: pageBusy,
-            className: BUTTON_SECONDARY,
+            className: BUTTON_SECONDARY$1,
             children: "从阶段重跑 ▾"
           }
         ),
@@ -24364,7 +24177,7 @@ function SlideToolbar({
           onClick: onRunSlide,
           disabled: pageBusy,
           title: "从第一个未完成阶段继续执行此页",
-          className: BUTTON_PRIMARY,
+          className: BUTTON_PRIMARY$1,
           children: "运行此页"
         }
       )
@@ -24530,16 +24343,6 @@ function StageRail({
 function countUnreviewed(blocks) {
   return blocks.filter((block) => block.reviewStatus === "unreviewed").length;
 }
-function markAllBlocksReviewed(blocks) {
-  const changed = countUnreviewed(blocks);
-  if (changed === 0) return { blocks, changed: 0 };
-  return {
-    blocks: blocks.map(
-      (block) => block.reviewStatus === "unreviewed" ? { ...block, reviewStatus: "reviewed" } : block
-    ),
-    changed
-  };
-}
 const pageLabelCollator = new Intl.Collator("en", { numeric: true });
 function orderedActiveSlides(slides) {
   return slides.filter((slide) => !slide.removed).slice().sort(
@@ -24558,6 +24361,603 @@ function adjacentSlides(slides, slideId) {
     index: position + 1,
     total: ordered.length
   };
+}
+function SliderCompare({
+  sourceImageUrl,
+  cleanPlateUrl
+}) {
+  const containerRef = reactExports.useRef(null);
+  const [sliderPos, setSliderPos] = reactExports.useState(50);
+  const [dragging, setDragging] = reactExports.useState(false);
+  const updatePosition = reactExports.useCallback((clientX) => {
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const percent = Math.max(0, Math.min(100, x / rect.width * 100));
+    setSliderPos(percent);
+  }, []);
+  const handlePointerDown = reactExports.useCallback(
+    (e) => {
+      e.preventDefault();
+      setDragging(true);
+      e.target.setPointerCapture(e.pointerId);
+      updatePosition(e.clientX);
+    },
+    [updatePosition]
+  );
+  const handlePointerMove = reactExports.useCallback(
+    (e) => {
+      if (!dragging) return;
+      updatePosition(e.clientX);
+    },
+    [dragging, updatePosition]
+  );
+  const handlePointerUp = reactExports.useCallback(() => {
+    setDragging(false);
+  }, []);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+    "div",
+    {
+      ref: containerRef,
+      className: "relative select-none overflow-hidden",
+      onPointerDown: handlePointerDown,
+      onPointerMove: handlePointerMove,
+      onPointerUp: handlePointerUp,
+      children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "img",
+          {
+            src: cleanPlateUrl,
+            alt: "Clean plate",
+            className: "block w-full",
+            draggable: false
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "img",
+          {
+            src: sourceImageUrl,
+            alt: "原图",
+            className: "absolute inset-0 block w-full",
+            style: { clipPath: `inset(0 ${100 - sliderPos}% 0 0)` },
+            draggable: false
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "div",
+          {
+            className: "absolute top-0 bottom-0 w-0.5 bg-on-primary",
+            style: { left: `${sliderPos}%`, transform: "translateX(-50%)" },
+            children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-1/2 left-1/2 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-on-primary bg-primary/80", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "svg",
+              {
+                width: "16",
+                height: "16",
+                viewBox: "0 0 16 16",
+                fill: "none",
+                className: "text-on-primary",
+                role: "img",
+                "aria-label": "拖拽滑块",
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "path",
+                  {
+                    d: "M4 8L2 8M2 8L4 6M2 8L4 10M12 8L14 8M14 8L12 6M14 8L12 10",
+                    stroke: "currentColor",
+                    strokeWidth: "1.5",
+                    strokeLinecap: "round",
+                    strokeLinejoin: "round"
+                  }
+                )
+              }
+            ) })
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-3 left-3 rounded-sm bg-primary/70 px-2 py-0.5 text-sm text-on-primary", children: "原图" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute top-3 right-3 rounded-sm bg-primary/70 px-2 py-0.5 text-sm text-on-primary", children: "Clean Plate" })
+      ]
+    }
+  );
+}
+const PPTX_CHECK_LABELS = {
+  "zip-structure": "ZIP 结构",
+  "xml-parse": "XML 解析",
+  "aspect-ratio": "版面比例",
+  "text-content": "文字内容",
+  "font-declaration": "字体声明",
+  "shape-count": "形状数量"
+};
+const CAPTION$1 = "text-sm font-medium tracking-[0.16px] text-muted";
+const SECTION_TITLE = cn(CAPTION$1, "uppercase");
+function formatRatio(value) {
+  return `${(value * 100).toFixed(2)}%`;
+}
+function formatCount(value) {
+  return value.toLocaleString("zh-CN");
+}
+function formatBool(value) {
+  return value ? "是" : "否";
+}
+function buildCleanGroups(checks) {
+  return [
+    {
+      title: "尺寸",
+      rows: [
+        {
+          label: "实际尺寸",
+          value: `${checks.size.width} × ${checks.size.height}`
+        },
+        {
+          label: "期望尺寸",
+          value: `${checks.size.expectedWidth} × ${checks.size.expectedHeight}`
+        },
+        { label: "尺寸一致", value: formatBool(checks.size.ok) },
+        { label: "比例为 16:9", value: formatBool(checks.size.aspectRatioOk) }
+      ]
+    },
+    {
+      title: "文字残留",
+      rows: [
+        {
+          label: "字形区域像素",
+          value: formatCount(checks.textResidue.maskedPixels)
+        },
+        {
+          label: "残留前景像素",
+          value: formatCount(checks.textResidue.residualForegroundPixels)
+        },
+        {
+          label: "残留占比",
+          value: formatRatio(checks.textResidue.residualRatio)
+        }
+      ]
+    },
+    {
+      title: "mask 外差异",
+      rows: [
+        {
+          label: "比对像素",
+          value: formatCount(checks.outsideMaskDiff.comparedPixels)
+        },
+        {
+          label: "变化像素",
+          value: formatCount(checks.outsideMaskDiff.changedPixels)
+        },
+        {
+          label: "变化占比",
+          value: formatRatio(checks.outsideMaskDiff.changedRatio)
+        },
+        {
+          label: "平均色差",
+          value: checks.outsideMaskDiff.meanDelta.toFixed(2)
+        },
+        {
+          label: "判定阈值",
+          value: formatCount(checks.outsideMaskDiff.threshold)
+        }
+      ]
+    },
+    {
+      title: "容器完整性",
+      rows: [
+        {
+          label: "紧邻环像素",
+          value: formatCount(checks.containerRingDiff.ringPixels)
+        },
+        {
+          label: "变化像素",
+          value: formatCount(checks.containerRingDiff.changedPixels)
+        },
+        {
+          label: "变化占比",
+          value: formatRatio(checks.containerRingDiff.changedRatio)
+        }
+      ]
+    }
+  ];
+}
+function CheckSummary({
+  pptx,
+  clean,
+  loading
+}) {
+  if (loading) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-4 rounded-lg bg-surface-soft p-8", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: SECTION_TITLE, children: "自动检查" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted", children: "正在读取检查记录…" })
+    ] });
+  }
+  if (pptx === null && clean === null) {
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-4 rounded-lg bg-surface-soft p-8", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: SECTION_TITLE, children: "自动检查" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted", children: "暂无检查记录——该页尚未生成 PPTX 与去字底板" })
+    ] });
+  }
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-8 rounded-lg bg-surface-soft p-8", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "flex flex-col gap-3", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-baseline gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: SECTION_TITLE, children: "PPTX 自动检查" }),
+        pptx !== null && /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "span",
+          {
+            className: cn(
+              "text-sm font-medium",
+              pptx.status === "passed" ? "text-success" : "text-signature-coral"
+            ),
+            children: pptx.status === "passed" ? "全部通过" : "存在未通过项"
+          }
+        )
+      ] }),
+      pptx === null ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted", children: "暂无 PPTX 检查记录" }) : /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "flex flex-col gap-2", children: pptx.checks.map((check) => {
+        const failed = check.status === "failed";
+        return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "li",
+          {
+            className: cn(
+              "flex flex-col gap-1 rounded-sm border bg-canvas px-4 py-3",
+              failed ? "border-signature-coral/40" : "border-hairline"
+            ),
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    "aria-hidden": "true",
+                    className: cn(
+                      "h-2 w-2 shrink-0 rounded-full",
+                      failed ? "bg-signature-coral" : "bg-success"
+                    )
+                  }
+                ),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-ink", children: PPTX_CHECK_LABELS[check.id] ?? check.id }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx(
+                  "span",
+                  {
+                    className: cn(
+                      "text-sm font-medium",
+                      failed ? "text-signature-coral" : "text-muted"
+                    ),
+                    children: failed ? "未通过" : "通过"
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx(
+                "p",
+                {
+                  className: cn(
+                    "pl-4 text-sm leading-relaxed",
+                    failed ? "text-signature-coral" : "text-body"
+                  ),
+                  children: check.message
+                }
+              )
+            ]
+          },
+          check.id
+        );
+      }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "flex flex-col gap-3", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: SECTION_TITLE, children: "去字底板检查指标" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm leading-relaxed text-muted", children: "以下为离线测得的裸指标，当前无判定阈值，仅供参考，不代表底板合格与否。" }),
+      clean === null ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm text-muted", children: "暂无去字底板检查记录" }) : (
+        // 单列：本组件挂在最终确认页 384px 宽的右栏里，两列会把
+        // 「2048×1152」这类数值挤到折行
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "grid grid-cols-1 gap-4", children: buildCleanGroups(clean).map((group) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+          "div",
+          {
+            className: "flex flex-col gap-2 rounded-sm border border-hairline bg-canvas px-4 py-3",
+            children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-ink", children: group.title }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("dl", { className: "flex flex-col gap-1", children: group.rows.map((row) => /* @__PURE__ */ jsxRuntimeExports.jsxs(
+                "div",
+                {
+                  className: "flex items-baseline justify-between gap-3",
+                  children: [
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("dt", { className: "text-sm text-muted", children: row.label }),
+                    /* @__PURE__ */ jsxRuntimeExports.jsx("dd", { className: "text-sm tabular-nums text-body", children: row.value })
+                  ]
+                },
+                row.label
+              )) })
+            ]
+          },
+          group.title
+        )) })
+      )
+    ] })
+  ] });
+}
+const DEFAULT_COLOR_HEX = "#333333";
+const CAPTION = "text-sm font-medium tracking-[0.16px] text-muted";
+function CompositePreview({
+  cleanPlateUrl,
+  blocks,
+  imageWidth,
+  imageHeight
+}) {
+  const containerRef = reactExports.useRef(null);
+  const [displayWidth, setDisplayWidth] = reactExports.useState(0);
+  reactExports.useEffect(() => {
+    const node = containerRef.current;
+    if (node === null) return;
+    const update = () => {
+      setDisplayWidth(node.getBoundingClientRect().width);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+  const geometryReady = imageWidth > 0 && imageHeight > 0;
+  const textBoxBlocks = reactExports.useMemo(
+    () => [...blocks].filter((block) => block.classification === "layout_text").sort((a, b) => a.zIndex - b.zIndex),
+    [blocks]
+  );
+  const ptToPx = displayWidth / PPTX_WIDE_WIDTH_INCHES / 72;
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex w-full flex-col gap-3", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: CAPTION, children: "预览按 PPT 磅值换算渲染，换行可能与 PowerPoint 略有差异，最终以 PowerPoint 为准" }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs(
+      "div",
+      {
+        ref: containerRef,
+        className: "relative aspect-[16/9] w-full overflow-hidden rounded-md border border-hairline bg-canvas",
+        children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "img",
+            {
+              src: cleanPlateUrl,
+              alt: "去字底板",
+              className: "absolute inset-0 block h-full w-full",
+              draggable: false
+            }
+          ),
+          geometryReady && displayWidth > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "pointer-events-none absolute inset-0", children: textBoxBlocks.map((block) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+            PreviewTextBox,
+            {
+              block,
+              imageWidth,
+              imageHeight,
+              ptToPx
+            },
+            block.id
+          )) })
+        ]
+      }
+    )
+  ] });
+}
+function PreviewTextBox({
+  block,
+  imageWidth,
+  imageHeight,
+  ptToPx
+}) {
+  const text = block.lines.length > 0 ? block.lines.join("\n") : block.text;
+  const fontSizePx = resolveFontSizePt(block, imageWidth) * ptToPx;
+  const align = toAlign(block.style.horizontalAlign);
+  const valign = toValign(block.style.verticalAlign);
+  return /* @__PURE__ */ jsxRuntimeExports.jsx(
+    "div",
+    {
+      className: "absolute flex",
+      style: {
+        left: `${block.bboxPx.x / imageWidth * 100}%`,
+        top: `${block.bboxPx.y / imageHeight * 100}%`,
+        width: `${block.bboxPx.width / imageWidth * 100}%`,
+        height: `${block.bboxPx.height / imageHeight * 100}%`,
+        // PptxGenJS 的 valign 对应文本在框内的垂直分布
+        alignItems: valign === "middle" ? "center" : "flex-start",
+        // 文本框旋转：PptxGenJS 与 CSS 都以形状中心为轴
+        ...block.rotationDeg === 0 ? {} : { transform: `rotate(${block.rotationDeg}deg)` }
+      },
+      children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "span",
+        {
+          className: "w-full whitespace-pre-wrap break-words",
+          style: {
+            fontFamily: `"${DEFAULT_FONT_FACE}", sans-serif`,
+            fontSize: `${fontSizePx}px`,
+            fontWeight: toBold(block.style.fontWeight) ? 700 : 400,
+            color: block.style.colorHex ?? DEFAULT_COLOR_HEX,
+            textAlign: align,
+            // 对应 PptxGenJS 的 lineSpacingMultiple；缺省交给浏览器默认行距
+            ...block.style.lineHeight === null ? {} : { lineHeight: block.style.lineHeight }
+          },
+          children: text
+        }
+      )
+    }
+  );
+}
+const BUTTON_PRIMARY = "rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
+const BUTTON_SECONDARY = "rounded-lg border border-hairline bg-canvas px-4 py-2.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
+const VIEW_LABELS = {
+  preview: "合成预览",
+  compare: "原图对比"
+};
+function FinalConfirmPage({
+  workspacePath,
+  sourceImageUrl,
+  cleanPlateUrl,
+  blocks,
+  imageSize,
+  busy,
+  submitting,
+  gateSource,
+  onComplete,
+  onRedoCleanPlate,
+  onBackToReview
+}) {
+  const [viewMode, setViewMode] = reactExports.useState("preview");
+  const [note, setNote] = reactExports.useState("");
+  const [checks, setChecks] = reactExports.useState(null);
+  const [checksLoading, setChecksLoading] = reactExports.useState(true);
+  const [checksError, setChecksError] = reactExports.useState(null);
+  const [openMessage, setOpenMessage] = reactExports.useState(null);
+  const canPreview = cleanPlateUrl !== null && imageSize !== null;
+  const canCompare = sourceImageUrl !== null && cleanPlateUrl !== null;
+  const actionsDisabled = busy || submitting;
+  reactExports.useEffect(() => {
+    let cancelled = false;
+    setChecksLoading(true);
+    setChecksError(null);
+    void (async () => {
+      try {
+        const result = await window.api.slide.loadFinalChecks(workspacePath);
+        if (cancelled) return;
+        setChecks(result);
+      } catch (err) {
+        if (cancelled) return;
+        setChecks(null);
+        setChecksError(
+          `自动检查结果读取失败：${err instanceof Error ? err.message : String(err)}`
+        );
+      } finally {
+        if (!cancelled) setChecksLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [workspacePath]);
+  reactExports.useEffect(() => {
+    if (viewMode === "preview" && !canPreview && canCompare) {
+      setViewMode("compare");
+    } else if (viewMode === "compare" && !canCompare && canPreview) {
+      setViewMode("preview");
+    }
+  }, [viewMode, canPreview, canCompare]);
+  const handleOpenPptx = reactExports.useCallback(() => {
+    setOpenMessage(null);
+    void (async () => {
+      try {
+        const result = await window.api.slide.openPptx(workspacePath);
+        if (!result.opened) setOpenMessage(result.message);
+      } catch (err) {
+        setOpenMessage(
+          `打开 PPTX 失败：${err instanceof Error ? err.message : String(err)}`
+        );
+      }
+    })();
+  }, [workspacePath]);
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex h-full min-h-0", children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-w-0 flex-1 flex-col overflow-hidden bg-surface-strong", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-hairline bg-canvas px-6 py-3", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex shrink-0 items-center gap-1 rounded-lg bg-surface-soft p-1", children: ["preview", "compare"].map((mode) => {
+        const available = mode === "preview" ? canPreview : canCompare;
+        return /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            disabled: !available,
+            onClick: () => setViewMode(mode),
+            title: available ? void 0 : "缺少所需产物",
+            className: cn(
+              "rounded-md px-4 py-1.5 text-sm font-medium transition disabled:opacity-40",
+              viewMode === mode ? "bg-canvas text-ink" : "bg-transparent text-muted"
+            ),
+            children: VIEW_LABELS[mode]
+          },
+          mode
+        );
+      }) }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-0 flex-1 items-center justify-center overflow-auto p-6", children: viewMode === "preview" ? canPreview ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-5xl overflow-hidden rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        CompositePreview,
+        {
+          cleanPlateUrl,
+          blocks,
+          imageWidth: imageSize.width,
+          imageHeight: imageSize.height
+        }
+      ) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "max-w-md text-center text-sm font-medium text-muted", children: cleanPlateUrl === null ? "缺少去字底板，无法合成预览；请用「重做底板」重跑 clean 阶段" : "缺少页面尺寸信息，无法合成预览；请确认该页复核产物完整" }) : canCompare ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-5xl overflow-hidden rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        SliderCompare,
+        {
+          sourceImageUrl,
+          cleanPlateUrl
+        }
+      ) }) : /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "max-w-md text-center text-sm font-medium text-muted", children: "缺少原图或去字底板，无法对比；请用「重做底板」重跑 clean 阶段" }) })
+    ] }),
+    /* @__PURE__ */ jsxRuntimeExports.jsxs("aside", { className: "flex w-96 shrink-0 flex-col gap-6 overflow-y-auto border-l border-hairline bg-surface-soft p-8", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-lg font-medium text-ink", children: "确认最终产物" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm leading-relaxed text-body", children: "核对合成预览与去字底板；确认后一次写入干净底图与 PPTX 两条验收记录，该页即完成。不满意时用下方两个动作退回相应环节重做。" }),
+        gateSource === "durable" && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "text-sm font-medium text-muted", children: "该页在此前的执行中已停在最终确认，状态由工作区恢复" })
+      ] }),
+      checksError !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral", children: checksError }) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+        CheckSummary,
+        {
+          pptx: checks?.pptx ?? null,
+          clean: checks?.clean ?? null,
+          loading: checksLoading
+        }
+      ),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: handleOpenPptx,
+            className: BUTTON_SECONDARY,
+            children: "在 PowerPoint 中打开"
+          }
+        ),
+        openMessage !== null && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral", children: openMessage })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("label", { className: "flex flex-col gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-muted", children: "备注（可选）" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "textarea",
+          {
+            rows: 3,
+            value: note,
+            disabled: actionsDisabled,
+            onChange: (event) => setNote(event.target.value),
+            placeholder: "记录验收判断依据，会随两条验收记录写入 manifest",
+            className: "w-full rounded-sm border border-hairline bg-canvas px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-info-border focus:outline-none disabled:opacity-40"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-3", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            type: "button",
+            onClick: () => onComplete(note),
+            disabled: actionsDisabled,
+            className: BUTTON_PRIMARY,
+            children: submitting ? "提交中…" : "完成"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex flex-col gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-muted", children: "不满意？退回重做" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: onRedoCleanPlate,
+              disabled: actionsDisabled,
+              title: "作废当前底板并重新生成，会再次调用付费接口",
+              className: BUTTON_SECONDARY,
+              children: "重做底板"
+            }
+          ),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(
+            "button",
+            {
+              type: "button",
+              onClick: onBackToReview,
+              disabled: actionsDisabled,
+              title: "作废文本复核之后的全部产物，回到复核界面",
+              className: BUTTON_SECONDARY,
+              children: "回到文本复核"
+            }
+          )
+        ] })
+      ] })
+    ] })
+  ] });
 }
 const MANUAL_SOURCE_PROVIDER = "desktop-review";
 function withManualSource(sources, text) {
@@ -24680,17 +25080,6 @@ const useSlideStore = create((set, get) => ({
       dirty: true
     });
   },
-  markAllReviewed() {
-    const { reviewDocument } = get();
-    if (reviewDocument === null) return 0;
-    const { blocks, changed } = markAllBlocksReviewed(reviewDocument.blocks);
-    if (changed === 0) return 0;
-    set({
-      reviewDocument: { ...reviewDocument, blocks: [...blocks] },
-      dirty: true
-    });
-    return changed;
-  },
   async saveReview() {
     const { workspacePath, reviewDocument } = get();
     if (workspacePath === null || reviewDocument === null) {
@@ -24723,7 +25112,6 @@ function ReviewPage() {
   const markBlockReviewed = useSlideStore((s) => s.markBlockReviewed);
   const markBlocksReviewed = useSlideStore((s) => s.markBlocksReviewed);
   const deleteBlock = useSlideStore((s) => s.deleteBlock);
-  const markAllReviewed = useSlideStore((s) => s.markAllReviewed);
   const reset = useSlideStore((s) => s.reset);
   const reviewDocument = useSlideStore((s) => s.reviewDocument);
   const sourceImageUrl = useSlideStore((s) => s.sourceImageUrl);
@@ -24743,8 +25131,8 @@ function ReviewPage() {
   const slideId = slide?.slideId ?? null;
   const workspacePath = slide?.absWorkspacePath ?? null;
   const sessionResult = slideId === null ? void 0 : sessionResults[slideId];
-  const acceptGate = reactExports.useMemo(
-    () => slide === null ? null : deriveAcceptGate(slide, sessionResult),
+  const finalGate = reactExports.useMemo(
+    () => slide === null ? null : deriveFinalGate(slide, sessionResult),
     [slide, sessionResult]
   );
   const navigation2 = reactExports.useMemo(
@@ -24755,10 +25143,9 @@ function ReviewPage() {
     () => nextTodoItem(deriveTodoQueue(slides, sessionResults), slideId),
     [slides, sessionResults, slideId]
   );
-  const [viewMode, setViewMode] = reactExports.useState("canvas");
+  const [viewMode, setViewMode] = reactExports.useState("review");
   const [submitting, setSubmitting] = reactExports.useState(false);
   const [notice, setNotice] = reactExports.useState(null);
-  const canCompare = sourceImageUrl !== null && cleanPlateUrl !== null;
   const pageBusy = runStatus !== "idle" && currentSlideId === slideId;
   reactExports.useEffect(() => {
     if (workspacePath === null) return;
@@ -24770,13 +25157,13 @@ function ReviewPage() {
     if (prevPageBusy.current && !pageBusy) void reloadImages();
     prevPageBusy.current = pageBusy;
   }, [pageBusy, reloadImages]);
-  const gateSignature = acceptGate === null || slideId === null ? null : `${slideId}:${acceptGate.stage}:${acceptGate.source}`;
+  const gateSignature = finalGate === null || slideId === null ? null : `${slideId}:${finalGate.source}`;
   reactExports.useEffect(() => {
     if (gateSignature === null) {
-      setViewMode((mode) => mode === "accept" ? "canvas" : mode);
+      setViewMode((mode) => mode === "final" ? "review" : mode);
       return;
     }
-    setViewMode("accept");
+    setViewMode("final");
   }, [gateSignature]);
   const blocks = reactExports.useMemo(
     () => reviewDocument?.blocks ?? [],
@@ -24832,20 +25219,19 @@ function ReviewPage() {
     },
     [deckPath, slideId, runSlide]
   );
-  const handleAccept = reactExports.useCallback(
+  const handleComplete = reactExports.useCallback(
     async (note) => {
-      if (workspacePath === null || acceptGate === null || slideId === null) {
-        return;
-      }
+      if (workspacePath === null || slideId === null) return;
       setSubmitting(true);
       try {
-        const api = window.api;
-        const result = acceptGate.stage === "accept-clean" ? await api.slide.acceptClean(workspacePath, { note }) : await api.slide.acceptPptx(workspacePath, { note });
+        const result = await window.api.slide.acceptFinal(workspacePath, {
+          note
+        });
         clearSessionResult(slideId);
         await refreshSlide(slideId);
         setNotice({
           ok: true,
-          message: `验收完成 · ${result.autoCheckSummary}`
+          message: `已完成本页验收 · ${result.autoCheckSummary}`
         });
       } catch (err) {
         setNotice({
@@ -24856,7 +25242,7 @@ function ReviewPage() {
         setSubmitting(false);
       }
     },
-    [workspacePath, acceptGate, slideId, clearSessionResult, refreshSlide]
+    [workspacePath, slideId, clearSessionResult, refreshSlide]
   );
   const rerunFrom = reactExports.useCallback(
     (stage) => {
@@ -24876,13 +25262,38 @@ function ReviewPage() {
           return;
         }
         clearSessionResult(slideId);
-        setViewMode("canvas");
+        setViewMode("review");
         await refreshSlide(slideId);
         startRun(stage);
       })();
     },
     [slideId, workspacePath, clearSessionResult, refreshSlide, startRun]
   );
+  const handleBackToReview = reactExports.useCallback(() => {
+    if (slideId === null || workspacePath === null) return;
+    void (async () => {
+      try {
+        await window.api.slide.invalidateStage(
+          workspacePath,
+          "mask",
+          "人工选择回到文本复核，作废去字底板与 PPTX"
+        );
+      } catch (err) {
+        setNotice({
+          ok: false,
+          message: `作废下游产物失败：${err instanceof Error ? err.message : String(err)}`
+        });
+        return;
+      }
+      clearSessionResult(slideId);
+      setViewMode("review");
+      await refreshSlide(slideId);
+      setNotice({
+        ok: true,
+        message: "已作废去字底板与 PPTX；改完复核内容后点「运行此页」重新生成"
+      });
+    })();
+  }, [slideId, workspacePath, clearSessionResult, refreshSlide]);
   const handleNextTodo = reactExports.useCallback(() => {
     if (nextTodo === null) return;
     openSlide(nextTodo.slideId);
@@ -24909,8 +25320,7 @@ function ReviewPage() {
         pageLabel: slide.pageLabel,
         navigation: navigation2,
         viewMode,
-        canCompare,
-        hasAcceptGate: acceptGate !== null,
+        hasFinalGate: finalGate !== null,
         dirty,
         unreviewedCount,
         pageBusy,
@@ -24919,7 +25329,6 @@ function ReviewPage() {
         onNavigate: openSlide,
         onViewModeChange: setViewMode,
         onSave: () => void handleSave(),
-        onMarkAllReviewed: () => markAllReviewed(),
         onRunSlide: () => startRun(),
         onRerunFrom: rerunFrom,
         onNextTodo: handleNextTodo
@@ -24958,24 +25367,22 @@ function ReviewPage() {
       ),
       startError !== null && /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral", children: startError })
     ] }),
-    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-0 flex-1 flex-col", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "flex h-full items-center justify-center text-sm font-medium text-muted", children: "加载中…" }) : viewMode === "accept" && acceptGate !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx(
-      AcceptFlow,
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex min-h-0 flex-1 flex-col", children: loading ? /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "flex h-full items-center justify-center text-sm font-medium text-muted", children: "加载中…" }) : viewMode === "final" && finalGate !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+      FinalConfirmPage,
       {
-        gate: acceptGate,
+        workspacePath,
         sourceImageUrl,
         cleanPlateUrl,
+        blocks,
+        imageSize: reviewDocument?.image ?? null,
+        busy: pageBusy,
         submitting,
-        disabled: pageBusy,
-        onAccept: (note) => void handleAccept(note),
-        onRejectRerun: rerunFrom
+        gateSource: finalGate.source,
+        onComplete: (note) => void handleComplete(note),
+        onRedoCleanPlate: () => rerunFrom("clean"),
+        onBackToReview: handleBackToReview
       }
-    ) : viewMode === "compare" && sourceImageUrl !== null && cleanPlateUrl !== null ? /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex h-full items-center justify-center overflow-auto bg-surface-strong p-6", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-full max-w-5xl overflow-hidden rounded-md", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-      SliderCompare,
-      {
-        sourceImageUrl,
-        cleanPlateUrl
-      }
-    ) }) }) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    ) : /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex min-h-0 flex-1", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-[480px] shrink-0 border-r border-hairline", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
           BlockListPanel,
