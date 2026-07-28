@@ -51,14 +51,14 @@ node apps/cli/dist/index.js doctor
 
 ### Trellis 状态
 
-任务为 `in_progress`。阶段 A（`e03af4a`）、B（`a0de457`）、C（`1cbd994`）已完成，另有三个走查修复与文档提交（`d489777`、`5d2565c`、`e3b5d22`）。**下一步从阶段 D1 起**。
+任务为 `in_progress`。阶段 A（`e03af4a`）、B（`a0de457`）、C（`1cbd994`）、D（`cf604b0`）已完成，另有三个走查修复与文档提交（`d489777`、`5d2565c`、`e3b5d22`）。**下一步从阶段 E1 起**——代码已全部落地，剩下的是真实工作区走查与收尾。
 
 ```bash
 python3 ./.trellis/scripts/task.py start 07-26-review-flow-simplification
 python3 ./.trellis/scripts/task.py current      # 确认指向本任务
 ```
 
-开工前重读 `prd.md` 的决策表（D1–D8）、本文件的「A/B 阶段已完成」「C 阶段已完成」两节与「复核门与既有约束的关系」。阶段 D 会用到阶段 A 提到 core 的公式（`packages/core/src/pptx-text-style.ts` 的 `resolveFontSizePt` / `toAlign` / `toValign` / `toBold`），与 `synthesize.ts` 同源，**勿重写**。
+开工前重读 `prd.md` 的决策表（D1–D8）、本文件的「A/B 阶段已完成」「C 阶段已完成」「D 阶段已完成」三节与「复核门与既有约束的关系」。**走查时以这三节记录的实际实现为准，不要照 design.md 原文核对**——阶段 D 有两处刻意偏离（「回到文本复核」失效 `mask` 而非 `review`；工具栏「全部标为已复核」已删除）。
 
 ## 验证命令
 
@@ -230,6 +230,31 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 - [ ] E5 更新 `ROADMAP.md` 的 M4 状态与技术结论；记录 D1/D8 对既有约束的解除
 - [ ] E6 按 Phase 3 更新 spec（阶段门语义变更、双源比对判据、合成预览与 PPTX 的公式同源约定）
 
+### E1 走查怎么做（新会话直接照这个跑）
+
+**开跑前**（顺序别换）：
+
+```bash
+python3 ./.trellis/scripts/task.py start 07-26-review-flow-simplification   # 会话级指针，不随仓库走
+cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-walkthrough-E1              # 永远在副本上操作
+node apps/cli/dist/index.js doctor                                          # 基线 5 通过 / 1 警告（Node v25）/ 0 失败
+pnpm build && pnpm dev                                                      # desktop 需要先 build:vision
+```
+
+`.env` 要有 `OPENAI_API_KEY` 与 `OPENAI_BASE_URL`（第三方兼容端点，两个都要）。**E1 会产生真实付费调用**：assist-review 每页一次，clean plate 每次重跑一次 gpt-image-2。「重做底板」这一项验证会再烧一次，心里有数。
+
+**E1 用全新 deck**（`deck init` + 2 张图足够），逐个停点核对：
+
+1. **停在文本复核门**——批量处理后应停在 `gate: "human-edit"`，控制台活动日志显示「停在文本复核门：有 N 个版式目标文字待人工复核」，待办队列归入「需文本复核」并带块数。**不应表现为 mask 阶段执行失败**（F-11 的旧行为）。
+2. **全键盘复核一页**（C 阶段欠的那项，必须逐项实测）：Tab/↓ 与 Shift+Tab/↑ 跨分区连续推进、聚焦项直接打字、Enter 标记已复核并前进、⌥1/⌥2 切分类、⌘S 保存。推进到折叠的「已一致」分区时应自动展开而非跳过。
+3. **继续处理此页**——一路跑到 pptx 停在最终确认，**中途不应停于 accept-clean**。
+4. **最终确认页**：合成预览的文字位置/字号/颜色/对齐是否与 PowerPoint 里打开的实际 PPTX 一致（换行差异是已知且已在界面明示的）；「在 PowerPoint 中打开」可用；pptx 六项与 clean 四组指标可见且 clean 侧标着「无判定阈值」；有 failed 项时仍能点「完成」。
+5. **完成**——manifest 中 accept-clean 与 accept-pptx 均 completed、备注含「经最终产物确认统一验收」，`node apps/cli/dist/index.js deck status <deck>` 可正常读出。随后「运行此页」应把 `report` 补跑到 completed。
+6. **重做底板**——真的重跑 clean→pptx 并再次停在最终确认，**不是点了没反应**（`SlidePage.tsx:245` 记录的空转陷阱）。
+7. **回到文本复核**——mask 及下游转 stale、切回复核界面、**不自动重跑**；改字保存后点「运行此页」，改动应经 validate-review → mask → clean → pptx 传到产物。
+
+E2 用**未改动的基线备份** `~/test/ppttest-2026-07-25.bak-baseline` 另存一份来验，别用已被 C 阶段走查改过的原目录。
+
 ## 遗留缺陷：保存复核不失效下游，改动传不到产物（待另立任务）
 
 **2026-07-26 真实工作区走查中发现，属既有缺陷、非本任务引入；用户已确认记录后再做。**
@@ -250,7 +275,15 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 
 **注意**：不要图省事一律失效 `mask`——`invalidate.ts` 的语义是「强制重做而不是幂等跳过」，那会让每次保存都触发一次 clean 的付费调用。
 
-**临时绕行**：工具栏「从阶段重跑 → 文字校验」，走 validate-review → mask → clean → pptx。
+**临时绕行**：工具栏「从阶段重跑 → 文字校验」，走 validate-review → mask → clean → pptx。阶段 D 之后还多一条路：最终确认页的「回到文本复核」会失效 mask 及下游，改完点「运行此页」即可把改动带下去——但它只在该页已停在最终确认时可用，不覆盖「已全部完成的页上改字」这个原始场景。
+
+## 遗留缺陷：report 取产物记录按 role 取第一条（待另立任务）
+
+**2026-07-27 阶段 D 实施中发现，属既有缺陷、非本任务引入，不在本任务范围。**
+
+`apps/cli/src/report/run.ts` 取 `clean_record` / `pptx_check` 资产时按 `role` 取第一条匹配项，没有按阶段的 `lastSuccessfulAttemptId` 过滤。clean 跑过两次的页会拿到早已被取代的那次记录——真实工作区 `~/test/ppttest-2026-07-25` page-01 的 `clean_record` 就有 clean-001 与 clean-002 两条，report 里可能混入 clean-001 的指标。
+
+阶段 D 的桌面端 `readFinalChecks`（`apps/desktop/src/main/slide-detail.ts` 的 `currentSuccessAsset`）已按 `lastSuccessfulAttemptId` 匹配，并用真实工作区验证读出的 `outsideMaskDiff = 0.0439`，正是 clean-002 的值（PRD F-4 表格里那一列）。修 report 时照这个口径即可。
 
 ## 风险文件与注意事项
 
@@ -259,7 +292,7 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 | `apps/cli/src/pptx/run.ts` | B3 放宽 `assertAcceptedCleanPlate` 前置条件，是本任务对质量约束改动最大处（已获批准，2026-07-26）；必须**实测**确认 `--strict` 导出语义未被削弱，这是批准的前提条件 |
 | `packages/core/src/text-blocks.ts` | A1/A3 会使既有工作区校验失败并触发 mask 及下游失效，属预期但需在走查中确认表现为「停在复核门 + 可一键修正」而非「阶段执行失败」 |
 | `apps/cli/src/pptx/synthesize.ts` | A5 是纯搬迁，任何计算逻辑变动都会让 PPTX 输出漂移；必须有迁移前后一致性测试 |
-| `apps/desktop/src/renderer/pages/SlidePage.tsx` | C15 大规模重写；`rerunFrom` 的「先失效再启动」纪律与 `pageBusy → reloadImages` 的产物刷新时序必须保留 |
+| `apps/desktop/src/renderer/pages/ReviewPage.tsx`（原 SlidePage） | C15 大规模重写；`rerunFrom` 的「先失效再启动」纪律与 `pageBusy → reloadImages` 的产物刷新时序必须保留 |
 | `apps/desktop/src/renderer/stores/todo-queue.ts` | D7 分组变更影响控制台「点一次到达」的验收项 |
 
 ## 复核门与既有约束的关系（实现时勿动摇）
