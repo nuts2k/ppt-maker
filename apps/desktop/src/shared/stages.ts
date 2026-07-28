@@ -51,3 +51,40 @@ export function isRunStage(value: string): value is RunStage {
 export function runStageIndex(stage: string): number {
   return (RUN_STAGE_SEQUENCE as readonly string[]).indexOf(stage);
 }
+
+/**
+ * 瞬态阶段的失效替身：失效它 = 失效其下游第一个持久阶段。
+ *
+ * `validate-review` 不写 manifest，`invalidateStageAndDownstream` 拿它匹配不到任何
+ * `WorkspaceStageState`，会**静默地什么都不失效**并返回空数组。语义上重做文字校验
+ * 必然要重做 mask（mask 是 review 之后第一个持久阶段），所以映射到 mask。
+ */
+const TRANSIENT_INVALIDATION_TARGET: Readonly<
+  Partial<Record<RunStage, RunStage>>
+> = {
+  "validate-review": "mask",
+};
+
+/**
+ * 把界面点选的阶段翻译成可失效的持久阶段。
+ *
+ * 2026-07-27 E1 走查实测：点阶段轨道上的「复核校验」节点毫无效果——界面照常切回
+ * 复核视图并给出正反馈，manifest 却一字未改，随后的 run 因全部阶段仍 completed
+ * 被幂等规则整段跳过，只重跑了 report。根因是 IPC 两侧类型各标各的（renderer 侧
+ * `RunStage` 含瞬态阶段、main 侧 `SlideStage` 不含），中间隔着无运行时校验的
+ * `ipcRenderer.invoke`，编译期谁也拦不住谁。
+ *
+ * 未知阶段一律抛错：失效是「强制重做」的唯一入口，静默失败会直接退化成
+ * 「点了没反应」，而这正是本轮反复在堵的那类洞。
+ */
+export function resolveInvalidationTarget(stage: string): RunStage {
+  const mapped = TRANSIENT_INVALIDATION_TARGET[stage as RunStage];
+  if (mapped !== undefined) return mapped;
+  if (!isRunStage(stage)) {
+    throw new Error(`无法失效未知阶段：${stage}`);
+  }
+  if (TRANSIENT_STAGES.includes(stage)) {
+    throw new Error(`瞬态阶段 ${stage} 缺少失效替身，无法失效`);
+  }
+  return stage;
+}

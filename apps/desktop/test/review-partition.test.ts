@@ -21,6 +21,7 @@ import {
   partitionOf,
   REVIEW_PARTITION_LABELS,
   REVIEW_PARTITION_ORDER,
+  unreviewedBlockIds,
 } from "../src/renderer/lib/review-partition.js";
 
 const fixtureDir = resolve(
@@ -218,5 +219,69 @@ describe("REVIEW_PARTITION_LABELS", () => {
     expect(
       REVIEW_PARTITION_ORDER.map((key) => REVIEW_PARTITION_LABELS[key]),
     ).toEqual(["文字待确认", "分类待确认", "已一致"]);
+  });
+});
+
+describe("unreviewedBlockIds", () => {
+  const symbol = block("s1", "object_integrated_symbol", []);
+  const text = block("t1", "layout_text", [
+    {
+      kind: "offline_ocr",
+      provider: "apple-vision",
+      text: "甲",
+      confidence: 1,
+    },
+    {
+      kind: "ai_text_assist",
+      provider: "openai-text-assist",
+      text: "乙",
+      confidence: null,
+    },
+  ]);
+
+  it("只数未复核项，已复核的不计入", () => {
+    expect(unreviewedBlockIds([symbol, text])).toEqual(["s1", "t1"]);
+    expect(
+      unreviewedBlockIds([{ ...symbol, reviewStatus: "reviewed" }, text]),
+    ).toEqual(["t1"]);
+  });
+
+  it("全部复核后归零", () => {
+    expect(
+      unreviewedBlockIds([
+        { ...symbol, reviewStatus: "reviewed" },
+        { ...text, reviewStatus: "reviewed" },
+      ]),
+    ).toEqual([]);
+  });
+
+  /**
+   * E1 走查实测缺陷的回归锚点：确认一个符号块「它就是符号」是幂等操作，分区归属
+   * 不变，但进度必须动。徽标此前显示 blocks.length，用户因此判定操作没生效。
+   */
+  it("确认符号块后分区归属不变，但该区未复核数下降", () => {
+    const confirmed: TextReviewBlock = {
+      ...symbol,
+      reviewStatus: "reviewed",
+    };
+    expect(partitionOf(confirmed)).toBe("classification-pending");
+    expect(partitionOf(symbol)).toBe(partitionOf(confirmed));
+    expect(unreviewedBlockIds([symbol]).length).toBe(1);
+    expect(unreviewedBlockIds([confirmed]).length).toBe(0);
+  });
+
+  it("编辑文字块不改变双源分歧，进度仍只由 reviewStatus 表达", () => {
+    // 人工编辑写入 manual 源与 block.text，offline_ocr / ai_text_assist 两个原始源不变
+    const edited: TextReviewBlock = {
+      ...text,
+      text: "丙",
+      reviewStatus: "reviewed",
+      sources: [
+        ...text.sources,
+        { kind: "manual", provider: "human", text: "丙", confidence: null },
+      ],
+    };
+    expect(partitionOf(edited)).toBe("text-pending");
+    expect(unreviewedBlockIds([edited])).toEqual([]);
   });
 });

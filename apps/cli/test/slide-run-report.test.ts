@@ -378,11 +378,30 @@ describe("slide accept-final", () => {
     ) as { stage: string; note: string; checklist: Record<string, boolean> };
     expect(cleanAcceptance.stage).toBe("accept-clean");
     expect(pptxAcceptance.stage).toBe("accept-pptx");
-    expect(cleanAcceptance.note).toContain("经最终产物确认统一验收：");
-    expect(pptxAcceptance.note).toContain("经最终产物确认统一验收：");
-    // 清单沿用各自的 DEFAULT_CHECKLIST，与单步验收写入的内容一致。
-    expect(cleanAcceptance.checklist.noTextResidue).toBe(true);
-    expect(pptxAcceptance.checklist.opensInPowerPoint).toBe(true);
+    expect(cleanAcceptance.note).toContain("经最终产物确认统一验收");
+    expect(pptxAcceptance.note).toContain("经最终产物确认统一验收");
+    // 未传备注时不留尾随冒号
+    expect(cleanAcceptance.note).toBe("经最终产物确认统一验收");
+    /**
+     * 清单留空：最终确认页展示的是自动检查指标，没有逐项人工勾选框，照抄单步验收
+     * 的恒 true DEFAULT_CHECKLIST 会写出与自动检查矛盾的假记录（E1 走查实测：
+     * `sizeCorrect: true` 撞上 `size.ok: false`）。空清单如实表示「本步无人工勾选」。
+     */
+    expect(cleanAcceptance.checklist).toEqual({});
+    expect(pptxAcceptance.checklist).toEqual({});
+  });
+
+  it("传入备注时以冒号接在统一前缀之后", async () => {
+    const { workspacePath } = await setupThroughPptxUnaccepted();
+    await runAcceptFinal({
+      workspacePath,
+      acceptedBy: "dev",
+      note: "字号偏小",
+    });
+    const cleanAcceptance = JSON.parse(
+      await readFile(join(workspacePath, "stages/clean/accepted.json"), "utf8"),
+    ) as { note: string };
+    expect(cleanAcceptance.note).toBe("经最终产物确认统一验收：字号偏小");
   });
 
   it("重复调用幂等：状态不变且不追加 attempt", async () => {

@@ -5,7 +5,11 @@ import type {
   DeckRunEvent,
   DeckRunStartOptions,
 } from "../../main/ipc/channels.js";
-import { applyRunEvent, createRunSnapshot } from "./run-reducer.js";
+import {
+  applyRunEvent,
+  createRunSnapshot,
+  withoutSlideLiveStages,
+} from "./run-reducer.js";
 import type { RunSnapshot } from "./run-types.js";
 
 /**
@@ -46,6 +50,11 @@ interface RunState extends RunSnapshot {
   stop(): Promise<void>;
   /** 清除某页的会话层结果（验收完成后收起闸门提示） */
   clearSessionResult(slideId: string): void;
+  /**
+   * 丢弃某页的会话层阶段状态，让轨道回落到 manifest 耐久层。
+   * 人工失效阶段后必须调用，否则界面被上一轮 run 的 completed 盖住 stale。
+   */
+  clearLiveStages(slideId: string): void;
   reset(): void;
 }
 
@@ -149,6 +158,12 @@ export const useRunStore = create<RunState>((set, get) => ({
       delete next[slideId];
       return { sessionResults: next };
     });
+  },
+
+  clearLiveStages(slideId) {
+    set((state) => ({
+      liveStages: withoutSlideLiveStages(state.liveStages, slideId),
+    }));
   },
 
   reset() {

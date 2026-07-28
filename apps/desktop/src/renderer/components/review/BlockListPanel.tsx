@@ -1,5 +1,6 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { resolveReviewKeyAction } from "@/lib/review-keyboard";
 import {
   orderedReviewBlocks,
   partitionBlocks,
@@ -7,6 +8,7 @@ import {
   REVIEW_PARTITION_LABELS,
   type ReviewPartition,
   type ReviewPartitionGroup,
+  unreviewedBlockIds,
 } from "@/lib/review-partition";
 import { cn } from "@/lib/utils";
 import { ClassificationRow } from "./ClassificationRow";
@@ -149,45 +151,37 @@ export function BlockListPanel({
   /**
    * 键盘流（design.md §4.1）。事件从各项的 textarea 冒泡到面板容器统一处理。
    *
-   * ⌘S 一律放行冒泡到页面全局监听；⌥1/⌥2 用 `event.code` 判定——macOS 上
-   * ⌥1 的 `event.key` 是 `¡`，按 `key` 判会完全失效。
-   * ↑↓ 抢占了 textarea 内的光标移动：真实数据里 155 个块全部单行（PRD F-3），
-   * 多行编辑用 ⇧Enter 换行后仍可用鼠标定位，代价可接受。
-   *
-   * 焦点落在项内按钮上时 Enter 必须放行：keydown 的 preventDefault 会连按钮的
-   * click 一起吃掉，否则「标记已复核」「全部通过」「改为版式文字」用键盘按不动。
+   * 键位判定本身在 `@/lib/review-keyboard`（纯函数、有确定性用例），此处只负责
+   * 把 React 事件切成它的入参、按结果 preventDefault 并派发副作用。↑↓ 抢占了
+   * textarea 内的光标移动：真实数据里 155 个块全部单行（PRD F-3），多行编辑用
+   * ⇧Enter 换行后仍可用鼠标定位，代价可接受。
    */
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.metaKey || event.ctrlKey) return;
-      if (event.key === "Enter" && event.target instanceof HTMLButtonElement) {
-        return;
-      }
+      const action = resolveReviewKeyAction({
+        key: event.key,
+        code: event.code,
+        altKey: event.altKey,
+        metaKey: event.metaKey,
+        ctrlKey: event.ctrlKey,
+        shiftKey: event.shiftKey,
+        // React 的 SyntheticEvent 不透出 isComposing，必须取原生事件
+        isComposing: event.nativeEvent.isComposing,
+        targetIsButton: event.target instanceof HTMLButtonElement,
+      });
 
-      if (event.altKey) {
-        if (event.code !== "Digit1" && event.code !== "Digit2") return;
-        event.preventDefault();
-        if (currentBlock === null) return;
-        setClassification(currentBlock, event.code === "Digit1");
-        return;
-      }
+      if (action.kind === "passthrough") return;
+      event.preventDefault();
 
-      switch (event.key) {
-        case "Tab":
-          event.preventDefault();
-          moveBy(event.shiftKey ? -1 : 1);
+      switch (action.kind) {
+        case "move":
+          moveBy(action.delta);
           return;
-        case "ArrowDown":
-          event.preventDefault();
-          moveBy(1);
+        case "classify":
+          if (currentBlock === null) return;
+          setClassification(currentBlock, action.toLayoutText);
           return;
-        case "ArrowUp":
-          event.preventDefault();
-          moveBy(-1);
-          return;
-        case "Enter":
-          if (event.shiftKey) return; // ⇧Enter 插入换行
-          event.preventDefault();
+        case "review-and-move":
           if (currentBlockId !== null) onMarkReviewed(currentBlockId);
           moveBy(1);
           return;
@@ -250,9 +244,7 @@ function PartitionSection({
   onMarkBlocksReviewed,
   onDeleteBlock,
 }: PartitionSectionProps): React.JSX.Element {
-  const unreviewedIds = group.blocks
-    .filter((block) => block.reviewStatus === "unreviewed")
-    .map((block) => block.id);
+  const unreviewedIds = unreviewedBlockIds(group.blocks);
 
   return (
     <section className="flex flex-col gap-2">
@@ -268,7 +260,21 @@ function PartitionSection({
           <span className={cn("min-w-0 flex-1 truncate", CAPTION)}>
             {REVIEW_PARTITION_LABELS[group.partition]}
           </span>
-          <span className={COUNT_BADGE}>{group.blocks.length}</span>
+          {/*
+            分子是未复核数、分母是分区总数：分区归属不因人工确认而改变（符号块确认
+            后仍是符号块），只有 reviewStatus 能表达「还剩多少要看」。E1 走查时这里
+            显示总数，用户确认完仍见计数不动，读成了「按了没反应」。
+          */}
+          <span
+            className={COUNT_BADGE}
+            title={`${unreviewedIds.length} 项待确认，本区共 ${group.blocks.length} 项`}
+          >
+            {unreviewedIds.length}
+            <span className="font-normal text-muted">
+              {" / "}
+              {group.blocks.length}
+            </span>
+          </span>
         </button>
         {/*
           「全部通过」只出现在「已一致」：双源逐字一致意味着无需改动，可以整批放行；

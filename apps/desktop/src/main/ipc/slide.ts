@@ -12,6 +12,7 @@ import {
   validateTextReviewDocument,
 } from "@ppt-maker/core";
 import { ipcMain, shell } from "electron";
+import { resolveInvalidationTarget } from "../../shared/stages.js";
 import { type ActivityLog, buildActivityRecord } from "../activity-log.js";
 import { resolveDeckContext } from "../deck-context.js";
 import {
@@ -265,13 +266,15 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
     "slide:invalidate-stage",
     async (
       _event,
+      // renderer 传的是 RunStage（含瞬态阶段），不能直接当 SlideStage 用：
+      // 两侧类型隔着 ipcRenderer.invoke，编译期互不校验，见 resolveInvalidationTarget
       workspacePath: string,
-      stage: SlideStage,
+      stage: string,
       reason: string,
     ): Promise<{ invalidated: string[] }> => {
       const result = await invalidateSlideStage({
         workspacePath: resolve(workspacePath),
-        stage,
+        stage: resolveInvalidationTarget(stage) as SlideStage,
         reason,
       });
       return { invalidated: [...result.invalidated] };

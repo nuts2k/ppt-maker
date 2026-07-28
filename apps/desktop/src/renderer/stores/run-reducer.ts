@@ -153,3 +153,24 @@ function withLiveStage(
     [slideId]: { ...current, [stage]: status },
   };
 }
+
+/**
+ * 丢弃某页的会话层阶段状态，让该页的展示回落到 manifest 耐久层。
+ *
+ * `deriveStageViews` 是「耐久层打底、会话层覆盖」，而 `run-done` 会**保留**
+ * `liveStages`（卡片轨道要展示本轮结果）。于是人工失效阶段后，磁盘已是 stale，
+ * 界面却仍被上一轮 run 留下的 completed 盖着——2026-07-27 E1 走查实测：点「回到
+ * 文本复核」后 mask 及下游六个阶段全部转 stale，阶段轨道却一片绿。
+ *
+ * `rerunFrom` 没暴露这个问题只是因为它立即启动 run，新的 stage-start 事件会马上
+ * 覆盖旧值；不重跑的失效路径就一直挂着旧状态。
+ */
+export function withoutSlideLiveStages(
+  liveStages: Readonly<Record<string, LiveStageMap>>,
+  slideId: string,
+): Readonly<Record<string, LiveStageMap>> {
+  if (liveStages[slideId] === undefined) return liveStages;
+  const next = { ...liveStages };
+  delete next[slideId];
+  return next;
+}

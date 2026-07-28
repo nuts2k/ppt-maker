@@ -4,6 +4,7 @@ import {
   applyRunEvent,
   createRunSnapshot,
   elapsedMs,
+  withoutSlideLiveStages,
 } from "../src/renderer/stores/run-reducer.js";
 import type { RunSnapshot } from "../src/renderer/stores/run-types.js";
 
@@ -289,5 +290,48 @@ describe("不可变性", () => {
     );
     expect(base.sessionResults).toEqual({});
     expect(next.sessionResults).not.toBe(base.sessionResults);
+  });
+});
+
+describe("withoutSlideLiveStages", () => {
+  it("丢弃目标页的会话层阶段状态，其余页原样保留", () => {
+    const live = {
+      s1: { mask: "completed" as const, clean: "completed" as const },
+      s2: { mask: "running" as const },
+    };
+    expect(withoutSlideLiveStages(live, "s1")).toEqual({
+      s2: { mask: "running" },
+    });
+  });
+
+  it("目标页本就没有会话层状态时返回同一引用（不触发无谓重渲染）", () => {
+    const live = { s2: { mask: "running" as const } };
+    expect(withoutSlideLiveStages(live, "s1")).toBe(live);
+  });
+
+  it("不修改入参", () => {
+    const live = { s1: { mask: "completed" as const } };
+    withoutSlideLiveStages(live, "s1");
+    expect(live).toEqual({ s1: { mask: "completed" } });
+  });
+
+  /**
+   * E1 走查实测缺陷的回归锚点：run 结束后 liveStages 被刻意保留，人工失效阶段
+   * 若不清它，deriveStageViews 的会话层覆盖会让磁盘上的 stale 显示成 completed。
+   */
+  it("清理后该页在 deriveStageViews 里回落到耐久层的 stale", () => {
+    const live = replay([
+      { kind: "run-start", total: 1, slideIds: ["s1"] },
+      { kind: "stage-start", slideId: "s1", stage: "mask", at: "" },
+      {
+        kind: "stage-complete",
+        slideId: "s1",
+        stage: "mask",
+        at: "",
+        durationMs: 1,
+      },
+    ]).liveStages;
+    expect(live.s1?.mask).toBe("completed");
+    expect(withoutSlideLiveStages(live, "s1").s1).toBeUndefined();
   });
 });

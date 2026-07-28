@@ -69,6 +69,7 @@ export function ReviewPage(): React.JSX.Element {
   const startError = useRunStore((s) => s.startError);
   const runSlide = useRunStore((s) => s.runSlide);
   const clearSessionResult = useRunStore((s) => s.clearSessionResult);
+  const clearLiveStages = useRunStore((s) => s.clearLiveStages);
 
   const slide = useMemo(
     () => slides.find((entry) => entry.slideId === selectedSlideId) ?? null,
@@ -182,13 +183,22 @@ export function ReviewPage(): React.JSX.Element {
           ? "保存成功"
           : `保存完成，但校验有 ${result.errors} 个错误 / ${result.warnings} 个警告`,
       });
+      // 待办队列的「需文本复核」判据 pendingTextReview 由 main 侧读 text-blocks.json
+      // 算出，只在 page-done / run-done 时刷新（run-bridge.ts）。保存改的正是这个
+      // 文件，不在这里补一次刷新，队列就会一直显示上次 run 结束时的旧块数——
+      // 2026-07-27 E1 走查实测：page-01 已全部复核完，队列仍报「43 个版式目标文字
+      // 待复核」，用户据此以为复核被重置了。
+      // 刷新失败不得翻转「保存成功」的结论——文件此时已经写盘了
+      if (slideId !== null) {
+        await refreshSlide(slideId).catch(() => undefined);
+      }
     } catch (err) {
       setNotice({
         ok: false,
         message: `保存失败：${err instanceof Error ? err.message : String(err)}`,
       });
     }
-  }, [saveReview]);
+  }, [saveReview, slideId, refreshSlide]);
 
   // handleSave 进依赖，避免 V1 里 Cmd+S 捕获过期闭包（阶段 B 遗留的 lint 报错）。
   // 列表内的 Tab/↑↓/Enter/⌥1⌥2 由 BlockListPanel 自行处理，此处只留全局保存。
@@ -277,12 +287,21 @@ export function ReviewPage(): React.JSX.Element {
           return;
         }
         clearSessionResult(slideId);
+        // 会话层留着上一轮的 completed 会盖住刚写下的 stale，见 withoutSlideLiveStages
+        clearLiveStages(slideId);
         setViewMode("review");
         await refreshSlide(slideId);
         startRun(stage);
       })();
     },
-    [slideId, workspacePath, clearSessionResult, refreshSlide, startRun],
+    [
+      slideId,
+      workspacePath,
+      clearSessionResult,
+      clearLiveStages,
+      refreshSlide,
+      startRun,
+    ],
   );
 
   /**
@@ -313,6 +332,9 @@ export function ReviewPage(): React.JSX.Element {
         return;
       }
       clearSessionResult(slideId);
+      // 本路径**不重跑**，没有后续 stage-start 事件来覆盖会话层的陈旧 completed，
+      // 不清就会出现「磁盘 stale、轨道一片绿」——E1 走查实测过的表现
+      clearLiveStages(slideId);
       setViewMode("review");
       await refreshSlide(slideId);
       setNotice({
@@ -320,7 +342,13 @@ export function ReviewPage(): React.JSX.Element {
         message: "已作废去字底板与 PPTX；改完复核内容后点「运行此页」重新生成",
       });
     })();
-  }, [slideId, workspacePath, clearSessionResult, refreshSlide]);
+  }, [
+    slideId,
+    workspacePath,
+    clearSessionResult,
+    clearLiveStages,
+    refreshSlide,
+  ]);
 
   const handleNextTodo = useCallback(() => {
     if (nextTodo === null) return;

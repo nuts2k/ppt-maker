@@ -223,14 +223,37 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 
 ## 阶段 E — 全链路走查与收尾
 
-- [ ] E1 全新 deck（重新 `deck init`）跑完整链路：批量处理 → 停 human-edit → 复核 → 继续 → 停最终确认 → 完成 → report 补跑 → 导出
+- [x] E1 全新 deck（重新 `deck init`）跑完整链路：批量处理 → 停 human-edit → 复核 → 继续 → 停最终确认 → 完成 → report 补跑 → 导出（2026-07-27 完成，七项断言全过；暴露并修复 6 个缺陷，见下方各节）
 - [ ] E2 验证既有已完成工作区打开无异常、无需迁移
-- [ ] E3 `pnpm format:check && pnpm typecheck && pnpm test && pnpm build` 全绿
+- [x] E3 `pnpm format:check && pnpm typecheck && pnpm test && pnpm build` 全绿（**E1 修复后需重跑**；2026-07-27 最新一次：397 例 = core 76 + desktop 229 + cli 92。首次基线 371 例；`doctor` 5 通过 / 1 警告（Node v25）/ 0 失败）
 - [ ] E4 逐条核对 PRD 验收标准四层
 - [ ] E5 更新 `ROADMAP.md` 的 M4 状态与技术结论；记录 D1/D8 对既有约束的解除
 - [ ] E6 按 Phase 3 更新 spec（阶段门语义变更、双源比对判据、合成预览与 PPTX 的公式同源约定）
 
-### E1 走查怎么做（新会话直接照这个跑）
+### 新会话从这里接（2026-07-27 交接）
+
+**E1 已全部完成**，下一步是 **E2**，然后 E4 → E5 → E6。所有代码改动**尚未提交**，工作区有未提交改动（`git status` 自查），Phase 3.4 才提交。
+
+**E2 怎么做**（不花钱）：桌面端打开 `~/test/ppttest-walkthrough-E2`（从未被走查改过的基线备份另存），只验「打开」——不报错、不弹迁移提示、两页 10/10、轨道全绿、复核页与最终确认页数据读得出（分区数应为 PRD F-9 那组：page-01 = 25/16/19、page-02 = 45/18/32）。**别在这个工作区点运行**：阶段 A 新增的 `LAYOUT_TEXT_MUST_BE_MASKED` 会让既有块校验失败并触发 mask 及下游失效（风险表里的预期行为），那是另一条路径且会花钱。CLI 侧已先行验过：`deck status` 读出「完成 2/2」，`schemaVersion`/`workspaceVersion` 均为 1，与新建工作区一致，**无需迁移**。
+
+**导出还没验**（E1 标题里那个「导出」）。E1 工作区当前 page-02 stale、page-01 停在复核门，`--strict` 会拒绝——这本身是正确行为。建议改用 E2 基线副本验，两页都完整验收过，**不花钱**：
+
+```bash
+node apps/cli/dist/index.js deck export ~/test/ppttest-walkthrough-E2 --strict --out ~/test/e2-export.pptx
+```
+
+导出后用 PowerPoint 打开确认是 2 页原生可编辑。
+
+**E4 核对时注意两处口径要改**（实现与 PRD 原文不符，以实现为准）：
+
+1. 验收标准第 201 行写「『回到文本复核』使 `review` 及下游失效」——实际失效的是 **`mask`**，理由见阶段 D 落地差异一节，已实测确认 `review`/`assist-review` 保持 completed。
+2. 验收标准第 210 行「『分类待确认』列出全部 object_symbol」——E1 那轮 assist-review 两页只产出 **1 个**非 `layout_text` 块（page-01 `block-016`「Q」），page-02 为 0，样本极薄；判断是否需要换数据补验。
+
+**E1 工作区现状**（`~/test/ppttest-walkthrough-E1`）：page-01 停在文本复核门（60 块已全部复核完，未继续跑）；page-02 刚点过「回到文本复核」，mask 及下游六个阶段 stale，text-blocks 里有已保存但未传到产物的改动。要继续跑会烧 gpt-image-2。
+
+**桌面端已重启**并停在欢迎页（无切换工作区功能，换 deck 必须重启，见上方缺口记录）。启动命令：`cd apps/desktop && pnpm dev`。
+
+### E1 走查怎么做（历史记录，E1 已完成）
 
 **开跑前**（顺序别换）：
 
@@ -254,6 +277,101 @@ pnpm build && pnpm dev                                                      # de
 7. **回到文本复核**——mask 及下游转 stale、切回复核界面、**不自动重跑**；改字保存后点「运行此页」，改动应经 validate-review → mask → clean → pptx 传到产物。
 
 E2 用**未改动的基线备份** `~/test/ppttest-2026-07-25.bak-baseline` 另存一份来验，别用已被 C 阶段走查改过的原目录。
+
+### E1 走查进度（2026-07-27）
+
+工作区 `~/test/ppttest-walkthrough-E1`（全新 `deck init`，源图复用原工作区两页 source.png）。
+
+- **第 1 项 ✓**：两页均停在 `assist-review: completed` → `mask: pending`，**不是 mask failed**，F-11 的旧代偿行为确认消除。分区实测 page-01 = 36/1/23（共 60）、page-02 = 50/0/45（共 95）；PRD F-9 的 25/16/19、45/18/32 是旧工作区数字，新一轮 assist-review 数字不同属正常。
+- **第 2 项（全键盘复核，C 阶段欠项）✓ 通过，但暴露 1 个缺陷**：见下节。page-01 六十块全 `reviewed` 且**其中 15 块带 `updatedAt` + `manual` 源**——正是 F-6「155 块全 reviewed 却无一条 updatedAt」的反面，PRD 验收标准第 212 条据此通过。
+
+**注意**：本轮两页 assist-review 只产出 1 个非 `layout_text` 块（page-01 `block-016`「Q」，`object_integrated_symbol`），page-02 为 0。PRD 验收标准第 210 条「分类待确认列出全部 object_symbol」只能靠这一个块验，样本极薄。
+
+### E1 走查发现并修复：输入法组字期间键盘被列表导航吃掉
+
+**现象**（用户实测）：中文输入法用 ↓ 选字时选不动，光标却跳到了下一个块。
+
+**根因**：`BlockListPanel.tsx` 的 `handleKeyDown` 全文没有组字判断（修复前全仓库 `isComposing` 零命中）。IME 组字期间 ↓/↑ 用于选字、Enter 用于确认候选、部分输入法用 Tab 翻候选页，这些键全部被列表导航拦截。**中文复核是本界面的主场景**，不属边角情况。
+
+**修复**：键位判定抽为纯函数 `renderer/lib/review-keyboard.ts` 的 `resolveReviewKeyAction`，首条规则即「`isComposing` 一律 `passthrough`」，组件只负责把 React 事件切成入参、按结果 `preventDefault` 并派发副作用。判据用 `KeyboardEvent.isComposing`（React 侧须取 `event.nativeEvent.isComposing`，SyntheticEvent 不透出）：组字期间含「按 Enter 确认候选」那一次 keydown 它均为 true，`compositionend` 后才转 false，正是需要的边界。
+
+**顺带补上 C 阶段欠的测试覆盖**：键盘流此前零用例（逻辑困在组件 `useCallback` 里无法测）。新增 `test/review-keyboard.test.ts` 13 例，覆盖导航 / ⌥1⌥2 按 `code` 判定 / ⌘S 与按钮 Enter 放行 / 组字期间五种键全放行。
+
+**同类风险已排查**：全仓库另两处键盘处理无需改——`ReviewPage.tsx:196` 的全局 ⌘S 是组合键不参与组字；`SlideCard.tsx:115` 是 `div role="button"`，不接受文本输入。
+
+### E1 走查发现并修复：分区计数永不下降，人工确认看起来「没生效」
+
+**现象**（用户实测）：对 page-01 `block-016`（那个「Q」，分类判定本就正确）按 ⌥2 确认「它就是符号」，界面计数纹丝不动，读成了按键没反应。
+
+**根因**：⌥2 其实生效了（`manual` 源与 `updatedAt` 均已写入，只是改成同值故无可见变化），真正的问题在计数口径——`PartitionSection` 的标题徽标显示 `group.blocks.length`（**分区总数**），而分区折叠摘要显示未复核数，两处各写一份 filter、口径不一。
+
+而分区归属**不因人工确认而改变**，这是 design.md §194-205 的原设计、非实现走偏：符号块确认后仍是符号块；文字块编辑写入的是 `manual` 源与 `block.text`，`compareBlockSources` 比对的 `offline_ocr` / `ai_text_assist` 两个原始源不变，故仍算分歧。三个分区都是静态清单，任何一区都不会因复核而缩短——于是一个叫「待确认」的计数永远不降，与 F-6「界面不引导实际操作」同类。
+
+**修复（用户 2026-07-27 决策）**：徽标改为 `未复核数 / 总数`（`0 / 1`、`12 / 36`），分子 `ink`、分母 `muted`，符合 DESIGN.md 的文本色语义；分区归属判据**不动**，块不会跳区。计数口径收敛为 `review-partition.ts` 的 `unreviewedBlockIds`，徽标与折叠摘要共用，禁止就地再写 filter——这次漂移正是两处各写一份造成的。
+
+**测试**：`review-partition.test.ts` 新增 4 例，锁定「确认符号块后分区归属不变但未复核数下降」与「编辑文字块不改变双源分歧」两条正是本缺陷成因的性质。
+
+### E1 走查发现并修复：保存复核后待办队列计数陈旧，用户误判为「复核被重置」
+
+**现象**（用户实测）：page-01 磁盘上 60 块全部 `reviewed`（`layout_text` 且未复核 = 0），待办队列仍报「43 个版式目标文字待复核」。
+
+**根因**：`pendingTextReview` 由 main 侧 `buildDeckStatusDetailed`（`ipc/deck.ts:84`）读 `text-blocks.json` 算出，而 renderer 只在 `page-done` / `run-done` 两个 run 事件后刷新（`run-bridge.ts:41-49`）。保存复核改的正是这个文件，却不触发任何刷新——`slide:save-review` 写完盘只返回校验结果，renderer 的 `saveReview` 只置 `dirty:false`。于是队列一直显示上次 run 结束时的旧块数。
+
+与「保存复核不失效下游」（见后文遗留缺陷一节）**同源不同面**：`slide:save-review` 写盘后什么都不通知。区别在于本条只影响界面计数、修复纯读盘无副作用，故当场修掉；那条会触发付费重跑，仍按用户决定另立任务。
+
+**修复**：`ReviewPage.handleSave` 保存成功后补 `refreshSlide(slideId)`（该方法不置 loading、只替换目标页，同文件「回到文本复核」「重做底板」已在用）。刷新失败**吞掉不上报**——文件此时已写盘，不能让刷新异常把「保存成功」翻转成「保存失败」。
+
+**未加自动化测试**：`todo-queue` 的分组纯函数已有覆盖（含 `pendingTextReview` 为 0 / 非 0 / review 未完成三种），本次改的是页面副作用接线，desktop 无组件渲染测试设施，硬造夹具收益低于成本。正确性靠类型检查与 E1 实测。
+
+### E1 走查发现并修复：accept-final 写出与自动检查矛盾的假人工清单
+
+**现象**：page-02 完成验收后，`stages/clean/accepted.json` 的 `checklist.sizeCorrect` 为 `true`，而同页 clean 自动检查的 `size.ok` 为 `false`（1672×941，期望 2048×1152，PRD F-4 的网关尺寸偏差）。manifest 里因此留下一条「人工确认过尺寸正确」的记录，事实相反。
+
+**根因**：`runAcceptFinal` 不传 `checklist`，落到 `clean/accept.ts:41` 与 `pptx/accept.ts:41` 的 `DEFAULT_CHECKLIST`——一组恒 `true` 的默认值。旧流程下 accept-clean 是独立人工门、界面上还有清单可过目（尽管 implement.md 早已记录「勾选不落库」）；本任务把两道验收合一后，最终确认页展示的是自动检查指标、没有逐项勾选框，清单就彻底成了写死的 `true`。属本任务的语义变化，非纯既有缺陷。
+
+**修复（用户 2026-07-27 决策：不写比写假的强）**：`accept-final` 显式传空清单 `NO_MANUAL_CHECKLIST = {}`（schema `z.record(z.string(), z.boolean())` 允许空），如实表示「本步无逐项人工勾选」，验收依据由 note 与自动检查记录承载。**单步 `accept-clean` / `accept-pptx` 的 `DEFAULT_CHECKLIST` 未动**：它们是留给开发者手动调用的命令，不在新流程的人工停点上。
+
+**顺带修**：`note` 在用户未填备注时写成「经最终产物确认统一验收：」，尾随一个空冒号。改为前缀不含冒号、有备注时才以冒号拼接。
+
+**测试**：`slide-run-report.test.ts` 两条断言按新契约改写（清单为 `{}`、note 无尾随冒号），新增 1 例锁定「传入备注时以冒号接在统一前缀之后」。
+
+**注意**：`@cli` 在 desktop 侧别名指向 `../cli/src`，但 electron-vite dev 的 watch 范围不含该外部目录——改 CLI 源码后**必须重启 `pnpm dev`**，否则 main 进程仍跑旧逻辑。
+
+### E1 走查发现并修复：失效瞬态阶段是静默空操作，阶段轨道「复核校验」点了没反应
+
+**现象**（用户实测）：在阶段轨道上点「复核校验」节点，界面切回复核视图并给出正反馈，manifest 一字未改；随后保存改动、点「运行此页」，只重跑 report（attempt 序列 report-006/007/008），mask 及下游一步没动。
+
+**根因**：`validate-review` 是瞬态阶段，不写 manifest（`shared/stages.ts` 顶部注释早已写明 core 的 `SlideStage` 不含它）。`invalidateStageAndDownstream` 拿它匹配 `WorkspaceStageState` 匹配不上，`getDownstreamStages` 也返回空——**静默地什么都不失效**，返回 `invalidated: []`。随后 `startRun("validate-review")` 时全部阶段仍 completed，被幂等规则整段跳过。
+
+类型层没拦住是因为 IPC 两侧各标各的：renderer / preload / `channels.ts` 声明 `RunStage`（含瞬态阶段），main handler 声明 `SlideStage`（不含），中间隔着无运行时校验的 `ipcRenderer.invoke`，编译期谁也拦不住谁。
+
+**修复**：`shared/stages.ts` 新增 `resolveInvalidationTarget`，在 main 的 IPC 边界把界面点选的阶段翻译成可失效的持久阶段——`validate-review → mask`（语义正确：重做文字校验必然要重做 mask），**未知或无替身的阶段一律抛错**。失效是「强制重做」的唯一入口，静默失败必然退化成「点了没反应」。handler 参数类型改为 `string` 并显式收窄，不再假装两侧类型一致。
+
+**影响面**：`SlideToolbar` 的「从阶段重跑」下拉同样由 `RUN_STAGE_SEQUENCE` 生成、也列出「复核校验」，走的是同一条 `rerunFrom` 路径，一并修好。
+
+**测试**：新增 `test/stages.test.ts` 4 例，含「执行序列里每个阶段都能解析出持久失效目标」这条——今后再加瞬态阶段而忘了配替身会直接失败。
+
+**这次走查暴露的连带事实**：第 7 项「回到文本复核」**至今一次都没验到**。page-02 两条验收完成后闸门已清，最终确认页的按钮不在界面上，用户自然改用阶段轨道作为替代入口，才撞出上面这个洞。`handleBackToReview` 本身的实现是对的（失效 `mask`、不自动重跑）。
+
+**修复后实测确认（06:29）**：点「复核校验」节点产出 `mask-002 → clean-003 → pptx-004` 依次真跑（对比修复前同一按钮只产出 `report-006`），`accept-clean` 的失效原因写着「人工要求从该阶段重跑」——正是 `validate-review` 被翻译成 `mask` 后失效沿依赖图传播的痕迹；`review` / `assist-review` 保持 completed，没有多打一次 assist-review 的付费调用。
+
+### E1 走查发现：无法切换工作区，换 deck 只能重启应用（可用性缺口，不在本任务范围）
+
+`DeckEmptyState`（「打开已有 Deck」/「从图片目录创建」）只在 `deckPath === null` 时渲染，一旦打开某个 deck 就再无回到欢迎页或换 deck 的入口——E2 要打开另一个工作区时只能重启 `pnpm dev`。走查中因此多次重启。属既有缺口、非本任务引入，记录待另立任务。
+
+### E1 走查发现并修复：人工失效后会话层盖住耐久层，轨道显示「一片绿」
+
+**现象**（用户实测）：点「回到文本复核」后，磁盘上 `mask` 及下游六个阶段全部转 `stale`（原因齐备、`review`/`assist-review` 正确保留 completed、无新 attempt），阶段轨道却仍是完成态，看不出任何失效。
+
+**根因**：`deriveStageViews` 是「耐久层打底、会话层覆盖」（`stage-view.ts:85-87`），而 `run-done` 刻意**保留** `liveStages`（`run-reducer.ts:124`，卡片轨道要展示本轮结果）。上一轮 run 在 `liveStages` 里留下 `mask/clean/pptx: completed`，`handleBackToReview` 只调了 `clearSessionResult`（清的是 `sessionResults`，另一个东西），于是陈旧的 completed 盖住了刚写下的 stale。`stale` 本有专属芥末黄（`STAGE_DOT_CLASS.stale`），用户根本没机会看到。
+
+`rerunFrom` 没暴露这个问题，只是因为它立即启动 run，新的 `stage-start` 事件会马上覆盖旧值；**不重跑的失效路径就一直挂着旧状态**。
+
+**与前面 7/10 那条不是同一回事**：那次 `accept-clean`/`accept-pptx` 从未被 run 执行过、不在 `liveStages` 里，属刷新时序（`page-done` 后自愈）；本条是 `mask`/`clean`/`pptx` 刚被执行过、正躺在会话层里，不清就永远盖着。
+
+**修复**：`run-reducer.ts` 新增纯函数 `withoutSlideLiveStages`，`run-store` 暴露 `clearLiveStages(slideId)`，两条人工失效路径（`rerunFrom` 与 `handleBackToReview`）在失效成功后一并调用。目标页无会话层状态时返回同一引用，避免无谓重渲染。
+
+**测试**：`run-reducer.test.ts` 新增 4 例，含「run 结束后 liveStages 仍为 completed → 清理后回落耐久层」这条完整复现路径。
 
 ## 遗留缺陷：保存复核不失效下游，改动传不到产物（待另立任务）
 

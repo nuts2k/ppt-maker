@@ -84,3 +84,22 @@ export function orderedReviewBlocks(
 ): readonly TextReviewBlock[] {
   return partitionBlocks(blocks).flatMap((group) => group.blocks);
 }
+
+/**
+ * 一组块中尚未复核的 id —— 分区进度的**唯一口径**。
+ *
+ * 分区归属只看分类与双源比对，人工确认不改变归属：符号块确认后仍是符号块，
+ * 文字块编辑后 `offline_ocr` 与 `ai_text_assist` 两个原始源也不变。所以「这一区
+ * 还剩多少要看」只能由 `reviewStatus` 表达，不能拿 `blocks.length` 顶替。
+ *
+ * 2026-07-27 E1 走查实测：标题徽标当时显示分区总数、折叠摘要显示未复核数，两处
+ * 各写一份 filter 且口径不一。用户确认完一个符号块后看到标题计数纹丝不动，
+ * 判定为「按了没反应」。徽标与摘要此后一律走本函数，不得就地再写 filter。
+ */
+export function unreviewedBlockIds(
+  blocks: readonly TextReviewBlock[],
+): readonly string[] {
+  return blocks
+    .filter((block) => block.reviewStatus === "unreviewed")
+    .map((block) => block.id);
+}
