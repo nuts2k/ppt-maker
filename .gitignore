@@ -8,6 +8,8 @@
 /node_modules/
 **/node_modules/
 **/dist/
+# electron-vite 的输出目录叫 out 而非 dist，与 dist 同为纯构建产物
+**/out/
 **/coverage/
 
 # Native probe build output and generated artifacts.
