@@ -140,3 +140,36 @@ V1 桌面工作台被判定用户体验不合格（无批量执行、无进度/�
 - 阶段 C 从 C1 `lib/review-partition.ts` 起，分区判据必须 import core 的 `compareBlockSources`，勿重写
 - 实现前先读 `DESIGN.md` 与 `.trellis/spec/frontend/`（component-guidelines、state-management、type-safety）
 - 环境已就绪：依赖已装、`~/test/ppttest-2026-07-25.bak-baseline` 为基线备份
+
+
+## Session 3: M4 复核链路简化收尾：E2 兼容性验证、PRD 验收核对与 spec 沉淀
+
+**Date**: 2026-07-28
+**Task**: M4 复核链路简化收尾：E2 兼容性验证、PRD 验收核对与 spec 沉淀
+**Branch**: `main`
+
+### Summary
+
+完成阶段 E 全部六项。E2 验证既有工作区无需迁移（与基线零差异、deck status 完成 2/2、桌面端打开三项人工确认全过、--strict 导出 2 页原生 0 页占位）。E4 逐条核对 PRD 18 条验收标准全部通过，查出三处 PRD 与实现的口径差异：回到文本复核实际失效 mask 而非 review；分类待确认样本仅 1 个块不足以充分验证；验收后 report 不自动补跑（用户表示这块还想进一步调整，留待后续单独讨论）。E5 把 ROADMAP 的 M4 标为已完成，补齐已交付五项与技术结论四条（含 V2「不改 core/cli」约束被 D8 显式解除、放弃 maskParams 调参路线、界面正反馈必须以磁盘状态为准），列出三条已知缺口。E6 沉淀 spec 三处：backend/contracts.md 新增双人工点闸门与瞬态阶段失效场景，guides/silent-failure-thinking-guide.md 新增「界面有反馈但反馈是假的」一类，frontend/state-management.md 新增会话层盖住耐久层条目。验证 397 例全绿，本次无代码改动。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bf8fb00` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
