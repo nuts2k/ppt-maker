@@ -224,11 +224,14 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 ## 阶段 E — 全链路走查与收尾
 
 - [x] E1 全新 deck（重新 `deck init`）跑完整链路：批量处理 → 停 human-edit → 复核 → 继续 → 停最终确认 → 完成 → report 补跑 → 导出（2026-07-27 完成，七项断言全过；暴露并修复 6 个缺陷，见下方各节）
-- [ ] E2 验证既有已完成工作区打开无异常、无需迁移
+- [x] E2 验证既有已完成工作区打开无异常、无需迁移（2026-07-27 完成：CLI 侧与基线零差异 + `deck status` 完成 2/2；桌面端打开 `~/test/ppttest-walkthrough-E2` 三项人工确认全过——无报错无迁移提示、两页 10/10 轨道全绿、复核页与最终确认页数据读得出；严格导出 2 页原生 + 0 页占位）
 - [x] E3 `pnpm format:check && pnpm typecheck && pnpm test && pnpm build` 全绿（**E1 修复后需重跑**；2026-07-27 最新一次：397 例 = core 76 + desktop 229 + cli 92。首次基线 371 例；`doctor` 5 通过 / 1 警告（Node v25）/ 0 失败）
-- [ ] E4 逐条核对 PRD 验收标准四层
-- [ ] E5 更新 `ROADMAP.md` 的 M4 状态与技术结论；记录 D1/D8 对既有约束的解除
-- [ ] E6 按 Phase 3 更新 spec（阶段门语义变更、双源比对判据、合成预览与 PPTX 的公式同源约定）
+- [x] E4 逐条核对 PRD 验收标准四层（2026-07-27 完成，18 条中 17 条有证据、1 条待 E2 人工确认；发现三处 PRD 与实现的口径差异，见下方 E4 一节）
+- [x] E5 更新 `ROADMAP.md` 的 M4 状态与技术结论；记录 D1/D8 对既有约束的解除（2026-07-27 完成：M4 标为已完成、补齐已交付与四条技术结论、列出三条已知缺口、子任务补上两个任务名；顶部状态行与 M5 进入条件同步）
+- [x] E6 按 Phase 3 更新 spec（2026-07-27 完成，三处）：
+  - `backend/contracts.md` 新增场景「双人工点闸门、瞬态阶段失效与双源比对」，7 节完整——含两个停顿点表、accept-final 空清单契约、`resolveInvalidationTarget` 翻译规则、`compareBlockSources` 唯一口径、`pptx-text-style.ts` 公式同源、两条互为反向的 mask 校验规则
+  - `guides/silent-failure-thinking-guide.md` 新增「第二类：界面有反馈，但反馈是假的」——四个实例、三条判据（失效返回空集必须可见 / 会话层谁写谁清 / 宁可不写不写假的）、manifest diff 定位手法；预防清单加 3 条
+  - `frontend/state-management.md` 新增「会话层盖住耐久层」缺陷条目；三处 index 状态同步更新
 
 ### 新会话从这里接（2026-07-27 交接）
 
@@ -239,10 +242,14 @@ cp -R ~/test/ppttest-2026-07-25 ~/test/ppttest-2026-07-25.bak-$(date +%H%M%S)
 **导出还没验**（E1 标题里那个「导出」）。E1 工作区当前 page-02 stale、page-01 停在复核门，`--strict` 会拒绝——这本身是正确行为。建议改用 E2 基线副本验，两页都完整验收过，**不花钱**：
 
 ```bash
-node apps/cli/dist/index.js deck export ~/test/ppttest-walkthrough-E2 --strict --out ~/test/e2-export.pptx
+node apps/cli/dist/index.js deck export ~/test/ppttest-walkthrough-E2 --strict --output ~/test/e2-export.pptx
 ```
 
 导出后用 PowerPoint 打开确认是 2 页原生可编辑。
+
+**导出已验（2026-07-27 晚）**：上述命令通过，输出「导出：2 页原生 + 0 页占位」，产物 `~/test/e2-export.pptx`（3.2 MB）。参数名是 `--output`（`-o`），不是 `--out`——原交接稿写错，已改正。
+
+**E2 的 CLI 侧已验（2026-07-27 晚）**：`diff -rq ~/test/ppttest-2026-07-25.bak-baseline ~/test/ppttest-walkthrough-E2` **零差异**，确认该副本未被任何走查污染；`deck status` 读出「完成 2/2」。**剩桌面端「打开」一项待人工确认**。
 
 **E4 核对时注意两处口径要改**（实现与 PRD 原文不符，以实现为准）：
 
@@ -372,6 +379,48 @@ E2 用**未改动的基线备份** `~/test/ppttest-2026-07-25.bak-baseline` 另�
 **修复**：`run-reducer.ts` 新增纯函数 `withoutSlideLiveStages`，`run-store` 暴露 `clearLiveStages(slideId)`，两条人工失效路径（`rerunFrom` 与 `handleBackToReview`）在失效成功后一并调用。目标页无会话层状态时返回同一引用，避免无谓重渲染。
 
 **测试**：`run-reducer.test.ts` 新增 4 例，含「run 结束后 liveStages 仍为 completed → 清理后回落耐久层」这条完整复现路径。
+
+### E4 验收标准逐条核对（2026-07-27 晚）
+
+PRD `验收标准` 四层共 18 条，**全部通过**（链路层第 5 条的桌面端「打开」已于同日随 E2 人工确认）。**发现三处 PRD 原文与实现不符，均以实现为准**（详见本节末）。
+
+**链路层**
+
+| PRD 条目 | 结论 | 证据 |
+| --- | --- | --- |
+| 停文本复核门而非 mask 错误 | ✓ | E1 第 1 项：两页均 `assist-review: completed` → `mask: pending`，F-11 旧代偿消除 |
+| 一路到 pptx 停最终确认、不停 accept-clean；report 补跑 | ✓（口径 3） | E1 第 3、5 项；report 需点「运行此页」，非自动 |
+| 完成后 accept-clean/accept-pptx 均 completed、备注含统一说明、`deck status` 可读 | ✓ | E1 第 5 项；accept-final 假清单缺陷已在走查中修掉 |
+| 「重做底板」失效 clean 及下游并重跑；「回到文本复核」回到复核界面 | ✓（口径 1） | E1 第 6、7 项；失效的是 `mask` 而非 `review`，且不自动重跑 |
+| 既有工作区无需迁移 | ✓ | CLI 侧与基线零差异、`deck status` 完成 2/2、`schemaVersion`/`workspaceVersion` 均为 1；桌面端打开 E2 副本三项人工确认全过 |
+
+**复核体验层**
+
+| PRD 条目 | 结论 | 证据 |
+| --- | --- | --- |
+| 三分区与各分区计数直接可见 | ✓ | `test/review-partition.test.ts` 用真实快照断言，与 F-9 吻合；E1 实测新 deck 为 36/1/23 与 50/0/45 |
+| 「文字待确认」直读双源差异 | ✓ | `components/review/TextDiffRow.tsx` |
+| 全程仅用键盘完成一页复核 | ✓ | E1 第 2 项逐项实测（C 阶段欠项），期间修掉 IME 组字缺陷 |
+| 「已一致」折叠区一次点击全部通过 | ✓ | `markBlocksReviewedById`，作用域限双源逐字一致的块；批量入口只此一处 |
+| 「分类待确认」列出全部 `object_symbol` | ✓（口径 2） | 样本极薄：E1 那轮两页仅 1 个非 `layout_text` 块 |
+| 当前项高亮清晰、无双层重影 | ✓ | C 阶段用户确认（`focusOn` + 按 scale 反算描边）；`TextBlockOverlay.tsx:215` 块内不渲染任何文本 |
+| `updatedAt` / `manual` 如实反映编辑 | ✓ | E1 第 2 项：page-01 六十块全 reviewed，其中 **15 块**带 `updatedAt` + `manual`，正是 F-6 的反面 |
+
+**最终确认层**：三条均由 E1 第 4 项实测覆盖——合成预览与 PowerPoint 实际 PPTX 一致（换行差异已在界面明示）、预览与滑块对比可切换、pptx 六项与 clean 四组指标可见且 clean 侧标注「无判定阈值」、failed 不阻止完成。
+
+**质量护栏层**
+
+- `LAYOUT_TEXT_MUST_BE_MASKED`：`packages/core/src/text-blocks.ts:583-591`，`severity: "error"`；`test/review-validation.test.ts` 命中与不命中各一例。
+- 新块默认入 mask：`text-blocks.ts:266` `includeInMask: classification === "layout_text"`。
+- `block-045` 类问题可见可一键修正：C13 已在真实工作区实测（本文件 C 阶段一节）。
+
+**工程层**：E3 已全绿（397 例 = core 76 + desktop 229 + cli 92，format/typecheck/build 通过）；前端遵从 DESIGN.md 由 C/D 两阶段实现时对照。
+
+**三处口径差异（以实现为准，PRD 原文需在归档时视为已修订）**
+
+1. **PRD 第 201 行**「『回到文本复核』使 `review` 及下游失效」→ 实际失效 **`mask`**。失效 `review` 会白白再打一次 assist-review 付费调用，理由见阶段 D 落地差异一节；已实测 `review`/`assist-review` 保持 completed。
+2. **PRD 第 210 行**「『分类待确认』列出全部 `object_symbol`」→ 功能成立，但 E1 那轮 assist-review 两页只产出 1 个非 `layout_text` 块（page-01 `block-016`「Q」），**样本量不足以称充分验证**。
+3. **PRD 第 199 行**「验收后 `report` 自动补跑至 completed」→ 实际**不自动**。**用户 2026-07-27 表示这块还想进一步调整，留待后续单独讨论**——本次归档按「以实现为准」记录，不改代码。`STAGE_DEPENDENCIES` 把 report 排在 accept-pptx 之后，验收只写两条 accept 记录，report 由用户点「运行此页」或批量续跑补上（`ReviewPage.tsx:232-234` 注释已写明，与 design §6 收尾一致）。E1 第 5 项即按此实测通过。
 
 ## 遗留缺陷：保存复核不失效下游，改动传不到产物（待另立任务）
 

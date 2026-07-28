@@ -23,7 +23,7 @@ These guides help you **ask the right questions before coding**.
 |-------|---------|-------------|
 | [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
 | [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
-| [静默失败诊断指南](./silent-failure-thinking-guide.md) | 定位「点了没反应」类问题的真实失败点 | 用户报告点击无反馈、卡住、跑没跑不清楚时 |
+| [静默失败诊断指南](./silent-failure-thinking-guide.md) | 定位「点了没反应」与「界面说成功但产物不对」两类问题的真实失败点 | 用户报告点击无反馈、卡住、跑没跑不清楚，或界面状态与磁盘产物对不上时 |
 
 ---
 

@@ -361,3 +361,109 @@ await writeWorkspaceManifest(workspace.path, {
 await invalidateSlideStage({ workspacePath, stage, reason: "人工要求从该阶段重跑" });
 startRun(stage);
 ```
+
+## 场景：双人工点闸门、瞬态阶段失效与双源比对（M4 复核链路简化，2026-07-27 走查验证）
+
+### 1. Scope / Trigger
+
+- 触发条件：新增或修改人工闸门的停顿点与文案、验收记录的写入方式、复核分区判据、任何「失效某阶段」的界面入口，或桌面端任何需要与 PPTX 导出保持一致的换算。
+- 适用范围：`packages/core/src/text-blocks.ts`、`pptx-text-style.ts`、`apps/cli/src/slide/accept-final.ts`、`apps/desktop/src/shared/stages.ts` 与 `shared/gates.ts`。
+- 已由真实代码与端到端走查验证：链路由五个人工门收敛为两个；`validate-review` 的失效曾是静默空操作。
+
+### 2. Signatures
+
+```ts
+// packages/core/src/text-blocks.ts
+export function compareBlockSources(block: TextReviewBlock): BlockSourceTexts;
+export interface BlockSourceTexts {
+  readonly ocr: string | null;      // offline_ocr 来源文本
+  readonly assist: string | null;   // ai_text_assist 来源文本
+  readonly agrees: boolean;
+}
+
+// packages/core/src/pptx-text-style.ts —— CLI 合成与桌面端预览必须共用
+export function fontSizePtFromPx(fontSizePx: number, imageWidth: number): number;
+export function resolveFontSizePt(block: TextReviewBlock, imageWidth: number): number;
+export function toBold(weight): boolean;
+export function toAlign(align): "left" | "center" | "right";
+
+// apps/cli/src/slide/accept-final.ts —— 一次人工动作写两条验收记录
+export function runAcceptFinal(options: {
+  readonly workspacePath: string;
+  readonly acceptedBy?: string;
+  readonly note?: string;
+}): Promise<{ cleanAcceptanceId: string; pptxAcceptanceId: string; autoCheckSummary: string }>;
+
+// apps/desktop/src/shared/stages.ts —— 失效前的阶段翻译，未知阶段抛错
+export function resolveInvalidationTarget(stage: string): RunStage;
+```
+
+### 3. Contracts
+
+**链路只有两个人工停顿点**（此前是五个）：
+
+| 停顿点 | `gate` | 停在哪 | 恢复方式 |
+|---|---|---|---|
+| 文本复核门 | `human-edit` | `assist-review: completed` → `mask: pending` | 复核完点「运行此页」 |
+| 最终产物确认 | `manual` | `pptx: completed` → `accept-pptx: pending` | 「完成」写两条验收记录 |
+
+`accept-clean` **不再单独停顿**，滑块对比降级为最终确认页内的一档视图。闸门中文文案由 `apps/desktop/src/shared/gates.ts` 单点定义——main 的活动日志与 renderer 的即时记录都从这里取，否则同一条事件在刷新前后会出现两种说法。
+
+**`accept-final` 写入契约**：两条记录结构与单步验收完全一致，note 统一前缀 `经最终产物确认统一验收`（用户备注以冒号接在其后，无备注时不留尾随冒号）；**`checklist` 必须为空对象**。单步验收的 `DEFAULT_CHECKLIST` 是一组恒 true 的默认值，照抄会在 manifest 里留下与自动检查矛盾的假人工记录（走查实测：写出的 `sizeCorrect: true` 与同页 `size.ok: false` 直接打架）。已 completed 的验收阶段复用既有 attempt，不追加；clean 成功而 pptx 失败时不回滚，重试只补 pptx 侧。
+
+**验收不自动跑 `report`**：`STAGE_DEPENDENCIES` 把 report 排在 accept-pptx 之后，验收只写两条 accept 记录，report 由用户点「运行此页」或批量续跑补上。
+
+**瞬态阶段的失效必须先翻译**：`RUN_STAGE_SEQUENCE`（执行序列，含 `validate-review`）与 core 的 `SlideStage`（manifest 持久化，不含）是两个集合。用瞬态阶段名调 `invalidateStageAndDownstream` 匹配不到任何 `WorkspaceStageState`，**静默返回空数组**。所有失效入口必须先过 `resolveInvalidationTarget`（`validate-review → mask`），未知阶段或无替身的瞬态阶段一律抛错。
+
+**双源比对判据**：`compareBlockSources` 是分区、diff 展示、测试的**唯一口径**，任何消费方不得自行实现。去除所有空白字符后逐字相等即 `agrees`；**任一来源缺失时 `agrees: false`**——无从比对不等于已确认一致。
+
+**换算公式同源**：桌面端合成预览的字号、粗细、对齐必须调用 `pptx-text-style.ts` 的同一组函数，不得在 renderer 侧重算。预览容器固定 16:9 并让底板拉伸填满：PPTX 把 clean plate 满铺到 13.333×7.5 英寸版面，而真实底板是 1672×941，不强制 16:9 会让块的百分比定位与 PPT 版面对不上。
+
+**`layout_text` 与 `includeInMask` 双向绑定**：`buildFreshBlock` 对 `layout_text` 默认 `includeInMask = true`；校验两条互为反向的 error 规则见下表。因此界面上切换分类必须同步改 `includeInMask`，只改一边必然触发校验失败。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为/错误 |
+|---|---|
+| `classification === "layout_text"` 且 `!includeInMask` | `LAYOUT_TEXT_MUST_BE_MASKED`（error）——文字既留在底板位图又生成文本框，导出即重影 |
+| `includeInMask` 且 `classification !== "layout_text"` | `MASK_REQUIRES_LAYOUT_TEXT`（error） |
+| `resolveInvalidationTarget` 收到未知阶段名 | 抛 `无法失效未知阶段：<stage>` |
+| `resolveInvalidationTarget` 收到无替身的瞬态阶段 | 抛 `瞬态阶段 <stage> 缺少失效替身，无法失效` |
+| 双源任一缺失 | `agrees: false`，归入「文字待确认」而非「已一致」 |
+| 编辑后文本为空串 | 必须移除该块的 `manual` 来源条目——`TextBlockSourceSchema.text` 是 `min(1)`，留空串会被 zod 拒绝写盘 |
+
+### 5. Good / Base / Bad Cases
+
+- Good：全新 deck 批量处理停在 `human-edit`，活动日志写「停在文本复核门：有 N 个版式目标文字待人工复核」；复核完继续跑，一路到 pptx 停最终确认；「完成」后两条 accept 记录齐备且 checklist 为空。
+- Base：既有工作区（`schemaVersion`/`workspaceVersion` 均为 1）无需迁移即可打开并 `--strict` 导出。
+- Bad：文本复核门以「mask 阶段执行失败」的形式表现（旧代偿行为，会诱导用户去点「全部标为已复核」）；桌面端自行实现 diff 或字号换算；失效入口不经翻译直接把界面阶段名传给 IPC。
+
+### 6. Tests Required
+
+- `LAYOUT_TEXT_MUST_BE_MASKED` 命中与不命中各一例；`buildFreshBlock` 三种分类的 `includeInMask` 默认值。
+- `compareBlockSources` 覆盖一致 / 分歧 / 缺一个来源三种情形；分区计数用真实快照夹具断言（夹具须进仓并排除格式化，任务目录归档后路径会失效）。
+- **「执行序列里每个阶段都能解析出失效目标」**——今后新增瞬态阶段而忘配替身会直接失败。
+- `accept-final` 断言 checklist 为空、note 前缀正确、无备注时无尾随冒号。
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+// 界面阶段名直接下发 —— validate-review 匹配不到持久阶段，静默失效 0 个
+await invalidateSlideStage({ workspacePath, stage, reason });
+
+// 桌面端自己算字号 —— 与 CLI 导出口径漂移
+const fontSizePx = block.style.fontSizePx ?? block.bboxPx.height * 0.65;
+```
+
+#### Correct
+
+```ts
+// main 的 IPC 边界统一翻译，未知阶段抛错而非静默放过
+const target = resolveInvalidationTarget(stage);
+await invalidateSlideStage({ workspacePath, stage: target, reason });
+
+// 预览与导出共用 core 的同一份公式
+const fontSizePx = resolveFontSizePt(block, imageWidth) * ptToPx;
+```

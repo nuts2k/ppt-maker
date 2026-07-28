@@ -7,7 +7,7 @@
 | 规范 | 内容 | 状态 |
 |---|---|---|
 | [目录结构](./directory-structure.md) | pnpm workspace、核心包、CLI 和 macOS 原生适配器边界 | M0 已验证 |
-| [跨层契约](./contracts.md) | CLI、OCR JSON、单页工作区、阶段图、16:9 与 PPTX 边界 | M1 部分已验证 |
+| [跨层契约](./contracts.md) | CLI、OCR JSON、单页工作区、阶段图、16:9 与 PPTX 边界、双人工点闸门与瞬态阶段失效 | M1 部分已验证；M4 链路契约已由端到端走查验证 |
 | [错误处理](./error-handling.md) | 稳定错误码、工作区完整性、CLI 退出行为和 Provider 响应校验 | M1 部分已验证 |
 | [质量规范](./quality-guidelines.md) | Node 24、TypeScript、Biome、Vitest 和探针验证 | M0 已验证 |
 | [日志规范](./logging-guidelines.md) | 当前 CLI 输出和后续结构化日志边界 | M0 最小规范 |
