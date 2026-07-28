@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "验收核心是「界面反馈与磁盘产物是否一致」：保存后 manifest 是否真转 stale、验收后 report.json 是否真更新、错误条重跑是否真生效，全部按该指南的对照检查表逐条走"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "本仓无 lint 脚本，质量门是 pnpm format:check / typecheck / test / build，该文件是这套命令与 Node 24 环境要求的权威出处"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "检查 R2 缩短桌面端阶段序列、R5 新增保存副作用后，manifest 契约与阶段图语义未被破坏；旧工作区打开仍正常"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "检查 R5.4 的 clearLiveStages 顺序与 R3 的 stickyIds 生命周期是否符合既有状态约定，避免重犯「会话层盖住耐久层」"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "检查是否出现口径复制：失效判据是否绕开 maskInvalidationProjection 另写字段清单、筛选标签是否绕开 partitionOf 另写判据"}

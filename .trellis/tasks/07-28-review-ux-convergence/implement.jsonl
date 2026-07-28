@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "本任务的三条动因（阶段轨道点了没反应、保存后产物不更新、report 停在 9/10）全是该指南定义的静默失败；R5 新增的失效写入路径与 R1 删除的重跑入口都必须按其检查表逐项确认不再静默"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "R2 改桌面端 RUN_STAGE_SEQUENCE、R5 调用 invalidateStageAndDownstream、R6 改 report 取资产口径，三处都踩在 workspace manifest / 阶段图 / 指纹投影的既有契约边界上，动手前必须确认边界在哪"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "R5 要给 slide:save-review 加返回字段并透传到 renderer，跨 main / preload / renderer 三侧；两侧类型隔着无运行时校验的 ipcRenderer.invoke，编译期互不校验（stages.ts:68-79 的教训）"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "R5 的失效判据必须调用 core 的 maskInvalidationProjection（mask/run.ts:328 已在用同一函数），R3 的筛选标签必须复用 review-partition.ts 的 partitionOf，R6 必须照抄 currentSuccessAsset 口径——三处都是禁止另写一份的单点定义"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "R5.4 要处理会话层 liveStages 盖住耐久层 stale 的问题，该文件的 Common Mistakes 两条正是由 M4 这个真实缺陷沉淀而来；R3 的 stickyIds 会话集合也需符合其局部状态约定"}
