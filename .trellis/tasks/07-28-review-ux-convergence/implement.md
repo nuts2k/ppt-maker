@@ -160,25 +160,30 @@ R5 会真的写 manifest。
 
 依赖阶段 A：删掉重跑菜单前，保存必须已经能把改动传下去。
 
-- [ ] C1 `StageRail.tsx`：删除 `handleStageClick`、`pendingStage` 状态、5 秒超时与
+- [x] C1 `StageRail.tsx`：删除 `handleStageClick`、`pendingStage` 状态、5 秒超时与
       外部点击退出的 effect、待确认提示条；`StageTrack` 不再传 `onStageClick`（R1.1）。
-- [ ] C2 `StageRail` 头部右侧的「点击阶段点位可从该阶段重跑，已完成阶段需确认」提示删除，
-      改为纯状态描述（或直接留空）。
-- [ ] C3 `StageRail` 错误条新增单个「重跑失败阶段」按钮，调 `onRerunFrom(errorStage)`；
+      顺带删掉 `StageTrack` 已无调用方的 `onStageClick` prop 与按钮分支（留着就是死代码）。
+- [x] C2 `StageRail` 头部右侧的「点击阶段点位可从该阶段重跑，已完成阶段需确认」提示删除，
+      改为纯状态描述（或直接留空）。→ 仅在本页执行中时显示「执行中」，其余留空
+- [x] C3 `StageRail` 错误条新增单个「重跑失败阶段」按钮，调 `onRerunFrom(errorStage)`；
       错误详情里「修正后点击上方对应阶段点位即可从该阶段重跑」改写（R1.4）。
-      `errorStage` 为 null 时不渲染该按钮。
-- [ ] C4 `SlideToolbar.tsx`：删除「从阶段重跑 ▾」菜单、`menuOpen` 状态、外部点击 effect、
+      `errorStage` 为 null 时不渲染该按钮。→ 另加 `isRunStage` 校验：失败阶段来自 manifest
+      的任意字符串（可能是已移出序列的 report），不落在执行序列内就不渲染按钮，不做强转
+- [x] C4 `SlideToolbar.tsx`：删除「从阶段重跑 ▾」菜单、`menuOpen` 状态、外部点击 effect、
       `onRerunFrom` prop 及 `RUN_STAGE_SEQUENCE`/`STAGE_LABELS` 导入（R1.2）。
-- [ ] C5 `ReviewPage.tsx`：`SlideToolbar` 的 `onRerunFrom` 透传移除；`rerunFrom` 本身**保留**
+- [x] C5 `ReviewPage.tsx`：`SlideToolbar` 的 `onRerunFrom` 透传移除；`rerunFrom` 本身**保留**
       （`FinalConfirmPage` 的「重做底图」与 C3 的错误条仍在用，R1.6）。
-- [ ] C6 `FinalConfirmPage.tsx`：「重做底板」文案与 tooltip 改写为明说其大概率无效
+- [x] C6 `FinalConfirmPage.tsx`：「重做底板」文案与 tooltip 改写为明说其大概率无效
       （R4.2）；视觉层级降到「回到文本复核」之下（R4.3）。按钮文案统一为「重做底图」
       （PRD 与用户口径），检查同文件内两处空态提示（`:180`、`:193`）的措辞一并对齐。
+      → 「回到文本复核」保持 `button-secondary`；「重做底图」降为文字链接并置于其下，
+      附一句说明其何时才有用；全仓「重做底板」旧称已清零
 
-验证：`pnpm format:check && pnpm typecheck && pnpm test`。
+验证：`pnpm format:check && pnpm typecheck && pnpm test` → 2026-07-29 全绿
+（core 76 / desktop 236 / cli 93）。
 
 真实工作区手测：轨道点位点击无任何反应（AC1）；工具栏无重跑菜单（AC2）；
-人为制造一次 clean 失败，确认错误条按钮能正确重跑（AC3）。
+人为制造一次 clean 失败，确认错误条按钮能正确重跑（AC3）。**留到阶段 E**。
 
 提交：`refactor(desktop): 阶段轨道降为只读，收敛单页执行入口`
 

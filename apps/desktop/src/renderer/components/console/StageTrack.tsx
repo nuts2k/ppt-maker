@@ -1,4 +1,3 @@
-import type { RunStage } from "@shared/stages";
 import {
   STAGE_DOT_CLASS,
   STAGE_STATUS_TEXT,
@@ -7,25 +6,25 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * 阶段轨道 —— 10 个阶段点位横排、以 hairline 连接线串成一条流水线。
+ * 阶段轨道 —— 9 个阶段点位横排、以 hairline 连接线串成一条流水线。
  *
  * 卡片（sm）与单页复核的 StageRail（md）共用同一视觉，唯一差异是点位直径，
  * 保证同一状态在两处的颜色语义完全一致（design.md 3.3 状态色唯一表）。
  * 点位配色一律取 `STAGE_DOT_CLASS`，组件内不得自行拼色。
+ *
+ * **纯展示，点位不可交互。** 曾经支持传 onStageClick 做「从该阶段重跑」，
+ * 但绝大多数点位重跑没有意义，可点击面积远大于有意义的动作面积（见 StageRail 注释）。
  */
 
 interface StageTrackProps {
   views: readonly StageView[];
   /** sm = 8px 点（卡片内），md = 12px 点（单页复核） */
   size?: "sm" | "md";
-  /** 传入后点位可点击（用于「从该阶段重跑」）；不传则为纯展示 */
-  onStageClick?: (stage: RunStage) => void;
 }
 
 export function StageTrack({
   views,
   size = "sm",
-  onStageClick,
 }: StageTrackProps): React.JSX.Element {
   const dotSize = size === "md" ? "h-3 w-3" : "h-2 w-2";
   const dotBase = cn("shrink-0 rounded-full border", dotSize);
@@ -46,19 +45,7 @@ export function StageTrack({
               // 连接线只是视觉，屏幕阅读器读点位即可
               <span aria-hidden="true" className="h-px flex-1 bg-hairline" />
             )}
-            {onStageClick ? (
-              <button
-                type="button"
-                title={tooltip}
-                aria-label={tooltip}
-                onClick={() => {
-                  onStageClick(view.stage);
-                }}
-                className={cn(dotClass, "transition active:opacity-60")}
-              />
-            ) : (
-              <span title={tooltip} className={dotClass} />
-            )}
+            <span title={tooltip} className={dotClass} />
           </li>
         );
       })}

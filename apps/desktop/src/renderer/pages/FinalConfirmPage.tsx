@@ -51,7 +51,7 @@ export interface FinalConfirmPageProps {
   readonly gateSource: "session" | "durable";
   /** 完成：调用方负责调 slide.acceptFinal 并刷新 */
   readonly onComplete: (note: string) => void;
-  /** 重做底板：调用方负责 invalidate(clean) 后重跑 */
+  /** 重做底图：调用方负责 invalidate(clean) 后重跑 */
   readonly onRedoCleanPlate: () => void;
   /** 回到文本复核：调用方负责作废下游产物（invalidate mask）并切视图 */
   readonly onBackToReview: () => void;
@@ -177,7 +177,7 @@ export function FinalConfirmPage({
             ) : (
               <p className="max-w-md text-center text-sm font-medium text-muted">
                 {cleanPlateUrl === null
-                  ? "缺少去字底板，无法合成预览；请用「重做底板」重跑 clean 阶段"
+                  ? "缺少去字底板，无法合成预览；请用「重做底图」重跑 clean 阶段"
                   : "缺少页面尺寸信息，无法合成预览；请确认该页复核产物完整"}
               </p>
             )
@@ -190,7 +190,7 @@ export function FinalConfirmPage({
             </div>
           ) : (
             <p className="max-w-md text-center text-sm font-medium text-muted">
-              缺少原图或去字底板，无法对比；请用「重做底板」重跑 clean 阶段
+              缺少原图或去字底板，无法对比；请用「重做底图」重跑 clean 阶段
             </p>
           )}
         </div>
@@ -261,19 +261,16 @@ export function FinalConfirmPage({
             {submitting ? "提交中…" : "完成"}
           </button>
 
-          <div className="flex flex-col gap-2">
+          {/*
+            两个退回动作的层级刻意不等：文字/分类不对是绝大多数情形，回到文本复核
+            是那条正路；重做底图只在底板本身坏掉时才有用——文本复核内容没改的话，
+            重新生成出来的底板通常和现在这张一样，还要再花一次付费调用。
+            因此它降为文字按钮，排在下面。
+          */}
+          <div className="flex flex-col gap-3">
             <span className="text-sm font-medium text-muted">
               不满意？退回重做
             </span>
-            <button
-              type="button"
-              onClick={onRedoCleanPlate}
-              disabled={actionsDisabled}
-              title="作废当前底板并重新生成，会再次调用付费接口"
-              className={BUTTON_SECONDARY}
-            >
-              重做底板
-            </button>
             <button
               type="button"
               onClick={onBackToReview}
@@ -283,6 +280,21 @@ export function FinalConfirmPage({
             >
               回到文本复核
             </button>
+            <div className="flex flex-col gap-1">
+              <button
+                type="button"
+                onClick={onRedoCleanPlate}
+                disabled={actionsDisabled}
+                title="仅在底板本身明显异常时使用：文字残留、容器被改坏。会再次调用付费接口"
+                className="self-start text-sm text-link underline underline-offset-2 transition active:text-link-active disabled:opacity-40"
+              >
+                重做底图
+              </button>
+              <p className="text-sm leading-relaxed text-muted">
+                只在底板明显异常（文字残留、容器被改坏）时有用。没改过文本复核内容的话，
+                重新生成的底板通常和当前这张一致，且会再花一次付费调用。
+              </p>
+            </div>
           </div>
         </div>
       </aside>

@@ -118,7 +118,7 @@ export function ReviewPage(): React.JSX.Element {
    * 闸门走 run-store 事件、图片走 loadSlide 的一次性快照，两条链路不同步：
    * 进页时 clean 尚未产出，跑完后 workspacePath 未变，加载 effect 不会重跑，
    * 于是最终确认闸门已经就位而底板仍是 null——合成预览会因此空着。
-   * 「重做底板」重跑 clean 拿到新底板，同样依赖这里刷新。
+   * 「重做底图」重跑 clean 拿到新底板，同样依赖这里刷新。
    */
   const prevPageBusy = useRef(false);
   useEffect(() => {
@@ -127,7 +127,7 @@ export function ReviewPage(): React.JSX.Element {
   }, [pageBusy, reloadImages]);
 
   /**
-   * 闸门变化时切换视图态。签名含 source，因此"重做底板 → 再次停在最终确认"也会
+   * 闸门变化时切换视图态。签名含 source，因此"重做底图 → 再次停在最终确认"也会
    * 重新进入确认页；用户手动切回复核后签名不变，不会被强行拉回。
    */
   const gateSignature =
@@ -319,7 +319,7 @@ export function ReviewPage(): React.JSX.Element {
   /**
    * 最终确认页的「回到文本复核」：作废下游产物后切回复核，但**不立即重跑**。
    *
-   * 与「重做底板」不同，用户此时还没改任何文字，先跑一遍毫无意义；等他改完保存
+   * 与「重做底图」不同，用户此时还没改任何文字，先跑一遍毫无意义；等他改完保存
    * 再点「运行此页」，断点续跑会从 validate-review 起把改动带到 mask/clean/pptx。
    *
    * 失效点取 `mask` 而非 design §4.3 写的 `review`：要的是「让复核改动能传到下游」，
@@ -405,7 +405,6 @@ export function ReviewPage(): React.JSX.Element {
         onViewModeChange={setViewMode}
         onSave={() => void handleSave()}
         onRunSlide={() => startRun()}
-        onRerunFrom={rerunFrom}
         onNextTodo={handleNextTodo}
       />
 
