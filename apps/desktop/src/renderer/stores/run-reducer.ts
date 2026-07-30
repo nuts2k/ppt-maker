@@ -105,6 +105,10 @@ export function applyRunEvent(
         currentPageLabel: null,
         currentStage: null,
         stageStartedAt: null,
+        liveStages: withoutRunningLiveStages(
+          snapshot.liveStages,
+          event.slideId,
+        ),
         sessionResults: {
           ...snapshot.sessionResults,
           [event.slideId]: {
@@ -151,6 +155,42 @@ function withLiveStage(
   return {
     ...liveStages,
     [slideId]: { ...current, [stage]: status },
+  };
+}
+
+/**
+ * 一页收尾时撤掉所有仍挂在 `running` 的阶段，让它们回落到 manifest 耐久层。
+ *
+ * `stage-start` 与 `stage-complete` 并不成对：`runSlideRunFrom` 只在阶段**真的
+ * 执行过**时回调 `onStageComplete`，而「起了但没完成」在正常流程里比失败常见得多——
+ *
+ * - 停人工门：`accept-pptx` 起了就 return `gate: "manual"`；`accept-clean` 更是
+ *   刻意空转（design §3.2 把底板验收并进最终确认），两者都没有 complete 回调；
+ * - 阶段失败：异常被收敛成 `gate: "error"` 由 `page-done` 带 `stoppedAt` 报出，
+ *   同样没有 complete 回调。
+ *
+ * 会话层覆盖耐久层，于是这些阶段就永远停在「执行中」。2026-07-29 阶段 E 走查实测
+ * 两处：clean 连接失败后错误条已写 `clean · UNKNOWN_ERROR`，轨道却还是「生成干净
+ * 底图 · 执行中」；跑到最终确认门停下后，磁盘上 accept-clean 是 stale，轨道写的却是
+ * 「验收底图 · 执行中」。都与「磁盘 stale、轨道一片绿」同源。
+ *
+ * `LiveStageStatus` 只有 `running | completed`——失败与失效归耐久层所有，会话层
+ * 补不出，只能撤掉这条覆盖。判据用「page-done 时还 running」而不是「是不是失败」：
+ * 这一页的执行已经结束，它上面不可能再有任何阶段在跑。同轮 `completed` 的阶段保留，
+ * 卡片轨道仍要展示本轮结果。
+ */
+function withoutRunningLiveStages(
+  liveStages: Readonly<Record<string, LiveStageMap>>,
+  slideId: string,
+): Readonly<Record<string, LiveStageMap>> {
+  const current = liveStages[slideId];
+  if (current === undefined) return liveStages;
+  const entries = Object.entries(current) as [RunStage, LiveStageStatus][];
+  const kept = entries.filter(([, status]) => status !== "running");
+  if (kept.length === entries.length) return liveStages;
+  return {
+    ...liveStages,
+    [slideId]: Object.fromEntries(kept) as LiveStageMap,
   };
 }
 

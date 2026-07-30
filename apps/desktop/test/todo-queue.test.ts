@@ -20,6 +20,10 @@ interface SlideFixture {
   readonly removed?: boolean;
   /** 标记为 completed 的执行阶段，其余为 pending */
   readonly completed?: readonly RunStage[];
+  /** 逐阶段覆盖状态（如失效链），优先于 `completed` */
+  readonly stageStatuses?: Readonly<
+    Partial<Record<RunStage, SlideStageDetail["status"]>>
+  >;
   readonly lastError?: SlideLastError;
   /** 待人工复核的版式文字块数，默认 0 */
   readonly pendingTextReview?: number;
@@ -29,7 +33,9 @@ function makeSlide(fixture: SlideFixture): SlideDetail {
   const completed = new Set<string>(fixture.completed ?? []);
   const stages: SlideStageDetail[] = RUN_STAGE_SEQUENCE.map((stage) => ({
     stage,
-    status: completed.has(stage) ? "completed" : "pending",
+    status:
+      fixture.stageStatuses?.[stage] ??
+      (completed.has(stage) ? "completed" : "pending"),
   }));
   return {
     slideId: `slide-${fixture.pageLabel}`,
@@ -132,6 +138,36 @@ describe("deriveTodoQueue 四组判定", () => {
       "阶段「生成干净底图」执行中断",
       "阶段「生成 PPTX」上游已变更，需重跑",
     ]);
+  });
+
+  /*
+   * CLI `computeProgress` 的 currentStage/stageStatus 是错位的一对：前者是最后一个
+   * **已完成**的阶段，后者取它**下一个**阶段的失败态。照字面拼就成了
+   * 「阶段「AI 辅助复核」上游已变更」，而 assist-review 是 completed，真失效的是 mask
+   * （2026-07-29 阶段 E 走查实测，与同页控制台卡片的措辞对不上）。
+   */
+  it("文案指名真正失效的阶段，而不是 currentStage 里那个已完成的", () => {
+    const queue = deriveTodoQueue(
+      [
+        makeSlide({
+          pageLabel: "page-01",
+          currentStage: "assist-review",
+          stageStatus: "stale",
+          stageStatuses: {
+            ocr: "completed",
+            review: "completed",
+            "assist-review": "completed",
+            mask: "stale",
+            clean: "stale",
+          },
+        }),
+      ],
+      {},
+    );
+
+    expect(queue.groups[0]?.items[0]?.reason).toBe(
+      "阶段「生成遮罩」上游已变更，需重跑",
+    );
   });
 
   it("会话层 validation-failed 归入需修数据错误组", () => {

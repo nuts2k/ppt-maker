@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { SlideStageDetail } from "../src/main/ipc/channels.js";
 import {
+  blockingStageView,
   completedStageCount,
   currentStageView,
   deriveStageViews,
@@ -116,6 +117,42 @@ describe("completedStageCount / hasFailingStage", () => {
       review: "running",
     });
     expect(hasFailingStage(views)).toBe(false);
+  });
+
+  /*
+   * 卡片错误条要指名出问题的那个阶段。用 currentStageView 会指到它前面的 pending 上，
+   * 2026-07-29 阶段 E 走查实测：page-02 的 mask 及下游已失效，卡片却写「阶段
+   * 「复核校验」执行失败」——阶段名与状态词双错。
+   */
+  it("blockingStageView 取失效的那个阶段，而不是它前面的 pending", () => {
+    const views = deriveStageViews(
+      makeStages({
+        ocr: "completed",
+        review: "completed",
+        "assist-review": "completed",
+        mask: "stale",
+        clean: "stale",
+      }),
+      undefined,
+    );
+    expect(currentStageView(views)?.stage).toBe("validate-review");
+    expect(blockingStageView(views)?.stage).toBe("mask");
+    expect(blockingStageView(views)?.status).toBe("stale");
+  });
+
+  it("blockingStageView 让真失败排在失效前面", () => {
+    const views = deriveStageViews(
+      makeStages({ ocr: "stale", mask: "failed" }),
+      undefined,
+    );
+    expect(blockingStageView(views)?.stage).toBe("mask");
+  });
+
+  it("blockingStageView 无失败无失效时返回 null", () => {
+    const views = deriveStageViews(makeStages({ ocr: "completed" }), {
+      review: "running",
+    });
+    expect(blockingStageView(views)).toBe(null);
   });
 });
 

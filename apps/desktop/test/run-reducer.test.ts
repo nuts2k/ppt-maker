@@ -209,6 +209,79 @@ describe("applyRunEvent 停止与失败", () => {
     expect(snapshot.sessionResults.s1?.stoppedAt).toBe("mask");
   });
 
+  /*
+   * stage-start 与 stage-complete 不成对：失败阶段与人工门阶段都只有 start。
+   * 不撤掉这条会话层覆盖，轨道就会在错误条已显示 `clean · UNKNOWN_ERROR` 的同一屏上
+   * 继续写「生成干净底图 · 执行中」（2026-07-29 阶段 E 走查实测）。
+   */
+  it("失败页的 page-done 撤掉停在 running 的那个阶段，让展示回落到 manifest", () => {
+    const snapshot = replay([
+      { kind: "run-start", total: 1, slideIds: ["s1"] },
+      {
+        kind: "page-start",
+        slideId: "s1",
+        pageLabel: "page-01",
+        index: 1,
+        total: 1,
+      },
+      { kind: "stage-start", slideId: "s1", stage: "mask", at: "t" },
+      {
+        kind: "stage-complete",
+        slideId: "s1",
+        stage: "mask",
+        at: "t",
+        durationMs: 10,
+      },
+      { kind: "stage-start", slideId: "s1", stage: "clean", at: "t" },
+      {
+        kind: "page-done",
+        slideId: "s1",
+        gate: "error",
+        stoppedAt: "clean",
+        message: "Connection error.",
+        error: { code: "UNKNOWN_ERROR", message: "Connection error." },
+      },
+    ]);
+    // 同轮成功的 mask 留着——卡片轨道仍要展示本轮结果，只有说谎的那条被撤
+    expect(snapshot.liveStages.s1).toEqual({ mask: "completed" });
+  });
+
+  /*
+   * 人工门是正常流程而非异常：accept-clean 刻意空转、accept-pptx 起了就 return，
+   * 两者都只有 stage-start。留着这两条 running，磁盘上明明是 stale 的「验收底图」
+   * 会在轨道上写「执行中」（2026-07-29 阶段 E 走查实测）。
+   */
+  it("停在人工门的 page-done 同样撤掉 running，只留本轮的 completed", () => {
+    const snapshot = replay([
+      { kind: "run-start", total: 1, slideIds: ["s1"] },
+      {
+        kind: "page-start",
+        slideId: "s1",
+        pageLabel: "page-01",
+        index: 1,
+        total: 1,
+      },
+      { kind: "stage-start", slideId: "s1", stage: "pptx", at: "t" },
+      {
+        kind: "stage-complete",
+        slideId: "s1",
+        stage: "pptx",
+        at: "t",
+        durationMs: 10,
+      },
+      { kind: "stage-start", slideId: "s1", stage: "accept-pptx", at: "t" },
+      {
+        kind: "page-done",
+        slideId: "s1",
+        gate: "manual",
+        stoppedAt: "accept-pptx",
+        message: "等待最终确认",
+        error: null,
+      },
+    ]);
+    expect(snapshot.liveStages.s1).toEqual({ pptx: "completed" });
+  });
+
   it("page-start 的 total 随运行中追加入队而刷新", () => {
     const snapshot = replay([
       { kind: "run-start", total: 1, slideIds: ["s1"] },

@@ -1,11 +1,11 @@
 import { stageLabel } from "@shared/stages";
 import { useEffect, useMemo, useState } from "react";
 import {
+  blockingStageView,
   completedStageCount,
   currentStageView,
   deriveStageViews,
   elapsedSince,
-  hasFailingStage,
   STAGE_STATUS_TEXT,
 } from "@/lib/stage-view";
 import { cn } from "@/lib/utils";
@@ -74,7 +74,8 @@ export function SlideCard({ slide }: SlideCardProps): React.JSX.Element {
     slide.slideId === currentSlideId && runStatus !== "idle";
   const doneCount = completedStageCount(views);
   const current = currentStageView(views);
-  const failed = slide.lastError !== null || hasFailingStage(views);
+  const blocking = blockingStageView(views);
+  const failed = slide.lastError !== null || blocking !== null;
 
   const statusText = buildStatusText({
     isRunningThisSlide,
@@ -86,10 +87,20 @@ export function SlideCard({ slide }: SlideCardProps): React.JSX.Element {
     current,
   });
 
+  /*
+   * 错误条指名的是**出问题的那个阶段**（blocking），不是「当前阶段」（current）：
+   * current 取第一个未完成的阶段，失效场景下往往落在它前面的某个 pending 上。
+   *
+   * 「失效」也不等于「失败」：阶段 A 起，保存复核内容与「回到文本复核」都会按粒度
+   * 失效下游，stale 从此是常规路径而非故障，写成「执行失败」会把一次正常的
+   * 「改完了、重跑一下」报成红色故障。措辞与待办队列的 `TODO_REASON_TEXT` 对齐。
+   */
   const errorText = failed
     ? slide.lastError !== null
       ? `${slide.lastError.code}: ${slide.lastError.message}`
-      : `阶段「${current?.label ?? slide.currentStage}」执行失败，需重跑`
+      : `阶段「${blocking?.label ?? slide.currentStage}」${
+          blocking?.status === "stale" ? "上游已变更" : "执行失败"
+        }，需重跑`
     : null;
 
   function handleOpen(): void {

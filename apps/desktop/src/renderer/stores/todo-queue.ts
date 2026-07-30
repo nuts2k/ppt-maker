@@ -27,6 +27,7 @@
 import type { SlideDetail } from "../../main/ipc/channels.js";
 import { stageLabel } from "../../shared/stages.js";
 import { awaitingFinalConfirm, stageStatusOf } from "../lib/accept-gate.js";
+import { blockingStageView, deriveStageViews } from "../lib/stage-view.js";
 import type { SessionRunResult } from "./run-types.js";
 
 export type TodoGroup =
@@ -94,12 +95,23 @@ const HUMAN_EDIT_GATE = "human-edit";
 /** pageLabel 自然序比较（page-2 < page-10） */
 const pageLabelCollator = new Intl.Collator("en", { numeric: true });
 
+/*
+ * 文案里要指名**出问题的那个阶段**，不能用 `slide.currentStage`。
+ *
+ * CLI `computeProgress` 的这对字段是错位的：`currentStage` 是**最后一个已完成**的
+ * 阶段，`stageStatus` 却取**它下一个**阶段的失败态。直接拼起来就成了
+ * 「阶段「AI 辅助复核」上游已变更」——而 assist-review 明明是 completed，
+ * 真正失效的是它后面的 mask（2026-07-29 阶段 E 走查实测，同页的控制台卡片写的是
+ * 「生成遮罩」，两处对不上）。改从 `slide.stages` 自己找那个阶段，与卡片同源。
+ */
 function failedReason(slide: SlideDetail): string {
   if (slide.lastError !== null) {
     return `${slide.lastError.code}: ${slide.lastError.message}`;
   }
-  const text = FAILING_STATUS_TEXT[slide.stageStatus] ?? "需重跑";
-  return `阶段「${stageLabel(slide.currentStage)}」${text}`;
+  const blocking = blockingStageView(deriveStageViews(slide, undefined));
+  const status = blocking?.status ?? slide.stageStatus;
+  const text = FAILING_STATUS_TEXT[status] ?? "需重跑";
+  return `阶段「${blocking?.label ?? stageLabel(slide.currentStage)}」${text}`;
 }
 
 /**

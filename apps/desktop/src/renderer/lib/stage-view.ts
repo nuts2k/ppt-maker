@@ -114,11 +114,29 @@ export function completedStageCount(views: readonly StageView[]): number {
 
 /** 该页是否处于需要用户处理的失败态（含中断/失效） */
 export function hasFailingStage(views: readonly StageView[]): boolean {
-  return views.some(
-    (view) =>
-      view.status === "failed" ||
-      view.status === "interrupted" ||
-      view.status === "stale",
+  return blockingStageView(views) !== null;
+}
+
+/**
+ * 需要用户处理的那一个阶段：真失败优先，其次才是失效。
+ *
+ * 不能用 `currentStageView` 顶替——它取的是「第一个未完成」，在
+ * `completed, completed, pending, …, stale` 这种常见形态下会指到那个 pending 上，
+ * 于是卡片错误条既报错了阶段名、又把 stale 说成「执行失败」（2026-07-29 阶段 E
+ * 走查实测：page-02 的 mask 及下游已失效，卡片写的却是「阶段「复核校验」执行失败」）。
+ *
+ * `failed` / `interrupted` 排在 `stale` 前：一页同时有真失败与失效时，用户要先看见
+ * 失败的那个——失效只要重跑，失败得先修。
+ */
+export function blockingStageView(
+  views: readonly StageView[],
+): StageView | null {
+  return (
+    views.find(
+      (view) => view.status === "failed" || view.status === "interrupted",
+    ) ??
+    views.find((view) => view.status === "stale") ??
+    null
   );
 }
 
