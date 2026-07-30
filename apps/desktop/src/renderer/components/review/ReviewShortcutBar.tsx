@@ -21,6 +21,7 @@ const SHORTCUTS: ReadonlyArray<{
   { keys: "直接打字", hint: "编辑当前项文字" },
   { keys: "⇧Enter", hint: "换行" },
   { keys: "Enter", hint: "标记已复核并前进" },
+  { keys: "⌘↓", hint: "下一个未复核项" },
   { keys: "⌥1", hint: "改为版式文字" },
   { keys: "⌥2", hint: "改为对象符号" },
   { keys: "⌘S", hint: "保存" },

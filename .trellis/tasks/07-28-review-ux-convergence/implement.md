@@ -191,37 +191,42 @@ R5 会真的写 manifest。
 
 本阶段最大，且是用户痛感最强的一块。独立于 A/B/C。
 
-- [ ] D1 新增 `renderer/lib/review-filter.ts`（design §6.1 的导出清单）。
+- [x] D1 新增 `renderer/lib/review-filter.ts`（design §6.1 的导出清单）。
       `matchesFilter` 复用 `review-partition.ts` 的 `partitionOf`，不复制判据。
-- [ ] D2 `review-filter.test.ts`：覆盖 `matchesFilter` 五档、`filterCounts` 计数、
-      `defaultFilter` 三种情形、`nextUnreviewedId` 的正常/回绕/无结果。
-- [ ] D3 `review-partition.ts` 瘦身：删除 `partitionBlocks` / `REVIEW_PARTITION_ORDER` /
+      `ReviewEntryIntent` 也定义在此。
+- [x] D2 `review-filter.test.ts`：覆盖 `matchesFilter` 五档、`filterCounts` 计数、
+      `defaultFilter` 三种情形、`nextUnreviewedId` 的正常/回绕/无结果。→ 14 例
+- [x] D3 `review-partition.ts` 瘦身：删除 `partitionBlocks` / `REVIEW_PARTITION_ORDER` /
       `ReviewPartitionGroup` / `orderedReviewBlocks`；保留 `partitionOf` /
       `REVIEW_PARTITION_LABELS` / `unreviewedBlockIds`。同步改 `review-partition.test.ts`。
       文件头注释改写：分区已不是列表结构，只是每项的标签。
-- [ ] D4 `review-keyboard.ts`：`ReviewKeyAction` 新增 `{ kind: "next-unreviewed" }`，
+      → 测试里 page-01/page-02 的真实分区计数锚点改用 `partitionOf` 累加后**留住**
+- [x] D4 `review-keyboard.ts`：`ReviewKeyAction` 新增 `{ kind: "next-unreviewed" }`，
       判定 `⌘ArrowDown`。**必须排在 `metaKey` 一律 passthrough 的分支之前**，
       且只截获这一个组合，其余 ⌘ 组合继续放行（design §6.4）。
       输入法组字放行保持在最前，不得改动。
-- [ ] D5 `review-keyboard.test.ts` 补例：⌘↓ 命中、⌘S 仍放行、组字期间 ⌘↓ 也放行。
-- [ ] D6 `BlockListPanel.tsx` 重构：删除 `PartitionSection`；顶部渲染筛选条（五档 + 计数）；
+- [x] D5 `review-keyboard.test.ts` 补例：⌘↓ 命中、⌘S 仍放行、组字期间 ⌘↓ 也放行。
+- [x] D6 `BlockListPanel.tsx` 重构：删除 `PartitionSection`；顶部渲染筛选条（五档 + 计数）；
       主体单一 `<ul>` 直接 `blocks.filter(...).map(...)`，**不排序、不分组**（R3.1）。
       文件头注释写明「列表顺序恒等于 blocks 数组顺序」这条不变量（design §6.2）。
-- [ ] D7 `ReviewRow` 调整：分区标签改为项内徽标（`partitionOf` 派生）；
+- [x] D7 `ReviewRow` 调整：分区标签改为项内徽标（`partitionOf` 派生）；
       正文按标签选择 `TextDiffRow` / `ClassificationRow` / 只读段落（既有逻辑，判据来源不变）；
       新增「已修改」标记（`updatedAt !== null`，R3.7）；已复核淡化态。
-- [ ] D8 `stickyIds` 会话集合（design §6.3）：标记已复核时加入；切筛选、切页时清空。
-- [ ] D9 `moveBy` 推进域改为当前可见集合；删除跨分区自动展开逻辑。
-- [ ] D10 「跳到下一个未复核项」接线：调 `nextUnreviewedId`，返回 null 时给明确提示
+- [x] D8 `stickyIds` 会话集合（design §6.3）：标记已复核时加入；切筛选、切页时清空。
+      → 改分类（含 ⌥1/⌥2）也加入，否则改完分类的项会当场退出当前分区档
+- [x] D9 `moveBy` 推进域改为当前可见集合；删除跨分区自动展开逻辑。
+- [x] D10 「跳到下一个未复核项」接线：调 `nextUnreviewedId`，返回 null 时给明确提示
       （「当前筛选下已无未复核项」），不得静默失败（AC9）。
-- [ ] D11 「全部通过」迁移：仅在筛选为「已一致」时出现，作用于该档下的未复核项（R3.8）。
-- [ ] D12 `ReviewPage.tsx`：新增 `entryIntent` 状态（默认 `"sweep"`）；
+      → 新增 `onNotice` prop 把提示交给 ReviewPage 的通知条，面板本身仍不持有 UI 状态
+- [x] D11 「全部通过」迁移：仅在筛选为「已一致」时出现，作用于该档下的未复核项（R3.8）。
+- [x] D12 `ReviewPage.tsx`：新增 `entryIntent` 状态（默认 `"sweep"`）；
       `handleBackToReview` 置 `"targeted"`；`slideId` 变化时复位。透传给 `BlockListPanel`（R3.6）。
-- [ ] D13 `ReviewShortcutBar.tsx` 更新键位说明，加入 ⌘↓。
-- [ ] D14 检查 `ReviewPage.tsx:158-168` 的「自动选中首项」effect：
+- [x] D13 `ReviewShortcutBar.tsx` 更新键位说明，加入 ⌘↓。
+- [x] D14 检查 `ReviewPage.tsx:158-168` 的「自动选中首项」effect：
       它现在依赖 `orderedReviewBlocks`（D3 已删），改为取 `blocks[0]`。
 
-验证：`pnpm format:check && pnpm typecheck && pnpm test`。
+验证：`pnpm format:check && pnpm typecheck && pnpm test` → 2026-07-29 全绿
+（core 76 / desktop 249 / cli 93）。
 
 真实工作区手测（逐条对应验收标准）：
 

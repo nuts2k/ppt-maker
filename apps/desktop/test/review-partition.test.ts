@@ -16,11 +16,9 @@ import {
 } from "@ppt-maker/core";
 import { describe, expect, it } from "vitest";
 import {
-  orderedReviewBlocks,
-  partitionBlocks,
   partitionOf,
   REVIEW_PARTITION_LABELS,
-  REVIEW_PARTITION_ORDER,
+  type ReviewPartition,
   unreviewedBlockIds,
 } from "../src/renderer/lib/review-partition.js";
 
@@ -91,13 +89,16 @@ function assistSource(text: string): TextReviewBlock["sources"][number] {
   };
 }
 
-function countByPartition(blocks: readonly TextReviewBlock[]) {
-  return Object.fromEntries(
-    partitionBlocks(blocks).map((group) => [
-      group.partition,
-      group.blocks.length,
-    ]),
-  );
+function countByPartition(
+  blocks: readonly TextReviewBlock[],
+): Record<ReviewPartition, number> {
+  const counts: Record<ReviewPartition, number> = {
+    "text-pending": 0,
+    "classification-pending": 0,
+    agreed: 0,
+  };
+  for (const item of blocks) counts[partitionOf(item)] += 1;
+  return counts;
 }
 
 describe("partitionOf", () => {
@@ -143,28 +144,9 @@ describe("partitionOf", () => {
   });
 });
 
-describe("partitionBlocks", () => {
-  it("空文档仍返回三组，计数为 0（界面结构不随数据变形）", () => {
-    const groups = partitionBlocks([]);
-    expect(groups.map((group) => group.partition)).toEqual([
-      ...REVIEW_PARTITION_ORDER,
-    ]);
-    expect(groups.every((group) => group.blocks.length === 0)).toBe(true);
-  });
-
-  it("分区内保持输入顺序（存储顺序即阅读顺序）", () => {
-    const blocks = [
-      block("b1", "layout_text", [ocrSource("甲"), assistSource("乙")]),
-      block("b2", "object_integrated_symbol", []),
-      block("b3", "layout_text", [ocrSource("丙"), assistSource("丁")]),
-      block("b4", "layout_text", [ocrSource("戊"), assistSource("戊")]),
-    ];
-    const groups = partitionBlocks(blocks);
-    expect(groups[0]?.blocks.map((item) => item.id)).toEqual(["b1", "b3"]);
-    expect(groups[1]?.blocks.map((item) => item.id)).toEqual(["b2"]);
-    expect(groups[2]?.blocks.map((item) => item.id)).toEqual(["b4"]);
-  });
-
+// 分区不再是列表结构（partitionBlocks / orderedReviewBlocks 已随 07-28 任务删除），
+// 但真实数据的分区计数仍是判据唯一的回归锚点，必须留住。
+describe("真实数据的分区计数", () => {
   it("page-01 真实数据：文字待确认 25 / 分类待确认 16 / 已一致 19", () => {
     const blocks = loadFixtureBlocks("page-01.json");
     expect(blocks.length).toBe(60);
@@ -186,39 +168,13 @@ describe("partitionBlocks", () => {
   });
 });
 
-describe("orderedReviewBlocks", () => {
-  it("不丢块也不重复：长度等于输入，id 集合相同", () => {
-    const blocks = loadFixtureBlocks("page-02.json");
-    const ordered = orderedReviewBlocks(blocks);
-    expect(ordered.length).toBe(blocks.length);
-    expect(new Set(ordered.map((item) => item.id)).size).toBe(blocks.length);
-  });
-
-  it("分区连续：page-02 前 45 项为文字待确认、次 18 项为分类待确认、末 32 项为已一致", () => {
-    const ordered = orderedReviewBlocks(loadFixtureBlocks("page-02.json"));
-    const partitions = ordered.map(partitionOf);
-    expect(new Set(partitions.slice(0, 45))).toEqual(new Set(["text-pending"]));
-    expect(new Set(partitions.slice(45, 63))).toEqual(
-      new Set(["classification-pending"]),
-    );
-    expect(new Set(partitions.slice(63))).toEqual(new Set(["agreed"]));
-  });
-
-  it("与 partitionBlocks 同源，保证列表顺序与键盘推进顺序一致", () => {
-    const blocks = loadFixtureBlocks("page-01.json");
-    expect(orderedReviewBlocks(blocks).map((item) => item.id)).toEqual(
-      partitionBlocks(blocks).flatMap((group) =>
-        group.blocks.map((item) => item.id),
-      ),
-    );
-  });
-});
-
 describe("REVIEW_PARTITION_LABELS", () => {
-  it("三分区都有中文标题", () => {
-    expect(
-      REVIEW_PARTITION_ORDER.map((key) => REVIEW_PARTITION_LABELS[key]),
-    ).toEqual(["文字待确认", "分类待确认", "已一致"]);
+  it("三分区都有中文标题（现作为每项的徽标文字）", () => {
+    expect(REVIEW_PARTITION_LABELS).toEqual({
+      "text-pending": "文字待确认",
+      "classification-pending": "分类待确认",
+      agreed: "已一致",
+    });
   });
 });
 

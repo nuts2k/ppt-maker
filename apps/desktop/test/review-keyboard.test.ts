@@ -95,6 +95,36 @@ describe("放行边界", () => {
   });
 });
 
+describe("⌘↓ 跳到下一个未复核项", () => {
+  it("⌘↓ / Ctrl↓ 命中", () => {
+    expect(press({ key: "ArrowDown", metaKey: true })).toEqual({
+      kind: "next-unreviewed",
+    });
+    expect(press({ key: "ArrowDown", ctrlKey: true })).toEqual({
+      kind: "next-unreviewed",
+    });
+  });
+
+  it("只截获这一个组合：⌘S 仍然放行", () => {
+    expect(press({ key: "s", code: "KeyS", metaKey: true })).toEqual({
+      kind: "passthrough",
+    });
+    expect(press({ key: "ArrowUp", metaKey: true })).toEqual({
+      kind: "passthrough",
+    });
+  });
+
+  it("组字期间 ⌘↓ 也放行——组字判定始终在最前", () => {
+    expect(
+      press({ key: "ArrowDown", metaKey: true, isComposing: true }),
+    ).toEqual({ kind: "passthrough" });
+  });
+
+  it("不带修饰键的 ↓ 仍是逐项推进", () => {
+    expect(press({ key: "ArrowDown" })).toEqual({ kind: "move", delta: 1 });
+  });
+});
+
 describe("输入法组字期间一律放行（E1 走查实测缺陷）", () => {
   it("↓/↑ 归输入法选字，不推进列表", () => {
     expect(press({ key: "ArrowDown", isComposing: true })).toEqual({

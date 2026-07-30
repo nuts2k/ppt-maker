@@ -10,7 +10,7 @@ import {
 } from "@/components/slide/SlideToolbar";
 import { StageRail } from "@/components/slide/StageRail";
 import { deriveFinalGate } from "@/lib/accept-gate";
-import { orderedReviewBlocks } from "@/lib/review-partition";
+import type { ReviewEntryIntent } from "@/lib/review-filter";
 import { countUnreviewed } from "@/lib/review-status";
 import { adjacentSlides } from "@/lib/slide-nav";
 import { cn } from "@/lib/utils";
@@ -97,6 +97,13 @@ export function ReviewPage(): React.JSX.Element {
   );
 
   const [viewMode, setViewMode] = useState<SlideViewMode>("review");
+  /**
+   * 进入复核列表的意图，决定筛选默认停在哪一档（design §6.5）。
+   *
+   * 默认 `sweep`（扫一遍，停在「未复核」）；从最终确认页点「回到文本复核」时置
+   * `targeted`（停在「全部」）；切页复位。
+   */
+  const [entryIntent, setEntryIntent] = useState<ReviewEntryIntent>("sweep");
   const [submitting, setSubmitting] = useState(false);
   const [notice, setNotice] = useState<{
     readonly ok: boolean;
@@ -111,6 +118,12 @@ export function ReviewPage(): React.JSX.Element {
     void loadSlide(workspacePath);
     return () => reset();
   }, [workspacePath, loadSlide, reset]);
+
+  // 切页即回到「扫一遍」的心态：上一页的定点回访意图不该跟着走
+  // biome-ignore lint/correctness/useExhaustiveDependencies: slideId 在这里是触发器而非被读取的值
+  useEffect(() => {
+    setEntryIntent("sweep");
+  }, [slideId]);
 
   /**
    * 本页执行结束（pageBusy 由 true 落回 false）时重载产物图。
@@ -150,10 +163,10 @@ export function ReviewPage(): React.JSX.Element {
   const unreviewedCount = countUnreviewed(blocks);
 
   /**
-   * 键盘流需要一个起点：文档就绪后自动选中三分区展平顺序的第一项。
+   * 键盘流需要一个起点：文档就绪后自动选中文档顺序的第一项。
    *
-   * 依赖 slideId 而非 blocks，否则每次编辑写回都会把焦点弹回首项。当前项被删除
-   * 后 selectedBlockId 会指向不存在的块，此时同样回落到首项。
+   * 只在当前项缺失或已不存在时才落子，否则每次编辑写回都会把焦点弹回首项。
+   * 取 `blocks[0]` 而非展平序——列表顺序现在恒等于 `blocks` 数组顺序。
    */
   useEffect(() => {
     if (blocks.length === 0) return;
@@ -163,8 +176,7 @@ export function ReviewPage(): React.JSX.Element {
     ) {
       return;
     }
-    const first = orderedReviewBlocks(blocks)[0];
-    selectBlock(first?.id ?? null);
+    selectBlock(blocks[0]?.id ?? null);
   }, [blocks, selectedBlockId, selectBlock]);
 
   const handleBlockUpdate = useCallback(
@@ -348,6 +360,9 @@ export function ReviewPage(): React.JSX.Element {
       // 不清就会出现「磁盘 stale、轨道一片绿」——E1 走查实测过的表现
       clearLiveStages(slideId);
       setViewMode("review");
+      // 定点回访：用户心里有具体的一处要改，而那处很可能已标为已复核。
+      // 默认停在「未复核」会把它藏起来，所以这条路径进列表时默认「全部」。
+      setEntryIntent("targeted");
       await refreshSlide(slideId);
       setNotice({
         ok: true,
@@ -473,11 +488,14 @@ export function ReviewPage(): React.JSX.Element {
                 <BlockListPanel
                   blocks={blocks}
                   currentBlockId={selectedBlockId}
+                  entryIntent={entryIntent}
+                  slideId={slideId}
                   onSelectBlock={selectBlock}
                   onUpdateBlock={handleBlockUpdate}
                   onMarkReviewed={markBlockReviewed}
                   onMarkBlocksReviewed={markBlocksReviewed}
                   onDeleteBlock={deleteBlock}
+                  onNotice={(message) => setNotice({ ok: true, message })}
                 />
               </div>
               <main className="relative min-w-0 flex-1">

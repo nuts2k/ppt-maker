@@ -21,7 +21,8 @@ export type ReviewKeyAction =
   | { kind: "passthrough" }
   | { kind: "move"; delta: 1 | -1 }
   | { kind: "classify"; toLayoutText: boolean }
-  | { kind: "review-and-move" };
+  | { kind: "review-and-move" }
+  | { kind: "next-unreviewed" };
 
 /** `KeyboardEvent` 的最小结构切片，便于测试直接构造。 */
 export interface ReviewKeyInput {
@@ -43,6 +44,16 @@ const PASSTHROUGH: ReviewKeyAction = { kind: "passthrough" };
 export function resolveReviewKeyAction(input: ReviewKeyInput): ReviewKeyAction {
   // 组字优先于一切：此时的 ↑↓/Enter/Tab 属于输入法，不属于列表导航
   if (input.isComposing) return PASSTHROUGH;
+
+  /*
+   * ⌘↓ = 跳到下一个未复核项。
+   *
+   * 必须排在下面「⌘ 一律放行」之前，且只截获这一个组合——⌘S 保存、⌘C 复制等
+   * 其余 ⌘ 组合仍要冒泡到页面级监听，多截一个就会有人按不动保存。
+   */
+  if ((input.metaKey || input.ctrlKey) && input.key === "ArrowDown") {
+    return { kind: "next-unreviewed" };
+  }
 
   // ⌘S 等全局快捷键冒泡到页面级监听
   if (input.metaKey || input.ctrlKey) return PASSTHROUGH;
