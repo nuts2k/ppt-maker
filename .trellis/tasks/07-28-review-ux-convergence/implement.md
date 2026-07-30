@@ -5,10 +5,14 @@
 
 ## 开工前置（换机器 / 新会话时必读）
 
-**状态（2026-07-29 更新）：阶段 A / B / C / D 的代码已全部落地，各自一个提交；
-只剩阶段 E 的真机走查。** 任务状态 `in_progress`。
+**状态（2026-07-29 更新）：阶段 A–E 全部完成，AC1–AC17 真机走查全通过。**
+阶段 E 另修了三条走查中暴露的缺陷（见「走查中发现并修复的缺陷」）。剩下的是 Phase 3：
+E4 spec 更新 → 提交 → `/trellis:finish-work`。
 
 ```
+（本文件所在的 docs 提交）                                          ← 阶段 E 文档
+c2fca5d fix(desktop): 阶段收尾撤掉残留的执行中，错误条指名真正出问题的阶段 ← 阶段 E 修复
+578927b docs(trellis): 更新交接说明，反映阶段 A–D 已落地
 fe2d6f4 docs(trellis): 记录阶段 E 的先行核对结果
 9d736ca refactor(desktop): 文本复核改为顺序稳定的线性列表        ← 阶段 D
 edc13fb refactor(desktop): 阶段轨道降为只读，收敛单页执行入口      ← 阶段 C
@@ -21,15 +25,14 @@ c774d42 fix(desktop,cli): 保存复核按粒度失效下游，report 按 attempt
 1. `python3 ./.trellis/scripts/task.py start 07-28-review-ux-convergence`
    —— Trellis 的当前任务指针是**会话级**的，新会话必然为空，不重设后面的
    工作流路由全都不生效；
-2. 读本文件的「阶段 E」与末尾的「2026-07-29 阶段性核对结果」，知道哪些 AC 已判定、
-   哪些还得点界面；
-3. `cd apps/desktop && pnpm dev` 起桌面端，在 `~/test/ppttest-2026-07-25` 上逐条走 AC。
+2. 读本文件末尾的「2026-07-29 阶段 E 真机走查结果」与「未能验证的项 / 遗留」；
+3. 要复跑走查：见「走查方式」一节（`REMOTE_DEBUGGING_PORT=9222 pnpm dev` + CDP 驱动）。
    **改过 `@cli/src` 或 main 侧代码要重启 dev**，HMR 只覆盖 renderer——本任务动过
    `main/ipc/slide.ts`、`main/save-invalidation.ts`、`main/runner/deck-runner.ts`。
 
-走查发现问题就地修，改完照旧 `pnpm format:check && pnpm typecheck && pnpm test`，
-并把结论写回本文件的 E2（不得只在对话里说）。全部通过后走 Phase 3：
-`trellis-update-spec` → 提交 → `/trellis:finish-work`。
+改完照旧 `pnpm format:check && pnpm typecheck && pnpm test`。
+注意 `apps/cli` 的 `slide-review.test.ts`「上游 OCR 变化后重跑」在机器负载高时会撞
+5s 默认超时（单跑 804ms），与代码无关，重跑即可。
 
 上下文交接的细节见下面「上下文交接要点」；阶段 A–D 各节的复选框里记着实现时
 偏离计划的地方，改相关代码前先扫一眼。
@@ -274,32 +277,105 @@ R5 会真的写 manifest。
 
 ## 阶段 E：真实工作区整体走查
 
-- [ ] E1 拷贝新备份后，在 `~/test/ppttest-2026-07-25` 上跑一遍完整流程：
+- [x] E1 拷贝新备份后，在 `~/test/ppttest-2026-07-25` 上跑一遍完整流程：
       打开 deck → 批量执行 → 停在文本复核 → 逐项复核 → 保存 → 运行此页 → 最终确认 → 完成。
       **备份已就绪**：`~/test/ppttest-2026-07-25.bak-0729-192803`（2026-07-29 开工前拷贝）。
-- [ ] E2 逐条核对 AC1–AC16。不通过的写进本文件并修复，不得只在对话里说。
+      → 2026-07-29 走完，另拷 `~/test/ppttest-2026-07-25.bak-0729-2005` 作走查前基线。
+      走查方式见下面「走查方式」一节。
+- [x] E2 逐条核对 AC1–AC16。不通过的写进本文件并修复，不得只在对话里说。
+      → 见下面「2026-07-29 阶段 E 真机走查结果」与「走查中发现并修复的缺陷」。
 - [x] E3 `pnpm format:check && pnpm typecheck && pnpm test` 全绿（AC17）。
       → 2026-07-29：core 76 / desktop 249 / cli 93 全通过；`pnpm build` 亦通过（含 build:vision）。
 
-### 2026-07-29 阶段性核对结果
-
-代码侧（A–D 四阶段）已全部落地并各自成一个提交。不需要启动界面就能判定的 AC 先行核对：
-
-| AC | 结论 | 依据 |
-|---|---|---|
-| AC5 | 通过 | `deck-runner.test.ts`「已全部完成的页被显式点名时不入队」；批量模式本就 continue |
-| AC8 | 判据通过 | `review-filter.test.ts`：各档计数恒等于该档实际接纳的条目数 |
-| AC9 | 判据通过 | `nextUnreviewedId` 的正常/回绕/无结果三类用例；无结果时走 `onNotice` 提示 |
-| AC13 | 数据侧通过 | page-02 副本上改分类 → `mask/clean/accept-clean/pptx/accept-pptx/report` 全转 stale |
-| AC14 | 数据侧通过 | 同一副本上只改文字 → `mask/clean/accept-clean` 保持 completed，仅 pptx 链 stale |
-| AC16 | 通过 | page-01 副本跑 report 读出 `outsideMaskDiff = 0.043923`（clean-002）；clean-001 是 0.041044，修复前取的正是后者 |
-| AC17 | 通过 | 见 E3 |
-
-**仍需真机走查**（都要真实点界面，自动化覆盖不到）：
-AC1、AC2、AC3、AC4、AC6、AC7、AC10、AC11、AC12、AC15，以及 AC13/AC14 的界面部分。
-- [ ] E4 更新 `.trellis/spec/` 中受影响的前端约定（若有）。
-- [ ] E5 归档前把「未能验证的项」「新发现的遗留缺陷」显式写进本文件——
+- [x] E4 更新 `.trellis/spec/` 中受影响的前端约定（若有）。
+      → `frontend/state-management.md` 新增两条（均由本轮真实缺陷验证）：
+      「开始/结束事件不成对时，会话层的『进行中』永远撤不掉」、
+      「错误条要指名『出问题的阶段』，不是『当前阶段』」（含 stale ≠ failed 的措辞约定）。
+- [x] E5 归档前把「未能验证的项」「新发现的遗留缺陷」显式写进本文件——
       上一任务正是靠这一节把三条缺陷交接下来的，不要断掉。
+      → 见「未能验证的项 / 遗留」。
+
+### 走查方式（2026-07-29）
+
+真机走查用 CDP 驱动真实 Electron 进程完成，不是读代码推断：
+
+```bash
+cd apps/desktop && REMOTE_DEBUGGING_PORT=9222 pnpm dev   # electron-vite 认这个环境变量
+```
+
+随后用 `Runtime.evaluate` 读 DOM/store、`Input.dispatchMouseEvent` / `dispatchKeyEvent`
+派发真实鼠标与键盘事件（⌘S、⌘↓、⌥1/⌥2、Enter 都是真按键）、`Page.captureScreenshot` 留证。
+
+两处偏离「纯手点」，都不影响任何 AC 的判定：
+
+- **打开工作区**走 `useDeckStore.getState().openDeck(path)`（经 Vite dev 的
+  `import('/stores/deck-store.ts')` 拿到同一模块实例），绕过 NSOpenPanel 原生目录选择框——
+  CDP 够不到原生窗口，而 `window.api` 被 contextBridge 冻结（`writable:false, configurable:false`）
+  没法打桩。绕过的只有系统选目录这一步，`deck:open` IPC 与其后全部路径都是真实的。
+- **未复核夹具**：两页 155 块在走查前全部 `reviewed`，界面里没有「取消已复核」的入口，
+  于是直接把 page-01 的 `block-003/010/025/050` 四块在 `text-blocks.json` 里改成 `unreviewed`
+  再重开，用来走 AC8/AC9/AC10。走查后已改回 `reviewed`。
+
+### 2026-07-29 阶段 E 真机走查结果
+
+工作区 `~/test/ppttest-2026-07-25`（page-01 60 块、page-02 95 块）。**AC1–AC17 全部通过。**
+
+| AC | 结论 | 实测证据 |
+|---|---|---|
+| AC1 | 通过 | 轨道 9 个点位 `clickableAncestor=none`，各带 `title="阶段名 · 状态"` 与状态色；对 4 个点位各派发单击+双击共 8 次，`run.status` 恒为 `idle`、`liveStages` 空、无任何入队 |
+| AC2 | 通过 | 单页工具栏按钮恰为 `← 控制台 / ← / → / 文本复核 / 保存⌘S / 运行此页`，无「从阶段重跑」菜单；最终确认页有「回到文本复核」「重做底图」；错误条有「重跑失败阶段」——正是 R1.5 四项 |
+| AC3 | 通过 | 把 `OPENAI_BASE_URL` 指向 `127.0.0.1:9` 造 clean 失败 → 错误条出现单个「重跑失败阶段」；恢复后点它 → 从 clean 重跑成功（clean-004），未复现「点了没反应」 |
+| AC4 | 通过 | 点「完成」后无任何额外点击，轨道即刻 `全部阶段已完成 9/9`，manifest `report` 转 completed，`report.json` 的 `generatedAt` 更新为本次时间，活动日志有 accept-final 记录 |
+| AC5 | 通过 | 两页均 completed 时点「处理全部」→ `startError = "没有需要执行的页面：活动页均已完成"`，队列为空 |
+| AC6 | 通过 | `chmod 555 stages/report` 后点「完成」→ 界面显示「已完成本页验收」且轨道 9/9，活动日志一条「生成报告失败（不影响验收结果）：EACCES...」，`accept-pptx` 照常 completed |
+| AC7 | 通过 | 「分类待确认」档第 0 项 block-021 按 ⌥1：徽标转「文字待确认」、位置仍是第 0、列表仍 16 项；⌥2 原路返回。page-02 的 block-002 同样 |
+| AC8 | 通过 | 逐档点击实测「渲染条目数 = 计数」：0/45/14/36/95；「未复核」档渲染集合恰为夹具设的 `block-003/010/025/050` |
+| AC9 | 通过 | ⌘↓ 从 010 → 025 → 050 → 回绕到 010（跳过已复核的 003）；全部标记已复核后再按，出现提示条「当前筛选下已无未复核项」，不静默失败 |
+| AC10 | 通过 | 「未复核」档下逐项标记已复核，四项始终停在 `[003,010,025,050]` 原位，非当前项加 `opacity-60` 淡化，列表零重排 |
+| AC11 | 通过 | 点「回到文本复核」后筛选停在「全部」（95 项全渲染）；`text-blocks.json` 与操作前逐块比对，`reviewStatus`、整块内容、文档级字段**零差异** |
+| AC12 | 通过 | page-02 磁盘上 `updatedAt` 非空的 5 块 `block-031/039/045/079/081`，界面上带「已修改」标记的恰是这 5 块 |
+| AC13 | 通过 | page-02 改分类保存 → `mask` 及全部下游转 stale，轨道同步；「运行此页」后 clean-004 的 `maskSha256=6e4bc713`（clean-001 是 `f4818121`），新 mask 确实带进了 clean 与 pptx-002 |
+| AC14 | 通过 | 两次实测只改文字保存：`mask/clean/accept-clean` 保持 completed，仅 `pptx/accept-pptx/report` 转 stale，未触发 clean 付费调用；活动日志「保存复核内容，已作废：pptx、accept-pptx、report」 |
+| AC15 | 通过 | 保存、执行失败、「回到文本复核」三条路径下轨道均与磁盘一致（9/9→7/9→4/9），无「磁盘 stale、轨道一片绿」 |
+| AC16 | 通过 | 新场景：page-02 有 clean-001、clean-003（失败）、clean-004（`lastSuccessfulAttemptId`）。report 读出 `outsideMaskDiff.changedRatio = 0.08007518` = clean-004，不是 clean-001 的 0.08470266，也未被中间那次失败干扰 |
+| AC17 | 通过 | 见 E3；修完本节缺陷后复跑 core 76 / desktop 255 / cli 93 全绿，`format:check`、`typecheck` 通过 |
+
+### 走查中发现并修复的缺陷
+
+三条都是本任务的直接副产物（阶段 A 让 stale 从罕见变成常规路径），已在本轮修掉并补了用例。
+
+1. **失败阶段永远显示「执行中」**（`run-reducer.ts`）。`stage-start` 与 `stage-complete`
+   并不成对：`runSlideRunFrom` 只在阶段真执行过时回调 `onStageComplete`，失败被收敛成
+   `gate:"error"` 由 `page-done` 带 `stoppedAt` 报出。于是会话层永远停在 `running`，
+   压住耐久层的 `failed`——实测错误条已写 `clean · UNKNOWN_ERROR`，同一屏轨道还写
+   「生成干净底图 · 执行中」。
+2. **停人工门时同样卡住**（同一处）。这条比失败常见得多：`accept-clean` 刻意空转、
+   `accept-pptx` 起了就 return，两者都只有 `stage-start`。每一页跑到最终确认停下，
+   轨道都会显示「验收底图 · 执行中」7/9，而磁盘上是 stale。
+   → 两条合并修：`page-done` 时撤掉该页所有仍挂 `running` 的阶段，让展示回落到 manifest。
+   判据取「page-done 时还 running」而非「是不是失败」——这一页的执行已经结束，
+   它上面不可能还有阶段在跑。同轮 `completed` 的保留，卡片轨道仍要展示本轮结果。
+3. **stale 被报成「执行失败」，且指错阶段**（`SlideCard.tsx` / `todo-queue.ts` / `stage-view.ts`）。
+   卡片用 `currentStageView`（第一个未完成）取阶段名，失效场景下会落到它前面的 pending 上；
+   待办队列则直接拼 CLI `computeProgress` 那对错位字段（`currentStage` 是最后一个**已完成**的，
+   `stageStatus` 取**下一个**的失败态）。实测同一页 page-02：卡片写「阶段「复核校验」执行失败」，
+   队列写「阶段「AI 辅助复核」上游已变更」，而真正失效的是 mask，两处都不对。
+   → 新增 `blockingStageView`（真失败优先、其次失效），卡片与队列同源取它；stale 的措辞
+   统一为「上游已变更，需重跑」。修后两处一致显示「阶段「生成遮罩」上游已变更，需重跑」。
+
+### 未能验证的项 / 遗留
+
+- **`clean_record` 在 report 里的呈现路径未覆盖**：AC16 核的是 `report.json.autoChecks.cleanPlate`，
+  它取自 `stages/clean/<attempt>/record.json`。`pptx_check` 的同款按 attempt 匹配只有 A2 的单测，
+  真机上没造出「pptx 跑过两次」的场景。
+- **走查结束时的工作区状态**：page-02 停在「mask 及下游 stale」（AC11 点了「回到文本复核」的
+  必然结果），未再跑一次 clean 复原——那是一次付费调用，且不影响任何结论。要干净基线用
+  `~/test/ppttest-2026-07-25.bak-0729-2005`。
+- **`hasFailingStage` 把 stale 计入「需处理」不变**：它是「这页要不要用户管」的判据，
+  stale 确实要管；本次只改了文案与指名的阶段，没动判据。
+- **桌面端没有组件级测试基建**（无 jsdom / testing-library）。本轮三条修复的纯逻辑都进了
+  `stage-view.test.ts` / `run-reducer.test.ts` / `todo-queue.test.ts`，但 `SlideCard` 里那句
+  文案拼接只有真机走查覆盖，回归得靠人。
 
 ## 风险文件
 

@@ -113,3 +113,56 @@ clearLiveStages(slideId);
 **测试要点**：断言必须复现完整路径——「run 结束后 liveStages 仍为 completed → 失效并清理 → 视图回落耐久层的 stale」。只断言 reducer 返回值不足以覆盖这个缺陷。
 
 **相关**：[静默失败诊断指南 · 第二类](../guides/silent-failure-thinking-guide.md)
+
+### 开始/结束事件不成对时，会话层的「进行中」永远撤不掉
+
+上一条的同源缺陷，但触发条件完全不同：那条是**外部**把耐久层改了而会话层没跟；这条是会话层自己**收不到收尾事件**。
+
+**症状**（2026-07-29 阶段 E 走查实测两处）：
+
+- 阶段执行失败：错误条已经写着 `clean · UNKNOWN_ERROR: Connection error.`，同一屏的阶段轨道与标题却还是「生成干净底图 · 执行中」；
+- 跑到人工门停下：磁盘上 `accept-clean` 是 `stale`，轨道写「验收底图 · 执行中」7/9。第二种是**每一页的正常路径**，比失败常见得多。
+
+**成因**：会话层靠 `stage-start` / `stage-complete` 一对事件维护 `running → completed`，但发事件的那一侧只在阶段**真的执行过**时才回调 `onStageComplete`：
+
+| 情形 | 有 start | 有 complete | 结果 |
+|---|---|---|---|
+| 正常执行 | ✓ | ✓ | 正确 |
+| 阶段抛错 | ✓ | ✗（收敛成 `gate:"error"`，由 `page-done` 带 `stoppedAt` 报出） | 永久 running |
+| 停人工门 | ✓ | ✗（起了就 return） | 永久 running |
+| 刻意空转的阶段 | ✓ | ✗（不执行也不标 completed） | 永久 running |
+
+叠加「会话层覆盖耐久层」的派生规则，这条假的 `running` 就把 manifest 里真实的 `failed` / `stale` 全压住了。而会话层的状态枚举只有 `running | completed`（失败与失效归耐久层所有），补不出「失败」，**只能撤掉这条覆盖**。
+
+**修法**：在**收尾事件**里按状态清扫，而不是逐个补失败分支：
+
+```ts
+// page-done：这一页的执行已经结束，它上面不可能还有阶段在跑
+liveStages: withoutRunningLiveStages(snapshot.liveStages, event.slideId),
+```
+
+判据取「收尾时还 running」而不是「是不是失败」——前者对上表四种情形一次覆盖完，后者每加一种停法就漏一次。同轮已 `completed` 的保留，卡片轨道仍要展示本轮结果。
+
+**自查**：任何 `start/finish` 成对事件维护的状态，问一句——*有没有哪条路径只发 start 不发 finish？* 只要有一条，就别在各个分支里补，直接在收尾事件里按状态清扫。
+
+**测试要点**：失败路径与人工门路径各一条用例，断言 `liveStages` 只剩本轮 `completed` 的那些。
+
+### 错误条要指名「出问题的阶段」，不是「当前阶段」
+
+**症状**：page-02 的 `mask` 及下游已失效，控制台卡片写「阶段「复核校验」执行失败，需重跑」，待办队列对同一页写「阶段「AI 辅助复核」上游已变更，需重跑」——两处互相矛盾，且都不是真正失效的 `mask`。
+
+**成因**：三处各用各的口径取「哪个阶段有问题」——
+
+- 卡片用 `currentStageView`（第一个未完成的阶段）。`completed, completed, pending, …, stale` 这种常见形态下，它指到那个 pending 上；
+- 待办队列直接拼 CLI `computeProgress` 的一对**错位字段**：`currentStage` 是最后一个**已完成**的阶段，`stageStatus` 取的却是**它下一个**阶段的失败态。照字面拼就成了「阶段「已完成的那个」上游已变更」。
+
+**修法**：抽一个共用的判据函数，两处同源取值：
+
+```ts
+// 真失败优先、其次失效；都没有则 null
+export function blockingStageView(views: readonly StageView[]): StageView | null;
+```
+
+**顺带的一条措辞约定**：`stale` 不是 `failed`。「失效」是改了上游后的常规路径（保存复核内容就会产生），文案统一为「上游已变更，需重跑」；「执行失败」只留给 `failed` / `interrupted`。都写成失败会把一次正常的「改完了、重跑一下」报成红色故障。
+
+**自查**：同一件事在多处展示时，问一句——*它们是同一个函数算出来的吗？* 不是的话，迟早会各说各话。
