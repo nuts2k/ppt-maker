@@ -129,20 +129,27 @@ R5 会真的写 manifest。
 
 ## 阶段 B：`report` 移出可见链路（R2）
 
-- [ ] B1 `shared/stages.ts`：`RUN_STAGE_SEQUENCE` 移除 `"report"`；`STAGE_LABELS` **保留**
+- [x] B1 `shared/stages.ts`：`RUN_STAGE_SEQUENCE` 移除 `"report"`；`STAGE_LABELS` **保留**
       `report` 条目并放宽其键类型（design §2）。文件顶部注释同步说明这处刻意的不对称。
-- [ ] B2 编译期扫残留：`pnpm typecheck` 会因 `RunStage` 收窄而暴露所有仍传 `report` 的位置。
-      逐一处理，不得用 `as` 绕过。
-- [ ] B3 `deck-runner.ts:88-99`：删除 `from = "report"` 兜底，`resume === null` 一律
+      → 新增 `StageLabelKey = RunStage | "report"`
+- [x] B2 编译期扫残留：`pnpm typecheck` 会因 `RunStage` 收窄而暴露所有仍传 `report` 的位置。
+      逐一处理，不得用 `as` 绕过。→ 只暴露一处（`deck-runner.ts:96` 的兜底），即 B3
+- [x] B3 `deck-runner.ts:88-99`：删除 `from = "report"` 兜底，`resume === null` 一律
       `continue`；`start` 的空队列文案改写为能表达「已全部完成、无需执行」（R2.4 / design §3）。
-- [ ] B4 `main/ipc/slide.ts` 的 `slide:accept-final`：`runAcceptFinal` 成功后静默补跑
+      → 文案按点名/批量分开：「所选页面已全部完成，无需执行」/「没有需要执行的页面：活动页均已完成」
+- [x] B4 `main/ipc/slide.ts` 的 `slide:accept-final`：`runAcceptFinal` 成功后静默补跑
       `runSlideReport`，失败 catch 后只写活动日志，**不改 IPC 返回类型**（R2.2/R2.3 / design §4）。
-- [ ] B5 核对受影响的既有测试：`apps/desktop/test/` 下 `stages.test.ts`、`slide-detail.test.ts`、
+- [x] B5 核对受影响的既有测试：`apps/desktop/test/` 下 `stages.test.ts`、`slide-detail.test.ts`、
       `deck-runner.test.ts`、`accept-gate.test.ts`、`slide-nav.test.ts` 均按
       `RUN_STAGE_SEQUENCE` 构造夹具。预期它们不硬编码长度 10，但**必须实跑确认**（design §9）。
-- [ ] B6 `deck-runner.test.ts` 补一条：已全部完成的页被显式点名时不入队。
+      → 实跑后仅 `slide-detail.test.ts` 一条硬编码了「10 个阶段」，已改为 9 并去掉 report 断言；
+      其余按序列长度生成夹具的用例无需改动，预期成立。
+- [x] B6 `deck-runner.test.ts` 补一条：已全部完成的页被显式点名时不入队。
 
-验证：`pnpm typecheck && pnpm test`。
+验证：`pnpm format:check && pnpm typecheck && pnpm test` → 2026-07-29 全绿
+（core 76 / desktop 236 / cli 93）。
+
+真实工作区手测（验收自动补跑 report、轨道 9/9）**留到阶段 E**——需要真实启动桌面端走完一页验收。
 
 真实工作区手测：完成一页验收 → 无需任何额外点击，轨道即显示 9/9，`stages/report/report.json`
 时间戳已更新（AC4）；随后点批量续跑 → 该页不再被拉进队列（AC5）。

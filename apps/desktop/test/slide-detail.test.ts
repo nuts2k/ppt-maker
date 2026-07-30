@@ -140,9 +140,10 @@ describe("computeResumeStage", () => {
 });
 
 describe("deriveStageDetails", () => {
-  it("输出执行序列的 10 个阶段且不含 init", () => {
+  // report 不在此列：它是验收后静默补跑的本地汇总，不占可见轨道（shared/stages.ts）
+  it("输出执行序列的 9 个阶段，不含 init 与 report", () => {
     const details = deriveStageDetails(buildManifest(["init"]));
-    expect(details).toHaveLength(10);
+    expect(details).toHaveLength(9);
     expect(details.map((d) => d.stage)).toEqual([
       "ocr",
       "review",
@@ -153,7 +154,6 @@ describe("deriveStageDetails", () => {
       "accept-clean",
       "pptx",
       "accept-pptx",
-      "report",
     ]);
   });
 

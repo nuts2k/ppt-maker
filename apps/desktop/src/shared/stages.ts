@@ -6,6 +6,11 @@
  *   这是用户可见的流水线轨道，也是断点续跑的判据序列。
  * - core 的 `SlideStage`（manifest.stages）：持久化阶段，含 `init`，**不含** `validate-review`。
  *   `validate-review` 没有耐久记录，其展示状态由下游 `mask` 推断（见 deriveStageStatuses）。
+ *
+ * `report` 刻意只在 `STAGE_LABELS` 里、不在 `RUN_STAGE_SEQUENCE` 里——**执行序列**与
+ * **展示词表**本就是两件事。report 是毫秒级的本地汇总，用户没有任何决策要做，
+ * 于是从可见轨道上移除、改由验收成功后静默补跑（见 main/ipc/slide.ts 的 accept-final）；
+ * 但补跑仍会产生活动日志，`stageLabel("report")` 必须仍能给出中文名，否则日志退化成英文 id。
  */
 
 export const RUN_STAGE_SEQUENCE = [
@@ -18,16 +23,18 @@ export const RUN_STAGE_SEQUENCE = [
   "accept-clean",
   "pptx",
   "accept-pptx",
-  "report",
 ] as const;
 
 export type RunStage = (typeof RUN_STAGE_SEQUENCE)[number];
+
+/** 展示词表的键：执行序列之外还含 `report`（只记日志、不上轨道） */
+export type StageLabelKey = RunStage | "report";
 
 /** 无持久化 manifest 记录的阶段（状态需从相邻阶段推断） */
 export const TRANSIENT_STAGES: readonly RunStage[] = ["validate-review"];
 
 /** 阶段展示名（中文），卡片轨道、活动日志、队列共用 */
-export const STAGE_LABELS: Readonly<Record<RunStage, string>> = {
+export const STAGE_LABELS: Readonly<Record<StageLabelKey, string>> = {
   ocr: "文字识别",
   review: "生成复核稿",
   "assist-review": "AI 辅助复核",
@@ -41,7 +48,7 @@ export const STAGE_LABELS: Readonly<Record<RunStage, string>> = {
 };
 
 export function stageLabel(stage: string): string {
-  return STAGE_LABELS[stage as RunStage] ?? stage;
+  return STAGE_LABELS[stage as StageLabelKey] ?? stage;
 }
 
 export function isRunStage(value: string): value is RunStage {

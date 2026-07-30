@@ -1,4 +1,4 @@
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -151,6 +151,44 @@ describe("DeckRunner 端到端", () => {
       .map((event) => event.stage);
     expect(secondRunStages).not.toContain("ocr");
     expect(secondRunStages).not.toContain("review");
+  });
+
+  /*
+   * report 移出可见序列前，显式点名一个已全部完成的页会兜底成 from = "report"，
+   * 于是「运行此页」在完成页上总有反应、总是只重跑一遍报告。移除后它必须干脆地
+   * 说「无需执行」——真正让完成页重新跑得动的是保存复核的粒度失效。
+   */
+  it("已全部完成的页被显式点名时不入队", async () => {
+    const { deckPath, activityDir } = await createFixtureDeck();
+    const deckManifest = JSON.parse(
+      await readFile(join(deckPath, "deck-manifest.json"), "utf8"),
+    );
+    const entry = deckManifest.slides[0];
+    const slideManifestPath = join(
+      deckPath,
+      entry.workspacePath,
+      "manifest.json",
+    );
+    const slideManifest = JSON.parse(await readFile(slideManifestPath, "utf8"));
+    slideManifest.stages = slideManifest.stages.map(
+      (state: { status: string }) => ({ ...state, status: "completed" }),
+    );
+    await writeFile(
+      slideManifestPath,
+      JSON.stringify(slideManifest, null, 2),
+      "utf8",
+    );
+
+    const { getWindow } = createEventCollector();
+    const runner = new DeckRunner(getWindow, new ActivityLog(activityDir));
+    const started = await runner.start(deckPath, {
+      slideIds: [entry.slideId],
+    });
+
+    expect(started.accepted).toBe(false);
+    expect(started.queued).toBe(0);
+    expect(started.message).toContain("已全部完成");
+    expect(runner.isRunning()).toBe(false);
   });
 
   it("对不存在的 deck 拒绝启动", async () => {

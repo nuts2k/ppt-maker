@@ -90,13 +90,16 @@ export class DeckRunner {
       if (from === null) {
         const workspace = await loadSlideWorkspace(absWorkspacePath);
         const resume = computeResumeStage(workspace.manifest);
-        // 批量模式跳过已全部完成的页；显式点名的单页允许重跑收尾阶段
-        if (resume === null) {
-          if (requested === null) continue;
-          from = "report";
-        } else {
-          from = resume;
-        }
+        /*
+         * 没有续跑点就没有可执行的事——批量与显式点名一视同仁地跳过。
+         *
+         * 此前显式点名单页时会兜底成 from = "report"，让「运行此页」在已完成的页上
+         * 也有反应；但 report 移出可见序列后这既非法也无意义。真正的语义补齐来自
+         * 保存复核的粒度失效（save-invalidation.ts）：有变更就一定重新算出续跑点、
+         * 跑得动；没变更就确实没有该做的事。
+         */
+        if (resume === null) continue;
+        from = resume;
       }
 
       items.push({
@@ -108,13 +111,17 @@ export class DeckRunner {
     }
 
     if (items.length === 0) {
+      // 队列为空的最常见原因是「目标页已全部完成」，而不是出了错。文案必须说清这点，
+      // 否则用户点「运行此页」看到一句像报错的提示，只会反复点。
       return {
         accepted: false,
         queued: 0,
         message:
-          this.status === "idle"
-            ? "没有需要执行的页面"
-            : "目标页面已在执行队列中",
+          this.status !== "idle"
+            ? "目标页面已在执行队列中"
+            : requested !== null
+              ? "所选页面已全部完成，无需执行"
+              : "没有需要执行的页面：活动页均已完成",
       };
     }
 

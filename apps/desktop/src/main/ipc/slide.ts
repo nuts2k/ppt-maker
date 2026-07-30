@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { runAcceptClean } from "@cli/clean/accept.js";
 import { runAcceptPptx } from "@cli/pptx/accept.js";
+import { runSlideReport } from "@cli/report/run.js";
 import { runAcceptFinal } from "@cli/slide/accept-final.js";
 import { invalidateSlideStage } from "@cli/slide/invalidate.js";
 import { loadSlideWorkspace } from "@cli/slide/workspace.js";
@@ -201,6 +202,12 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
    *
    * 全部落库工作在 CLI 的 runAcceptFinal 内完成（含幂等跳过已 completed 的一侧），
    * main 只负责调用与活动日志，不在此重写任何验收语义。
+   *
+   * 验收成功后静默补跑 report：它是毫秒级的本地汇总，用户没有任何决策要做，
+   * 因此不出现在可见阶段序列里（shared/stages.ts），改由此处收尾。
+   * 顺序不可颠倒——report 的前置依赖 accept-pptx 此时刚写为 completed。
+   * 补跑失败只写活动日志、不改 IPC 返回值：验收记录已经落盘，让 report 的异常冒泡
+   * 会把「验收成功」翻转成「验收失败」。
    */
   ipcMain.handle(
     "slide:accept-final",
@@ -222,6 +229,19 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
           "success",
           `最终确认验收：${result.autoCheckSummary}`,
         );
+        try {
+          await runSlideReport({ workspacePath: resolve(workspacePath) });
+        } catch (error) {
+          await log(
+            workspacePath,
+            "report",
+            "report",
+            "failure",
+            `生成报告失败（不影响验收结果）：${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }
         return result;
       } catch (error) {
         await log(
