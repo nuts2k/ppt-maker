@@ -245,8 +245,27 @@ R5 会真的写 manifest。
 
 - [ ] E1 拷贝新备份后，在 `~/test/ppttest-2026-07-25` 上跑一遍完整流程：
       打开 deck → 批量执行 → 停在文本复核 → 逐项复核 → 保存 → 运行此页 → 最终确认 → 完成。
+      **备份已就绪**：`~/test/ppttest-2026-07-25.bak-0729-192803`（2026-07-29 开工前拷贝）。
 - [ ] E2 逐条核对 AC1–AC16。不通过的写进本文件并修复，不得只在对话里说。
-- [ ] E3 `pnpm format:check && pnpm typecheck && pnpm test` 全绿（AC17）。
+- [x] E3 `pnpm format:check && pnpm typecheck && pnpm test` 全绿（AC17）。
+      → 2026-07-29：core 76 / desktop 249 / cli 93 全通过；`pnpm build` 亦通过（含 build:vision）。
+
+### 2026-07-29 阶段性核对结果
+
+代码侧（A–D 四阶段）已全部落地并各自成一个提交。不需要启动界面就能判定的 AC 先行核对：
+
+| AC | 结论 | 依据 |
+|---|---|---|
+| AC5 | 通过 | `deck-runner.test.ts`「已全部完成的页被显式点名时不入队」；批量模式本就 continue |
+| AC8 | 判据通过 | `review-filter.test.ts`：各档计数恒等于该档实际接纳的条目数 |
+| AC9 | 判据通过 | `nextUnreviewedId` 的正常/回绕/无结果三类用例；无结果时走 `onNotice` 提示 |
+| AC13 | 数据侧通过 | page-02 副本上改分类 → `mask/clean/accept-clean/pptx/accept-pptx/report` 全转 stale |
+| AC14 | 数据侧通过 | 同一副本上只改文字 → `mask/clean/accept-clean` 保持 completed，仅 pptx 链 stale |
+| AC16 | 通过 | page-01 副本跑 report 读出 `outsideMaskDiff = 0.043923`（clean-002）；clean-001 是 0.041044，修复前取的正是后者 |
+| AC17 | 通过 | 见 E3 |
+
+**仍需真机走查**（都要真实点界面，自动化覆盖不到）：
+AC1、AC2、AC3、AC4、AC6、AC7、AC10、AC11、AC12、AC15，以及 AC13/AC14 的界面部分。
 - [ ] E4 更新 `.trellis/spec/` 中受影响的前端约定（若有）。
 - [ ] E5 归档前把「未能验证的项」「新发现的遗留缺陷」显式写进本文件——
       上一任务正是靠这一节把三条缺陷交接下来的，不要断掉。
