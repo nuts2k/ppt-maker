@@ -59,6 +59,28 @@ function stageStatus(manifest: SlideWorkspaceManifest, stage: string): string {
   );
 }
 
+/**
+ * 某阶段**当前那次成功尝试**产出的资产。
+ *
+ * 必须按 `lastSuccessfulAttemptId` 匹配，不能只按 role 取第一个——真实工作区里
+ * clean 跑过两次，`clean_record` 有 clean-001 与 clean-002 两条，按 role 取到的是
+ * 早已被取代的 clean-001，报告里会写进上一版底板的检查指标。
+ * 口径与桌面端 `main/slide-detail.ts` 的 `currentSuccessAsset` 同源。
+ */
+function currentSuccessAsset(
+  manifest: SlideWorkspaceManifest,
+  stage: string,
+  role: string,
+): WorkspaceAsset | undefined {
+  const attemptId = manifest.stages.find(
+    (state) => state.stage === stage,
+  )?.lastSuccessfulAttemptId;
+  if (attemptId === null || attemptId === undefined) return undefined;
+  return manifest.assets.find(
+    (asset) => asset.role === role && asset.attemptId === attemptId,
+  );
+}
+
 async function readJsonAsset<T>(
   workspacePath: string,
   asset: WorkspaceAsset | undefined,
@@ -108,7 +130,7 @@ export async function runSlideReport(
   );
   const cleanRecord = await readJsonAsset<CleanAttemptRecord>(
     workspace.path,
-    manifest.assets.find((asset) => asset.role === "clean_record"),
+    currentSuccessAsset(manifest, "clean", "clean_record"),
     (value) => CleanAttemptRecordSchema.parse(value),
   );
   const cleanAcceptance = await readJsonAsset<ArtifactAcceptance>(
@@ -118,7 +140,7 @@ export async function runSlideReport(
   );
   const pptxCheck = await readJsonAsset<PptxCheckReport>(
     workspace.path,
-    manifest.assets.find((asset) => asset.role === "pptx_check"),
+    currentSuccessAsset(manifest, "pptx", "pptx_check"),
     (value) => PptxCheckReportSchema.parse(value),
   );
   const pptxAcceptance = await readJsonAsset<ArtifactAcceptance>(

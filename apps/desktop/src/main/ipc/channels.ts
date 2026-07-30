@@ -91,6 +91,19 @@ export interface AcceptOptions {
   readonly note?: string;
 }
 
+/**
+ * 保存文本复核的结果。
+ *
+ * `invalidated` 是本次保存连带作废的阶段 id（含下游），空数组表示内容无变化、
+ * 无需重跑任何阶段。界面据此提示用户「下一步要重新生成」。
+ */
+export interface SaveReviewResult {
+  readonly valid: boolean;
+  readonly errors: number;
+  readonly warnings: number;
+  readonly invalidated: readonly string[];
+}
+
 /** 最终确认一次写入 accept-clean + accept-pptx 两条验收记录的结果 */
 export interface AcceptFinalResult {
   readonly cleanAcceptanceId: string;
@@ -232,7 +245,7 @@ export interface IpcApi {
     saveReview(
       workspacePath: string,
       document: TextReviewDocument,
-    ): Promise<{ valid: boolean; errors: number; warnings: number }>;
+    ): Promise<SaveReviewResult>;
     acceptClean(
       workspacePath: string,
       opts?: AcceptOptions,

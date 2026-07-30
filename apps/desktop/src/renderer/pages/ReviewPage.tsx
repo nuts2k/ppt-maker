@@ -1,5 +1,5 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
-import type { RunStage } from "@shared/stages";
+import { type RunStage, stageLabel } from "@shared/stages";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReviewCanvas } from "@/components/canvas/ReviewCanvas";
 import { BlockListPanel } from "@/components/review/BlockListPanel";
@@ -177,11 +177,19 @@ export function ReviewPage(): React.JSX.Element {
   const handleSave = useCallback(async (): Promise<void> => {
     try {
       const result = await saveReview();
+      // 保存改动会作废下游产物（main 侧按粒度判定）。作废信息必须告诉用户，
+      // 否则界面只说「保存成功」，用户不知道 PPTX 还是旧的、要再点一次「运行此页」。
+      const invalidatedNote =
+        result.invalidated.length === 0
+          ? ""
+          : ` · 已作废${result.invalidated
+              .map((stage) => stageLabel(stage))
+              .join("、")}，点「运行此页」重新生成`;
       setNotice({
         ok: result.valid,
         message: result.valid
-          ? "保存成功"
-          : `保存完成，但校验有 ${result.errors} 个错误 / ${result.warnings} 个警告`,
+          ? `保存成功${invalidatedNote}`
+          : `保存完成，但校验有 ${result.errors} 个错误 / ${result.warnings} 个警告${invalidatedNote}`,
       });
       // 待办队列的「需文本复核」判据 pendingTextReview 由 main 侧读 text-blocks.json
       // 算出，只在 page-done / run-done 时刷新（run-bridge.ts）。保存改的正是这个
@@ -190,6 +198,10 @@ export function ReviewPage(): React.JSX.Element {
       // 待复核」，用户据此以为复核被重置了。
       // 刷新失败不得翻转「保存成功」的结论——文件此时已经写盘了
       if (slideId !== null) {
+        // 顺序不可颠倒：deriveStageViews 是「耐久层打底、会话层覆盖」，而 run-done
+        // 刻意保留 liveStages。上一轮 run 留在会话层的 completed 会盖住刚写下的
+        // stale，表现为「磁盘已作废、轨道一片绿」。必须先清会话层再刷耐久层。
+        if (result.invalidated.length > 0) clearLiveStages(slideId);
         await refreshSlide(slideId).catch(() => undefined);
       }
     } catch (err) {
@@ -198,7 +210,7 @@ export function ReviewPage(): React.JSX.Element {
         message: `保存失败：${err instanceof Error ? err.message : String(err)}`,
       });
     }
-  }, [saveReview, slideId, refreshSlide]);
+  }, [saveReview, slideId, refreshSlide, clearLiveStages]);
 
   // handleSave 进依赖，避免 V1 里 Cmd+S 捕获过期闭包（阶段 B 遗留的 lint 报错）。
   // 列表内的 Tab/↑↓/Enter/⌥1⌥2 由 BlockListPanel 自行处理，此处只留全局保存。

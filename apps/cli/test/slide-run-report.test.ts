@@ -494,6 +494,76 @@ describe("slide report", () => {
     expect(state?.latestAttemptId).toBe("report-002");
   });
 
+  it("同一 role 有多条 attempt 记录时取当前成功那条", async () => {
+    // 缺陷回归：此前按 role 取第一条匹配资产，真实工作区里 clean 跑过两次、
+    // clean_record 有 clean-001 与 clean-002 两条，报告读到的是早已被取代的那条，
+    // 于是把上一版底板的检查指标写进 report.json。
+    const { workspacePath } = await setupThroughPptx();
+    await runAcceptPptx({ workspacePath, acceptedBy: "dev" });
+
+    const workspace = await loadSlideWorkspace(workspacePath);
+    const manifest = workspace.manifest;
+    const currentClean = manifest.assets.find(
+      (asset) => asset.role === "clean_record",
+    );
+    const currentPptxCheck = manifest.assets.find(
+      (asset) => asset.role === "pptx_check",
+    );
+    if (currentClean === undefined || currentPptxCheck === undefined) {
+      throw new Error("测试前置不成立：缺少 clean_record 或 pptx_check 资产");
+    }
+
+    // 伪造两条「更早的尝试」，内容与当前记录明显不同，且排在 assets 数组前面：
+    // 按 role 取第一条就会命中它们。
+    const staleCleanPath = "stages/clean/attempt-000.json";
+    const staleClean = JSON.parse(
+      await readFile(join(workspacePath, currentClean.path), "utf8"),
+    );
+    staleClean.attemptId = "clean-000";
+    staleClean.checks.textResidue.residualRatio = 0.99;
+    await writeFile(
+      join(workspacePath, staleCleanPath),
+      `${JSON.stringify(staleClean, null, 2)}\n`,
+      "utf8",
+    );
+
+    const stalePptxCheckPath = "stages/pptx/check-000.json";
+    const stalePptxCheck = JSON.parse(
+      await readFile(join(workspacePath, currentPptxCheck.path), "utf8"),
+    );
+    stalePptxCheck.status = "failed";
+    await writeFile(
+      join(workspacePath, stalePptxCheckPath),
+      `${JSON.stringify(stalePptxCheck, null, 2)}\n`,
+      "utf8",
+    );
+
+    await writeWorkspaceManifest(workspace.path, {
+      ...manifest,
+      assets: [
+        {
+          ...currentClean,
+          id: "asset-clean-000",
+          path: staleCleanPath,
+          attemptId: "clean-000",
+        },
+        {
+          ...currentPptxCheck,
+          id: "asset-pptx-check-000",
+          path: stalePptxCheckPath,
+          attemptId: "pptx-000",
+        },
+        ...manifest.assets,
+      ],
+    });
+
+    const { report } = await runSlideReport({ workspacePath });
+    expect(report.autoChecks.cleanPlate?.textResidue.residualRatio).not.toBe(
+      0.99,
+    );
+    expect(report.autoChecks.pptx?.status).toBe("passed");
+  });
+
   it("PPTX 自动检查失败不汇总为 complete", async () => {
     const { workspacePath } = await setupThroughPptx();
     await runAcceptPptx({ workspacePath, acceptedBy: "dev" });

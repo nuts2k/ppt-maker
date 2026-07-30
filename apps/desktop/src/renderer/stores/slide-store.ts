@@ -6,6 +6,7 @@ import {
   markBlocksReviewedById,
 } from "@/lib/block-edit";
 import { getApi } from "@/lib/ipc-client";
+import type { SaveReviewResult } from "../../main/ipc/channels.js";
 
 interface SlideState {
   // 当前 slide 的工作区路径与标识
@@ -45,8 +46,13 @@ interface SlideState {
   markBlocksReviewed(blockIds: readonly string[]): number;
   /** 删除块（列表上的「删除此块」），标记 dirty */
   deleteBlock(blockId: string): void;
-  // 保存复核文档，成功后清除 dirty
-  saveReview(): Promise<{ valid: boolean; errors: number; warnings: number }>;
+  /**
+   * 保存复核文档，成功后清除 dirty。
+   *
+   * 返回值透传 main 侧的 `invalidated`（本次保存连带作废的阶段），
+   * 调用方据此清理会话层阶段态并提示用户重跑——不能吞掉，否则界面会继续显示旧的完成态。
+   */
+  saveReview(): Promise<SaveReviewResult>;
   reset(): void;
 }
 

@@ -82,29 +82,31 @@ R5 会真的写 manifest。
 
 无界面改动，先把「改了传得下去」和「report 读对记录」做实。
 
-- [ ] A1 `apps/cli/src/report/run.ts`：`clean_record` / `pptx_check` 改按
+- [x] A1 `apps/cli/src/report/run.ts`：`clean_record` / `pptx_check` 改按
       `lastSuccessfulAttemptId` + `role` 双条件匹配，口径照抄
       `apps/desktop/src/main/slide-detail.ts:101` 的 `currentSuccessAsset`（R6.1）。
-- [ ] A2 A1 的单元测试：构造同一 role 两条 attempt 的 manifest 夹具，断言取到后一条。
+- [x] A2 A1 的单元测试：构造同一 role 两条 attempt 的 manifest 夹具，断言取到后一条。
       落在 `apps/cli/test/`（已有 `slide-run-report.test.ts` 可扩展）。
-- [ ] A3 新增 `decideInvalidation(previous, next)` 纯函数（design §5 的四行判据表）。
-      放桌面端 main 侧，附独立单元测试文件。
-- [ ] A4 A3 的单元测试覆盖四条分支：`previous === null` / 投影变 / 仅文本变 / 完全相同。
+- [x] A3 新增 `decideInvalidation(previous, next)` 纯函数（design §5 的四行判据表）。
+      放桌面端 main 侧，附独立单元测试文件。→ `main/save-invalidation.ts`
+- [x] A4 A3 的单元测试覆盖四条分支：`previous === null` / 投影变 / 仅文本变 / 完全相同。
       **投影口径必须调用 core 的 `maskInvalidationProjection`**，不得在测试里另写字段清单。
-- [ ] A5 `main/ipc/slide.ts` 的 `slide:save-review` 接入：写盘前读旧文档 → 写盘 →
+      → `test/save-invalidation.test.ts`（6 例，夹具复用真实工作区快照 page-01）
+- [x] A5 `main/ipc/slide.ts` 的 `slide:save-review` 接入：写盘前读旧文档 → 写盘 →
       按 A3 结果调 `invalidateSlideStage` → 返回值新增 `invalidated`（R5.1）。
-      失效原因文案统一为「保存复核内容」。
-- [ ] A6 `main/ipc/channels.ts` 与 `preload/index.ts` 同步 `saveReview` 返回类型。
+      失效原因文案统一为「保存复核内容」。失效时同时写一条活动日志。
+- [x] A6 `main/ipc/channels.ts` 与 `preload/index.ts` 同步 `saveReview` 返回类型。
       **两侧类型隔着 `ipcRenderer.invoke`，编译期互不校验**（`stages.ts:68-79` 的教训），
-      改一侧必须手动核对另一侧。
-- [ ] A7 `renderer/stores/slide-store.ts` 的 `saveReview` 透传 `invalidated`。
-- [ ] A8 `ReviewPage.handleSave`：`invalidated` 非空时**先 `clearLiveStages(slideId)`
+      改一侧必须手动核对另一侧。→ 抽出 `SaveReviewResult` 接口，三处共用同一类型
+- [x] A7 `renderer/stores/slide-store.ts` 的 `saveReview` 透传 `invalidated`。
+- [x] A8 `ReviewPage.handleSave`：`invalidated` 非空时**先 `clearLiveStages(slideId)`
       再 `refreshSlide(slideId)`**（R5.4 / design §5.1）。顺序不可颠倒，否则会话层旧的
       completed 会盖住刚写下的 stale。
-- [ ] A9 保存成功提示补充失效信息（例如「保存成功 · 已作废去字底板与 PPTX，点「运行此页」重新生成」），
+- [x] A9 保存成功提示补充失效信息（例如「保存成功 · 已作废去字底板与 PPTX，点「运行此页」重新生成」），
       让用户知道下一步要做什么。
 
-验证：`pnpm typecheck && pnpm test`。
+验证：`pnpm typecheck && pnpm test` → 2026-07-29 全绿（core 76 / desktop 235 / cli 93）。
+`pnpm format:check` 通过。
 
 真实工作区手测（这是 A 阶段的核心验收，自动化测试覆盖不到）：
 
@@ -113,6 +115,15 @@ R5 会真的写 manifest。
 2. 另一个页只改块文本并保存 → `mask` 保持 completed、`pptx` 转 stale，**不触发 clean 的
    付费调用**（AC14）；
 3. 打开页面不做任何修改（保存按钮应为 disabled，无法触发）——确认没有「空保存也失效」的路径。
+
+**2026-07-29 数据侧已验证**：在真实工作区 page-02（全阶段 completed）的副本上跑临时用例，
+直接调 `decideInvalidation` + `invalidateSlideStage`：
+
+- 改分类 → 判定 `mask`，实际失效 `mask/clean/accept-clean/pptx/accept-pptx/report`；
+- 只改文字 → 判定 `pptx`，`mask/clean/accept-clean` 保持 completed（未触发 clean 付费重跑）；
+- 不改 → 判定 null，manifest 一字未动。
+
+**界面侧（轨道立即变色、提示文案、保存按钮 disabled）留到阶段 E 走查**——需要真实启动桌面端。
 
 提交：`fix(desktop,cli): 保存复核按粒度失效下游，report 按 attempt 取记录`
 

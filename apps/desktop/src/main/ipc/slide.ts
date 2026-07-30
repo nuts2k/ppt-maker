@@ -15,6 +15,7 @@ import { ipcMain, shell } from "electron";
 import { resolveInvalidationTarget } from "../../shared/stages.js";
 import { type ActivityLog, buildActivityRecord } from "../activity-log.js";
 import { resolveDeckContext } from "../deck-context.js";
+import { decideInvalidation } from "../save-invalidation.js";
 import {
   loadTextReviewDocument,
   REVIEW_RELATIVE_PATH,
@@ -62,18 +63,49 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
     },
   );
 
+  /*
+   * 保存文本复核：写盘之外还要把改动传给下游阶段。
+   *
+   * 此前只写盘不碰 manifest，用户改完分类保存后轨道依旧全绿、产物却是旧的
+   * （见 save-invalidation.ts 的判据说明）。失效必须分粒度：一律失效 mask 会让
+   * 每次保存都触发 clean 的付费图像调用。
+   */
   ipcMain.handle(
     "slide:save-review",
     async (
       _event,
       workspacePath: string,
       document: TextReviewDocument,
-    ): Promise<{ valid: boolean; errors: number; warnings: number }> => {
+    ): Promise<{
+      valid: boolean;
+      errors: number;
+      warnings: number;
+      invalidated: string[];
+    }> => {
       const ws = resolve(workspacePath);
       const parsed = TextReviewDocumentSchema.parse(document);
+      const previous = await loadTextReviewDocument(ws);
       const reviewPath = join(ws, ...REVIEW_RELATIVE_PATH);
       const { writeFile } = await import("node:fs/promises");
       await writeFile(reviewPath, JSON.stringify(parsed, null, 2), "utf-8");
+
+      const target = decideInvalidation(previous, parsed);
+      let invalidated: string[] = [];
+      if (target !== null) {
+        const result = await invalidateSlideStage({
+          workspacePath: ws,
+          stage: target,
+          reason: "保存复核内容",
+        });
+        invalidated = [...result.invalidated];
+        await log(
+          workspacePath,
+          "save-review",
+          target,
+          "success",
+          `保存复核内容，已作废：${invalidated.join("、")}`,
+        );
+      }
 
       const workspace = await loadSlideWorkspace(ws);
       const sourceImage = workspace.manifest.assets.find(
@@ -86,7 +118,7 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
       const warnings = violations.filter(
         (v) => v.severity === "warning",
       ).length;
-      return { valid: errors === 0, errors, warnings };
+      return { valid: errors === 0, errors, warnings, invalidated };
     },
   );
 

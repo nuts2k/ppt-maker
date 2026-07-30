@@ -13,6 +13,7 @@ import type {
   DoctorReport,
   FinalChecks,
   IpcApi,
+  SaveReviewResult,
 } from "../main/ipc/channels.js";
 import type { RunStage } from "../shared/stages.js";
 
@@ -56,7 +57,7 @@ const api: IpcApi = {
     saveReview: (
       workspacePath: string,
       document: TextReviewDocument,
-    ): Promise<{ valid: boolean; errors: number; warnings: number }> =>
+    ): Promise<SaveReviewResult> =>
       ipcRenderer.invoke("slide:save-review", workspacePath, document),
     acceptClean: (
       workspacePath: string,
