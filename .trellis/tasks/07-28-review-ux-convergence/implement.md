@@ -3,11 +3,36 @@
 阶段顺序由 design §8 的依赖约束决定：**数据正确性先落地，再收界面**。
 每个阶段自成一个提交，可单独 revert（唯一例外见「回滚点」）。
 
-## 开工前置（换机器时必读）
+## 开工前置（换机器 / 新会话时必读）
 
-**状态（2026-07-28）：规划已完成，代码一行未动。** 四份工件（`prd.md` / `design.md` /
-`implement.md` / 两份 jsonl）齐备，任务仍是 `pending`，等用户 review 后再 `task.py start`。
-新机器上从「阶段 A」开始即可。
+**状态（2026-07-29 更新）：阶段 A / B / C / D 的代码已全部落地，各自一个提交；
+只剩阶段 E 的真机走查。** 任务状态 `in_progress`。
+
+```
+fe2d6f4 docs(trellis): 记录阶段 E 的先行核对结果
+9d736ca refactor(desktop): 文本复核改为顺序稳定的线性列表        ← 阶段 D
+edc13fb refactor(desktop): 阶段轨道降为只读，收敛单页执行入口      ← 阶段 C
+31f9a2e refactor(desktop): report 移出可见阶段序列，改由验收自动补跑 ← 阶段 B
+c774d42 fix(desktop,cli): 保存复核按粒度失效下游，report 按 attempt 取记录 ← 阶段 A
+```
+
+**新会话接手时按这个顺序做：**
+
+1. `python3 ./.trellis/scripts/task.py start 07-28-review-ux-convergence`
+   —— Trellis 的当前任务指针是**会话级**的，新会话必然为空，不重设后面的
+   工作流路由全都不生效；
+2. 读本文件的「阶段 E」与末尾的「2026-07-29 阶段性核对结果」，知道哪些 AC 已判定、
+   哪些还得点界面；
+3. `cd apps/desktop && pnpm dev` 起桌面端，在 `~/test/ppttest-2026-07-25` 上逐条走 AC。
+   **改过 `@cli/src` 或 main 侧代码要重启 dev**，HMR 只覆盖 renderer——本任务动过
+   `main/ipc/slide.ts`、`main/save-invalidation.ts`、`main/runner/deck-runner.ts`。
+
+走查发现问题就地修，改完照旧 `pnpm format:check && pnpm typecheck && pnpm test`，
+并把结论写回本文件的 E2（不得只在对话里说）。全部通过后走 Phase 3：
+`trellis-update-spec` → 提交 → `/trellis:finish-work`。
+
+上下文交接的细节见下面「上下文交接要点」；阶段 A–D 各节的复选框里记着实现时
+偏离计划的地方，改相关代码前先扫一眼。
 
 ### 环境
 
@@ -36,27 +61,33 @@ node apps/cli/dist/index.js doctor  # 本机基线：5 通过 / 1 警告（Node 
 
 | 项 | 位置 | 处理 |
 |---|---|---|
-| **代码提交** | 2026-07-28 换机前已 `git push origin main`，含本任务的规划工件 | 新机器 `git clone` 或 `git pull` |
+| **代码提交** | 2026-07-29：阶段 A–D 五个提交**仅在本地 main**（`ahead 5`，尚未 push） | 换机器前必须 `git push origin main`，否则新机器上拿不到 A–D 的实现 |
 | **`.env`** | 仓库根，**已 gitignore** | 手动重建：`OPENAI_API_KEY` 与 `OPENAI_BASE_URL`（第三方兼容端点，两个都要），照 `.env.example` 的键名 |
 | **真实工作区** | `~/test/ppttest-2026-07-25`（29 MB） | 整目录拷过去。**它含 2026-07-26 走查的改动**：page-02 的 `block-031/039/045/079/081` 已改分类并入 mask，但受 B5 缺陷影响，mask 及下游产物未跟着更新，manifest 仍显示全部 completed——**这正好是阶段 A 的现成复现场景，别把它清掉** |
-| **工作区备份** | `~/test/ppttest-2026-07-25.bak-baseline`（未改动的基线）、`.bak-225336`（上轮走查前） | 各 29 MB。基线那份务必带上，阶段 A 会真实写 manifest，出问题要靠它恢复 |
-| **Trellis 当前任务指针** | 会话级，不随仓库走 | 新机器执行 `python3 ./.trellis/scripts/task.py start 07-28-review-ux-convergence`（review 通过后） |
+| **工作区备份** | `.bak-baseline`（未改动的基线）、`.bak-225336`（上轮走查前）、`.bak-0729-192803`（本轮开工前） | 各 29 MB。基线那份务必带上，阶段 E 走查会真实写 manifest，出问题靠它恢复 |
+| **Trellis 当前任务指针** | 会话级，不随仓库走，**新会话同样为空** | 每个新会话都要先 `python3 ./.trellis/scripts/task.py start 07-28-review-ux-convergence` |
 | **跨会话记忆** | `~/.claude/projects/.../memory/` | **不会跟着仓库走**。接续所需信息全部写在本文件与 `prd.md`，以它们为准 |
 
 ### 上下文交接要点
 
-新机器上接手时，按这个顺序读最省事：
+接手时按这个顺序读最省事：
 
-1. `prd.md` 的 **Background 一节** —— B1–B6 六条现状全部带 `file:line` 锚点，
-   不必重新做代码考古；
-2. `design.md` 的 **§8 实施顺序与依赖** —— R5 必须先于 R1/R2.4，这是硬约束，不是偏好；
-3. 本文件的 **阶段 A** —— 从这里动手。
+1. 本文件的 **阶段 E** 与末尾的核对结果表 —— 唯一还没做的事，以及哪些 AC 已判定；
+2. 本文件 **阶段 A–D 的复选框** —— 每条后面的 `→` 记着实现时偏离计划之处；
+3. 需要回溯为什么这么设计时再读 `prd.md` 的 Background（B1–B6 带 `file:line` 锚点）
+   与 `design.md`。
 
-三条容易踩的坑，都已写在各自章节，这里只做索引：
+三条容易踩的坑（已落地，改相关代码时别退回去）：
 
 - `STAGE_LABELS` 保留 `report` 条目，只从 `RUN_STAGE_SEQUENCE` 移除（design §2）；
-- 保存失效后必须**先 `clearLiveStages` 再 `refreshSlide`**（design §5.1）；
-- 失效判据必须调 core 的 `maskInvalidationProjection`，**不得一律失效 mask**（design §5）。
+  类型上靠 `StageLabelKey = RunStage | "report"` 表达这处刻意的不对称；
+- 保存失效后必须**先 `clearLiveStages` 再 `refreshSlide`**（design §5.1），
+  顺序颠倒会出现「磁盘 stale、轨道一片绿」；
+- 失效判据必须调 core 的 `maskInvalidationProjection`，**不得一律失效 mask**（design §5），
+  否则每次保存都触发一次 clean 的付费调用。
+
+第四条是本轮新增的不变量：**BlockListPanel 的渲染顺序恒等于 `blocks` 数组顺序**，
+筛选只 filter、永不排序分组。破坏它等于让阶段 D 的收益归零。
 
 ## 验证命令
 
