@@ -173,3 +173,37 @@ V1 桌面工作台被判定用户体验不合格（无批量执行、无进度/�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: 阶段 E 真机走查：AC1–AC17 全通过，另修三条会话层/文案缺陷
+
+**Date**: 2026-07-29
+**Task**: 阶段 E 真机走查：AC1–AC17 全通过，另修三条会话层/文案缺陷
+**Branch**: `main`
+
+### Summary
+
+用 CDP 驱动真实 Electron 走完 07-28-review-ux-convergence 的阶段 E：REMOTE_DEBUGGING_PORT=9222 起 dev，Runtime.evaluate 读 DOM/store、Input.dispatch* 派发真实鼠标键盘。两处偏离纯手点——原生目录选择框 CDP 够不到且 window.api 被 contextBridge 冻结无法打桩，改调 deck-store.openDeck；界面没有取消已复核入口，未复核夹具直接改 text-blocks.json（走查后已还原）。AC1-AC17 全部通过，含造 clean 失败验 AC3、chmod 555 report 目录验 AC6、page-02 的 clean-001/003失败/004 三 attempt 验 AC16。走查暴露三条缺陷并当场修掉：stage-start/stage-complete 不成对（失败与人工门两条路径）导致会话层永远停在 running 压住耐久层，改为 page-done 时撤掉该页所有仍 running 的阶段；控制台卡片与待办队列把 stale 报成执行失败且各自指错阶段，新增 blockingStageView 让两处同源、stale 措辞统一为上游已变更。core 76 / desktop 255 / cli 93 全绿。通用教训进 spec/frontend/state-management.md。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c2fca5d` | (see git log) |
+| `593ab65` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
