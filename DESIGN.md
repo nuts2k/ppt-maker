@@ -1,130 +1,90 @@
 ---
 version: alpha
-name: Airtable-design-analysis
-description: A sober, editorial workflow-software interface anchored on white canvas and dark-ink type, where brand voltage comes from full-bleed signature cards in coral, dark green, peach, and dark navy that punctuate long-scroll explainer pages. Primary actions use a near-black pill CTA; secondary actions sit in a white outlined button. Type runs Haas Grotesk in modest weights — never bold for its own sake.
+name: proof-desk
+description: 校样台 —— 一个本地转换工具的工作界面。真中性白纸底、近黑墨字，全屏唯一一抹校对红只标「差异」与「待我处理」。完成态刻意用中性色：一叠 20–50 页里绝大多数已完成，常态必须安静，于是「有颜色的地方就是要你管的地方」成为一条可依赖的扫读规则。满屏计数与计时一律等宽数字。界面近乎无彩，因为预览区旁的任何界面色都会污染「这张底板干不干净」的判断。
 
 colors:
-  primary: "#181d26"
-  primary-active: "#0d1218"
-  ink: "#181d26"
-  body: "#333840"
-  muted: "#41454d"
-  hairline: "#dddddd"
-  border-strong: "#9297a0"
   canvas: "#ffffff"
-  surface-soft: "#f8fafc"
-  surface-strong: "#e0e2e6"
-  surface-dark: "#181d26"
-  surface-dark-elevated: "#1d1f25"
-  signature-coral: "#aa2d00"
-  signature-forest: "#0a2e0e"
-  signature-cream: "#f5e9d4"
-  signature-peach: "#fcab79"
-  signature-mint: "#a8d8c4"
-  signature-yellow: "#f4d35e"
-  signature-mustard: "#d9a441"
-  on-primary: "#ffffff"
-  on-dark: "#ffffff"
-  link: "#1b61c9"
-  link-active: "#1a3866"
-  info: "#254fad"
-  info-border: "#458fff"
-  success: "#006400"
-  success-border: "#39bf45"
-  pricing-ink: "#1d1f25"
+  surface: "#f7f7f7"
+  surface-sunken: "#ededed"
+  hairline: "#dedede"
+  border: "#8c8c8c"
+  border-strong: "#696969"
+  focus: "#1b1b1b"
+  ink: "#1b1b1b"
+  ink-pressed: "#0b0b0b"
+  ink-secondary: "#525252"
+  ink-muted: "#6c6c6c"
+  on-ink: "#ffffff"
+  proof: "#be222a"
+  proof-strong: "#970818"
+  proof-wash: "#ffedea"
+  state-running: "#0065b4"
+  state-stale: "#905d00"
+  state-failed: "#9d1135"
 
 typography:
-  display-xl:
-    fontFamily: "Haas Groot Disp, Haas, sans-serif"
-    fontSize: 48px
-    fontWeight: 500
-    lineHeight: 1.1
-    letterSpacing: 0
-  display-lg:
-    fontFamily: "Haas Groot Disp, Haas, sans-serif"
-    fontSize: 40px
-    fontWeight: 400
-    lineHeight: 1.2
-    letterSpacing: 0
-  display-md:
-    fontFamily: "Haas Groot Disp, Haas, sans-serif"
-    fontSize: 32px
-    fontWeight: 400
-    lineHeight: 1.2
-    letterSpacing: 0
-  title-lg:
-    fontFamily: "Haas, sans-serif"
+  page-title:
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: 24px
-    fontWeight: 400
-    lineHeight: 1.35
-    letterSpacing: 0.12px
-  title-md:
-    fontFamily: "Haas Groot Disp, Haas, sans-serif"
+    fontWeight: 600
+    lineHeight: 1.3
+    letterSpacing: -0.01em
+  section-title:
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: 20px
+    fontWeight: 600
+    lineHeight: 1.35
+    letterSpacing: 0
+  subsection-title:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: 18px
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: 0
+  body-emphasis:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: 16px
+    fontWeight: 500
+    lineHeight: 1.5
+    letterSpacing: 0
+  body:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: 14px
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: 0
-  title-sm:
-    fontFamily: "Haas, sans-serif"
-    fontSize: 18px
-    fontWeight: 500
-    lineHeight: 1.4
-    letterSpacing: 0
-  label-md:
-    fontFamily: "Haas, sans-serif"
-    fontSize: 16px
-    fontWeight: 500
-    lineHeight: 1.4
-    letterSpacing: 0
-  button:
-    fontFamily: "Haas, sans-serif"
-    fontSize: 16px
-    fontWeight: 500
-    lineHeight: 1.4
-    letterSpacing: 0
-  body-md:
-    fontFamily: "Haas, sans-serif"
+  label:
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: 14px
-    fontWeight: 400
-    lineHeight: 1.25
+    fontWeight: 500
+    lineHeight: 1.4
     letterSpacing: 0
   caption:
-    fontFamily: "Haas, sans-serif"
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: 12px
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: 0
+  badge:
+    fontFamily: "Inter, system-ui, sans-serif"
+    fontSize: 11px
+    fontWeight: 600
+    lineHeight: 1.4
+    letterSpacing: 0.01em
+  numeric:
+    fontFamily: "Inter, system-ui, sans-serif"
     fontSize: 14px
     fontWeight: 500
-    lineHeight: 1.35
-    letterSpacing: 0.16px
-  legal:
-    fontFamily: "Haas, sans-serif"
-    fontSize: 13.12px
-    fontWeight: 600
-    lineHeight: 1.2
+    lineHeight: 1.4
     letterSpacing: 0
-  pricing-display:
-    fontFamily: "Inter Display, system-ui, sans-serif"
-    fontSize: 44.8px
-    fontWeight: 475
-    lineHeight: 1.1
-    letterSpacing: 0
-  pricing-section:
-    fontFamily: "Inter Display, system-ui, sans-serif"
-    fontSize: 28px
-    fontWeight: 475
-    lineHeight: 1.2
-    letterSpacing: 0
-  pricing-card-title:
-    fontFamily: "Inter Display, system-ui, sans-serif"
-    fontSize: 20px
-    fontWeight: 475
-    lineHeight: 1.3
-    letterSpacing: 0
+    fontVariantNumeric: tabular-nums
 
 rounded:
   xs: 2px
-  sm: 6px
-  md: 10px
-  lg: 12px
-  pill: 9999px
+  sm: 4px
+  md: 6px
+  lg: 8px
   full: 9999px
 
 spacing:
@@ -135,420 +95,324 @@ spacing:
   lg: 24px
   xl: 32px
   xxl: 48px
-  section: 96px
+
+motion:
+  duration-fast: 120ms
+  duration-default: 180ms
+  duration-slow: 250ms
+  easing: "cubic-bezier(0.25, 1, 0.5, 1)"
 
 components:
   button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.button}"
-    rounded: "{rounded.lg}"
-    padding: 16px 24px
-  button-primary-active:
-    backgroundColor: "{colors.primary-active}"
-    textColor: "{colors.on-primary}"
-    rounded: "{rounded.lg}"
+    backgroundColor: "{colors.ink}"
+    textColor: "{colors.on-ink}"
+    typography: "{typography.label}"
+    rounded: "{rounded.md}"
+    activeBackgroundColor: "{colors.ink-pressed}"
   button-secondary:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.ink}"
-    typography: "{typography.button}"
-    rounded: "{rounded.lg}"
-    padding: 16px 24px
-  button-secondary-on-dark:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.button}"
-    rounded: "{rounded.lg}"
-    padding: 16px 24px
-  button-legal:
-    backgroundColor: "{colors.link}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.legal}"
-    rounded: "{rounded.xs}"
-    padding: 12px 10px
-  button-icon-circular:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.full}"
-    size: 40px
-  button-pricing-pill:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.pricing-ink}"
-    typography: "{typography.button}"
-    rounded: "{rounded.pill}"
-    padding: 12px 24px
-  text-link:
+    borderColor: "{colors.border}"
+    typography: "{typography.label}"
+    rounded: "{rounded.md}"
+  button-ghost:
     backgroundColor: transparent
-    textColor: "{colors.link}"
-    typography: "{typography.body-md}"
-  top-nav:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-md}"
-    height: 64px
-  hero-band:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.display-lg}"
-    padding: 96px
-  signature-coral-card:
-    backgroundColor: "{colors.signature-coral}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.display-md}"
-    rounded: "{rounded.lg}"
-    padding: 48px
-  signature-forest-card:
-    backgroundColor: "{colors.signature-forest}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.display-md}"
-    rounded: "{rounded.lg}"
-    padding: 48px
-  hero-card-dark:
-    backgroundColor: "{colors.surface-dark}"
-    textColor: "{colors.on-dark}"
-    typography: "{typography.display-md}"
-    rounded: "{rounded.lg}"
-    padding: 48px
-  feature-card-tabbed:
-    backgroundColor: "{colors.surface-soft}"
-    textColor: "{colors.ink}"
-    typography: "{typography.title-lg}"
-    rounded: "{rounded.lg}"
-    padding: 32px
-  cream-callout-card:
-    backgroundColor: "{colors.signature-cream}"
-    textColor: "{colors.ink}"
-    typography: "{typography.title-lg}"
+    textColor: "{colors.ink-secondary}"
+    typography: "{typography.label}"
     rounded: "{rounded.md}"
-    padding: 24px
-  demo-grid-card:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.label-md}"
+  button-danger:
+    backgroundColor: "{colors.proof}"
+    textColor: "{colors.on-ink}"
+    typography: "{typography.label}"
     rounded: "{rounded.md}"
-    padding: 16px
-  logo-strip:
+    activeBackgroundColor: "{colors.proof-strong}"
+  panel-flat:
     backgroundColor: "{colors.canvas}"
-    textColor: "{colors.muted}"
-    typography: "{typography.body-md}"
-    padding: 32px
-  article-card:
+    borderColor: "{colors.hairline}"
+    rounded: "{rounded.lg}"
+  panel-raised:
     backgroundColor: "{colors.canvas}"
+    borderColor: "{colors.hairline}"
+    rounded: "{rounded.lg}"
+    boxShadow: "0 1px 2px rgb(0 0 0 / 0.04), 0 1px 3px rgb(0 0 0 / 0.06)"
+  panel-sunken:
+    backgroundColor: "{colors.surface-sunken}"
+    rounded: "{rounded.lg}"
+  field:
+    backgroundColor: "{colors.canvas}"
+    borderColor: "{colors.border}"
     textColor: "{colors.ink}"
-    typography: "{typography.title-sm}"
-    rounded: "{rounded.md}"
-    padding: 16px
-  topic-filter-rail:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.body}"
-    typography: "{typography.body-md}"
-    width: 240px
-  text-input:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-md}"
+    placeholderColor: "{colors.ink-muted}"
+    typography: "{typography.body}"
     rounded: "{rounded.sm}"
-    padding: 12px 16px
-    height: 44px
-  text-input-focus:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.sm}"
-  pricing-tier-card:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.pricing-ink}"
-    typography: "{typography.pricing-card-title}"
-    rounded: "{rounded.md}"
-    padding: 32px
-  pricing-tier-card-featured:
-    backgroundColor: "{colors.surface-soft}"
-    textColor: "{colors.pricing-ink}"
-    typography: "{typography.pricing-card-title}"
-    rounded: "{rounded.md}"
-    padding: 32px
-  pricing-comparison-row:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.body}"
-    typography: "{typography.body-md}"
-    padding: 12px
-  cta-band-light:
-    backgroundColor: "{colors.surface-strong}"
-    textColor: "{colors.ink}"
-    typography: "{typography.display-md}"
-    rounded: "{rounded.lg}"
-    padding: 48px
-  footer:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.body}"
-    typography: "{typography.body-md}"
-    padding: 64px
+  focus-ring:
+    outline: "2px solid {colors.focus}"
+    outlineOffset: 2px
 ---
 
 ## Overview
 
-Airtable's marketing surfaces are quietly editorial. The base atmosphere is white canvas, dark ink type, generous whitespace, and a near-black pill CTA — nothing is fighting for attention until a section needs to. The brand voltage doesn't come from gradient washes or accent walls; it comes from **full-bleed signature cards** in `{colors.signature-coral}`, `{colors.signature-forest}`, and `{colors.surface-dark}` that punctuate long-scroll explainer pages every two or three screens. Between those signature bands, the page reads like a print magazine: a headline, supporting copy, a small image cluster, then breathing room.
+**校样台（proof desk）。** 印前打样与编辑部校样纸的隐喻 —— 这个产品干的本来就是校对：两个来源的文字逐块比对，标出差异，人工签字确认。视觉系统直接借用这套已经存在了一百年、所有人都读得懂的传统，而不是再发明一套通用警告色。
 
-Type voice is Haas Grotesk at modest weights (400 for display, 500 for sub-titles and buttons). Display headlines never go bolder than 500 — emphasis comes from size and color contrast, not from weight. Body copy stays at 14px / 400 throughout. The pricing surface runs its own dialect: **Inter Display** at unusual mid-weights (475 / 575) and **pill-shaped buttons** (`{rounded.pill}`) that don't appear on any other page — a deliberate sub-system signaling "this page is about commercial precision."
+Register 是 **product**：设计服务于产品，不是产品本身。使用者是开发者本人加少量同事，白天短时多次使用，一叠 20–50 页。
 
-**Key Characteristics:**
-- Primary CTA is `{colors.primary}` (near-black ink) with white text and a `{rounded.lg}` (12px) corner — it reads as confident and final, never decorative.
-- Secondary CTA is a `{colors.canvas}` button with `{colors.ink}` text and a hairline outline. The two together form Airtable's signature button pair.
-- Hero is white canvas. There is no atmospheric gradient, no mesh, no background flourish. The brand strength comes from the type and the buttons sitting in clean whitespace.
-- Brand voltage lives in **signature surface cards**: `{colors.signature-coral}`, `{colors.signature-forest}`, and `{colors.surface-dark}` carry full-bleed product callouts every few screens.
-- Demo-card grids carry product UI fragments on `{colors.signature-peach}`, `{colors.signature-mint}`, `{colors.signature-cream}` and other warm pastel surfaces.
-- Section rhythm: white canvas → coral signature card → white body → cream callout band → dark navy CTA → light gray CTA banner → footer. The canvas resets between every signature surface.
-- Border radius is hierarchical: `{rounded.lg}` (12px) for primary CTAs and large signature cards, `{rounded.md}` (10px) for content cards and demo grids, `{rounded.sm}` (6px) for inputs, `{rounded.full}` for icon buttons. Pricing buttons jump to `{rounded.pill}` to mark themselves as a separate dialect.
-- Vertical rhythm is `{spacing.section}` (96px) between major bands — universal across every page.
+三个词：**克制、精确、可信**。
+
+战略上下文（用户、反参考、设计原则、无障碍档位）见 [PRODUCT.md](./PRODUCT.md)。本文件只管「长什么样」。
 
 ## Colors
 
-### Brand & Accent
-- **Primary** (`{colors.primary}` — #181d26): The dominant brand color. Used for the primary CTA background, h1/h2 display type, and the `{component.surface-dark}` band. Not "blue, then black" — black IS the primary throughout the marketing system.
-- **Primary Active** (`{colors.primary-active}` — #0d1218): The press state on primary buttons.
+颜色策略：**Restrained**（product register 的地板，本项目不上浮）。界面近乎无彩，彩色只用于主行动、当前选中与状态指示，**不用于装饰**。
 
-### Surface
-- **Canvas** (`{colors.canvas}` — #ffffff): The default page surface; the floor of every editorial body.
-- **Surface Soft** (`{colors.surface-soft}` — #f8fafc): Tabbed feature cards and the featured pricing tier.
-- **Surface Strong** (`{colors.surface-strong}` — #e0e2e6): The light gray "Start building with Airtable" CTA banner near the footer.
-- **Surface Dark** (`{colors.surface-dark}` — #181d26): The dark navy CTA cards used mid-page (for example "The path to 10× every person in your organization").
-- **Surface Dark Elevated** (`{colors.surface-dark-elevated}` — #1d1f25): The articles-page hero base behind the rainbow-stripe overlay.
-- **Hairline** (`{colors.hairline}` — #dddddd): The 1px border tone for input outlines, table dividers, secondary-button outlines.
+### 硬约束：中性阶 chroma 恒为 0
 
-### Text
-- **Ink** (`{colors.ink}` — #181d26): The strongest text — h1/h2 display type and primary button text-on-light. Same hex as `{colors.primary}` because they are the same role expressed at type and button layers.
-- **Body** (`{colors.body}` — #333840): The default running-text color.
-- **Muted** (`{colors.muted}` — #41454d): Footer links, breadcrumbs, captions.
-- **Border Strong** (`{colors.border-strong}` — #9297a0): The 1px outline color on disabled secondary buttons.
-- **On Primary / On Dark** (`{colors.on-primary}` — #ffffff): The text color on primary buttons and dark surfaces.
+「纸」是**真中性白**。暖调近白（OKLCH L 0.84–0.97、C < 0.06、hue 40–100 —— 即 cream / sand / paper / parchment / linen / ivory 那一带）是被明令禁止的 AI 默认色带，**令牌命名同样禁止出现这些词**。
 
-### Signature Card Surfaces
-These are the colors that carry Airtable's brand voltage. They appear as full-bleed, full-card surfaces — never as accents on a small element.
-- **Coral** (`{colors.signature-coral}` — #aa2d00): The largest signature card on the homepage ("Production apps in prototype speed"). Full-bleed dark coral with white type.
-- **Forest** (`{colors.signature-forest}` — #0a2e0e): A deep-green signature card used in the homepage demo-grid cluster.
-- **Cream** (`{colors.signature-cream}` — #f5e9d4): The cream callout band ("The path to 10× every person in your organization") — a soft beige surface holding dark type and product UI fragments.
-- **Peach** (`{colors.signature-peach}` — #fcab79), **Mint** (`{colors.signature-mint}` — #a8d8c4), **Yellow** (`{colors.signature-yellow}` — #f4d35e), **Mustard** (`{colors.signature-mustard}` — #d9a441): Demo-card surfaces that carry small product UI fragments inside the multi-card grid sections.
+「暖意」由校对红、字体与排版承担，绝不由底色承担。
 
-### Semantic
-- **Link** (`{colors.link}` — #1b61c9): Inline body links and anchor text. Darker on press to `{colors.link-active}` (#1a3866). Despite the `--theme_button-background-primary` CSS-variable name, this color is **not** the primary button color — it is the link color.
-- **Info** (`{colors.info}` — #254fad) and **Info Border** (`{colors.info-border}` — #458fff): Inline info badges and focused-input outline.
-- **Success** (`{colors.success}` — #006400) and **Success Border** (`{colors.success-border}` — #39bf45): Confirmation states.
+### 纸与面
+
+| 令牌 | 值 | 用途 |
+|---|---|---|
+| `canvas` | `#ffffff` | 纸。页面底、卡片底 |
+| `surface` | `#f7f7f7` | 面板、次级面、工具条 |
+| `surface-sunken` | `#ededed` | 预览衬底、凹陷区 |
+
+### 线
+
+| 令牌 | 值 | 用途 |
+|---|---|---|
+| `hairline` | `#dedede` | **仅装饰性分隔**，不承担 3:1 |
+| `border` | `#8c8c8c` | **控件边界**（输入框、次级按钮），已验算 ≥3:1 |
+| `border-strong` | `#696969` | 强调边界、选中态 |
+| `focus` | `#1b1b1b` | 焦点环 |
+
+`hairline` 与 `border` 的区分是刻意的：WCAG 1.4.11 只要求**用于识别控件**的边界达 3:1，纯装饰分隔线不需要。把两者混成一个令牌，要么让分隔线过重，要么让输入框边界不达标。
+
+### 墨
+
+| 令牌 | 值 | 对比度（对 canvas） |
+|---|---|---|
+| `ink` | `#1b1b1b` | 17.31:1 |
+| `ink-secondary` | `#525252` | 7.77:1 |
+| `ink-muted` | `#6c6c6c` | 5.28:1 |
+
+`ink-muted` 同时是**占位符文字**的颜色。占位符按正文标准要求 4.5:1，不适用「灰一点更优雅」的例外。
+
+### 校对红
+
+| 令牌 | 值 | 用途 |
+|---|---|---|
+| `proof` | `#be222a` | 差异、待我处理、危险动作 |
+| `proof-strong` | `#970818` | 按压态 |
+| `proof-wash` | `#ffedea` | 差异高亮底 |
+
+**全屏唯一的高饱和色。** 只用于「差异」与「待我处理」，不用于装饰、不用于强调、不用于品牌表达。
+
+### 状态语义
+
+| 状态 | 颜色 | 形状 | 文字 |
+|---|---|---|---|
+| 已完成 | `hairline` 中性 | 实心圆 | 已完成 |
+| 待执行 | `hairline` 中性 | 空心圆 | 待执行 |
+| 进行中 | `state-running` `#0065b4` | 圆 + 脉冲 | 执行中 |
+| 已失效 | `state-stale` `#905d00` | 三角 | 上游已变更 |
+| 失败 / 中断 | `state-failed` `#9d1135` | 方块 + `X` | 失败 / 已中断 |
+
+**核心规则：有颜色 = 要你管。**
+
+完成是常态 —— 一叠 20–50 页里绝大多数处于完成态。用饱和色标注常态，等于把最强的视觉手段给了最不需要注意的信息。旧实现用深绿标完成，9 个绿点满屏是全局最大的噪音源。
+
+改为中性后，一屏扫过去，**有颜色的地方就是要你管的地方**。这条规则本身就是本设计最重要的记忆点。
+
+已完成与待执行同为中性，靠**实心/空心**区分；三个需要注意的状态各有独立形状。因此灰度下、色弱下五态均可分辨。
+
+**措辞约定**：`stale` 不是 `failed`。「失效」是改了上游后的常规路径（保存复核内容就会产生），文案统一为「上游已变更，需重跑」；「执行失败」只留给 `failed` / `interrupted`。都写成失败会把一次正常的「改完了、重跑一下」报成红色故障。
+
+### 状态色与品牌色彻底分离
+
+品牌色不得挪用为状态色，状态色不得用于装饰。这是上一版设计的根本错误 —— 营销站的签名色（coral / mustard）被拿去当失败与失效的语义色，导致两套语义互相绑架。
+
+### 验算
+
+全部 22 项组合的对比度验算脚本与结果：
+`.trellis/tasks/07-30-desktop-design-language-rebuild/research/palette-contrast.mjs`
+
+**改动任一颜色令牌后必须重跑该脚本，22 项须全部通过。** 不靠肉眼判断。
 
 ## Typography
 
 ### Font Family
-The system runs **Haas / Haas Groot Disp** (Airtable's licensed display + text type). Haas Groot Disp covers display sizes (h1 / h2); Haas Grotesk covers everything 24px and below. The fallback stack walks `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif`.
 
-The pricing surface runs a separate **Inter Display** stack at mid-weights (475 / 575) — a deliberate sub-system signaling commercial precision.
+单一字族 **Inter**，多字重承担全部层级。product register 不需要 display/body 配对 —— 一个调校良好的 sans 足以承担标题、按钮、标签、正文与数据。
 
 ### Hierarchy
 
-| Token | Size | Weight | Line Height | Letter Spacing | Use |
-|---|---|---|---|---|---|
-| `{typography.display-xl}` | 48px | 500 | 1.1 | 0 | Articles page h2 — second-tier editorial headline |
-| `{typography.display-lg}` | 40px | 400 | 1.2 | 0 | Homepage h1 hero |
-| `{typography.display-md}` | 32px | 400 | 1.2 | 0 | Platform-page h2 — feature-section headlines |
-| `{typography.title-lg}` | 24px | 400 | 1.35 | 0.12px | Section titles |
-| `{typography.title-md}` | 20px | 400 | 1.5 | 0 | Sub-section titles in tabbed feature cards |
-| `{typography.title-sm}` | 18px | 500 | 1.4 | 0 | Article-card titles |
-| `{typography.label-md}` | 16px | 500 | 1.4 | 0 | Demo-card titles, list labels |
-| `{typography.button}` | 16px | 500 | 1.4 | 0 | Standard CTA button labels |
-| `{typography.body-md}` | 14px | 400 | 1.25 | 0 | Body copy, footer links, top-nav items |
-| `{typography.caption}` | 14px | 500 | 1.35 | 0.16px | Light captions and meta text |
-| `{typography.legal}` | 13.12px | 600 | 1.2 | 0 | Cookie/legal CTA buttons |
-| `{typography.pricing-display}` | 44.8px | 475 | 1.1 | 0 | Pricing-page h1 |
-| `{typography.pricing-section}` | 28px | 475 | 1.2 | 0 | Pricing-page section heads |
-| `{typography.pricing-card-title}` | 20px | 475 | 1.3 | 0 | Pricing tier card plan name |
+固定 rem 尺度，**非 fluid**。桌面端 DPI 恒定，`clamp()` 标题在侧栏里只会更难看。
+
+| 档位 | 尺寸 | 字重 | 用途 |
+|---|---|---|---|
+| `page-title` | 24px | 600 | 页面标题 |
+| `section-title` | 20px | 600 | 区块标题 |
+| `subsection-title` | 18px | 600 | 子区块 |
+| `body-emphasis` | 16px | 500 | 强调正文 |
+| `body` | 14px | 400 | 界面主正文 |
+| `label` | 14px | 500 | 按钮、标签 |
+| `caption` | 12px | 400 | 辅助说明 |
+| `badge` | 11px | 600 | 状态角标、计数徽标 |
+
+步进比落在 1.1–1.2。界面元素多，夸张的尺寸对比只会制造噪音。
+
+**上一版的教训**：139 处字号声明里 128 处是同一个 14px，等于没有层次。重构必须真正把层级用起来。
+
+### 等宽数字
+
+**全部计数与计时使用 `tabular-nums`**：`7/9`、`已用 42s`、`待确认 25`。
+
+这个应用满屏都是计数与计时，等宽数字让秒数跳动时字宽不变、行不抖动。这是本设计三个记忆点之一。
 
 ### Principles
-The Haas system prefers weight 400 for display sizes — a 40px h1 is **not** bold. Visual emphasis is delegated to size, color contrast, and the signature surface cards. Where the system does want weight, it pivots to 500 (sub-titles, buttons, article titles), never 600 or 700 in the editorial body. The only true bold (600) lives in `{typography.legal}` — a sign that boldness is reserved for terms-of-service surfaces, not marketing.
 
-The pricing-page sub-system uses Inter Display at `font-weight: 475` — a custom mid-weight between regular (400) and medium (500), shipped as a variable font.
-
-### Note on Font Substitutes
-If Haas Groot Disp and Haas Grotesk are unavailable, **Inter Display** (variable) is the closest open-source substitute for both — adjust line-height down by ~5% to match Haas's tighter cap-height. For the pricing sub-system, use Inter Display directly. On macOS / iOS, **system-ui** is sufficient; on Windows, the chain falls through to Segoe UI, which is a usable but slightly cooler substitute.
+- 正文行长上限 65–75ch；数据与紧凑 UI 可以更密。
+- `text-wrap: balance` 用于标题，`text-wrap: pretty` 用于长段落。
+- 不用装饰字体做 UI 标签、按钮或数据。
 
 ## Layout
 
 ### Spacing System
-- **Base unit:** 4px (all spacing snaps to 4-multiples).
-- **Tokens:** `{spacing.xxs}` 4px · `{spacing.xs}` 8px · `{spacing.sm}` 12px · `{spacing.md}` 16px · `{spacing.lg}` 24px · `{spacing.xl}` 32px · `{spacing.xxl}` 48px · `{spacing.section}` 96px.
-- **Section padding (vertical):** `{spacing.section}` (96px) is the universal vertical rhythm constant — every major editorial band on every page uses 96px top + 96px bottom internal padding.
-- **Card internal padding:** `{spacing.xl}` (32px) for tabbed feature cards and pricing tier cards; `{spacing.xxl}` (48px) inside signature coral / forest / dark cards; `{spacing.lg}` (24px) for cream callouts and demo-grid cards.
-- **Gutters:** `{spacing.lg}` (24px) between cards in 3-up grids; `{spacing.md}` (16px) inside denser logo strips and footer column gutters.
 
-### Grid & Container
-- **Max content width:** ~1280px centered, with `{spacing.xxl}` (48px) horizontal breathing room.
-- **Editorial body:** Single 8/12-column at large breakpoints, collapsing to single-column on mobile.
-- **Demo-card grids:** 3 or 4 columns at desktop, 2 at tablet, 1 at mobile. Card sizes are deliberately uneven within the grid to dodge a uniform "spec sheet" feel.
-- **Logo strip:** 6 monochrome partner logos in a single row at desktop; wraps to 3-up on mobile.
+4 / 8 / 12 / 16 / 24 / 32 / 48px。间距要有节奏，不要通篇一个值。
+
+### Density
+
+按 20–50 页的实际规模设计。控制台目标一屏容纳 **≥12 张**页面卡片。
+
+密度是 product register 的**许可**而非缺陷：表格可以多行，面板可以多标签，用户需要时信息就该密。
 
 ### Whitespace Philosophy
-Airtable uses whitespace as the dominant atmospheric tool. Hero sections sit in 96px+ of pure whitespace above and below the headline + sub-headline pair, with no decoration in that whitespace. The hero is intentionally calm — there is no gradient, no aurora, no atmospheric mesh behind the type. The system trusts whitespace alone to do the framing.
+
+留白服务于分组，不服务于「透气」。空态不得占用固定版面 —— 上一版的待办队列空态占了 27% 横向宽度，只为显示一行「暂无待办」。
 
 ## Elevation & Depth
 
-| Level | Treatment | Use |
+三档，不做更多：
+
+| 档位 | 表达 | 用途 |
 |---|---|---|
-| Flat | No shadow, no border | Body sections, top nav, footer |
-| Soft hairline | 1px `{colors.hairline}` border | Inputs, sub-nav rails, comparison-table dividers, secondary buttons |
-| Button rest | Soft drop with subtle blue-tinted glow at low alpha | Primary CTA buttons (the blue tint is a holdover from the link color and reads as a faint accent under the dark button) |
-| Button focus | Outer 2px blue ring at higher alpha | Keyboard focus state on primary buttons |
-| Card flat | No shadow; relies on color contrast against the surface band | Signature coral / forest / dark cards, cream callouts, demo-grid cards |
+| flat | `hairline` 描边 | 默认面板 |
+| raised | 描边 + 极轻双层阴影 | 浮层、下拉、当前选中卡片 |
+| sunken | `surface-sunken` 底、无描边 | 预览衬底、凹陷区 |
 
-The elevation philosophy is **color-block first, shadow second**. Shadows are minimal; depth is delegated to the contrast between white canvas and signature surface cards. There is no soft-glow / atmospheric-shadow / heavy-elevation language anywhere in the marketing system.
+阴影极轻（4%/6% 黑），只用于表达「浮在上面」，不用于装饰。**禁止毛玻璃**。
 
-### Decorative Depth
-- **Vertical rainbow stripes** appear on the articles hero only — multi-color vertical bands sitting on `{colors.surface-dark-elevated}`. This is a single-page treatment, not a system-wide signature.
-- **Photography-as-depth** in the demo-card grid: every card carries a real product UI screenshot or mockup, contributing depth through legible artifact density rather than decorative effects.
+z-index 走语义刻度：dropdown → sticky → modal-backdrop → modal → toast → tooltip。禁止 999 / 9999 这类字面量。
 
 ## Shapes
 
 ### Border Radius Scale
 
-| Token | Value | Use |
+| 令牌 | 值 | 用途 |
 |---|---|---|
-| `{rounded.xs}` | 2px | Cookie-consent and legal CTA buttons — system-required surfaces |
-| `{rounded.sm}` | 6px | Text inputs, small inline buttons |
-| `{rounded.md}` | 10px | Secondary content cards, article cards, cream callouts |
-| `{rounded.lg}` | 12px | Primary CTA buttons, signature surface cards, tabbed feature cards |
-| `{rounded.pill}` | 9999px | Pricing-page CTA buttons (sub-system only) |
-| `{rounded.full}` | 9999px / 50% | Circular icon buttons, avatar surfaces |
+| `xs` | 2px | 徽标、细条 |
+| `sm` | 4px | 输入框、小控件 |
+| `md` | 6px | 按钮 |
+| `lg` | 8px | 面板、卡片 |
+| `full` | 9999px | 状态点 |
 
-### Photography Geometry
-Product UI screenshots inside demo-card grids retain native aspect ratios (typically 4:3 or 16:10) and crop into `{rounded.md}` containers. Hero illustrations bleed full-width with no rounding. Article-card thumbnails use 16:9 with `{rounded.md}` corners. Avatars in testimonials use `{rounded.full}` (perfect circles). Pricing comparison table images stay rectangular with no rounding.
+比上一版收紧一档（旧：2/6/10/12）。校样台要精密感，12px 圆角偏消费级，读起来不像工具。
 
 ## Components
 
-> **No hover states documented.** Per the global no-hover policy (Step 6), every component spec below documents only Default and Active/Pressed states. Variants live as separate entries in the `components:` front matter.
+### 六态是硬性要求
 
-**`top-nav`** — A 64px-tall white bar pinned to the top of every page. Airtable wordmark sits at left; primary horizontal menu (Platform, Solutions, Resources, Enterprise, Pricing) sits center-left in `{typography.body-md}`; the right cluster carries a "Book Demo" outline link, "Sign up for free" `{component.button-primary}`, and "Log In" text link. The nav stays light on every page — Airtable does not invert the nav over dark sections.
+**每个可交互组件必须交付六态**：`default` / `hover` / `focus-visible` / `active` / `disabled` / `loading`。少一个都算未完成。
+
+上一版实测：`hover:` 命中 0 次，`focus-visible` 命中 0 次 —— 一个桌面应用鼠标划过毫无响应，键盘用户看不到自己在哪。
 
 ### Buttons
 
-**`button-primary`** — The signature primary CTA. Background `{colors.primary}` (near-black), text `{colors.on-primary}`, type `{typography.button}`, padding 16px × 24px, rounded `{rounded.lg}` (12px). This is the "Get started for free" / "Sign up for free" button visible on every hero. It reads as confident and final — not decorative — which is why the system uses it sparingly (one per viewport).
-- Active state: `button-primary-active` darkens to `{colors.primary-active}` (#0d1218).
+四个变体，两个尺寸（sm / md）。**同一个动作在任何页面都长得一样。**
 
-**`button-secondary`** — White outline button (e.g. "Book demo"). Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.button}`, rounded `{rounded.lg}` (12px), 1px hairline outline. Sits next to `{component.button-primary}` as the "less-committed" choice.
+| 变体 | 用途 |
+|---|---|
+| `primary` | 主行动。**全屏唯一一个** |
+| `secondary` | 与主按钮成对出现的次要动作 |
+| `ghost` | 工具栏内的低权重动作 |
+| `danger` | 破坏性动作，用校对红 |
 
-**`button-secondary-on-dark`** — Same shape as `{component.button-secondary}` but used on signature coral / forest / dark surfaces. Background `{colors.canvas}`, text `{colors.ink}` — the white button stays white over dark surfaces because the system never inverts to a translucent on-dark style on the marketing site.
+禁止把动作做成文字链接 —— 上一版最终确认页三个动作用了实心按钮 / 描边按钮 / 蓝色文字链接三种形式，没有一致的动作词汇。
 
-**`button-pricing-pill`** — The pricing-page CTA family. Background `{colors.canvas}`, text `{colors.pricing-ink}`, rounded `{rounded.pill}` (9999px), padding 12px × 24px. The only place pill-shape appears in the marketing system. Treat it as part of the pricing sub-system signaling.
+### Focus Ring
 
-**`button-legal`** — Cookie-consent and legal-banner CTAs. Background `{colors.link}`, text `{colors.on-primary}`, type `{typography.legal}` (13.12px / 600), rounded `{rounded.xs}` (2px), padding 12px × 10px. The 2px corner radius and 600 weight signal "this is a required system surface," not a designed brand surface.
+```
+outline: 2px solid {colors.focus};
+outline-offset: 2px;
+```
 
-**`button-icon-circular`** — 40px × 40px circular button with `{colors.canvas}` background, hairline border, and `{colors.ink}` icon. Used for carousel controls, "share", and "back" affordances.
+用 `:focus-visible` 而非 `:focus`：鼠标点击不该留下焦点环，键盘才该。2px offset 制造一圈底色间隙，因此墨底主按钮上的环也落在浅色面上（17.31:1）。
 
-**`text-link`** — Inline body links in `{colors.link}` (#1b61c9, the actual link blue). No underline by default. Type inherits `{typography.body-md}`.
+### Status
 
-### Cards & Containers
+`StatusDot`（纯点）与 `StatusChip`（点 + 文字）共用同一张状态表。**组件内不得自行拼色** —— 状态样式只能来自唯一的状态映射表，否则轨道、队列、日志三处会出现语义漂移。
 
-**`hero-band`** — The full-page-width white-canvas hero. No surface card, no border, no shadow, no atmospheric gradient — just the headline, sub-headline, and primary + secondary button pair sitting in 96px of whitespace. Vertical padding `{spacing.section}` (96px).
+### Empty States
 
-**`signature-coral-card`** — The large full-bleed coral card on the homepage ("Production apps in prototype speed"). Background `{colors.signature-coral}` (#aa2d00, a dark coral / oxide red), text `{colors.on-primary}`, rounded `{rounded.lg}` (12px), internal padding `{spacing.xxl}` (48px). Carries an h2 in `{typography.display-md}`, supporting copy in `{typography.body-md}`, and `{component.button-secondary-on-dark}` as the CTA.
+空态要教会界面怎么用，不是写「暂无内容」。且不得占用固定版面。
 
-**`signature-forest-card`** — A deep green signature card (`{colors.signature-forest}` — #0a2e0e) used as a demo-grid sibling to the coral card on the homepage.
+## Motion
 
-**`hero-card-dark`** — The dark navy mid-page CTA card (e.g. "The path to 10× every person in your organization"). Background `{colors.surface-dark}` (#181d26), text `{colors.on-dark}`, rounded `{rounded.lg}` (12px), internal padding `{spacing.xxl}` (48px). The same color as `{colors.primary}` because the system uses ink as both type color and signature dark surface.
+| 令牌 | 值 |
+|---|---|
+| `duration-fast` | 120ms |
+| `duration-default` | 180ms |
+| `duration-slow` | 250ms |
+| `easing` | `cubic-bezier(0.25, 1, 0.5, 1)`（ease-out-quart） |
 
-**`feature-card-tabbed`** — Light-cream cards (e.g. the "Coke / Pelosi / Conde Nast / Time Inc" tabbed feature card on the homepage). Background `{colors.surface-soft}`, rounded `{rounded.lg}` (12px), internal padding `{spacing.xl}` (32px). Left rail carries vertically-stacked tab labels in `{typography.title-md}`; right pane shows the active tab's content (illustration + body copy + small CTA).
-
-**`cream-callout-card`** — Beige callout cards (`{colors.signature-cream}`). Rounded `{rounded.md}` (10px), internal padding `{spacing.lg}` (24px). Carry product UI fragments or stat callouts — softer than the dark/coral signature cards but still a deliberate brand surface.
-
-**`demo-grid-card`** — Used in multi-card grids that punctuate every page. Background `{colors.canvas}` or one of the demo-grid surfaces (`{colors.signature-peach}`, `{colors.signature-mint}`, `{colors.signature-yellow}`, `{colors.signature-mustard}`), rounded `{rounded.md}` (10px), internal padding `{spacing.md}` (16px). Each card frames a product UI fragment. Card heights vary deliberately to dodge a uniform "spec sheet" feel.
-
-**`logo-strip`** — Horizontal monochrome partner-logo row (HBO, Netflix, Amazon, Time, Conde Nast). Logos render in `{colors.muted}`, surface is `{colors.canvas}`, vertical padding `{spacing.xl}` (32px). 6 logos at desktop, 3 at mobile.
-
-**`article-card`** — The trending-stories grid on the articles page. Background `{colors.canvas}`, rounded `{rounded.md}` (10px), internal padding `{spacing.md}` (16px). Each card carries a colorful illustrated thumbnail (16:9), a small uppercase category tag, an `{typography.title-sm}` title, and a meta line. 3-up at desktop.
-
-**`topic-filter-rail`** — The left rail on the articles page. 240px wide, `{colors.canvas}` background, `{typography.body-md}`, vertically grouped category headings ("Marketing", "Product", "Project management", "Operations") with sub-bullets. Active item carries a small numeric count badge.
-
-### Inputs & Forms
-
-**`text-input`** — Standard text input. Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body-md}`, rounded `{rounded.sm}` (6px), padding 12px × 16px, height 44px. 1px hairline border in `{colors.hairline}`.
-
-**`text-input-focus`** — Focus state. Border thickens or recolors to `{colors.info-border}`.
-
-### Pricing Sub-System
-
-**`pricing-tier-card`** — Standard tier card. Background `{colors.canvas}`, text `{colors.pricing-ink}`, type `{typography.pricing-card-title}` for the plan name, rounded `{rounded.md}` (10px), internal padding `{spacing.xl}` (32px). Carries the plan name, a price block in `{typography.pricing-display}` (44.8px / 475), feature checklist, and a `{component.button-pricing-pill}` at the bottom.
-
-**`pricing-tier-card-featured`** — The featured tier (typically "Team" or "Business"). Background shifts to `{colors.surface-soft}`. No accent border, no badge — the background tone shift is the only signal.
-
-**`pricing-comparison-row`** — Each row of the long comparison table at the bottom of the pricing page. Labels in the left column; checkmarks or values across 4 plan columns. 12px vertical padding per row, hairline divider between rows.
-
-### Navigation Variants
-
-**`footer`** — Light surface (`{colors.canvas}`), 6-column link list at desktop covering Platform / Solutions / Resources / Learn / Company sub-trees. Vertical padding `{spacing.section}` divided across upper link block and lower legal row. Type `{typography.body-md}`.
-
-**`cta-band-light`** — The light gray "Start building with Airtable" CTA strip near the footer. Background `{colors.surface-strong}` (#e0e2e6), text `{colors.ink}`, rounded `{rounded.lg}` (12px), padding `{spacing.xxl}` (48px). Carries an h2 in `{typography.display-md}` and a `{component.button-primary}`.
-
-### Signature Components
-
-**Articles Vertical Rainbow Stripe Hero** — The articles-page hero treatment. Multi-color vertical bands at varying widths sitting on `{colors.surface-dark-elevated}`. The h1 + sub-head + CTA cluster sits center-left on top of the stripes. This is a single-page hero treatment, not a system-wide signature — do not promote it to a multi-page pattern.
+- 全部 transition **显式声明时长**，落在 150–250ms。用户在任务流里，不该等编排动画。
+- 缓动统一 ease-out 系，**无回弹、无弹性**。
+- 动效只表达**状态变化**：hover / focus / 展开收起 / 状态切换。
+- **不做页面载入编排动画。**
+- 每个动效必须有 `prefers-reduced-motion: reduce` 分支。全局兜底在 `index.css`，但**不替代**逐组件降级 —— `running` 的脉冲若被压成静止就失去可辨识度，组件侧需自行降级为静态描边。
 
 ## Do's and Don'ts
 
 ### Do
-- Keep `{component.button-primary}` near-black. The brand's primary CTA is `{colors.primary}`, not the link blue. Mixing them up turns a confident hero into a confused one.
-- Reserve `{component.button-primary}` for one primary action per viewport. The system is designed for scarcity at the brand-action layer.
-- Use `{component.button-secondary}` (white with hairline outline) as the natural pair with `{component.button-primary}`. The two together form Airtable's signature button row.
-- Trust whitespace as the hero atmosphere. Hero bands are intentionally calm — no gradient, no mesh, no atmospheric backdrop. Going against this reads as off-brand.
-- Use `{component.signature-coral-card}`, `{component.signature-forest-card}`, and `{component.hero-card-dark}` to break editorial monotony. These are the brand's voltage moments.
-- Keep `{component.demo-grid-card}` heights uneven within a grid. Uniform heights feel like a spec sheet.
-- Treat the pricing surface as its own dialect: keep `{typography.pricing-display}`, `{typography.pricing-card-title}`, and `{component.button-pricing-pill}` together. Mixing them with Haas Grotesk button type breaks the sub-system's voice.
-- Anchor every editorial band with `{spacing.section}` (96px) vertical padding.
+
+- 让预览区周边保持无彩 —— 用户要靠它判断底板干不干净。
+- 把颜色留给需要动作的状态。
+- 计数与计时一律等宽数字。
+- 同一个动作在任何页面都用同一个组件。
+- 状态同时给颜色、形状和文字。
+- 改颜色令牌后重跑对比度脚本。
 
 ### Don't
-- Don't make `{colors.link}` (#1b61c9) the primary button color. It is the link color. The primary button is `{colors.primary}` (#181d26, near-black). Treating link-blue as the brand action is the most common mistake when reading Airtable's CSS variables.
-- Don't add a gradient backdrop to the hero. Airtable's hero is white, full stop. Mesh, aurora, spotlight gradients all read as "another SaaS template" — not Airtable.
-- Don't bold display-weight type. `{typography.display-xl}` and `{typography.display-lg}` are intentionally weight 400 / 500 — going to 700 reads as marketing-page-template.
-- Don't use `{rounded.pill}` outside the pricing surface. It's a sub-system signal, not a general radius option.
-- Don't repeat the same surface mode in two consecutive bands. The editorial pacing depends on rhythm: white → signature card → white → cream → dark → white. Two whites in a row read as a typography blog.
-- Don't add hover state styling beyond what the system already encodes. The system documents Default and Active/Pressed only.
-- Don't introduce additional accent colors beyond the documented signature card palette. The system's voltage already uses coral, forest, dark navy, cream, peach, mint, yellow, and mustard.
+
+- **不要**把底色调成暖调近白（cream / sand / paper 那一带）。
+- **不要**用品牌色当状态色，或反过来。
+- **不要**用饱和色标注完成这类常态。
+- **不要**用毛玻璃、渐变字、卡片彩色左边条。
+- **不要**用大数字 + 小标签的 KPI 卡片排（SaaS 仪表盘模板）。
+- **不要**把动作做成文字链接。
+- **不要**在组件里就地拼状态色。
+- **不要**让空态占用固定版面。
+- **不要**只用颜色区分状态。
+- **不要**发明标准控件的替代品（自定义滚动条、怪异表单控件）。
 
 ## Responsive Behavior
 
-### Breakpoints
+Electron 桌面窗口，**不做移动端适配**。只需保证窗口缩放不破版：
 
-| Name | Width | Key Changes |
-|---|---|---|
-| Mobile | < 768px | Single-column body; top nav collapses to hamburger; demo-grid drops to 1-up; signature cards stay full-bleed; logo strip wraps to 2 rows; footer collapses to single-column |
-| Tablet | 768–1024px | 2-up demo-grid; top nav stays horizontal but tightens; cream-callout cards stack 2-up; pricing comparison table becomes horizontally scrollable |
-| Desktop | 1024–1440px | 3-up demo-grid (and 4-up for tighter content); full top-nav with all menu items visible; pricing tier cards render 4-across |
-| Wide | > 1440px | Same as Desktop with more outer breathing room; max content width caps at ~1280px and the page adds outer margin rather than scaling type up |
+- 响应式行为是**结构性**的（面板折叠、列数变化），不是流体字号。
+- 长文本必须能换行或截断，**不得溢出容器** —— 上一版最终确认页右栏文字被容器直接切断。
+- 无断点网格用 `repeat(auto-fit, minmax(<min>, 1fr))`。
 
-### Touch Targets
-- `{component.button-primary}` and siblings render at 48 × 48px minimum (16px vertical padding + 16px line-height) — comfortably above WCAG AAA's 44 × 44.
-- `{component.button-icon-circular}` is exactly 40 × 40px — slightly under WCAG's recommended 44, but the centered icon and dot-radius compensate visually.
-- `{component.text-input}` height is 44px.
+## Accessibility
 
-### Collapsing Strategy
-- Top nav collapses to a hamburger at < 768px; the menu opens as a full-screen sheet rather than a dropdown.
-- Card grids reduce columns rather than scaling cards down.
-- The `{component.feature-card-tabbed}` re-stacks the tab rail above the content pane on mobile.
-- The pricing comparison table converts to horizontally-scrollable swipe at < 1024px; the four plan headers stay visible while body rows scroll.
+目标 **WCAG 2.2 AA**。四条硬性验收项见 [PRODUCT.md](./PRODUCT.md) 的 Accessibility & Inclusion 段。
 
-### Image Behavior
-- Demo-card UI screenshots crop to fit their container rather than scaling up.
-- Hero illustrations bleed full-width on mobile, losing horizontal margin.
-- Signature card images (inside coral / forest / dark cards) compress to their card width without cropping.
-
-## Iteration Guide
-
-1. Focus on ONE component at a time. Reference its YAML key directly (`{component.button-primary}`, `{component.signature-coral-card}`).
-2. When adding a new component, decide first which sub-system it belongs to: the main editorial system (Haas, `{rounded.lg}`/`{rounded.md}`) or the pricing sub-system (Inter Display, `{rounded.pill}`).
-3. Variants of an existing component (`-active`, `-disabled`, `-focus`) live as separate entries in `components:` — never as nested state objects.
-4. Use `{token.refs}` everywhere prose mentions a color, a radius, a typography role, or a spacing value. Hex codes appear at most once next to the reference.
-5. Never document hover. The system documents Default and Active/Pressed states only.
-6. Run `npx @google/design.md lint DESIGN.md` after edits — `broken-ref`, `contrast-ratio`, and `orphaned-tokens` warnings flag issues automatically.
-7. When in doubt about emphasis: bigger type before bolder type, signature surface card before solid accent.
+界面唯一语言为中文，不做 i18n。
 
 ## Known Gaps
 
-- The exact hex values of pastel demo-grid surfaces (`{colors.signature-peach}`, `{colors.signature-mint}`, `{colors.signature-yellow}`, `{colors.signature-mustard}`) are inferred from screenshot pixel sampling. Some product launches may swap these surfaces seasonally.
-- Hover behavior across all components is not documented (per global no-hover policy).
-- Animation and transition timings are not in scope.
-- Form validation states beyond `text-input-focus` are not extracted — error and success states for inputs would need a dedicated form page to confirm.
-- The pricing comparison table's checkmark glyph and column-divider widths are described structurally but not formalized as tokens.
-- The CSS variable `--theme_button-background-primary: #1b61c9` exists at `:root` but is not used as the primary CTA color anywhere on the marketing site. It maps to the link/info color role instead. Documented here so future extractions don't re-trip over the misleading variable name.
+- **暗色主题未做**。当前场景是白天短时多次使用，暗色不在首期范围。若将来要做，中性阶 chroma 0 的设定可直接翻转，状态色需重新验算对比度。
+- **本文件描述的是重构目标状态**，实现分两阶段落地：阶段一（令牌 + 组件基座 + 控制台页）、阶段二（文本复核页 + 最终确认页）。迁移期 `tailwind.config.ts` 中保留旧令牌别名，阶段二结束前删净。
