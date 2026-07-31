@@ -242,3 +242,41 @@ V1 桌面工作台被判定用户体验不合格（无批量执行、无进度/�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 6: 桌面端设计语言重构 · 阶段一（令牌 + 组件基座 + 控制台页）
+
+**Date**: 2026-07-31
+**Task**: 桌面端设计语言重构 · 阶段一（令牌 + 组件基座 + 控制台页）
+**Branch**: `design/desktop-language-rebuild`
+
+### Summary
+
+把 apps/desktop 渲染层从扒自 Airtable 营销站的令牌重做为「校样台」设计语言。根因是 register 错配：营销站设计即产品，本项目是工具型 product register。实测缺陷 hover 0 次、focus-visible 0 次、shadow 0 次、prefers-reduced-motion 0 次，139 处字号声明里 128 处同为 14px（等于无层次），按钮定义在 4 个文件各抄一份且已漂移。核心决策「有颜色 = 要你管」：完成是常态（20–50 页里绝大多数已完成），用饱和色标注常态等于把最强视觉手段给最不需注意的信息，故完成/待执行归中性，饱和色只留给 running/stale/failed；五态另配独立形状（实心圆/空心圆/三角/方块）保证灰度与色弱可分辨。控制台密度一屏 2–3 张提到 15 张，新增「待处理」筛选并复用 deriveTodoQueue 不另写判据，切换常驻可见以免「打开已完成页复看」的能力消失（spec 记录的判据兼职失败模式）。311 测试全绿、对比度 26 项全过；真机实测 AC8/AC9/AC10/AC11 通过，零 gpt-image-2 调用。阶段二（复核页 + 最终确认页）未开始，PRD AC12 用户验收门尚未放行。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `642698f` | (see git log) |
+| `2ff2920` | (see git log) |
+| `f93bf08` | (see git log) |
+| `dc95f8d` | (see git log) |
+| `1cfbb72` | (see git log) |
+| `8e56216` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
