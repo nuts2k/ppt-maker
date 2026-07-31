@@ -1,51 +1,128 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * 设计令牌 —— 校样台（proof desk）。
+ *
+ * 战略上下文见根目录 PRODUCT.md，视觉契约见根目录 DESIGN.md。
+ *
+ * 三条不可违背的约定：
+ *
+ * 1. **中性阶 chroma 严格为 0**。纸是真中性白，不是奶油/米色。暖调近白
+ *    （OKLCH L 0.84–0.97、C < 0.06、hue 40–100）是被明令禁止的 AI 默认色带，
+ *    令牌命名同样禁止出现 paper / cream / sand / parchment / linen / ivory。
+ *    「暖意」由校对红、字体与排版承担，绝不由底色承担。
+ *
+ * 2. **有颜色 = 要你管**。完成是常态（一叠 20–50 页里绝大多数处于完成态），
+ *    常态必须安静。所以 completed 走中性色，饱和色只留给 running / stale / failed
+ *    这三个需要用户动作的状态。旧版用深绿标完成，9 个绿点满屏是全局最大噪音源。
+ *
+ * 3. **对比度逐项验算，不靠肉眼**。全部组合见
+ *    `.trellis/tasks/07-30-desktop-design-language-rebuild/research/palette-contrast.mjs`。
+ *    改动任一颜色令牌后必须重跑该脚本，22 项须全部通过。
+ *
+ * 颜色一律带 `<alpha-value>` 占位符，否则 `bg-proof/10` 这类透明度修饰符失效。
+ */
+
+/** 中性阶与语义色的唯一来源。改这里之前先读上面第 3 条。 */
+const palette = {
+  // ── 纸与面（中性阶，chroma 恒为 0）──────────────────────────
+  canvas: "oklch(1 0 0 / <alpha-value>)", //            #ffffff 纸
+  surface: "oklch(0.976 0 0 / <alpha-value>)", //       #f7f7f7 面板、次级面
+  "surface-sunken": "oklch(0.945 0 0 / <alpha-value>)", // #ededed 预览衬底、凹陷区
+
+  /** 仅装饰性分隔，不承担 WCAG 1.4.11 的 3:1 责任 */
+  hairline: "oklch(0.902 0 0 / <alpha-value>)", //       #dedede
+  /** 控件边界（输入框、次级按钮），已验算 ≥3:1 */
+  border: "oklch(0.64 0 0 / <alpha-value>)", //          #8c8c8c
+  "border-strong": "oklch(0.52 0 0 / <alpha-value>)", // #696969
+
+  /** 焦点环。配 2px offset，在墨色主按钮上同样落到浅色面（17.31:1） */
+  focus: "oklch(0.22 0 0 / <alpha-value>)", //           #1b1b1b
+
+  // ── 墨 ────────────────────────────────────────────────────
+  ink: "oklch(0.22 0 0 / <alpha-value>)", //             #1b1b1b 正文、主按钮底
+  // 近黑按钮的 hover 应当变亮、按压才变暗；反过来在深色上几乎看不出变化
+  "ink-hover": "oklch(0.3 0 0 / <alpha-value>)", //      #2c2c2c 主按钮悬停
+  "ink-pressed": "oklch(0.12 0 0 / <alpha-value>)", //   #0b0b0b 主按钮按压
+  "ink-secondary": "oklch(0.44 0 0 / <alpha-value>)", // #525252 次要文字
+  "ink-muted": "oklch(0.53 0 0 / <alpha-value>)", //     #6c6c6c 弱化文字、占位符（4.93:1）
+  "on-ink": "oklch(1 0 0 / <alpha-value>)", //           #ffffff 墨底上的字
+
+  // ── 校对红：全屏唯一高饱和色，只标「差异」与「待我处理」──────
+  proof: "oklch(0.52 0.19 25 / <alpha-value>)", //       #be222a
+  "proof-hover": "oklch(0.575 0.19 25 / <alpha-value>)", // #d4383b 悬停（白字 4.81:1，勿再提亮）
+  "proof-strong": "oklch(0.43 0.17 25 / <alpha-value>)", // #970818 按压态
+  "proof-wash": "oklch(0.96 0.022 25 / <alpha-value>)", //  #ffedea 差异高亮底
+
+  // ── 状态语义（与品牌色彻底分离，不再挪用 signature-*）────────
+  "state-running": "oklch(0.5 0.15 250 / <alpha-value>)", // #0065b4 进行中
+  "state-stale": "oklch(0.52 0.12 75 / <alpha-value>)", //   #905d00 失效（不是失败）
+  "state-failed": "oklch(0.45 0.17 15 / <alpha-value>)", //  #9d1135 失败/中断
+} as const;
+
+/**
+ * 旧令牌别名 —— **迁移期临时物，阶段二结束前必须删净**（PRD AC2 会验）。
+ *
+ * 令牌重命名会同时 touch 24 个组件文件；先让旧名指向新值，逐页迁移，
+ * 避免中途出现大面积样式塌陷。别名一律指向新语义，因此挂着别名的旧组件
+ * 也会立刻拿到新配色（例如 success → 中性，9 个绿点当场变安静）。
+ */
+const legacyAliases = {
+  primary: palette.ink,
+  "primary-active": palette["ink-pressed"],
+  body: palette["ink-secondary"],
+  muted: palette["ink-muted"],
+  "on-primary": palette["on-ink"],
+  "on-dark": palette["on-ink"],
+  "surface-soft": palette.surface,
+  "surface-strong": palette["surface-sunken"],
+  "surface-dark": palette.ink,
+  "surface-dark-elevated": palette.ink,
+  link: palette["state-running"],
+  "link-active": palette["state-running"],
+  info: palette["state-running"],
+  "info-border": palette["state-running"],
+  // 完成态归中性：这是「有颜色 = 要你管」的直接后果
+  success: palette["ink-muted"],
+  "success-border": palette.border,
+  "signature-coral": palette["state-failed"],
+  "signature-mustard": palette["state-stale"],
+  "signature-cream": palette["proof-wash"],
+  "signature-forest": palette["ink-secondary"],
+  "signature-peach": palette["proof-wash"],
+  "signature-mint": palette.surface,
+  "signature-yellow": palette["state-stale"],
+} as const;
+
 const config: Config = {
   content: ["./src/renderer/**/*.{ts,tsx}"],
   theme: {
     extend: {
-      colors: {
-        primary: "#181d26",
-        "primary-active": "#0d1218",
-        ink: "#181d26",
-        body: "#333840",
-        muted: "#41454d",
-        hairline: "#dddddd",
-        "border-strong": "#9297a0",
-        canvas: "#ffffff",
-        "surface-soft": "#f8fafc",
-        "surface-strong": "#e0e2e6",
-        "surface-dark": "#181d26",
-        "surface-dark-elevated": "#1d1f25",
-        link: "#1b61c9",
-        "link-active": "#1a3866",
-        info: "#254fad",
-        "info-border": "#458fff",
-        success: "#006400",
-        "success-border": "#39bf45",
-        "on-primary": "#ffffff",
-        "on-dark": "#ffffff",
-        // DESIGN.md 签名色面（品牌电压），同时充当状态语义色：
-        // failed/interrupted → coral；stale → mustard；待验收强调 → cream
-        "signature-coral": "#aa2d00",
-        "signature-forest": "#0a2e0e",
-        "signature-cream": "#f5e9d4",
-        "signature-peach": "#fcab79",
-        "signature-mint": "#a8d8c4",
-        "signature-yellow": "#f4d35e",
-        "signature-mustard": "#d9a441",
-      },
+      colors: { ...palette, ...legacyAliases },
+
+      /**
+       * 圆角比旧版收紧一档（旧：2/6/10/12）。
+       * 校样台要的是精密感，12px 圆角偏消费级，读起来不像工具。
+       */
       borderRadius: {
         xs: "2px",
-        sm: "6px",
-        md: "10px",
-        lg: "12px",
+        sm: "4px",
+        md: "6px",
+        lg: "8px",
       },
+
+      /**
+       * 字号：tailwind 默认的 xs/sm/base/lg/xl/2xl = 12/14/16/18/20/24px
+       * 正好是本项目要的阶梯，不重复定义；只补默认刻度缺的两档。
+       *
+       * 背景：旧实现 139 处字号声明里 128 处是同一个 text-sm，等于没有层次。
+       * 重构必须真正把层级用起来，而不是继续单字级。
+       */
       fontSize: {
-        // DESIGN.md 的 display 档，tailwind 默认刻度覆盖不到（默认 text-3xl 是 30px）。
-        // 14/16/18/20/24px 直接落在 text-sm/base/lg/xl/2xl 上，无需重复定义。
-        "display-md": ["32px", { lineHeight: "1.2" }],
+        "2xs": ["11px", { lineHeight: "1.4" }], // 状态角标、计数徽标
+        "display-md": ["32px", { lineHeight: "1.2" }], // 仅空态品牌位
       },
+
       fontFamily: {
         sans: [
           "Inter",
@@ -56,6 +133,22 @@ const config: Config = {
           "Roboto",
           "sans-serif",
         ],
+      },
+
+      /**
+       * 动效：product register 规范 150–250ms。用户在任务流里，
+       * 不该等编排动画。DEFAULT 设 180ms，让裸 `transition` 也落在区间内
+       * （旧实现 38 处 transition 全是裸默认 150ms，无显式声明也无减弱兜底）。
+       */
+      transitionDuration: {
+        DEFAULT: "180ms",
+        fast: "120ms",
+        slow: "250ms",
+      },
+      transitionTimingFunction: {
+        // ease-out-quart：收尾平缓，无回弹无弹性
+        DEFAULT: "cubic-bezier(0.25, 1, 0.5, 1)",
+        "out-quart": "cubic-bezier(0.25, 1, 0.5, 1)",
       },
     },
   },
