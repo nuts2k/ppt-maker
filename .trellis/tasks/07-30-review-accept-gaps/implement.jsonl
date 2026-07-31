@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "R1 是该指南定义的静默失败的极端形态：双源同错的块被判为『无需改动』只读展示，错误文本一路进最终 PPTX，界面全程没有异常提示，用户也没有任何手段拦截。动手前按其检查表确认新增的编辑入口不会再造出同类盲区"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "R2 要把 accept-gate 的单一判据拆成『页面可达』与『是否待办』两个，而 todo-queue 与最终确认页共用它——正是该文档最后一条『同一件事在多处展示，它们是同一个函数算出来的吗』的场景；R2 还要改 gateSignature 的自动切换 effect，涉及『覆盖式派生』那条"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "R1 的就地编辑与 TextDiffRow 已有的 textarea 是同一件事，R2 拆判据后两处取值必须同源。都要复用而非另写一份，否则行为分叉"}
+{"file": "DESIGN.md", "reason": "R1 的就地转编辑态、R3 的折叠摘要与 sticky 操作区都是新的视觉形态，颜色、圆角、间距、按钮样式必须遵从"}

@@ -17,7 +17,7 @@ This directory contains guidelines for frontend development. Fill in each file w
 | [Directory Structure](./directory-structure.md) | Module organization and file layout | To fill |
 | [Component Guidelines](./component-guidelines.md) | Component patterns, props, composition | To fill |
 | [Hook Guidelines](./hook-guidelines.md) | Custom hooks, data fetching patterns | To fill |
-| [State Management](./state-management.md) | Local state, global state, server state | 部分填充（Common Mistakes 四条均由真实缺陷验证：快照与事件混用、会话层盖住耐久层、start/finish 事件不成对、错误条指错阶段） |
+| [State Management](./state-management.md) | Local state, global state, server state | 部分填充（Common Mistakes 六条均由真实缺陷验证：快照与事件混用、会话层盖住耐久层、start/finish 事件不成对、错误条指错阶段、一个判据兼职两件事、切换维度激活既有竞态） |
 | [Quality Guidelines](./quality-guidelines.md) | Code standards, forbidden patterns | To fill |
 | [Type Safety](./type-safety.md) | Type patterns, validation | To fill |
 
