@@ -5,7 +5,8 @@
  * - **耐久层** `SlideDetail.stages`：manifest 聚合，重启可恢复。
  * - **会话层** `LiveStageMap`：本次 run 的实时阶段状态，覆盖耐久层同名阶段。
  *
- * 状态色为全局唯一约定（design.md 3.3），所有阶段点位一律取 `STAGE_DOT_CLASS`，
+ * 状态的**视觉**映射（颜色/形状/图标）已迁至 `components/ui/status-spec.ts`，
+ * 由 `StatusDot` / `StatusChip` 统一渲染；本文件只保留领域侧的状态文案。
  * 组件不得自行拼色，否则轨道、队列、日志三处会出现语义漂移。
  *
  * 与 run-types / todo-queue 一致，本文件使用相对 `.js` 导入且不触碰 `window`，
@@ -43,23 +44,20 @@ const KNOWN_STATUSES = new Set<string>([
   "stale",
 ]);
 
-/** 状态 → 点位样式（背景 + 描边），design.md 3.3 状态色唯一表 */
-export const STAGE_DOT_CLASS: Readonly<Record<StageViewStatus, string>> = {
-  completed: "bg-success border-success",
-  running: "bg-info border-info animate-pulse",
-  failed: "bg-signature-coral border-signature-coral",
-  interrupted: "bg-signature-coral border-signature-coral",
-  stale: "bg-signature-mustard border-signature-mustard",
-  pending: "bg-surface-strong border-hairline",
-};
-
-/** 状态 → 中文短名，卡片与轨道 tooltip 共用 */
+/**
+ * 状态 → 中文短名。**领域词汇的唯一来源**：卡片、轨道 tooltip 与
+ * `components/ui/status-spec.ts` 的视觉映射一律取这里，不各存一份。
+ *
+ * 措辞约定：`stale` 不写「失效/失败」而写「上游已变更」。失效是改了上游后的
+ * 常规路径（保存复核内容就会产生），写成失败会把一次正常的「改完了、重跑一下」
+ * 报成红色故障。见 .trellis/spec/frontend/state-management.md。
+ */
 export const STAGE_STATUS_TEXT: Readonly<Record<StageViewStatus, string>> = {
   completed: "已完成",
   running: "执行中",
   failed: "失败",
   interrupted: "已中断",
-  stale: "已失效",
+  stale: "上游已变更",
   pending: "待执行",
 };
 

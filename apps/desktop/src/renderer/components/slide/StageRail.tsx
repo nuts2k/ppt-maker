@@ -1,3 +1,4 @@
+import { CircleX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { StageTrack } from "@/components/console/StageTrack";
 import {
@@ -5,7 +6,6 @@ import {
   currentStageView,
   deriveStageViews,
   elapsedSince,
-  STAGE_DOT_CLASS,
   STAGE_STATUS_TEXT,
 } from "@/lib/stage-view";
 import { cn } from "@/lib/utils";
@@ -26,8 +26,8 @@ import { isRunStage, type RunStage } from "../../../shared/stages.js";
  * 有意义的动作面积，只会制造误触与困惑。唯一保留的重跑入口是错误条上的
  * 「重跑失败阶段」，以及最终确认页的「重做底图」。
  *
- * 视觉与控制台卡片轨道同源（`StageTrack` size="md"，`STAGE_DOT_CLASS` 唯一色表），
- * 保证同一状态在两处颜色语义一致。
+ * 视觉与控制台卡片轨道同源（`StageTrack` size="md"，配色形状取自
+ * `components/ui/status-spec.ts` 的唯一状态表），保证同一状态在两处语义一致。
  */
 
 interface StageRailProps {
@@ -137,14 +137,8 @@ export function StageRail({
       {error !== null && (
         <div className="flex flex-col gap-2 rounded-sm bg-signature-coral px-4 py-2">
           <div className="flex items-center gap-3">
-            <span
-              aria-hidden="true"
-              className={cn(
-                "h-2 w-2 shrink-0 rounded-full border",
-                STAGE_DOT_CLASS.failed,
-                "border-on-primary",
-              )}
-            />
+            {/* 与 STATUS_SPEC.failed 用同一个图标；错误条已在深底上，此处不再叠色点 */}
+            <CircleX aria-hidden="true" className="size-4 shrink-0" />
             <span className="min-w-0 flex-1 truncate text-sm font-medium text-on-primary">
               {errorStage !== null && `${errorStage} · `}
               {error.code}: {error.message}
