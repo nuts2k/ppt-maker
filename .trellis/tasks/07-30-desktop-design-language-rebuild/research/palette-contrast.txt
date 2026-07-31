@@ -1,0 +1,53 @@
+令牌		OKLCH			HEX
+canvas          oklch(1 0 0)                    #ffffff
+surface         oklch(0.976 0 0)                #f7f7f7
+surface-sunken  oklch(0.945 0 0)                #ededed
+hairline        oklch(0.902 0 0)                #dedede
+border          oklch(0.64 0 0)                 #8c8c8c
+border-strong   oklch(0.52 0 0)                 #696969
+focus           oklch(0.22 0 0)                 #1b1b1b
+ink             oklch(0.22 0 0)                 #1b1b1b
+ink-hover       oklch(0.3 0 0)                  #2e2e2e
+ink-pressed     oklch(0.12 0 0)                 #060606
+ink-secondary   oklch(0.44 0 0)                 #525252
+ink-muted       oklch(0.53 0 0)                 #6c6c6c
+proof           oklch(0.52 0.19 25)             #be222a
+proof-hover     oklch(0.575 0.19 25)            #d2393a
+proof-strong    oklch(0.43 0.17 25)             #970818
+proof-wash      oklch(0.96 0.022 25)            #ffedea
+state-running   oklch(0.5 0.15 250)             #0065b4
+state-stale     oklch(0.52 0.12 75)             #905d00
+state-failed    oklch(0.45 0.17 15)             #9d1135
+
+验算（阈值 4.5 = 正文，3.0 = 大字/非文本）
+PASS   17.31 : 1  (需 4.5)  正文 / 纸
+PASS   16.15 : 1  (需 4.5)  正文 / 面板
+PASS   14.74 : 1  (需 4.5)  正文 / 凹陷面
+PASS    7.77 : 1  (需 4.5)  次要文字 / 纸
+PASS    7.25 : 1  (需 4.5)  次要文字 / 面板
+PASS    5.28 : 1  (需 4.5)  弱化文字+占位符 / 纸
+PASS    4.93 : 1  (需 4.5)  弱化文字 / 面板
+PASS    6.08 : 1  (需 4.5)  校对红文字 / 纸
+PASS    5.36 : 1  (需 4.5)  校对红文字 / 校对红淡底
+PASS    8.86 : 1  (需 4.5)  校对红加深 / 纸
+PASS    5.97 : 1  (需 4.5)  进行中文字 / 纸
+PASS    5.61 : 1  (需 4.5)  失效文字 / 纸
+PASS    8.17 : 1  (需 4.5)  失败文字 / 纸
+PASS   17.31 : 1  (需 3)  焦点环 / 纸
+PASS   16.15 : 1  (需 3)  焦点环 / 面板
+PASS   14.74 : 1  (需 3)  焦点环 / 凹陷面
+PASS    3.36 : 1  (需 3)  控件边框 / 纸
+PASS    3.14 : 1  (需 3)  控件边框 / 面板
+PASS    5.51 : 1  (需 3)  强边框 / 纸
+PASS    5.97 : 1  (需 3)  进行中状态点 / 纸
+PASS    5.61 : 1  (需 3)  失效状态点 / 纸
+PASS    5.67 : 1  (需 3)  校对红状态点 / 面板
+PASS   17.31 : 1  (需 4.5)  白字 / 墨底(主按钮)
+PASS   13.64 : 1  (需 4.5)  白字 / 墨底 hover
+PASS   20.30 : 1  (需 4.5)  白字 / 墨底按压
+PASS    6.08 : 1  (需 4.5)  白字 / 校对红底
+PASS    4.81 : 1  (需 4.5)  白字 / 校对红 hover
+PASS    8.86 : 1  (需 4.5)  白字 / 校对红按压
+PASS    8.17 : 1  (需 4.5)  白字 / 失败底
+
+全部通过

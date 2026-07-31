@@ -22,5 +22,8 @@
 .env
 .env.local
 
+# Impeccable 的本机检测缓存（live/config.json 是项目配置，需入库）
+/.impeccable/hook.cache.json
+
 # TypeScript incremental build metadata.
 *.tsbuildinfo

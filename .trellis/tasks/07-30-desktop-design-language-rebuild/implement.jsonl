@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "判据兼职与同源判据两条教训直接约束筛选实现与不可改的判据函数清单"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "界面正反馈必须以磁盘状态为准；只读展示是隐含断言，重构展示层时不得让能力静默消失"}
+{"file": "PRODUCT.md", "reason": "战略上下文：register、反参考、五条设计原则、无障碍档位"}
+{"file": "DESIGN.md", "reason": "现行视觉契约（本任务产出物之一，收尾时重写）"}

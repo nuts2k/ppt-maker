@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "校验判据函数未被改动、筛选与待办队列同源、逐字段订阅写法保留"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "校验没有新引入静默分歧或能力消失"}
+{"file": "PRODUCT.md", "reason": "校验无障碍四条硬性验收项与反参考"}
+{"file": ".trellis/tasks/07-30-desktop-design-language-rebuild/research/palette-contrast.txt", "reason": "对比度验算基线，改动颜色令牌后需重跑比对"}
