@@ -1,11 +1,12 @@
 import { compareBlockSources, type TextReviewBlock } from "@ppt-maker/core";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useMemo } from "react";
 import {
   type DiffSegment,
   diffChars,
   shouldFallbackToSideBySide,
 } from "@/lib/text-diff";
 import { cn } from "@/lib/utils";
+import { BlockTextEditor } from "./BlockTextEditor";
 
 /**
  * 「文字待确认」项：并排呈现 offline_ocr 原文与 ai_text_assist 文本，逐字高亮差异。
@@ -53,7 +54,6 @@ export function TextDiffRow({
   isCurrent,
   onUpdateBlock,
 }: TextDiffRowProps): React.JSX.Element {
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const sources = useMemo(() => compareBlockSources(block), [block]);
   const { ocr, assist } = sources;
 
@@ -67,32 +67,6 @@ export function TextDiffRow({
 
   // 人工编辑后 assist 分段无法与当前文本对齐，只读行退回纯文本
   const edited = assist !== null && block.text !== assist;
-
-  // 当前项的 textarea 自动聚焦并把光标置于末尾——「直接打字即编辑」，无需额外进入编辑态
-  useEffect(() => {
-    if (!isCurrent) return;
-    const node = textareaRef.current;
-    if (node === null) return;
-    node.focus();
-    const end = node.value.length;
-    node.setSelectionRange(end, end);
-  }, [isCurrent]);
-
-  const handleChange = useCallback(
-    (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const text = event.target.value;
-      // 与 canvas 版编辑口径一致：按换行切分、去空行；全空则整段当作单行
-      const lines = text
-        .split(/\r?\n/)
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0);
-      onUpdateBlock(block.id, {
-        text,
-        lines: lines.length > 0 ? lines : [text],
-      });
-    },
-    [block.id, onUpdateBlock],
-  );
 
   return (
     <div className="flex flex-col gap-1">
@@ -114,12 +88,10 @@ export function TextDiffRow({
       <div className="flex gap-2">
         <span className={SOURCE_LABEL}>{edited ? "人工" : "AI"}</span>
         {isCurrent ? (
-          <textarea
-            ref={textareaRef}
-            value={block.text}
-            onChange={handleChange}
-            rows={Math.min(4, Math.max(1, block.lines.length))}
-            className="min-w-0 flex-1 resize-y rounded-sm border border-hairline bg-canvas px-2 py-1 text-sm leading-relaxed text-ink focus:border-info-border focus:outline-none"
+          <BlockTextEditor
+            block={block}
+            onUpdateBlock={onUpdateBlock}
+            autoFocus
           />
         ) : (
           <p className="min-w-0 flex-1 whitespace-pre-wrap break-words px-2 py-1 text-sm leading-relaxed text-ink">

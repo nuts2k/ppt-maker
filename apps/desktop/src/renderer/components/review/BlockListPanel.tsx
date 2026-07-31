@@ -17,6 +17,7 @@ import {
   unreviewedBlockIds,
 } from "@/lib/review-partition";
 import { cn } from "@/lib/utils";
+import { BlockTextEditor } from "./BlockTextEditor";
 import { ClassificationRow } from "./ClassificationRow";
 import { TextDiffRow } from "./TextDiffRow";
 
@@ -370,12 +371,14 @@ interface ReviewRowProps {
 /**
  * 项卡外壳：分区徽标、状态、人工改动标记、标记已复核与删除。
  *
- * 正文按该项当下的分区选择控件（双源 diff / 分类选择 / 只读段落），判据来源仍是
- * `partitionOf`——它现在每次渲染实时求值，改完分类下一帧正文就换成对应控件，
+ * 正文按该项当下的分区选择控件（双源 diff / 分类选择 / 可转编辑的文本），判据来源
+ * 仍是 `partitionOf`——它现在每次渲染实时求值，改完分类下一帧正文就换成对应控件，
  * 而项本身留在原位。
  *
  * 「文字待确认」项的焦点目标在 TextDiffRow 的 textarea 内，由它自己聚焦；
  * 其余项没有输入框，由外壳的 `tabIndex={-1}` 容器接管焦点，键盘事件才有处冒泡。
+ * 「已一致」项转入编辑态时也有了输入框，此时同样把焦点交给它（见 `manageFocus`），
+ * 否则外壳会在选中的同一帧把焦点抢回去，表现为点了字却打不进去。
  */
 function ReviewRow({
   block,
@@ -387,8 +390,20 @@ function ReviewRow({
 }: ReviewRowProps): React.JSX.Element {
   const itemRef = useRef<HTMLLIElement | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  /**
+   * 「已一致」项的就地编辑态（R1）。
+   *
+   * 双源一致不等于正确：OCR 与 AI 助手会犯同一个错（字形相近的己/已、末/未，
+   * 专有名词、品牌名、行业术语），同错即被判为「无需改动」，此前这一档只渲染只读
+   * 段落，错字一路进最终 PPTX 而界面上无处拦截。但也不能一上来就铺 155 个
+   * textarea——那正是 07-28 收敛掉的视觉噪音。折中为点击文本才转编辑。
+   */
+  const [editingText, setEditingText] = useState(false);
   const partition = partitionOf(block);
-  const manageFocus = partition !== "text-pending";
+  // 分区优先于编辑态：⌥1/⌥2 可以在编辑当前项时把它改成分类待确认，那一档没有输入框
+  const hasEditor =
+    partition === "text-pending" || (partition === "agreed" && editingText);
+  const manageFocus = !hasEditor;
 
   useEffect(() => {
     if (!isCurrent) return;
@@ -396,9 +411,12 @@ function ReviewRow({
     if (manageFocus) itemRef.current?.focus();
   }, [isCurrent, manageFocus]);
 
-  // 切走当前项时收起删除确认，避免下次回来时它仍是「确认删除」状态
+  // 切走当前项时收起删除确认与编辑态，避免下次回来时它仍停在中间状态
   useEffect(() => {
-    if (!isCurrent) setConfirmingDelete(false);
+    if (!isCurrent) {
+      setConfirmingDelete(false);
+      setEditingText(false);
+    }
   }, [isCurrent]);
 
   const status = REVIEW_STATUS_VIEW[block.reviewStatus];
@@ -494,10 +512,38 @@ function ReviewRow({
         />
       ) : partition === "classification-pending" ? (
         <ClassificationRow block={block} onUpdateBlock={onUpdateBlock} />
+      ) : editingText ? (
+        <BlockTextEditor
+          block={block}
+          onUpdateBlock={onUpdateBlock}
+          autoFocus
+          onExit={() => setEditingText(false)}
+        />
       ) : (
-        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-ink">
-          {block.text}
-        </p>
+        <div className="flex flex-col items-start gap-1">
+          {/* 段落本身即入口：整段可点，不额外占一行常驻控件。
+              项卡的键盘等价物是列表级 Tab/↑↓/Enter，正文改用 button 会让焦点落在
+              按钮上，Enter 随即被 resolveReviewKeyAction 放行，「确认并下一项」的
+              键盘流当场断掉——所以这里沿用 li 的同一处理：可点的非交互元素。 */}
+          {/* biome-ignore lint/a11y/useKeyWithClickEvents: 见上，键盘流走列表级导航 */}
+          <p
+            onClick={() => setEditingText(true)}
+            title="双源一致不代表正确：OCR 与 AI 可能同时认错。点击这段文字即可修正"
+            className="w-full whitespace-pre-wrap break-words text-sm leading-relaxed text-ink"
+          >
+            {block.text}
+          </p>
+          {/* 只在当前项给出可见入口：155 项各挂一个就是把收敛掉的噪音原样加回来 */}
+          {isCurrent && (
+            <button
+              type="button"
+              onClick={() => setEditingText(true)}
+              className="text-sm text-link underline underline-offset-2 transition active:text-link-active"
+            >
+              修正文本
+            </button>
+          )}
+        </div>
       )}
 
       {willGhost && (
