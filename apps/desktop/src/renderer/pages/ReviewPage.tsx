@@ -1,5 +1,6 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
 import { type RunStage, stageLabel } from "@shared/stages";
+import { Check, CircleX, LoaderCircle, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReviewCanvas } from "@/components/canvas/ReviewCanvas";
 import { BlockListPanel } from "@/components/review/BlockListPanel";
@@ -9,6 +10,7 @@ import {
   type SlideViewMode,
 } from "@/components/slide/SlideToolbar";
 import { StageRail } from "@/components/slide/StageRail";
+import { Button, IconButton } from "@/components/ui";
 import { deriveFinalGate } from "@/lib/accept-gate";
 import type { ReviewEntryIntent } from "@/lib/review-filter";
 import { countUnreviewed } from "@/lib/review-status";
@@ -390,16 +392,12 @@ export function ReviewPage(): React.JSX.Element {
   if (slide === null || workspacePath === null) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
-        <p className="text-sm font-medium text-muted">
+        <p className="text-sm font-medium text-ink">
           未选中任何页面，或该页已被移除
         </p>
-        <button
-          type="button"
-          onClick={backToConsole}
-          className="rounded-lg border border-hairline bg-canvas px-4 py-2 text-sm text-ink transition active:border-border-strong"
-        >
+        <Button variant="secondary" onClick={backToConsole}>
           返回控制台
-        </button>
+        </Button>
       </div>
     );
   }
@@ -437,29 +435,40 @@ export function ReviewPage(): React.JSX.Element {
 
       {(notice !== null || startError !== null) && (
         <div className="flex shrink-0 flex-col gap-1 px-6 pt-3">
+          {/*
+            成功提示走中性、失败才给颜色（有颜色 = 要你管）。两者的图标不同，
+            因此不只靠颜色区分——保存成功与保存失败在灰度下也分得开。
+          */}
           {notice !== null && (
-            <p
+            <div
               className={cn(
-                "flex items-center gap-3 rounded-sm px-4 py-2 text-sm font-medium",
+                "flex items-center gap-3 rounded-sm px-4 py-1.5 text-sm",
                 notice.ok
-                  ? "bg-success/10 text-success"
-                  : "bg-signature-coral/10 text-signature-coral",
+                  ? "border border-hairline bg-surface text-ink-secondary"
+                  : "bg-state-failed/10 font-medium text-state-failed",
               )}
             >
+              {notice.ok ? (
+                <Check aria-hidden="true" className="size-4 shrink-0" />
+              ) : (
+                <CircleX aria-hidden="true" className="size-4 shrink-0" />
+              )}
               <span className="min-w-0 flex-1" title={notice.message}>
                 {notice.message}
               </span>
-              <button
-                type="button"
+              <IconButton
+                size="sm"
+                variant="ghost"
+                label="关闭提示"
                 onClick={() => setNotice(null)}
-                className="shrink-0 rounded-xs px-2 py-0.5 transition active:bg-surface-strong"
               >
-                关闭
-              </button>
-            </p>
+                <X aria-hidden="true" className="size-4" />
+              </IconButton>
+            </div>
           )}
           {startError !== null && (
-            <p className="rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral">
+            <p className="flex items-center gap-3 rounded-sm bg-state-failed/10 px-4 py-2 text-sm font-medium text-state-failed">
+              <CircleX aria-hidden="true" className="size-4 shrink-0" />
               {startError}
             </p>
           )}
@@ -468,7 +477,15 @@ export function ReviewPage(): React.JSX.Element {
 
       <div className="flex min-h-0 flex-1 flex-col">
         {loading ? (
-          <p className="flex h-full items-center justify-center text-sm font-medium text-muted">
+          <p
+            aria-busy="true"
+            className="flex h-full items-center justify-center gap-2 text-sm text-ink-muted"
+          >
+            {/* 减弱动效下转圈被全局兜底压成静止，图标仍指示「载入中」 */}
+            <LoaderCircle
+              aria-hidden="true"
+              className="size-4 animate-spin motion-reduce:animate-none"
+            />
             加载中…
           </p>
         ) : viewMode === "final" && finalGate !== null ? (
@@ -514,7 +531,7 @@ export function ReviewPage(): React.JSX.Element {
                     onUpdateBlock={handleBlockUpdate}
                   />
                 ) : (
-                  <p className="flex h-full items-center justify-center text-sm font-medium text-muted">
+                  <p className="flex h-full items-center justify-center text-sm text-ink-muted">
                     暂无源图，请先执行「文字识别」阶段
                   </p>
                 )}

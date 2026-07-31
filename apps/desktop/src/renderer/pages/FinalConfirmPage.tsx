@@ -1,9 +1,16 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
+import { CircleX, ExternalLink, RotateCcw, Undo2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { SliderCompare } from "@/components/compare/SliderCompare";
 import { CheckSummary } from "@/components/final/CheckSummary";
 import { CompositePreview } from "@/components/final/CompositePreview";
-import { cn } from "@/lib/utils";
+import {
+  Button,
+  SegmentedGroup,
+  SegmentedItem,
+  StatusChip,
+  Textarea,
+} from "@/components/ui";
 import type { FinalChecks } from "../../main/ipc/channels.js";
 
 /**
@@ -19,13 +26,27 @@ import type { FinalChecks } from "../../main/ipc/channels.js";
  * 本页只呈现与回调，不自己做失效与重跑：「先 invalidate 再启动」的纪律在
  * ReviewPage 的 rerunFrom 里已实现一遍（空转陷阱见 SlidePage.tsx:245 的注释），
  * 在这里再写一份必然出现两套语义。检查结果是唯一的例外，它是本页自有的读取。
+ *
+ * ## 右栏三段式（2026-07-31 阶段二 8.2 / 8.4 / 8.5）
+ *
+ * 栏头（结论）— 滚动区（明细与退回动作）— 操作区，三者是 flex 兄弟，各自独立：
+ *
+ * - **结论不进滚动区**：「本页已验收 / 确认最终产物」是这一屏的答案，要滚才看得见
+ *   的结论等于没有结论。
+ * - **操作区不再用 sticky 覆盖**：旧写法把 `overflow-y-auto` 放在 aside 上、操作区
+ *   `sticky bottom-0`，sticky 元素绘制在流内内容之上，于是右栏说明文字被它盖掉半行
+ *   （基线截图实证：「且会再花一次付费调」后半句消失）。改为把滚动限制在中段，
+ *   操作区作为兄弟占据自己的高度，**任何内容都不可能被压在它下面**，同时保住
+ *   07-30 修出来的「操作恒在手边」。
+ *
+ * 字号层级 20 / 14 / 12 / 11 一路建到底：标题 → 正文说明 → 辅助解释 → 小节标签。
  */
 
-const BUTTON_PRIMARY =
-  "rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
+/** 小节标签，DESIGN.md badge 档（11px / 600）。中文不受 uppercase 影响，故不加 */
+const SECTION_LABEL = "text-2xs font-semibold tracking-[0.02em] text-ink-muted";
 
-const BUTTON_SECONDARY =
-  "rounded-lg border border-hairline bg-canvas px-4 py-2.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
+/** 备注输入框的 id：本页同时只存在一个，用常量即可关联 label */
+const NOTE_FIELD_ID = "final-confirm-note";
 
 type FinalViewMode = "preview" | "compare";
 
@@ -144,38 +165,22 @@ export function FinalConfirmPage({
 
   return (
     <div className="flex h-full min-h-0">
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-surface-strong">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-surface-sunken">
         {/* 视图切换。R2.6 的保真差异提示写在 CompositePreview 内部（只在预览档成立），
             这里不重复第二遍 */}
         <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-hairline bg-canvas px-6 py-3">
-          <div className="flex shrink-0 items-center gap-1 rounded-lg bg-surface-soft p-1">
-            {(["preview", "compare"] as const).map((mode) => {
-              const available = mode === "preview" ? canPreview : canCompare;
-              return (
-                <button
-                  key={mode}
-                  type="button"
-                  disabled={!available}
-                  onClick={() => setViewMode(mode)}
-                  title={available ? undefined : "缺少所需产物"}
-                  className={cn(
-                    "rounded-md px-4 py-1.5 text-sm font-medium transition disabled:opacity-40",
-                    viewMode === mode
-                      ? "bg-canvas text-ink"
-                      : "bg-transparent text-muted",
-                  )}
-                >
-                  {VIEW_LABELS[mode]}
-                </button>
-              );
-            })}
-          </div>
+          <ViewSwitch
+            mode={viewMode}
+            onChange={setViewMode}
+            canPreview={canPreview}
+            canCompare={canCompare}
+          />
         </div>
 
         <div className="flex min-h-0 flex-1 items-center justify-center overflow-auto p-6">
           {viewMode === "preview" ? (
             canPreview ? (
-              <div className="w-full max-w-5xl overflow-hidden rounded-md">
+              <div className="w-full max-w-5xl">
                 <CompositePreview
                   cleanPlateUrl={cleanPlateUrl}
                   blocks={blocks}
@@ -184,60 +189,65 @@ export function FinalConfirmPage({
                 />
               </div>
             ) : (
-              <p className="max-w-md text-center text-sm font-medium text-muted">
-                {cleanPlateUrl === null
-                  ? "缺少去字底板，无法合成预览；请用「重做底图」重跑 clean 阶段"
-                  : "缺少页面尺寸信息，无法合成预览；请确认该页复核产物完整"}
-              </p>
+              <PreviewEmptyState
+                message={
+                  cleanPlateUrl === null
+                    ? "缺少去字底板，无法合成预览"
+                    : "缺少页面尺寸信息，无法合成预览"
+                }
+                hint={
+                  cleanPlateUrl === null
+                    ? "用右栏「重做底图」重跑 clean 阶段。"
+                    : "请确认该页复核产物完整，必要时回到文本复核重跑。"
+                }
+              />
             )
           ) : canCompare ? (
-            <div className="w-full max-w-5xl overflow-hidden rounded-md">
+            <div className="w-full max-w-5xl overflow-hidden rounded-lg border border-hairline">
               <SliderCompare
                 sourceImageUrl={sourceImageUrl}
                 cleanPlateUrl={cleanPlateUrl}
               />
             </div>
           ) : (
-            <p className="max-w-md text-center text-sm font-medium text-muted">
-              缺少原图或去字底板，无法对比；请用「重做底图」重跑 clean 阶段
-            </p>
+            <PreviewEmptyState
+              message="缺少原图或去字底板，无法对比"
+              hint="用右栏「重做底图」重跑 clean 阶段。"
+            />
           )}
         </div>
       </div>
 
-      {/*
-        右栏分两段：可滚动的说明与检查明细，加一条底部 sticky 的操作区。
-
-        2026-07-30 真机实测（1280×800）：右栏内容 2089px / 可视 559px，其中
-        CheckSummary 独占 1416px（68%），把「在 PowerPoint 中打开」「完成」推到
-        视口外 1083px 处——要连滚 3.7 屏才能按到这一页真正要做的事，而检查全过
-        时正是明细价值最低的时候。明细的折叠在 CheckSummary 内部做，这里负责
-        让操作恒在手边。
-      */}
-      <aside className="flex w-96 shrink-0 flex-col overflow-y-auto border-l border-hairline bg-surface-soft">
-        <div className="flex flex-col gap-6 p-8 pb-6">
-          <div className="flex flex-col gap-2">
-            <h2 className="text-lg font-medium text-ink">
+      <aside className="flex w-96 shrink-0 flex-col border-l border-hairline bg-surface">
+        {/* 栏头：这一屏的结论，恒在视口内，不随明细滚动（8.5） */}
+        <header className="flex shrink-0 flex-col gap-2 border-b border-hairline px-6 pb-4 pt-5">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <h2 className="text-xl font-semibold text-ink">
               {accepted ? "本页已验收" : "确认最终产物"}
             </h2>
-            <p className="text-sm leading-relaxed text-body">
-              {accepted
-                ? "该页已写入干净底图与 PPTX 两条验收记录。仍可打开产物复看；若底板本身有问题，用下方「重做底图」重做。"
-                : "核对合成预览与去字底板；确认后一次写入干净底图与 PPTX 两条验收记录，该页即完成。不满意时用下方两个动作退回相应环节重做。"}
-            </p>
-            {!accepted && gateSource === "durable" && (
-              <p className="text-sm font-medium text-muted">
-                该页在此前的执行中已停在最终确认，状态由工作区恢复
-              </p>
+            {/* 完成是常态，走中性档：有颜色 = 要你管，这里没什么要管的 */}
+            {accepted && (
+              <StatusChip status="completed" label="已完成最终确认" />
             )}
           </div>
+          <p className="text-sm leading-relaxed text-ink-secondary">
+            {accepted
+              ? "该页已写入干净底图与 PPTX 两条验收记录。仍可打开产物复看；若底板本身有问题，用下方「重做底图」重做。"
+              : "核对合成预览与去字底板；确认后一次写入干净底图与 PPTX 两条验收记录，该页即完成。不满意时用下方两个动作退回相应环节重做。"}
+          </p>
+          {!accepted && gateSource === "durable" && (
+            <p className="text-xs leading-relaxed text-ink-muted">
+              该页在此前的执行中已停在最终确认，状态由工作区恢复。
+            </p>
+          )}
+        </header>
 
+        {/* 滚动区：明细与例外路径。滚动只发生在这一段里 */}
+        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
           {/* 自动检查只呈现不拦截（R2.5）：clean 的指标当前没有判定阈值（F-4），
               用它做硬门禁会把人拦在一个自己都不可信的数字后面 */}
           {checksError !== null ? (
-            <p className="rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral">
-              {checksError}
-            </p>
+            <ErrorNotice message={checksError} />
           ) : (
             <CheckSummary
               key={workspacePath}
@@ -251,94 +261,153 @@ export function FinalConfirmPage({
             两个退回动作的层级刻意不等：文字/分类不对是绝大多数情形，回到文本复核
             是那条正路；重做底图只在底板本身坏掉时才有用——文本复核内容没改的话，
             重新生成出来的底板通常和现在这张一样，还要再花一次付费调用。
-            因此它降为文字按钮，排在下面。
+            因此它降一档为 ghost，排在下面。
 
-            两者都留在可滚动区：它们是例外路径，与常驻手边的「完成」不同档。
+            8.3：三个动作收敛到同一套按钮词汇（此前是描边按钮 / 蓝色文字链接 /
+            实心按钮三种形式并存）。降权用 variant 表达，不再用文字链接——
+            文字链接既不像动作，也拿不到统一的六态。
+
+            两者都留在滚动区：它们是例外路径，与常驻手边的「完成」不同档。
           */}
-          <div className="flex flex-col gap-3">
-            <span className="text-sm font-medium text-muted">
+          <section className="flex flex-col gap-2.5">
+            <h3 className={SECTION_LABEL}>
               {accepted ? "需要重做？" : "不满意？退回重做"}
-            </span>
-            <button
-              type="button"
+            </h3>
+            <Button
+              variant="secondary"
               onClick={onBackToReview}
               disabled={actionsDisabled}
               title="作废文本复核之后的全部产物，回到复核界面"
-              className={BUTTON_SECONDARY}
+              className="w-full"
             >
+              <Undo2 aria-hidden="true" className="size-3.5" />
               回到文本复核
-            </button>
+            </Button>
             <div className="flex flex-col gap-1">
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={onRedoCleanPlate}
                 disabled={actionsDisabled}
                 title="仅在底板本身明显异常时使用：文字残留、容器被改坏。会再次调用付费接口"
-                className="self-start text-sm text-link underline underline-offset-2 transition active:text-link-active disabled:opacity-40"
+                className="self-start"
               >
+                <RotateCcw aria-hidden="true" className="size-3.5" />
                 重做底图
-              </button>
-              <p className="text-sm leading-relaxed text-muted">
-                只在底板明显异常（文字残留、容器被改坏）时有用。没改过文本复核内容的话，
-                重新生成的底板通常和当前这张一致，且会再花一次付费调用。
+              </Button>
+              {/* break-words：右栏只有 384px，长句必须能断，不得溢出容器 */}
+              <p className="break-words text-xs leading-relaxed text-ink-muted">
+                只在底板明显异常（文字残留、容器被改坏）时有用。没改过文本复核内容的话，重新生成的底板通常和当前这张一致，且会再花一次付费调用。
               </p>
             </div>
-          </div>
+          </section>
         </div>
 
-        {/* mt-auto：内容不足一屏时贴住栏底；sticky：内容超一屏时仍留在视口底部 */}
-        <div className="sticky bottom-0 mt-auto flex shrink-0 flex-col gap-4 border-t border-hairline bg-surface-soft px-8 pb-8 pt-5">
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={handleOpenPptx}
-              className={BUTTON_SECONDARY}
-            >
-              在 PowerPoint 中打开
-            </button>
-            {openMessage !== null && (
-              <p className="rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral">
-                {openMessage}
-              </p>
+        {/* 操作区：滚动区的兄弟而非其上的浮层，因此永远不会盖住上面的文字 */}
+        <div className="flex shrink-0 flex-col gap-3 border-t border-hairline px-6 pb-6 pt-4">
+          {openMessage !== null && <ErrorNotice message={openMessage} />}
+
+          {!accepted && (
+            <label htmlFor={NOTE_FIELD_ID} className="flex flex-col gap-1.5">
+              <span className={SECTION_LABEL}>备注（可选）</span>
+              <Textarea
+                id={NOTE_FIELD_ID}
+                rows={2}
+                value={note}
+                disabled={actionsDisabled}
+                onChange={(event) => setNote(event.target.value)}
+                placeholder="记录验收判断依据，会随两条验收记录写入 manifest"
+              />
+            </label>
+          )}
+
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="secondary" onClick={handleOpenPptx}>
+              <ExternalLink aria-hidden="true" className="size-3.5" />
+              {"在 PowerPoint 中打开"}
+            </Button>
+            {/* 已验收时不给「完成」，也不给备注——没有写入去处的输入框是假控件。
+                本页唯一的主行动只在「还欠一次确认」时存在。 */}
+            {!accepted && (
+              <Button
+                variant="primary"
+                onClick={() => onComplete(note)}
+                disabled={busy}
+                loading={submitting}
+              >
+                完成
+              </Button>
             )}
           </div>
-
-          {accepted ? (
-            // 已验收：不给「完成」，也不给备注——没有写入去处的输入框是假控件
-            <p className="flex items-center gap-2 rounded-lg bg-success/10 px-4 py-2.5 text-sm font-medium text-success">
-              <span
-                aria-hidden="true"
-                className="h-2 w-2 rounded-full bg-success"
-              />
-              已完成最终确认
-            </p>
-          ) : (
-            <>
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-medium text-muted">
-                  备注（可选）
-                </span>
-                <textarea
-                  rows={2}
-                  value={note}
-                  disabled={actionsDisabled}
-                  onChange={(event) => setNote(event.target.value)}
-                  placeholder="记录验收判断依据，会随两条验收记录写入 manifest"
-                  className="w-full rounded-sm border border-hairline bg-canvas px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-info-border focus:outline-none disabled:opacity-40"
-                />
-              </label>
-              <button
-                type="button"
-                onClick={() => onComplete(note)}
-                disabled={actionsDisabled}
-                className={BUTTON_PRIMARY}
-              >
-                {submitting ? "提交中…" : "完成"}
-              </button>
-            </>
-          )}
         </div>
       </aside>
     </div>
+  );
+}
+
+/**
+ * 视图切换 —— 与控制台的筛选开关**同一个基座组件**，而不只是「同形」。
+ * 一个档位切换不该长得像主按钮。
+ */
+function ViewSwitch({
+  mode,
+  onChange,
+  canPreview,
+  canCompare,
+}: {
+  readonly mode: FinalViewMode;
+  readonly onChange: (next: FinalViewMode) => void;
+  readonly canPreview: boolean;
+  readonly canCompare: boolean;
+}): React.JSX.Element {
+  const available: Readonly<Record<FinalViewMode, boolean>> = {
+    preview: canPreview,
+    compare: canCompare,
+  };
+
+  return (
+    <SegmentedGroup label="预览视图">
+      {(["preview", "compare"] as const).map((value) => (
+        <SegmentedItem
+          key={value}
+          selected={mode === value}
+          disabled={!available[value]}
+          onClick={() => onChange(value)}
+          title={available[value] ? undefined : "缺少所需产物"}
+        >
+          {VIEW_LABELS[value]}
+        </SegmentedItem>
+      ))}
+    </SegmentedGroup>
+  );
+}
+
+/** 空态说明当前缺什么、去哪补，不写「暂无内容」 */
+function PreviewEmptyState({
+  message,
+  hint,
+}: {
+  readonly message: string;
+  readonly hint: string;
+}): React.JSX.Element {
+  return (
+    <div className="flex max-w-sm flex-col items-center gap-2 text-center">
+      <p className="text-sm font-medium text-ink">{message}</p>
+      <p className="text-xs leading-relaxed text-ink-muted">{hint}</p>
+    </div>
+  );
+}
+
+/** 失败必须看得见（静默失败指南）：颜色之外再给图标，不只靠红色承载 */
+function ErrorNotice({
+  message,
+}: {
+  readonly message: string;
+}): React.JSX.Element {
+  return (
+    <p className="flex items-start gap-1.5 rounded-sm bg-state-failed/10 px-3 py-2 text-xs font-medium leading-relaxed text-state-failed">
+      <CircleX aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
+      <span className="min-w-0 break-words">{message}</span>
+    </p>
   );
 }

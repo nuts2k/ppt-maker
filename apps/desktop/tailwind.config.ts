@@ -61,44 +61,17 @@ const palette = {
 } as const;
 
 /**
- * 旧令牌别名 —— **迁移期临时物，阶段二结束前必须删净**（PRD AC2 会验）。
- *
- * 令牌重命名会同时 touch 24 个组件文件；先让旧名指向新值，逐页迁移，
- * 避免中途出现大面积样式塌陷。别名一律指向新语义，因此挂着别名的旧组件
- * 也会立刻拿到新配色（例如 success → 中性，9 个绿点当场变安静）。
+ * 迁移期的旧令牌别名（`primary` / `body` / `muted` / `success` / `info` / `link` /
+ * `signature-*` / `surface-soft` 等）已于阶段二收尾**全部删除**，24 个组件文件均已改用
+ * 上面的新令牌。**不要再把它们加回来**：别名的存在会让「完成态用绿色」这类旧语义
+ * 有路可走，而这正是本次重构要根除的东西。
  */
-const legacyAliases = {
-  primary: palette.ink,
-  "primary-active": palette["ink-pressed"],
-  body: palette["ink-secondary"],
-  muted: palette["ink-muted"],
-  "on-primary": palette["on-ink"],
-  "on-dark": palette["on-ink"],
-  "surface-soft": palette.surface,
-  "surface-strong": palette["surface-sunken"],
-  "surface-dark": palette.ink,
-  "surface-dark-elevated": palette.ink,
-  link: palette["state-running"],
-  "link-active": palette["state-running"],
-  info: palette["state-running"],
-  "info-border": palette["state-running"],
-  // 完成态归中性：这是「有颜色 = 要你管」的直接后果
-  success: palette["ink-muted"],
-  "success-border": palette.border,
-  "signature-coral": palette["state-failed"],
-  "signature-mustard": palette["state-stale"],
-  "signature-cream": palette["proof-wash"],
-  "signature-forest": palette["ink-secondary"],
-  "signature-peach": palette["proof-wash"],
-  "signature-mint": palette.surface,
-  "signature-yellow": palette["state-stale"],
-} as const;
 
 const config: Config = {
   content: ["./src/renderer/**/*.{ts,tsx}"],
   theme: {
     extend: {
-      colors: { ...palette, ...legacyAliases },
+      colors: palette,
 
       /**
        * 圆角比旧版收紧一档（旧：2/6/10/12）。
@@ -142,7 +115,10 @@ const config: Config = {
        */
       transitionDuration: {
         DEFAULT: "180ms",
-        fast: "120ms",
+        // 150ms 是区间下沿而非 120ms：`fast` 是悬停/焦点这类高频微反馈的默认档，
+        // 占了全部动效声明的绝大多数，让它掉出规范区间等于规范形同虚设。
+        // 150 与 120 在体感上无法分辨，但前者守住了 R3。
+        fast: "150ms",
         slow: "250ms",
       },
       transitionTimingFunction: {

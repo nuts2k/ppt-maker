@@ -18,7 +18,13 @@ export {
   type TextareaProps,
 } from "./Field";
 export { IconButton, type IconButtonProps } from "./IconButton";
+export { Kbd, type KbdProps } from "./Kbd";
 export { Panel, type PanelProps } from "./Panel";
+export {
+  SegmentedGroup,
+  SegmentedItem,
+  type SegmentedItemProps,
+} from "./Segmented";
 export { StatusChip, StatusDot } from "./Status";
 export { STATUS_DOT_SIZE, STATUS_SPEC, type StatusSpec } from "./status-spec";
-export { buttonVariants, panelVariants } from "./variants";
+export { buttonVariants, kbdVariants, panelVariants } from "./variants";

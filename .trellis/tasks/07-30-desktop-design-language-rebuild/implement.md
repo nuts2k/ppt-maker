@@ -2,9 +2,33 @@
 
 ---
 
-# ⚑ 交接状态（2026-07-31）
+# ⚑ 交接状态（2026-07-31 · 阶段二完成）
 
-**阶段一已完成并提交，阶段二未开始。**
+**阶段一、阶段二均已完成。** 用户以「继续阶段二」表达了 AC12 认可。
+
+阶段二采用四路并行 + 两轮收口：`StageRail`/复核页骨架、块列表与文本行、画布与工具栏、
+最终确认页四个互斥文件域并行推进，合流后再做基座收口（选中态 + Kbd）与画布颜色单源。
+
+四关结果：typecheck ✓ / **323 测试全绿** / `pnpm format:check` ✓ / 对比度 26 项全过。
+真机走查证据在 `research/after-stage2/`。
+
+## 阶段二发现并修掉的、原计划里没有的三件事
+
+1. **AC5 的静态断言此前是失效的**。阶段一的 `grep --include='*.tsx'` 在本机 grep 下
+   静默失效，且只扫 `.tsx` 扫不到 `variants.ts`。基座里三处裸 `transition-colors`
+   吃的是 tailwind 配置的隐式 DEFAULT —— 基座是全局默认值的源头，这里隐式等于全应用隐式。
+2. **`duration-fast` 原为 120ms，掉出 R3 规定的 150–250ms**，而它占全部动效声明的 15/17。
+   改 token 为 150ms（体感无差别）比改 15 个调用点划算。
+3. **「选中态」与 `<kbd>` 又长出了 5 处 / 4 处手拼**，正是本任务立项要根除的
+   `BUTTON_*` 漂移换了个位置。已收进基座 `selected` / `shape` 变体与 `Segmented` / `Kbd`。
+
+## 阶段二真机走查新发现的缺陷（已修）
+
+**复核页当前项文本框截断**：`clientHeight 35px` / `scrollHeight 58px` / 行高 22.75px，
+只显示 1.5 行，第二行被从字形中间切断。根因是 `rows` 取源数据行数
+（`block.lines.length`），而左栏比整屏窄、一行源文本常折成两行。
+与最终确认页 8.2 是同一类缺陷：容器把内容切了，而不是内容自己该省略。
+修法为 `[field-sizing:content]` + 4 行上限（Chromium 150 原生支持，真机实测 35→58px）。
 
 ## 当前所在分支
 
@@ -19,17 +43,7 @@ f93bf08 feat(desktop): 新增 components/ui 组件基座，六态齐全
 642698f docs: 建立 PRODUCT.md 并把 DESIGN.md 重写为「校样台」设计语言
 ```
 
-## ⚠ 开工前必须先确认的一件事
-
-**PRD AC12 是硬门禁，用户尚未给出认可。** 用户在阶段一结束时选择的是「先提交保存，我自己跑一遍再说」，
-不是「认可，推阶段二」。
-
-所以新会话**不得直接开始阶段二**，必须先问用户跑下来的结论：
-
-- 认可 → 按下方阶段二清单推进；
-- 有要调整的 → 先改阶段一，重新截图交验，通过后再推阶段二。
-
-## 阶段二开工前应读
+## 后续会话应读
 
 1. 根目录 `PRODUCT.md`（战略：register、反参考、五条设计原则、无障碍四条）
 2. 根目录 `DESIGN.md`（视觉契约，已重写为「校样台」）
@@ -61,19 +75,10 @@ f93bf08 feat(desktop): 新增 components/ui 组件基座，六态齐全
    带局部豁免注释。biome 给的「修复」是删掉它，那会让 AC11 失效，**不要接受该自动修复**。
 5. **`.gitignore` 新增 `/.impeccable/hook.cache.json`**（本机缓存），`live/config.json` 需入库。
 
-## 阶段一遗留、阶段二要处理
+## 阶段一遗留
 
-- **迁移期旧令牌别名仍在 `tailwind.config.ts` 里**，以下 11 个文件仍在用，阶段二结束前必须删净
-  （PRD AC2 会验）：
-
-  ```
-  components/compare/SliderCompare.tsx      components/review/ReviewShortcutBar.tsx
-  components/final/CheckSummary.tsx         components/review/TextDiffRow.tsx
-  components/final/CompositePreview.tsx     components/slide/SlideToolbar.tsx
-  components/review/BlockListPanel.tsx      components/slide/StageRail.tsx
-  components/review/ClassificationRow.tsx   pages/FinalConfirmPage.tsx
-                                            pages/ReviewPage.tsx
-  ```
+- ~~迁移期旧令牌别名~~ —— **已于阶段二收尾整块删除**，11 个文件全部迁完，
+  删前逐令牌扫描确认 0 残留。`tailwind.config.ts` 留了一段注释说明不要加回来。
 
 - **活动日志文案口径未统一，且刻意没改**：`执行结束：完成 N，待人工 M` 这句同时由主进程
   `src/main/runner/deck-runner.ts:192` 写入持久化 jsonl。只改渲染层会让实时显示与重启后
@@ -88,6 +93,17 @@ f93bf08 feat(desktop): 新增 components/ui 组件基座，六态齐全
 2. **`await import('/stores/xxx.ts')` 拿到的可能不是应用那份模块实例**。用它 `setState` 会出现
    「store 值已改、界面纹丝不动」，看着像响应式 bug，实为脚手架假象。
    **验证交互一律用 `Input.dispatchMouseEvent` 真实点击。**
+
+   阶段二找到了拿到**同一份实例**的可靠办法：先读
+   `performance.getEntriesByType('resource')` 拿到应用实际加载的 URL
+   （本项目是 `http://localhost:5173/stores/deck-store.ts`），再 `import()` 这个**完全相同**
+   的 URL —— vite 按 URL 缓存模块，URL 一致即同一实例。改完 store 界面会跟着变，
+   这就是实例正确的自证。路径写错（多一段 `/src/renderer`）就会退化成第二份实例。
+
+3. **原生文件对话框够不到，且 `window.api` 是 contextBridge 冻结对象**，
+   `Object.defineProperty` 覆写会抛 `Cannot redefine property`。走查时不要试图桩掉它，
+   改用上面那条：直接调 `useDeckStore.getState().openDeck(path)` —— 那正是对话框返回后
+   应用自己走的路径，只是跳过了 OS 那一段。
 
 ---
 
@@ -107,13 +123,18 @@ cd apps/desktop && REMOTE_DEBUGGING_PORT=9222 pnpm dev
 
 ## 静态断言（对应 PRD 自动可验证项）
 
+**必须用 `rg`，不要用 `grep --include`。** 本机 `grep` 是 ugrep 别名，`--include` 会静默失效，
+阶段一因此漏掉了基座里三处无 `duration-` 的 transition —— 断言看着全过，实际什么也没扫。
+另外 AC5 必须同时扫 `.ts`：变体表在 `components/ui/variants.ts` 里，只扫 `.tsx` 扫不到。
+
 ```bash
 cd apps/desktop/src/renderer
 
-grep -rIo 'signature-' --include='*.tsx' --include='*.ts' . | wc -l          # AC2 期望 0
-grep -rn 'BUTTON_PRIMARY\s*=\|BUTTON_SECONDARY\s*=\|BUTTON_COMPACT\s*=' .    # AC3 期望无输出
-grep -rIn 'transition' --include='*.tsx' . | grep -v 'duration-'             # AC5 期望无输出
-grep -rIn 'paper\|cream\|sand\|parchment\|linen\|ivory' ../../tailwind.config.ts  # 期望无输出
+rg -c 'signature-' -g '*.tsx' -g '*.ts' .                    # AC2 期望零命中
+rg -n 'BUTTON_PRIMARY\s*=|BUTTON_SECONDARY\s*=|const SELECTED\s*=|const KBD\s*=' .  # AC3 期望无输出
+rg -In --no-heading -H 'transition' . | rg -v 'duration-'     # AC5 期望只剩注释行
+# 旧令牌别名（用属性前缀限定，否则 `ink-muted` 会被 `-muted` 误命中）
+rg -n '(^|[^a-z-])(bg|text|border|ring|outline|divide|placeholder|from|via|to|fill|stroke|shadow|accent|caret|decoration)-(primary|body|muted|on-primary|on-dark|surface-soft|surface-strong|surface-dark|link|info|success|signature)' .
 ```
 
 ---
@@ -158,60 +179,111 @@ grep -rIn 'paper\|cream\|sand\|parchment\|linen\|ivory' ../../tailwind.config.ts
 
 - [x] 5.1–5.6 完成，证据与可复跑脚本在 `research/after-stage1/`
 
-**🚪 用户验收门（AC12）：尚未获得认可。** 见顶部「开工前必须先确认的一件事」。
+**🚪 用户验收门（AC12）：已获认可**（用户 2026-07-31 指示「继续阶段二」）。
 
 ---
 
-# 阶段二：复核页 + 最终确认页
+# 阶段二：复核页 + 最终确认页 ✅ 已完成（2026-07-31）
 
-> **仅在拿到 AC12 认可后启动。**
+> 四路并行（互斥文件域）+ 两轮收口。四关：typecheck ✓ / 323 测试 ✓ / format ✓ / 对比度 26 项 ✓。
 
-## 6. 阶段轨道折叠
+## 6. 阶段轨道折叠 ✅
 
-- [ ] 6.1 `StageRail` 实现收起/展开两态，收起态 ~32px（design.md §5）。当前它在复核页与
-      最终确认页各占 **175px**，而用户此时已在页内作业，9 个点提供的信息价值极低
-- [ ] 6.2 展开状态存 `ui-store` 会话级
-- [ ] 6.3 收起态异常阶段直接用形状+颜色标在进度条上
+- [x] 6.1 `StageRail` 175px → **36px** 收起态：分段进度条 + 一句话状态 + 计数/计时 + `aria-expanded` 展开钮
+- [x] 6.2 展开态存 `ui-store.stageRailOpen`（会话级，`reset()` 归零，已补 4 条测试）
+- [x] 6.3 收起态异常阶段用 `StatusDot` 压在条上（形状 + 颜色 + 文字三重）。
+      **失败错误条挂在折叠区之外**——收起态照样能看到失败与「重跑失败阶段」，
+      不然就把 V1「错误只在侧边栏短暂显示」的缺陷换个形式搬了回来
 
-## 7. 复核页
+## 7. 复核页 ✅
 
-- [ ] 7.1 `ReviewPage` 迁基座
-- [ ] 7.2 `BlockListPanel`（565 行，全项目最大文件）迁基座；OCR/AI 双源对照改善可读性，
-      diff 用 `proof-wash` 底 + `proof` 字
-- [ ] 7.3 `TextDiffRow` / `ClassificationRow` / `BlockTextEditor` 迁基座
-- [ ] 7.4 修正「已复核」绿点与「文字待确认」标签**语义打架**（同一行同时出现两个矛盾判断）
-- [ ] 7.5 筛选区计数排布重做：四个计数 +「全部 60」+ 右侧「60 项」当前重复且不对齐
-- [ ] 7.6 `ReviewShortcutBar` 改为按需唤起（释放 110px 常驻空间）
-- [ ] 7.7 `ReviewCanvas` / `TextBlockOverlay` 迁基座；缩放提示不再压住内容左下角
+- [x] 7.1 `ReviewPage` 迁基座，裸 button 清零
+- [x] 7.2 `BlockListPanel` 迁基座；diff 用 `proof-wash` 底 + `proof` 字
+- [x] 7.3 `TextDiffRow` / `ClassificationRow` / `BlockTextEditor` 迁基座
+- [x] 7.4 行内两个徽标收敛成**单一状态槽** `RowStatus`：已复核/风险接受走中性（常态安静），
+      未复核才按「要你管的类型」上色。判据仍是原来那两个函数，没新写口径
+- [x] 7.5 删掉右侧重复的「N 项」；五档同高胶囊 + `tabular-nums`；
+      新增的「另含 N 项刚处理」只在 sticky 造成 visible ≠ 档内计数时出现，解释的是筛选计数答不了的问题
+- [x] 7.6 `ReviewShortcutBar` 110px → **30px** 窄条 + `?` 唤起面板（Esc/再按/点外部关闭，焦点送入）
+- [x] 7.7 缩放提示从压住内容左下角改为画布下沿独立边条；新增「整页」按钮
+      （此前回到整页只有双击这一个鼠标独占动作，键盘用户没有出口）
 
-> 纵向空间账：复核页顶栏 100 + 工具栏 75 + 阶段轨道 175 + 快捷键条 110 = **37% 不产内容**。
-> 6.1 与 7.6 合计可释放约 250px。
+> 纵向释放实测：阶段轨道 −139px、快捷键条 −80px、工具栏 75→48px，合计约 **246px**。
 
-## 8. 最终确认页
+## 8. 最终确认页 ✅
 
-- [ ] 8.1 `FinalConfirmPage` 迁基座，删本地按钮常量
-- [ ] 8.2 **修复文字溢出截断缺陷**（基线截图实证：右栏「且会再花一次付费调」被容器切断）
-- [ ] 8.3 三个动作统一按钮词汇（当前是实心按钮 / 描边按钮 / 蓝色文字链接三种形式）
-- [ ] 8.4 右栏信息层级重建：当前「本页已验收」到底部结论全是同一字号档
-- [ ] 8.5 结论（「已完成最终确认」）上移，不需滚动即可见
-- [ ] 8.6 `CheckSummary` / `CompositePreview` / `SliderCompare` 迁基座。
-      **保留 07-30 修的 sticky 操作区与折叠行为**，不得回退
+- [x] 8.1 迁基座，两个本地按钮常量删净
+- [x] 8.2 截断根因是**布局不是文案**：旧写法 `aside` 挂 `overflow-y-auto` + 操作区 `sticky bottom-0`，
+      sticky 绘制在流内内容之上把说明压掉半行。改成「栏头/滚动区/操作区」三个 flex 兄弟，
+      滚动只发生在中段，结构上不可能再压住内容。**没有用 `truncate` 把话吞掉**
+- [x] 8.3 完成=primary（仅未验收时存在）、在 PowerPoint 中打开/回到文本复核=secondary、重做底图=ghost
+- [x] 8.4 层级建到 20/14/12/11 四档
+- [x] 8.5 「已完成最终确认」移到栏头，中性 `StatusChip`，不滚动即可见
+- [x] 8.6 三组件迁基座；`SliderCompare` 补 `role="slider"` 键盘操作（此前键盘完全够不到）；
+      sticky 操作区与折叠行为保留
 
-## 9. 收尾
+## 9. 收尾 ✅
 
-- [ ] 9.1 删除 `tailwind.config.ts` 中的全部旧令牌别名（11 个文件迁完后）
-- [ ] 9.2 全量静态断言：AC2 / AC3 / AC4 / AC5 全过
+- [x] 9.1 `legacyAliases` 整块删除，删前逐令牌扫描确认 0 残留
+- [x] 9.2 静态断言 AC2 / AC3 / AC5 全过；AC4 由全键盘遍历实测（15 个可聚焦元素，无焦点环者 0）
 - [x] ~~9.3 重写根 `DESIGN.md`~~ —— 已在阶段一完成（见偏差 1）
-- [ ] 9.4 全链路真机走查：AC7 三页一致无混搭、AC8 全键盘走完打开→复核→确认、AC11 减弱动效
-- [ ] 9.5 截图归档 `research/after-stage2/`
-- [ ] 9.6 四关全绿
+- [x] 9.4 真机走查：AC7 三页一致、AC8 焦点无遗漏、AC9 灰度五态可分辨、AC10 一屏 15 张、AC11 动效 0
+- [x] 9.5 截图归档 `research/after-stage2/`（含 700px 窗高压力测试与灰度执行中态）
+- [x] 9.6 四关全绿
+
+## 阶段二额外收口（原计划外，见顶部说明）
+
+- [x] 基座补 `selected` / `shape` 变体 + `SegmentedGroup` / `Kbd`，9 个手拼调用点收敛，
+      **无一处保留 className 覆盖**；6 条断言并做了变异验证
+- [x] `TextBlockOverlay` 7 个颜色字面量抽成 `overlay-colors.ts` 并改 oklch，
+      与 palette 逐字比对 + 反向锁（源文件不得出现 hex/rgba），两条锁均已变异验证
+- [x] 修复复核页当前项文本框截断（`[field-sizing:content]`）
 
 ## 回滚点
 
 | 回滚到 | 命令 | 影响 |
 |---|---|---|
-| 阶段一结束 | `git reset --hard 8e56216` | 阶段二改动全清，阶段一保留 |
+| 阶段一结束 | `git reset --hard 0a58829` | 阶段二改动全清，阶段一保留 |
 | 完全回退 | `git checkout main` | 回到重构前 |
+
+## 未做、留给后续的四条
+
+1. **基座仍有三处重复**：小节标签排版档（`FinalConfirmPage` 与 `CheckSummary` 各一份）、
+   行内错误条、`Panel` 只能是 `div` 导致折叠态只能 `cn(panelVariants(), …)` 手拼。
+   压着没做是因为不想在尾声连续第三轮改基座。
+2. **`SegmentedItem` 用 `aria-pressed`**，严格说互斥档位该用 `role="radiogroup"` + `aria-checked`，
+   但会改动键盘遍历行为，不该在收尾时动。
+3. **`WorkspaceMenu.tsx:126-140` 菜单项仍是裸 button 手拼类**（是菜单项不是选中态，另一类）。
+4. **z-index 无语义刻度**，`StageRail` 折叠层、`DoctorChip`、`WorkspaceMenu` 三处各写各的数字。
+
+## 需要用户定的两处
+
+### 一、块列表是键盘陷阱（WCAG 2.1.2，A 级）—— 非本次引入
+
+走查实测：焦点一旦进入块列表就出不来。
+
+- 末项按 Tab：`resolveReviewKeyAction` 返回 `{kind:"move",delta:1}`，`BlockListPanel:223`
+  无条件 `event.preventDefault()`，`moveBy` 到边界后不动 → 焦点原地不动（实测连按 12 次无位移）。
+- 首项按 ⇧Tab：同理，同样不动。
+- Esc：`resolveReviewKeyAction` 走 default 放行，但 `BlockTextEditor` 只在 `onExit` 有值时 blur，
+  而「文字待确认」档是常驻可编辑、不传 `onExit` → Esc 无效。
+
+**溯源**：`lib/review-keyboard.ts` 自 M4 `9d736ca` 起未改动；`BlockListPanel` 的
+`preventDefault` 位置本次也未动（diff 里那一带只多了一行 import）。所以这是 M4 就存在的行为，
+不是阶段二引入的回归。
+
+**没有直接改的理由**：Tab 被改作「切换项」是 M4 刻意的交互设计（快捷键条上写着
+「Tab / ↓ 切换项」），给它加出口等于改这套键盘模型的语义，超出「只动渲染层表现」的授权范围。
+
+**建议修法**（改动很小，等你点头）：把 `moveBy` 改成返回是否真的移动了，只在移动成功时
+`preventDefault`；到边界时放行，让浏览器按正常 Tab 顺序把焦点带出列表。这是绝大多数
+「Tab 被改作列表导航」的控件采用的做法 —— 键盘模型不变，只是撞到头时不再吞掉按键。
+
+### 二、分段控件字号
+
+三个分段控件文字从 14px 降到 12px（`size="sm"` 既有档）。控制台与工具栏里与同排 sm 按钮
+一致，是净改善；最终确认页的 `ViewSwitch` 独占一条 bar，12px 略小。改 `md` 能回到 14px，
+但工具栏会从 h-7 涨到 h-9，与它「压到 48px」的设计相抵。
 
 ## 风险与缓解
 

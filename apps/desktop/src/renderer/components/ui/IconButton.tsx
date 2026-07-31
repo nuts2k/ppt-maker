@@ -13,7 +13,7 @@ import { buttonVariants, ICON_BUTTON_SIZE } from "./variants";
 export interface IconButtonProps
   extends Omit<
       React.ButtonHTMLAttributes<HTMLButtonElement>,
-      "type" | "aria-label"
+      "type" | "aria-label" | "aria-pressed"
     >,
     VariantProps<typeof buttonVariants> {
   /** 无障碍名 + 原生 tooltip。必填 */
@@ -23,7 +23,16 @@ export interface IconButtonProps
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
   function IconButton(
-    { className, variant, size = "md", label, children, ...rest },
+    {
+      className,
+      variant,
+      size = "md",
+      shape,
+      selected,
+      label,
+      children,
+      ...rest
+    },
     ref,
   ) {
     return (
@@ -32,8 +41,10 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         type="button"
         aria-label={label}
         title={label}
+        // 与 Button 同一条规矩：选中态的语义由组件出，不许调用方另写
+        aria-pressed={selected ?? undefined}
         className={cn(
-          buttonVariants({ variant, size }),
+          buttonVariants({ variant, size, shape, selected }),
           ICON_BUTTON_SIZE[size ?? "md"],
           className,
         )}

@@ -48,8 +48,8 @@ export interface CompositePreviewProps {
 /** 与 `synthesize.ts` 的 colorHex 缺省一致；采样色在 pptx 阶段才写入，预览可能拿到 null */
 const DEFAULT_COLOR_HEX = "#333333";
 
-/** DESIGN.md caption 档（14px / 500 / 0.16px） */
-const CAPTION = "text-sm font-medium tracking-[0.16px] text-muted";
+/** DESIGN.md caption 档（12px / 400）。保真提示是辅助说明，不与预览内容争视线 */
+const CAPTION = "text-xs leading-relaxed text-ink-muted";
 
 export function CompositePreview({
   cleanPlateUrl,
@@ -90,16 +90,16 @@ export function CompositePreview({
   const ptToPx = displayWidth / PPTX_WIDE_WIDTH_INCHES / 72;
 
   return (
-    <div className="flex w-full flex-col gap-3">
+    <div className="flex w-full flex-col gap-2">
       {/* R2.6：保真差异必须在界面上明示，不能让人拿预览当最终结论 */}
       <p className={CAPTION}>
         预览按 PPT 磅值换算渲染，换行可能与 PowerPoint 略有差异，最终以
-        PowerPoint 为准
+        PowerPoint 为准。
       </p>
 
       <div
         ref={containerRef}
-        className="relative aspect-[16/9] w-full overflow-hidden rounded-md border border-hairline bg-canvas"
+        className="relative aspect-[16/9] w-full overflow-hidden rounded-lg border border-hairline bg-canvas"
       >
         {/* 底板拉伸满铺 16:9，与 PPTX 的整页背景图一致 */}
         <img

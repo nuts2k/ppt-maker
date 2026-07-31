@@ -24,14 +24,16 @@ describe("useUIStore.reset", () => {
     expect(state.selectedBlockId).toBeNull();
   });
 
-  it("两个面板的展开态回默认（队列展开、活动日志收起）", () => {
+  it("三个面板的展开态回默认（队列展开、活动日志与阶段轨道收起）", () => {
     useUIStore.getState().toggleQueuePanel(false);
     useUIStore.getState().toggleActivityPanel(true);
+    useUIStore.getState().toggleStageRail(true);
 
     useUIStore.getState().reset();
 
     expect(useUIStore.getState().queuePanelOpen).toBe(true);
     expect(useUIStore.getState().activityPanelOpen).toBe(false);
+    expect(useUIStore.getState().stageRailOpen).toBe(false);
   });
 
   it("控制台筛选回默认（只看待处理）", () => {
@@ -62,5 +64,49 @@ describe("useUIStore.reset", () => {
     useUIStore.getState().openSlide("slide-1");
     expect(useUIStore.getState().currentView).toBe("slide");
     expect(useUIStore.getState().selectedSlideId).toBe("slide-1");
+  });
+});
+
+/**
+ * 阶段轨道展开态（design.md §5）。
+ *
+ * **默认收起**：用户进到单页时已经在做页内作业，9 个等权重点位的信息价值极低，
+ * 而展开态要占 175px。收起态用一条分段进度条 + 一句话状态承担扫读。
+ */
+describe("useUIStore.toggleStageRail", () => {
+  it("默认收起", () => {
+    expect(useUIStore.getState().stageRailOpen).toBe(false);
+  });
+
+  it("不传参取反", () => {
+    useUIStore.getState().toggleStageRail();
+    expect(useUIStore.getState().stageRailOpen).toBe(true);
+
+    useUIStore.getState().toggleStageRail();
+    expect(useUIStore.getState().stageRailOpen).toBe(false);
+  });
+
+  it("显式传参按参数落定，重复调用幂等", () => {
+    useUIStore.getState().toggleStageRail(true);
+    useUIStore.getState().toggleStageRail(true);
+    expect(useUIStore.getState().stageRailOpen).toBe(true);
+
+    useUIStore.getState().toggleStageRail(false);
+    useUIStore.getState().toggleStageRail(false);
+    expect(useUIStore.getState().stageRailOpen).toBe(false);
+  });
+
+  /**
+   * 展开态是会话级视图态，不得顺手改动选中页或视图——与筛选同理，
+   * 见 .trellis/spec/frontend/state-management.md「一个判据兼职两件事」。
+   */
+  it("展开收起不影响当前视图与选中页", () => {
+    useUIStore.getState().openSlide("slide-4");
+
+    useUIStore.getState().toggleStageRail(true);
+    useUIStore.getState().toggleStageRail(false);
+
+    expect(useUIStore.getState().currentView).toBe("slide");
+    expect(useUIStore.getState().selectedSlideId).toBe("slide-4");
   });
 });

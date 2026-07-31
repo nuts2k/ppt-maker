@@ -1,7 +1,15 @@
 import { stageLabel } from "@shared/stages";
+import { ArrowLeft, ChevronLeft, ChevronRight, Play } from "lucide-react";
+import {
+  Button,
+  IconButton,
+  Kbd,
+  SegmentedGroup,
+  SegmentedItem,
+  StatusChip,
+} from "@/components/ui";
 import type { SlideNavigation } from "@/lib/slide-nav";
 import { elapsedSince } from "@/lib/stage-view";
-import { cn } from "@/lib/utils";
 import { useRunStore } from "@/stores/run-store";
 
 /**
@@ -16,19 +24,14 @@ import { useRunStore } from "@/stores/run-store";
  *
  * 计时在组件内部订阅 1s ticker 自行计算（阶段 C 约定）：若由 ReviewPage 透传，
  * 整页——包括画布——会每秒重渲染一次。
+ *
+ * 按钮一律取自 `components/ui` 基座：此前这里有三份局部按钮类常量（主/次/紧凑
+ * 各一份），与 TopNav、RunControlBar、FinalConfirmPage 各抄一份且已经漂移。
+ * **同一个动作在任何页面都必须长得一样**，所以不再就地拼类字符串。
+ *
+ * 本工具栏统一用 `size="sm"`：它是密度型条带，压到 h-7 一档能把整条从 ~75px
+ * 收到 ~48px——复核页的纵向预算本来就紧（顶栏 + 工具栏 + 阶段条已吃掉三成多）。
  */
-
-/** DESIGN.md `button-primary`：近黑底 + 12px 圆角，本视图唯一主行动 */
-const BUTTON_PRIMARY =
-  "shrink-0 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
-
-/** DESIGN.md `button-secondary`：白底 + hairline 描边 */
-const BUTTON_SECONDARY =
-  "shrink-0 rounded-lg border border-hairline bg-canvas px-4 py-2 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
-
-/** 小尺寸次级控件（返回、页间导航），归 `rounded-sm` */
-const BUTTON_COMPACT =
-  "shrink-0 rounded-sm border border-hairline bg-canvas px-2.5 py-1.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
 
 /**
  * 两个视图态对应链路仅剩的两个人工停点（阶段 D）。
@@ -114,136 +117,153 @@ export function SlideToolbar({
   ];
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-hairline bg-canvas px-6 py-3">
-      <button type="button" onClick={onBack} className={BUTTON_COMPACT}>
-        ← 控制台
-      </button>
+    <div className="flex shrink-0 flex-wrap items-center gap-2.5 border-b border-hairline bg-canvas px-6 py-2">
+      <Button variant="ghost" size="sm" onClick={onBack}>
+        <ArrowLeft aria-hidden="true" className="size-3.5" />
+        控制台
+      </Button>
 
       <div className="flex min-w-0 items-baseline gap-2">
         <span
-          className="truncate text-lg font-medium text-ink"
+          className="truncate text-lg font-semibold text-ink"
           title={pageLabel}
         >
           {pageLabel}
         </span>
         {navigation.total > 0 && (
-          <span className="shrink-0 text-sm font-medium text-muted">
+          <span className="shrink-0 text-sm tabular-nums text-ink-secondary">
             第 {navigation.index}/{navigation.total} 页
           </span>
         )}
       </div>
 
       <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          aria-label="上一页"
+        <IconButton
+          variant="secondary"
+          size="sm"
+          label="上一页"
           disabled={navigation.prev === null}
           onClick={() => {
             if (navigation.prev !== null) onNavigate(navigation.prev.slideId);
           }}
-          className={BUTTON_COMPACT}
         >
-          ←
-        </button>
-        <button
-          type="button"
-          aria-label="下一页"
+          <ChevronLeft aria-hidden="true" className="size-4" />
+        </IconButton>
+        <IconButton
+          variant="secondary"
+          size="sm"
+          label="下一页"
           disabled={navigation.next === null}
           onClick={() => {
             if (navigation.next !== null) onNavigate(navigation.next.slideId);
           }}
-          className={BUTTON_COMPACT}
         >
-          →
-        </button>
+          <ChevronRight aria-hidden="true" className="size-4" />
+        </IconButton>
       </div>
 
       {/* 视图切换：不可用的视图直接隐藏而非禁用，减少空态噪音 */}
-      <div className="flex shrink-0 items-center gap-1 rounded-sm border border-hairline p-0.5">
+      <SegmentedGroup label="视图切换">
         {viewModes
           .filter((entry) => entry.available)
           .map((entry) => (
-            <button
+            <SegmentedItem
               key={entry.mode}
-              type="button"
+              selected={viewMode === entry.mode}
               onClick={() => onViewModeChange(entry.mode)}
-              className={cn(
-                "rounded-xs px-2.5 py-1 text-sm transition",
-                viewMode === entry.mode
-                  ? "bg-surface-strong font-medium text-ink"
-                  : "text-muted active:bg-surface-soft",
-              )}
             >
               {entry.label}
-            </button>
+            </SegmentedItem>
           ))}
-      </div>
+      </SegmentedGroup>
 
       {showProgress && (
-        <span className="min-w-0 shrink truncate text-sm font-medium text-info">
-          执行中
-          {currentStage !== null && ` · ${stageLabel(currentStage)}`}
-          {elapsed !== null && ` · 已用 ${elapsed}`}
-        </span>
+        <StatusChip
+          status="running"
+          label={buildProgressText(currentStage, elapsed)}
+          className="shrink-0 tabular-nums"
+        />
       )}
 
-      <div className="ml-auto flex shrink-0 items-center gap-3">
+      <div className="ml-auto flex shrink-0 items-center gap-2.5">
         {nextTodo !== null && (
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={onNextTodo}
             title={`${nextTodo.pageLabel} · ${nextTodo.reason}`}
-            className={BUTTON_SECONDARY}
           >
             处理下一项
-          </button>
+          </Button>
         )}
 
         {/*
           未复核块会让执行停在文本复核门（阶段 B 起为显式 human-edit 门，不再是
           mask 阶段报错）。这里只报数，逐项确认在左侧列表里做。
+
+          数字走中性而非校对红：一页 155 块时它开局就是满额，把常态染红等于
+          让红色失去「要你管」的分量——真正的待办由左侧列表逐项承载。
         */}
         {unreviewedCount > 0 && (
           <span
             title="仍待人工确认的文字块数；执行会停在文本复核门直到清零"
-            className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted"
+            className="flex shrink-0 items-center gap-1 text-sm text-ink-secondary"
           >
             待复核
-            <span className="text-ink">{unreviewedCount}</span>
+            <span className="font-semibold tabular-nums text-ink">
+              {unreviewedCount}
+            </span>
           </span>
         )}
 
+        {/*
+          未保存用校对红：离开本页就会丢掉编辑，属于「要你管」。
+          点 + 文字双载体，不只靠颜色（A3）。
+        */}
         {dirty && (
-          <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted">
+          <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-proof">
             <span
               aria-hidden="true"
-              className="h-2 w-2 rounded-full bg-signature-mustard"
+              className="size-1.5 rounded-full bg-proof"
             />
             未保存
           </span>
         )}
 
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={onSave}
           disabled={!dirty}
           title="保存复核文档（⌘S）"
-          className={BUTTON_SECONDARY}
         >
           保存
-          <span className="ml-1 text-sm text-muted">⌘S</span>
-        </button>
+          <Kbd>⌘S</Kbd>
+        </Button>
 
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={onRunSlide}
           disabled={pageBusy}
+          loading={showProgress}
           title="从第一个未完成阶段继续执行此页"
-          className={BUTTON_PRIMARY}
         >
+          {!showProgress && <Play aria-hidden="true" className="size-3.5" />}
           运行此页
-        </button>
+        </Button>
       </div>
     </div>
   );
+}
+
+/** 执行态一行字：缺失片段直接省略，不留「--」这类占位符 */
+function buildProgressText(
+  stage: string | null,
+  elapsed: string | null,
+): string {
+  const parts = ["执行中"];
+  if (stage !== null) parts.push(stageLabel(stage));
+  if (elapsed !== null) parts.push(`已用 ${elapsed}`);
+  return parts.join(" · ");
 }

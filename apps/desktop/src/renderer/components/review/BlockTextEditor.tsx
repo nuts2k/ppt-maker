@@ -1,5 +1,6 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
 import { useCallback, useEffect, useRef } from "react";
+import { Textarea } from "@/components/ui";
 
 /**
  * 块文本编辑框 —— 三个分区里**所有**改文本入口共用的唯一实现。
@@ -72,14 +73,26 @@ export function BlockTextEditor({
   );
 
   return (
-    <textarea
+    // 边框、占位符、hover 与禁用态一律走基座 Field；焦点环由 index.css 全局提供，
+    // 此处不再自拼 `focus:border-*`（旧写法用的还是营销站派生的 info 令牌）。
+    <Textarea
       ref={textareaRef}
       value={block.text}
       onChange={handleChange}
       onBlur={onExit}
       onKeyDown={handleKeyDown}
       rows={Math.min(4, Math.max(1, block.lines.length))}
-      className="min-w-0 flex-1 resize-y rounded-sm border border-hairline bg-canvas px-2 py-1 text-sm leading-relaxed text-ink focus:border-info-border focus:outline-none"
+      /**
+       * `field-sizing: content` 让高度跟着**换行后的实际行数**走。
+       *
+       * `rows` 取的是源数据行数（`block.lines.length`），而不是渲染宽度下的换行数。
+       * 左栏比整屏窄，一行源文本经常折成两行，于是 rows=1 只给到 1.5 行高度，
+       * 第二行被从字形中间切断——与最终确认页 8.2 修的是同一类缺陷：容器把内容切了，
+       * 而不是内容自己该省略。滚动条虽在，但要用户先发现「这里还有半行」才会去滚。
+       *
+       * 上限 4 行后转滚动，与 `rows` 的上限一致；`resize-y` 保留，用户仍可手动拉大。
+       */
+      className="min-w-0 resize-y py-1.5 [field-sizing:content] max-h-[7.5rem]"
     />
   );
 }

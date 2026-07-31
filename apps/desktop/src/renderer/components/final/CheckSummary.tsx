@@ -1,5 +1,7 @@
 import type { CleanPlateChecks, PptxCheckReport } from "@ppt-maker/core";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
+import { panelVariants, StatusChip, StatusDot } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 /**
@@ -15,8 +17,7 @@ import { cn } from "@/lib/utils";
  *
  * ## 两组检查的性质截然不同，呈现方式必须区分
  *
- * - **PPTX 六项**（`apps/cli/src/pptx/checks.ts`）有明确判据，passed/failed 即结论，
- *   failed 用 DESIGN.md 签名色 coral 显著呈现。
+ * - **PPTX 六项**（`apps/cli/src/pptx/checks.ts`）有明确判据，passed/failed 即结论。
  * - **clean 四组**（`packages/core/src/clean-contracts.ts`）只是裸指标，`checks.ts`
  *   从未定义过通过阈值。真实数据里残字像素恒为 0、尺寸 ok 恒为 false（PRD F-4），
  *   把它们当成质量结论会双向误导：既会因「残字 0」放过没去干净的底板，也会因
@@ -24,6 +25,13 @@ import { cn } from "@/lib/utils";
  *
  * failed 项在这里只是显著，不携带任何「阻止完成」的语义——完成按钮不在本组件内，
  * 是否放行由人决定（R2.5 明确要求失败不阻止完成）。
+ *
+ * ## 状态样式一律取自基座
+ *
+ * 通过 → `completed`（中性）、未通过 → `failed`（校对色 + 方块 + 叉号）。
+ * 组件内不得自行拼状态色（DESIGN.md `Components · Status`）：这里若另拼一份，
+ * 与阶段轨道、待办队列迟早各说各话。「通过」走中性也是「有颜色 = 要你管」的
+ * 直接后果——六项全绿是常态，常态必须安静。
  */
 
 export interface CheckSummaryProps {
@@ -42,10 +50,8 @@ const PPTX_CHECK_LABELS: Readonly<Record<string, string>> = {
   "shape-count": "形状数量",
 };
 
-/** DESIGN.md caption 档（14px / 500 / 0.16px） */
-const CAPTION = "text-sm font-medium tracking-[0.16px] text-muted";
-
-const SECTION_TITLE = cn(CAPTION, "uppercase");
+/** 小节标签，DESIGN.md badge 档（11px / 600）。与 FinalConfirmPage 的层级同档 */
+const SECTION_LABEL = "text-2xs font-semibold tracking-[0.02em] text-ink-muted";
 
 interface MetricRow {
   readonly label: string;
@@ -167,19 +173,19 @@ export function CheckSummary({
 
   if (loading) {
     return (
-      <div className="flex flex-col gap-4 rounded-lg bg-surface-soft p-8">
-        <h3 className={SECTION_TITLE}>自动检查</h3>
-        <p className="text-sm text-muted">正在读取检查记录…</p>
+      <div className={cn(panelVariants(), "flex flex-col gap-2 p-4")}>
+        <h3 className={SECTION_LABEL}>自动检查</h3>
+        <p className="text-xs text-ink-muted">正在读取检查记录…</p>
       </div>
     );
   }
 
   if (pptx === null && clean === null) {
     return (
-      <div className="flex flex-col gap-4 rounded-lg bg-surface-soft p-8">
-        <h3 className={SECTION_TITLE}>自动检查</h3>
-        <p className="text-sm text-muted">
-          暂无检查记录——该页尚未生成 PPTX 与去字底板
+      <div className={cn(panelVariants(), "flex flex-col gap-2 p-4")}>
+        <h3 className={SECTION_LABEL}>自动检查</h3>
+        <p className="text-xs leading-relaxed text-ink-muted">
+          暂无检查记录——该页尚未生成 PPTX 与去字底板。
         </p>
       </div>
     );
@@ -190,85 +196,86 @@ export function CheckSummary({
       <button
         type="button"
         onClick={() => setExpandOverride(true)}
+        aria-expanded={false}
         title="展开自动检查明细"
-        className="flex items-center gap-3 rounded-lg bg-surface-soft px-4 py-3 text-left transition active:bg-surface-strong"
+        className={cn(
+          panelVariants(),
+          "flex items-center gap-2 px-4 py-3 text-left",
+          "transition-colors duration-fast hover:bg-surface active:bg-surface-sunken",
+        )}
       >
-        <span className={SECTION_TITLE}>PPTX 自动检查</span>
-        <span className="text-sm font-medium text-success">全部通过</span>
-        <span aria-hidden="true" className="ml-auto text-sm text-muted">
-          ▾
-        </span>
+        <span className={SECTION_LABEL}>PPTX 自动检查</span>
+        <StatusChip status="completed" label="全部通过" />
+        <ChevronDown
+          aria-hidden="true"
+          className="ml-auto size-4 text-ink-muted"
+        />
       </button>
     );
   }
 
   return (
-    <div className="flex flex-col gap-8 rounded-lg bg-surface-soft p-8">
-      <section className="flex flex-col gap-3">
-        <div className="flex items-baseline gap-3">
-          <h3 className={SECTION_TITLE}>PPTX 自动检查</h3>
+    <div className={cn(panelVariants(), "flex flex-col gap-5 p-4")}>
+      <section className="flex flex-col gap-2.5">
+        <div className="flex items-center gap-2">
+          <h3 className={SECTION_LABEL}>PPTX 自动检查</h3>
           {pptx !== null && (
-            <span
-              className={cn(
-                "text-sm font-medium",
-                pptx.status === "passed"
-                  ? "text-success"
-                  : "text-signature-coral",
-              )}
-            >
-              {pptx.status === "passed" ? "全部通过" : "存在未通过项"}
-            </span>
+            <StatusChip
+              status={pptx.status === "passed" ? "completed" : "failed"}
+              label={pptx.status === "passed" ? "全部通过" : "存在未通过项"}
+            />
           )}
           {allPassed && (
             <button
               type="button"
               onClick={() => setExpandOverride(false)}
+              aria-expanded={true}
               title="收起自动检查明细"
-              className="ml-auto shrink-0 text-sm text-muted transition active:text-ink"
+              className={cn(
+                "ml-auto shrink-0 rounded-sm p-0.5 text-ink-muted",
+                "transition-colors duration-fast hover:bg-surface hover:text-ink active:bg-surface-sunken",
+              )}
             >
-              收起 ▴
+              <ChevronUp aria-hidden="true" className="size-4" />
             </button>
           )}
         </div>
 
         {pptx === null ? (
-          <p className="text-sm text-muted">暂无 PPTX 检查记录</p>
+          <p className="text-xs text-ink-muted">暂无 PPTX 检查记录</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-1.5">
             {pptx.checks.map((check) => {
               const failed = check.status === "failed";
               return (
                 <li
                   key={check.id}
                   className={cn(
-                    "flex flex-col gap-1 rounded-sm border bg-canvas px-4 py-3",
-                    failed ? "border-signature-coral/40" : "border-hairline",
+                    "flex flex-col gap-1 rounded-sm border px-3 py-2",
+                    failed
+                      ? "border-state-failed/40 bg-state-failed/5"
+                      : "border-hairline bg-surface",
                   )}
                 >
-                  <div className="flex items-center gap-2">
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "h-2 w-2 shrink-0 rounded-full",
-                        failed ? "bg-signature-coral" : "bg-success",
-                      )}
-                    />
+                  <div className="flex items-center gap-1.5">
+                    <StatusDot status={failed ? "failed" : "completed"} />
                     <span className="text-sm font-medium text-ink">
                       {PPTX_CHECK_LABELS[check.id] ?? check.id}
                     </span>
                     <span
                       className={cn(
-                        "text-sm font-medium",
-                        failed ? "text-signature-coral" : "text-muted",
+                        "ml-auto text-2xs font-semibold",
+                        failed ? "text-state-failed" : "text-ink-muted",
                       )}
                     >
                       {failed ? "未通过" : "通过"}
                     </span>
                   </div>
+                  {/* break-words：384px 右栏里检查消息常带路径与数值，必须能断 */}
                   <p
                     className={cn(
-                      "pl-4 text-sm leading-relaxed",
-                      failed ? "text-signature-coral" : "text-body",
+                      "break-words pl-5 text-xs leading-relaxed",
+                      failed ? "text-state-failed" : "text-ink-secondary",
                     )}
                   >
                     {check.message}
@@ -280,35 +287,38 @@ export function CheckSummary({
         )}
       </section>
 
-      <section className="flex flex-col gap-3">
-        <h3 className={SECTION_TITLE}>去字底板检查指标</h3>
+      <section className="flex flex-col gap-2.5">
+        <h3 className={SECTION_LABEL}>去字底板检查指标</h3>
         {/* PRD F-4：这些指标当前不具判别力，缺了这句提示就会被当成质量结论 */}
-        <p className="text-sm leading-relaxed text-muted">
+        <p className="text-xs leading-relaxed text-ink-muted">
           以下为离线测得的裸指标，当前无判定阈值，仅供参考，不代表底板合格与否。
         </p>
 
         {clean === null ? (
-          <p className="text-sm text-muted">暂无去字底板检查记录</p>
+          <p className="text-xs text-ink-muted">暂无去字底板检查记录</p>
         ) : (
           // 单列：本组件挂在最终确认页 384px 宽的右栏里，两列会把
           // 「2048×1152」这类数值挤到折行
-          <div className="grid grid-cols-1 gap-4">
+          <div className="flex flex-col gap-2">
             {buildCleanGroups(clean).map((group) => (
               <div
                 key={group.title}
-                className="flex flex-col gap-2 rounded-sm border border-hairline bg-canvas px-4 py-3"
+                className="flex flex-col gap-1 rounded-sm border border-hairline bg-surface px-3 py-2"
               >
                 <span className="text-sm font-medium text-ink">
                   {group.title}
                 </span>
-                <dl className="flex flex-col gap-1">
+                <dl className="flex flex-col gap-0.5">
                   {group.rows.map((row) => (
                     <div
                       key={row.label}
                       className="flex items-baseline justify-between gap-3"
                     >
-                      <dt className="text-sm text-muted">{row.label}</dt>
-                      <dd className="text-sm tabular-nums text-body">
+                      <dt className="text-xs text-ink-muted">{row.label}</dt>
+                      <dd
+                        data-numeric
+                        className="text-xs tabular-nums text-ink-secondary"
+                      >
                         {row.value}
                       </dd>
                     </div>

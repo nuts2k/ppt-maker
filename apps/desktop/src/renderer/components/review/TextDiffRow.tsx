@@ -27,6 +27,12 @@ import { BlockTextEditor } from "./BlockTextEditor";
  * 没有采用「OCR 高亮 + AI 高亮 + textarea」三行：未编辑时 AI 高亮行与 textarea
  * 内容完全重复，45 项列表里徒增一倍高度，反而更难扫读。
  *
+ * ## 两列网格：让两侧文字**逐字对齐**
+ *
+ * 两行改用固定标签列 + 等内边距的文本格，因此上下两行的第 n 个字在屏幕上落在
+ * 同一横向位置——差异在哪个字，眼睛垂直一扫即可确认，不必来回找。上一版两行的
+ * 左内边距不同（只读段落 px-2、textarea 另一套），字始终错开半个字宽。
+ *
  * 人工改过之后 `block.text` 不再等于 assist 文本，此时按 assist 的分段着色会错位到
  * 相邻字上，因此只读行退回纯文本并打「已编辑」标记。
  */
@@ -41,13 +47,24 @@ interface TextDiffRowProps {
   ) => void;
 }
 
-/** 行首来源标签，`caption` 档（14px / 500 / 0.16px） */
+/** 行首来源标签，`badge` 档（11px / 600）。右对齐让它紧贴文本列 */
 const SOURCE_LABEL =
-  "w-14 shrink-0 pt-0.5 text-sm font-medium tracking-[0.16px] text-muted";
+  "pt-1.5 text-right text-2xs font-semibold text-ink-muted select-none";
 
-/** 差异段：DESIGN.md 签名色 coral，不引入签名色板之外的强调色 */
-const DIFF_MARK =
-  "rounded-xs bg-signature-coral/15 px-0.5 text-signature-coral";
+/**
+ * 文本格：与 `BlockTextEditor` 的 textarea 同内边距同边框宽度（边框透明），
+ * 两行的字符网格因此严格对齐。
+ */
+const TEXT_CELL =
+  "min-w-0 whitespace-pre-wrap break-words rounded-sm border border-transparent px-2.5 py-1.5 text-sm leading-relaxed";
+
+/**
+ * 差异段：`proof-wash` 作底、`proof` 作字。
+ *
+ * 这是校对红唯一的正当用途之一——它标的就是「差异」（DESIGN.md `校对红`）。
+ * 上一版用的是营销站签名色 coral，属于把品牌色挪用为语义色。
+ */
+const DIFF_MARK = "rounded-xs bg-proof-wash px-0.5 font-medium text-proof";
 
 export function TextDiffRow({
   block,
@@ -69,40 +86,44 @@ export function TextDiffRow({
   const edited = assist !== null && block.text !== assist;
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex gap-2">
-        <span className={SOURCE_LABEL}>OCR</span>
-        {ocr === null ? (
-          <span className="text-sm text-muted">无离线 OCR 候选</span>
-        ) : (
-          <p className="min-w-0 flex-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted">
-            {fallback ? (
-              ocr
-            ) : (
-              <DiffText segments={segments} side="ocr" plain={ocr} />
-            )}
-          </p>
-        )}
-      </div>
+    <div className="grid grid-cols-[2.25rem_minmax(0,1fr)] items-start gap-x-2 gap-y-1">
+      <span className={SOURCE_LABEL}>OCR</span>
+      {ocr === null ? (
+        <span className={cn(TEXT_CELL, "text-ink-muted")}>无离线 OCR 候选</span>
+      ) : (
+        // 只读来源垫一层 surface：与下方可编辑行区分「哪一行改得动」
+        <p className={cn(TEXT_CELL, "bg-surface text-ink-secondary")}>
+          {fallback ? (
+            ocr
+          ) : (
+            <DiffText segments={segments} side="ocr" plain={ocr} />
+          )}
+        </p>
+      )}
 
-      <div className="flex gap-2">
-        <span className={SOURCE_LABEL}>{edited ? "人工" : "AI"}</span>
-        {isCurrent ? (
-          <BlockTextEditor
-            block={block}
-            onUpdateBlock={onUpdateBlock}
-            autoFocus
-          />
-        ) : (
-          <p className="min-w-0 flex-1 whitespace-pre-wrap break-words px-2 py-1 text-sm leading-relaxed text-ink">
-            {edited || fallback || assist === null ? (
-              block.text
-            ) : (
-              <DiffText segments={segments} side="assist" plain={assist} />
-            )}
-          </p>
-        )}
-      </div>
+      <span className={SOURCE_LABEL}>{edited ? "人工" : "AI"}</span>
+      {isCurrent ? (
+        <BlockTextEditor
+          block={block}
+          onUpdateBlock={onUpdateBlock}
+          autoFocus
+        />
+      ) : (
+        <p className={cn(TEXT_CELL, "text-ink")}>
+          {edited || fallback || assist === null ? (
+            block.text
+          ) : (
+            <DiffText segments={segments} side="assist" plain={assist} />
+          )}
+        </p>
+      )}
+
+      {/* 降级要说出来：不提示的话，一段真有差异的长文本看起来就是「两边都没标红」 */}
+      {fallback && (
+        <p className="col-start-2 text-2xs text-ink-muted">
+          文本过长，已改为整段并列，不逐字标差异
+        </p>
+      )}
     </div>
   );
 }

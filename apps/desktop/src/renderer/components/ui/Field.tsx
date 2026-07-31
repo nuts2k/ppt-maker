@@ -55,7 +55,7 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
         title={hint}
         className={cn(
           "inline-flex cursor-pointer select-none items-center gap-1.5 text-sm text-ink-secondary",
-          "transition-colors hover:text-ink",
+          "transition-colors duration-fast hover:text-ink",
           rest.disabled === true && "cursor-not-allowed opacity-60",
           className,
         )}

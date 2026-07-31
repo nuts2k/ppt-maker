@@ -14,10 +14,16 @@ import { buttonVariants } from "./variants";
  *
  * 六态齐全：default / hover / focus-visible / active / disabled / loading。
  * 焦点环由 index.css 的全局 `:focus-visible` 提供，此处不重复声明。
+ *
+ * 另有 `selected` 表达「二选一的当前值」（见 variants.ts）。它同时输出
+ * `aria-pressed`，调用方无从分开写 —— 视觉与语义分头维护正是漂移的起点。
  */
 
 export interface ButtonProps
-  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "type">,
+  extends Omit<
+      React.ButtonHTMLAttributes<HTMLButtonElement>,
+      "type" | "aria-pressed"
+    >,
     VariantProps<typeof buttonVariants> {
   /** 载入中：显示转圈并自动禁用。文案保留，避免按钮宽度跳动 */
   readonly loading?: boolean;
@@ -27,7 +33,17 @@ export interface ButtonProps
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   function Button(
-    { className, variant, size, loading = false, disabled, children, ...rest },
+    {
+      className,
+      variant,
+      size,
+      shape,
+      selected,
+      loading = false,
+      disabled,
+      children,
+      ...rest
+    },
     ref,
   ) {
     return (
@@ -36,7 +52,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         type="button"
         disabled={disabled === true || loading}
         aria-busy={loading || undefined}
-        className={cn(buttonVariants({ variant, size }), className)}
+        // 视觉与语义绑死在一个 prop 上：`aria-pressed` 从类型上就不许调用方另写
+        // （见上方 ButtonProps 的 Omit）。分头维护正是漂移的起点 —— 只要能分开写，
+        // 迟早出现「看着是选中的但读屏说没按下」。
+        aria-pressed={selected ?? undefined}
+        className={cn(
+          buttonVariants({ variant, size, shape, selected }),
+          className,
+        )}
         {...rest}
       >
         {loading && (

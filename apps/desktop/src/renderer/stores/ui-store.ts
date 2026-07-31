@@ -25,6 +25,15 @@ interface UIState {
   /** 底部活动日志抽屉是否展开；属于回溯用途，默认收起 */
   activityPanelOpen: boolean;
   /**
+   * 单页复核的阶段轨道是否展开；**默认收起**。
+   *
+   * 用户进到单页时已经在做页内作业，9 个等权重点位提供的信息价值极低，
+   * 而展开态要占 175px（复核页可视高度的 11%）。收起态用一条分段进度条
+   * + 一句话状态承担扫读，异常阶段仍带形状与颜色标在条上；失败错误条
+   * 不随收起消失——那是 M4 修过的关键能力，藏起来等于回退。
+   */
+  stageRailOpen: boolean;
+  /**
    * 卡片网格筛选档位。默认只看待处理——一叠 20–50 页里绝大多数是完成态，
    * 默认铺满已完成页等于让用户每次都自己扫一遍。
    *
@@ -43,8 +52,9 @@ interface UIState {
   backToConsole(): void;
   toggleQueuePanel(open?: boolean): void;
   toggleActivityPanel(open?: boolean): void;
+  toggleStageRail(open?: boolean): void;
   setConsoleFilter(filter: ConsoleFilter): void;
-  /** 视图态整体归零（切换工作区），含两个面板的展开态与筛选档位 */
+  /** 视图态整体归零（切换工作区），含三个面板的展开态与筛选档位 */
   reset(): void;
 }
 
@@ -54,6 +64,7 @@ const INITIAL_STATE = {
   selectedBlockId: null,
   queuePanelOpen: true,
   activityPanelOpen: false,
+  stageRailOpen: false,
   consoleFilter: "todo",
 } as const;
 
@@ -90,6 +101,10 @@ export const useUIStore = create<UIState>((set) => ({
 
   toggleActivityPanel(open) {
     set((state) => ({ activityPanelOpen: open ?? !state.activityPanelOpen }));
+  },
+
+  toggleStageRail(open) {
+    set((state) => ({ stageRailOpen: open ?? !state.stageRailOpen }));
   },
 
   setConsoleFilter(filter) {

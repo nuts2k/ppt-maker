@@ -5,8 +5,7 @@ import { DeckEmptyState } from "@/components/console/DeckEmptyState";
 import { RunControlBar } from "@/components/console/RunControlBar";
 import { SlideCardGrid } from "@/components/console/SlideCardGrid";
 import { TodoQueuePanel } from "@/components/console/TodoQueuePanel";
-import { Button } from "@/components/ui";
-import { cn } from "@/lib/utils";
+import { Button, SegmentedGroup, SegmentedItem } from "@/components/ui";
 import { useActivityStore } from "@/stores/activity-store";
 import { useDeckStore } from "@/stores/deck-store";
 import { useRunStore } from "@/stores/run-store";
@@ -159,8 +158,8 @@ export function ConsolePage(): React.JSX.Element {
 /**
  * 「全部 N / 待处理 M」切换 —— 常驻可见，不折叠不藏菜单。
  *
- * 选中态用下沉底色而非墨底：全屏唯一的主行动是「处理全部」，
- * 一个筛选开关不该长得像主按钮。
+ * 选中视觉与 `aria-pressed` 一律由基座给（`components/ui/Segmented`），
+ * 这里只管口径：全屏唯一的主行动是「处理全部」，筛选开关不该长得像主按钮。
  */
 function FilterSwitch({
   filter,
@@ -183,31 +182,20 @@ function FilterSwitch({
   };
 
   return (
-    <fieldset className="flex shrink-0 items-center gap-0.5 rounded-md border border-hairline p-0.5">
-      <legend className="sr-only">页面筛选</legend>
-      {options.map((option) => {
-        const selected = filter === option.value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            aria-pressed={selected}
-            onClick={() => onChange(option.value)}
-            className={cn(
-              "flex items-center gap-1.5 rounded-sm px-2.5 py-1 text-sm transition-colors duration-fast",
-              selected
-                ? "bg-surface-sunken font-medium text-ink"
-                : "text-ink-secondary hover:bg-surface hover:text-ink active:bg-surface-sunken",
-            )}
-          >
-            {option.label}
-            <span className="text-2xs font-semibold tabular-nums text-ink-muted">
-              {counts[option.value]}
-            </span>
-          </button>
-        );
-      })}
-    </fieldset>
+    <SegmentedGroup label="页面筛选">
+      {options.map((option) => (
+        <SegmentedItem
+          key={option.value}
+          selected={filter === option.value}
+          onClick={() => onChange(option.value)}
+        >
+          {option.label}
+          <span className="text-2xs font-semibold tabular-nums text-ink-muted">
+            {counts[option.value]}
+          </span>
+        </SegmentedItem>
+      ))}
+    </SegmentedGroup>
   );
 }
 

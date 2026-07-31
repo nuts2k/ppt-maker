@@ -1,5 +1,19 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
+import {
+  Check,
+  CheckCheck,
+  ChevronsDown,
+  Circle,
+  Image as ImageIcon,
+  PenLine,
+  ShieldAlert,
+  Trash2,
+  TriangleAlert,
+  Type as TypeIcon,
+} from "lucide-react";
+import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Button, IconButton, Kbd, Panel } from "@/components/ui";
 import {
   defaultFilter,
   filterCounts,
@@ -14,6 +28,7 @@ import { resolveReviewKeyAction } from "@/lib/review-keyboard";
 import {
   partitionOf,
   REVIEW_PARTITION_LABELS,
+  type ReviewPartition,
   unreviewedBlockIds,
 } from "@/lib/review-partition";
 import { cn } from "@/lib/utils";
@@ -62,24 +77,6 @@ export interface BlockListPanelProps {
   /** 无处可跳等需要说明的情形；不得静默失败 */
   readonly onNotice: (message: string) => void;
 }
-
-/** 元信息统一落在 DESIGN.md 的 `caption` 档（14px / 500 / 0.16px） */
-const CAPTION = "text-sm font-medium tracking-[0.16px] text-muted";
-
-/** DESIGN.md `button-secondary` 的紧凑版 */
-const BUTTON_COMPACT =
-  "shrink-0 rounded-sm border border-hairline bg-canvas px-2.5 py-1 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
-
-const REVIEW_STATUS_VIEW: Readonly<
-  Record<
-    TextReviewBlock["reviewStatus"],
-    { readonly label: string; readonly dot: string }
-  >
-> = {
-  unreviewed: { label: "未复核", dot: "bg-signature-mustard" },
-  reviewed: { label: "已复核", dot: "bg-success-border" },
-  accepted_with_risk: { label: "风险接受", dot: "bg-signature-coral" },
-};
 
 export function BlockListPanel({
   blocks,
@@ -265,79 +262,111 @@ export function BlockListPanel({
     [filter, blocks],
   );
 
+  /*
+   * 因「留在原位」而多显示出来的项数。
+   *
+   * 这是筛选区唯一保留的第二个数字：它解释「为什么未复核档里还挂着几条已复核」，
+   * 是筛选档计数答不了的问题。旧版右侧那个「N 项」与「全部 N」在多数档位上是同一个
+   * 数，属于同一件事写两遍——已删。
+   */
+  const stickyExtra = visible.length - counts[filter];
+
   return (
     // 容器只做键盘事件汇聚，本身不是控件；焦点始终落在项内的 textarea 或项卡上
     // biome-ignore lint/a11y/noStaticElementInteractions: 见上，键盘事件由子项冒泡而来
     <div
-      className="flex h-full w-full flex-col bg-surface-soft"
+      className="flex h-full w-full flex-col bg-surface"
       onKeyDown={handleKeyDown}
     >
-      <div className="flex shrink-0 flex-col gap-2 border-b border-hairline px-4 py-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {REVIEW_FILTER_ORDER.map((entry) => (
-            <button
-              key={entry}
-              type="button"
-              onClick={() => changeFilter(entry)}
-              className={cn(
-                "shrink-0 rounded-sm px-2.5 py-1 text-sm transition",
-                filter === entry
-                  ? "bg-surface-strong font-medium text-ink"
-                  : "text-muted active:bg-surface-strong/60",
-              )}
-            >
-              {REVIEW_FILTER_LABELS[entry]}
-              <span className="ml-1.5 text-sm text-muted">{counts[entry]}</span>
-            </button>
-          ))}
+      <div className="flex shrink-0 flex-col gap-1.5 border-b border-hairline bg-canvas px-3 py-2.5">
+        {/*
+          筛选档：五个同高胶囊，计数一律等宽数字（tabular-nums），
+          切档时数字宽度不变，整行不抖。
+        */}
+        <div className="flex flex-wrap items-center gap-0.5">
+          {REVIEW_FILTER_ORDER.map((entry) => {
+            const active = filter === entry;
+            return (
+              <Button
+                key={entry}
+                size="sm"
+                variant="ghost"
+                selected={active}
+                onClick={() => changeFilter(entry)}
+              >
+                {REVIEW_FILTER_LABELS[entry]}
+                <span
+                  data-numeric
+                  className={cn(
+                    "text-2xs font-semibold",
+                    // 未复核数就是字面意义上的「待我处理」，全屏唯一一抹校对红
+                    entry === "unreviewed" && counts.unreviewed > 0
+                      ? "text-proof"
+                      : active
+                        ? "text-ink-secondary"
+                        : "text-ink-muted",
+                  )}
+                >
+                  {counts[entry]}
+                </span>
+              </Button>
+            );
+          })}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={jumpToNextUnreviewed}
             title="在当前筛选内跳到下一个未复核项，走到末尾回绕"
-            className={BUTTON_COMPACT}
           >
+            <ChevronsDown aria-hidden="true" className="size-3.5" />
             下一个未复核
-            <span className="ml-1 text-sm text-muted">⌘↓</span>
-          </button>
+            <Kbd>⌘↓</Kbd>
+          </Button>
           {filter === "agreed" && (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="secondary"
               disabled={bulkPassIds.length === 0}
               onClick={() => {
                 for (const id of bulkPassIds) keepVisible(id);
                 onMarkBlocksReviewed(bulkPassIds);
               }}
               title="把「已一致」下所有未复核项标为已复核（不写人工编辑痕迹）"
-              className={BUTTON_COMPACT}
             >
+              <CheckCheck aria-hidden="true" className="size-3.5" />
               全部通过
               {bulkPassIds.length > 0 && (
-                <span className="ml-1 text-sm text-muted">
+                <span data-numeric className="text-2xs font-semibold">
                   {bulkPassIds.length}
                 </span>
               )}
-            </button>
+            </Button>
           )}
-          <span className={cn("ml-auto shrink-0", CAPTION)}>
-            {visible.length} 项
-          </span>
+          {stickyExtra > 0 && (
+            <span
+              data-numeric
+              title="刚处理过的项留在原位，切换筛选后归位"
+              className="ml-auto shrink-0 text-2xs text-ink-muted"
+            >
+              另含 {stickyExtra} 项刚处理
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col overflow-y-auto p-4">
+      <div className="flex flex-1 flex-col overflow-y-auto p-3">
         {visible.length === 0 ? (
-          <p
-            className={cn(
-              "rounded-sm border border-hairline bg-canvas px-3 py-2",
-              CAPTION,
-            )}
-          >
-            当前筛选下没有条目
-          </p>
+          // 空态说清「下一步该点什么」，且不占固定版面
+          <Panel className="px-3 py-2 text-sm text-ink-secondary">
+            {filter === "unreviewed"
+              ? "这一档已清空。切到「全部」可回看已复核的项。"
+              : "当前筛选下没有条目。换一档看看。"}
+          </Panel>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-1.5">
             {visible.map((block) => (
               <ReviewRow
                 key={block.id}
@@ -356,6 +385,97 @@ export function BlockListPanel({
   );
 }
 
+/**
+ * 行状态槽 —— **一行只给一个判断**。
+ *
+ * 旧实现在同一行并排两个徽标：`reviewStatus`（未复核 / 已复核 / 风险接受）与
+ * `partitionOf`（文字待确认 / 分类待确认 / 已一致）。两者语义不同，但文案直接打架
+ * ——「已复核」紧挨着「文字待确认」，用户读不出这一项到底还要不要管。
+ *
+ * 收敛为单槽，判据完全沿用原来那两个（不新写口径）：
+ *
+ * - **已复核 / 风险接受 → 中性、安静**。它们是常态，一页 155 个块最终全部落到这里，
+ *   给常态上色等于把最强的视觉手段给最不需要注意的信息（旧版「已复核」是绿点）。
+ * - **未复核 → 按「要你管的类型」给颜色**：真要动手的两类（逐字核对、二选一分类）
+ *   上校对红；双源逐字一致的那类只需过目，保持中性空心圆。
+ *
+ * 分区信息没有丢：正文控件本身就是分区的标志（双源 diff / 二选一按钮 / 纯文本）。
+ */
+interface RowStatusView {
+  readonly icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  readonly label: string;
+  readonly className: string;
+  readonly title: string;
+}
+
+function rowStatusView(
+  block: TextReviewBlock,
+  partition: ReviewPartition,
+): RowStatusView {
+  if (block.reviewStatus === "reviewed") {
+    return {
+      icon: Check,
+      label: "已复核",
+      className: "text-ink-muted",
+      title: "本项已确认；留在原位只是痕迹，不需要再管",
+    };
+  }
+  if (block.reviewStatus === "accepted_with_risk") {
+    return {
+      icon: ShieldAlert,
+      label: "风险接受",
+      className: "bg-surface-sunken text-ink-secondary",
+      title: "已知有风险仍然放行；这是一次人工决定，不是待办",
+    };
+  }
+  switch (partition) {
+    case "text-pending":
+      return {
+        icon: PenLine,
+        label: REVIEW_PARTITION_LABELS["text-pending"],
+        className: "bg-proof-wash text-proof",
+        title: "两个来源的文字不一致，需要逐字核对",
+      };
+    case "classification-pending":
+      return {
+        icon: TypeIcon,
+        label: REVIEW_PARTITION_LABELS["classification-pending"],
+        className: "bg-proof-wash text-proof",
+        title: "需判断这块字是版式文字还是对象符号（⌥1 / ⌥2）",
+      };
+    default:
+      return {
+        icon: Circle,
+        label: "待过目",
+        className: "text-ink-muted",
+        title: "两个来源逐字一致，扫一眼没问题按 Enter 即确认并跳到下一项",
+      };
+  }
+}
+
+function RowStatus({
+  block,
+  partition,
+}: {
+  readonly block: TextReviewBlock;
+  readonly partition: ReviewPartition;
+}): React.JSX.Element {
+  const view = rowStatusView(block, partition);
+  const Icon = view.icon;
+  return (
+    <span
+      title={view.title}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-2xs font-semibold",
+        view.className,
+      )}
+    >
+      <Icon aria-hidden className="size-3" />
+      {view.label}
+    </span>
+  );
+}
+
 interface ReviewRowProps {
   readonly block: TextReviewBlock;
   readonly isCurrent: boolean;
@@ -369,7 +489,7 @@ interface ReviewRowProps {
 }
 
 /**
- * 项卡外壳：分区徽标、状态、人工改动标记、标记已复核与删除。
+ * 项卡外壳：行状态、人工改动标记、标记已复核与删除。
  *
  * 正文按该项当下的分区选择控件（双源 diff / 分类选择 / 可转编辑的文本），判据来源
  * 仍是 `partitionOf`——它现在每次渲染实时求值，改完分类下一帧正文就换成对应控件，
@@ -419,7 +539,6 @@ function ReviewRow({
     }
   }, [isCurrent]);
 
-  const status = REVIEW_STATUS_VIEW[block.reviewStatus];
   const reviewed = block.reviewStatus !== "unreviewed";
   // layout_text 却不参与 mask：文字既留在底板位图里、又生成原生文本框，导出即重影
   const willGhost =
@@ -435,72 +554,73 @@ function ReviewRow({
       onClick={() => onSelectBlock(block.id)}
       onFocusCapture={() => onSelectBlock(block.id)}
       className={cn(
-        "flex flex-col gap-2 rounded-sm border px-3 py-2 transition focus:outline-none",
+        "flex flex-col gap-1.5 rounded-md border px-2.5 py-2",
+        // 淡化的已复核项在悬停时回到全不透明，方便回看；opacity 也要进 transition。
+        // 任意值写法只产出 transition-property，时长与缓动必须显式补齐。
+        "transition-[opacity,background-color,border-color] duration-fast ease-out-quart",
+        "focus:outline-none",
         isCurrent
-          ? "border-border-strong bg-surface-strong"
-          : "border-hairline bg-canvas",
+          ? "border-border-strong bg-surface"
+          : "border-hairline bg-canvas hover:border-border",
         // 已复核项留在原位、只淡化：它是「做过了」的痕迹，不是要移走的东西
-        reviewed && !isCurrent && "opacity-60",
+        reviewed && !isCurrent && "opacity-60 hover:opacity-100",
       )}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={cn("flex shrink-0 items-center gap-1.5", CAPTION)}>
-          <span
-            aria-hidden="true"
-            className={cn("h-2 w-2 rounded-full", status.dot)}
-          />
-          {status.label}
-        </span>
-        <span
-          className="shrink-0 rounded-xs bg-surface-strong px-1.5 py-0.5 text-sm font-medium text-ink"
-          title="该块当前归入的复核类别，会随分类与文字改动实时变化"
-        >
-          {REVIEW_PARTITION_LABELS[partition]}
-        </span>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <RowStatus block={block} partition={partition} />
         {/* 人工改过的块（updatedAt 非空）——回答「我刚才动过哪几块」，不参与任何判定 */}
         {block.updatedAt !== null && (
-          <span className={cn("shrink-0", CAPTION)} title="本块有人工改动">
+          <span
+            className="shrink-0 text-2xs text-ink-muted"
+            title="本块有人工改动"
+          >
             已修改
           </span>
         )}
-        <span className="min-w-0 flex-1 truncate text-sm text-muted">
+        <span
+          className="min-w-0 flex-1 truncate text-2xs text-ink-muted"
+          title={block.id}
+        >
           {block.id}
         </span>
         {block.reviewStatus === "unreviewed" && (
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="ghost"
             onClick={() => onMarkReviewed(block.id)}
-            className={BUTTON_COMPACT}
+            title="确认这一项没问题（Enter 同时跳到下一项）"
           >
+            <Check aria-hidden="true" className="size-3.5" />
             标记已复核
-          </button>
+          </Button>
         )}
         {confirmingDelete ? (
           <>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="danger"
               onClick={() => onDeleteBlock(block.id)}
-              className="shrink-0 rounded-sm border border-signature-coral bg-canvas px-2.5 py-1 text-sm font-medium text-signature-coral transition active:bg-surface-strong"
             >
               确认删除
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setConfirmingDelete(false)}
-              className={BUTTON_COMPACT}
             >
               取消
-            </button>
+            </Button>
           </>
         ) : (
-          <button
-            type="button"
-            onClick={() => setConfirmingDelete(true)}
+          <IconButton
+            size="sm"
+            variant="ghost"
+            label="删除此块"
             title="删除重复或碎片块；删除后该块不再进入 mask 与 PPTX"
-            className={BUTTON_COMPACT}
+            onClick={() => setConfirmingDelete(true)}
           >
-            删除此块
-          </button>
+            <Trash2 aria-hidden="true" className="size-3.5" />
+          </IconButton>
         )}
       </div>
 
@@ -529,35 +649,44 @@ function ReviewRow({
           <p
             onClick={() => setEditingText(true)}
             title="双源一致不代表正确：OCR 与 AI 可能同时认错。点击这段文字即可修正"
-            className="w-full whitespace-pre-wrap break-words text-sm leading-relaxed text-ink"
+            className={cn(
+              "w-full cursor-text whitespace-pre-wrap break-words rounded-sm px-1 py-0.5",
+              "text-sm leading-relaxed text-ink",
+              "transition-colors duration-fast hover:bg-surface-sunken",
+            )}
           >
             {block.text}
           </p>
-          {/* 只在当前项给出可见入口：155 项各挂一个就是把收敛掉的噪音原样加回来 */}
+          {/* 只在当前项给出可见入口：155 项各挂一个就是把收敛掉的噪音原样加回来。
+              动作一律用按钮词汇，不做成文字链接（DESIGN.md `Buttons`）。 */}
           {isCurrent && (
-            <button
-              type="button"
+            <Button
+              size="sm"
+              variant="ghost"
               onClick={() => setEditingText(true)}
-              className="text-sm text-link underline underline-offset-2 transition active:text-link-active"
             >
+              <PenLine aria-hidden="true" className="size-3.5" />
               修正文本
-            </button>
+            </Button>
           )}
         </div>
       )}
 
       {willGhost && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xs bg-signature-coral/10 px-2 py-1">
-          <span className="min-w-0 flex-1 text-sm font-medium text-signature-coral">
+        // 校对红的第二个正当用途：「要你管」。这不是阶段失败，是这块数据本身有问题
+        <div className="flex flex-wrap items-center gap-2 rounded-sm bg-proof-wash px-2 py-1.5">
+          <TriangleAlert aria-hidden="true" className="size-3.5 text-proof" />
+          <span className="min-w-0 flex-1 text-2xs font-medium text-proof">
             会重影：这块字未参与去字，导出后底板里的原字与新建文本框会叠在一起
           </span>
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="secondary"
             onClick={() => onUpdateBlock(block.id, { includeInMask: true })}
-            className={BUTTON_COMPACT}
           >
-            修正为参与去字
-          </button>
+            <ImageIcon aria-hidden="true" className="size-3.5" />
+            改为参与去字
+          </Button>
         </div>
       )}
     </li>

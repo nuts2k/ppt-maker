@@ -1,6 +1,15 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import {
+  BORDER_STRONG,
+  CANVAS,
+  INK,
+  INK_FILL,
+  PROOF,
+  PROOF_FILL,
+  PROOF_GLOW,
+} from "./overlay-colors";
 
 interface TextBlockOverlayProps {
   block: TextReviewBlock;
@@ -19,44 +28,84 @@ interface TextBlockOverlayProps {
 }
 
 /**
- * 三态标注（design.md §4.2）：分类不再用边框色编码——分类由左侧列表分区表达，
- * 画布只回答「哪一块是当前项」。取色全部落在 DESIGN.md 色板内：
+ * 标注视觉（design.md §4.2）：分类不再用边框色编码——分类由左侧列表分区表达，
+ * 画布只回答「哪一块是当前项」。
  *
- * - 当前项：沿用 DESIGN.md 的 focus 语言「外 2px 蓝环」，`info-border` 实线 +
- *   `canvas` 色间隔 + 半透明蓝晕 + 淡蓝底。白色间隔是关键——彩色底图上纯蓝边可能
- *   与底色同明度而糊掉，中间垫一圈白才能保证「当前项清晰可辨」；蓝晕向外扩散，
- *   让 13–19px 高的小块在缩略视图下也能一眼扫到。
- * - 非当前项：hairline(#dddddd) 在彩色底图上几乎不可见，故取色板内更强的
- *   `border-strong`(#9297a0)——中性灰在浅底与深底上都留得住形，且不构成强调色。
- *   同分区保持满不透明度；其他分区降到 35% 退居背景。
+ * **当前项用校对红**（DESIGN.md：`proof` 只标「差异」与「待我处理」）。当前项正是
+ * 此刻要你核的那一块，校样台上的红笔本来就落在这里；同时它与阶段状态色
+ * （running/stale/failed）彻底分开，画布上的红不会被误读成「这一块出错了」。
+ * 结构沿用「实线 + `canvas` 色间隔 + 半透明红晕」：白色间隔是关键——彩色底图上
+ * 纯色边可能与底色同明度而糊掉，中间垫一圈白才保证「当前项清晰可辨」；红晕向外
+ * 扩散，让 13–19px 高的小块在缩略视图下也能一眼扫到。
+ *
+ * 非当前项走中性 `border-strong`——`hairline` 在彩色底图上几乎不可见，
+ * 而中性灰在浅底与深底上都留得住形，且不构成强调（有颜色 = 要你管）。同分区保持
+ * 满不透明度，其他分区降到 35% 退居背景，**悬停时临时恢复满不透明**，否则淡掉的
+ * 块无法确认鼠标指的是哪一个。
  *
  * **线宽必须按 scale 反算**：标注 div 在缩放容器内部，写死的 `border-2` 实际渲染
  * 宽度是 `2px × scale`。2048 宽的图 fit 进 ~780px 画布时 scale≈0.38，边框只剩
- * 0.76px、外发光同理——95 个框铺满时根本分不出当前项。下面所有描边与光晕都用
- * `/scale` 换算，保证屏幕上恒定粗细。
+ * 0.76px、外发光同理——95 个框铺满时根本分不出当前项。下面所有描边、光晕与焦点环
+ * 都用 `/scale` 换算，保证屏幕上恒定粗细。
+ *
+ * 取色来自 `overlay-colors.ts`：宽度与颜色写在同一条 `border` / `box-shadow`
+ * 简写里，用不上 Tailwind 类，所以颜色只能落在 JS 侧。那里的取值与 palette
+ * **逐字对齐**并由 `ui-design-rules` 测试锁住，本文件不再自行拼色。
  */
-const INFO_BORDER = "#458fff";
-const CANVAS = "#ffffff";
-const BORDER_STRONG = "#9297a0";
 
-function annotationStyle(
-  current: boolean,
-  samePartition: boolean,
-  scale: number,
-): React.CSSProperties {
+interface AnnotationState {
+  readonly current: boolean;
+  readonly samePartition: boolean;
+  readonly scale: number;
+  readonly hovered: boolean;
+  /** 仅键盘焦点（:focus-visible）；鼠标点击不画焦点环 */
+  readonly focused: boolean;
+}
+
+function annotationStyle({
+  current,
+  samePartition,
+  scale,
+  hovered,
+  focused,
+}: AnnotationState): React.CSSProperties {
   // scale 可能为 0（尺寸未就绪的一帧），兜底避免除零得到 Infinity 线宽
   const px = (screenPx: number): number => screenPx / Math.max(scale, 0.01);
+  const style: React.CSSProperties = {};
+  // box-shadow 列表里先写的画在上层，故顺序为「内白圈 → 焦点白晕 → 红晕」
+  const rings: string[] = [];
+
   if (current) {
-    return {
-      border: `${px(2)}px solid ${INFO_BORDER}`,
-      backgroundColor: "rgba(69, 143, 255, 0.16)",
-      boxShadow: `0 0 0 ${px(1)}px ${CANVAS}, 0 0 0 ${px(6)}px rgba(69, 143, 255, 0.35)`,
-    };
+    style.border = `${px(2)}px solid ${PROOF}`;
+    style.backgroundColor = PROOF_FILL;
+    rings.push(`0 0 0 ${px(1)}px ${CANVAS}`);
+  } else {
+    style.border = `${px(hovered ? 1.5 : 1)}px solid ${hovered ? INK : BORDER_STRONG}`;
+    style.opacity = samePartition || hovered ? 1 : 0.35;
+    if (hovered) {
+      style.backgroundColor = INK_FILL;
+      rings.push(`0 0 0 ${px(1)}px ${CANVAS}`);
+    }
   }
-  return {
-    border: `${px(1)}px solid ${BORDER_STRONG}`,
-    opacity: samePartition ? 1 : 0.35,
-  };
+
+  if (focused) {
+    // index.css 的全局 :focus-visible 环同样在缩放容器里被压成 2px × scale
+    // （实测 0.76px），键盘用户几乎看不见。这里按 scale 反算一圈等效环——
+    // inline style 优先级高于全局样式表，因此直接盖过它——并垫一圈白晕，
+    // 保证近黑焦点环落在深色底图上也留得住形。
+    style.outline = `${px(2)}px solid ${INK}`;
+    style.outlineOffset = `${px(2)}px`;
+    rings.push(`0 0 0 ${px(4)}px ${CANVAS}`);
+  }
+
+  if (current) {
+    rings.push(`0 0 0 ${px(6)}px ${PROOF_GLOW}`);
+  }
+
+  if (rings.length > 0) {
+    style.boxShadow = rings.join(", ");
+  }
+  return style;
 }
 
 // 屏幕位移小于该像素数视为点击而非拖动，避免选中块时手抖改坐标
@@ -110,14 +159,19 @@ export function TextBlockOverlay({
   // 拖动结束后紧跟的 click 需要吞掉，否则拖完还会触发一次选中
   const suppressClickRef = useRef(false);
 
+  // 悬停与键盘焦点走组件状态而非 CSS 伪类：描边宽度要按 scale 反算，
+  // 只能写在 inline style 里，`hover:` 类改不动它。
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+
   const style: React.CSSProperties = {
     left: `${(x / imageWidth) * 100}%`,
     top: `${(y / imageHeight) * 100}%`,
     width: `${(width / imageWidth) * 100}%`,
     height: `${(height / imageHeight) * 100}%`,
-    // 当前项的光晕要盖住相邻框，否则密集区里它会被后面的框压掉
-    zIndex: current ? 2 : 1,
-    ...annotationStyle(current, samePartition, scale),
+    // 当前项与被指到的块要盖住相邻框，否则密集区里它会被后面的框压掉
+    zIndex: current ? 3 : hovered || focused ? 2 : 1,
+    ...annotationStyle({ current, samePartition, scale, hovered, focused }),
   };
 
   const handlePointerDown = useCallback(
@@ -224,8 +278,15 @@ export function TextBlockOverlay({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      onPointerEnter={() => setHovered(true)}
+      onPointerLeave={() => setHovered(false)}
+      // 只认键盘焦点：鼠标点击不该留下焦点环（index.css 的全局约定）
+      onFocus={(e) => setFocused(e.currentTarget.matches(":focus-visible"))}
+      onBlur={() => setFocused(false)}
       className={cn(
         "absolute box-border p-0",
+        // 线宽随 scale 逐帧变，不纳入过渡，否则缩放时描边会拖影
+        "transition-[background-color,border-color,opacity] duration-fast",
         onUpdate ? "cursor-move" : "cursor-pointer",
       )}
     />

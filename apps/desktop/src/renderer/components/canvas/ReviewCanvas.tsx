@@ -1,5 +1,7 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
+import { Maximize } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui";
 import { useCanvasTransform } from "@/hooks/useCanvasTransform";
 import { partitionOf, type ReviewPartition } from "@/lib/review-partition";
 import { TextBlockOverlay } from "./TextBlockOverlay";
@@ -65,58 +67,82 @@ export function ReviewCanvas({
   }, [currentBlockId, size, focusOn]);
 
   return (
-    <div
-      role="application"
-      aria-label="复核画布"
-      ref={containerRef}
-      onWheel={onWheel}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onDoubleClick={resetView}
-      className="relative h-full w-full overflow-hidden bg-surface-strong"
-    >
+    <div className="flex h-full w-full flex-col bg-surface-sunken">
       <div
-        className="absolute left-0 top-0 origin-top-left"
-        style={{
-          transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
-        }}
+        role="application"
+        aria-label="复核画布"
+        ref={containerRef}
+        onWheel={onWheel}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onDoubleClick={resetView}
+        className="relative min-h-0 flex-1 overflow-hidden"
       >
-        <img
-          src={imageUrl}
-          alt="幻灯片源图"
-          draggable={false}
-          onLoad={(e) =>
-            setSize({
-              width: e.currentTarget.naturalWidth,
-              height: e.currentTarget.naturalHeight,
-            })
-          }
-          className="block max-w-none select-none"
-        />
-        {size !== null &&
-          blocks.map((block) => (
-            <TextBlockOverlay
-              key={block.id}
-              block={block}
-              imageWidth={size.width}
-              imageHeight={size.height}
-              current={block.id === currentBlockId}
-              samePartition={
-                currentPartition === null ||
-                partitionOf(block) === currentPartition
-              }
-              scale={transform.scale}
-              onClick={() => onSelectBlock?.(block.id)}
-              onUpdate={onUpdateBlock}
-            />
-          ))}
+        <div
+          className="absolute left-0 top-0 origin-top-left"
+          style={{
+            transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.scale})`,
+          }}
+        >
+          <img
+            src={imageUrl}
+            alt="幻灯片源图"
+            draggable={false}
+            onLoad={(e) =>
+              setSize({
+                width: e.currentTarget.naturalWidth,
+                height: e.currentTarget.naturalHeight,
+              })
+            }
+            className="block max-w-none select-none"
+          />
+          {size !== null &&
+            blocks.map((block) => (
+              <TextBlockOverlay
+                key={block.id}
+                block={block}
+                imageWidth={size.width}
+                imageHeight={size.height}
+                current={block.id === currentBlockId}
+                samePartition={
+                  currentPartition === null ||
+                  partitionOf(block) === currentPartition
+                }
+                scale={transform.scale}
+                onClick={() => onSelectBlock?.(block.id)}
+                onUpdate={onUpdateBlock}
+              />
+            ))}
+        </div>
       </div>
 
-      {/* 跟随会自动改缩放，所以必须把「怎么回到整页」摆出来，否则用户会以为卡在放大态 */}
-      <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-sm bg-surface-dark/70 px-2 py-1 text-sm text-on-dark">
-        {Math.round(transform.scale * 100)}%
-        <span className="opacity-70">双击恢复整页</span>
+      {/*
+        缩放读数与「回到整页」贴在画布下沿的独立条上，**不浮在图上**：
+        原实现是 `absolute bottom-3 left-3` 的深色浮标，正好压住内容左下角——
+        而 16:9 版式的左下角常有页脚、出处、页码这类小字，被压住时既没法核字
+        也看不出底板残留。挪成边条后画布区任何一处都不被遮挡。
+
+        「整页」做成真按钮而不只写一句「双击恢复整页」：跟随当前项会自动改缩放，
+        不给显式出口的话用户会以为卡在放大态；且双击是鼠标独占动作，键盘用户
+        此前没有任何办法回到整页。
+      */}
+      <div className="flex shrink-0 items-center gap-3 border-t border-hairline bg-surface px-3 py-0.5">
+        <span className="shrink-0 text-2xs font-semibold tabular-nums text-ink-secondary">
+          {Math.round(transform.scale * 100)}%
+        </span>
+        <span className="min-w-0 flex-1 truncate text-2xs text-ink-muted">
+          ⌘/Ctrl + 滚轮缩放 · 滚轮平移 · 中键拖动 · 双击恢复整页
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={resetView}
+          title="把整页缩放回视口（在画布上双击同效）"
+        >
+          <Maximize aria-hidden="true" className="size-3.5" />
+          整页
+        </Button>
       </div>
     </div>
   );

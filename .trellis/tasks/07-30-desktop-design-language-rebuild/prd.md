@@ -87,24 +87,28 @@ M4 交付的桌面复核工作台功能完整，但视觉与交互层存在系�
 
 ### 自动可验证
 
-- [ ] **AC1** `pnpm typecheck`、`pnpm format:check`、`pnpm test` 全部通过。
-- [ ] **AC2** `grep -rIo 'signature-' src/renderer --include='*.tsx'` 命中 0 次（品牌签名色不再用于状态）。
-- [ ] **AC3** `grep -rn 'BUTTON_PRIMARY\s*=\|BUTTON_SECONDARY\s*=' src/renderer` 命中 0 次（局部按钮常量全部消除）。
-- [ ] **AC4** 所有可交互组件的 `focus-visible` 覆盖：交互元素数量与 `focus-visible` 表达数量核对一致，无遗漏。
-- [ ] **AC5** 每处 `transition` 均有显式 `duration-*`，且存在 `prefers-reduced-motion` 兜底。
-- [ ] **AC6** 令牌对比度验算表落盘，正文组合全部 ≥ 4.5:1、大字 ≥ 3:1，无一项不达标。
+- [x] **AC1** `pnpm typecheck`、`pnpm format:check`、`pnpm test` 全部通过。
+- [x] **AC2** `grep -rIo 'signature-' src/renderer --include='*.tsx'` 命中 0 次（品牌签名色不再用于状态）。
+- [x] **AC3** `grep -rn 'BUTTON_PRIMARY\s*=\|BUTTON_SECONDARY\s*=' src/renderer` 命中 0 次（局部按钮常量全部消除）。
+- [x] **AC4** 所有可交互组件的 `focus-visible` 覆盖：交互元素数量与 `focus-visible` 表达数量核对一致，无遗漏。
+- [x] **AC5** 每处 `transition` 均有显式 `duration-*`，且存在 `prefers-reduced-motion` 兜底。
+- [x] **AC6** 令牌对比度验算表落盘，正文组合全部 ≥ 4.5:1、大字 ≥ 3:1，无一项不达标。
 
 ### 需真机走查验证（CDP 方法见 memory `desktop-walkthrough-method`）
 
-- [ ] **AC7** 控制台、文本复核页、最终确认页三页在真机截图下与新 DESIGN.md 一致，无新旧混搭残留。
-- [ ] **AC8** 仅用键盘可完整走完「打开 deck → 复核一页 → 最终确认」，全程焦点位置始终可见。
-- [ ] **AC9** 五种页面状态在灰度截图下仍可彼此区分（验证 A3 不依赖颜色）。
-- [ ] **AC10** 20–50 页规模下控制台可用：状态远距离可识别，能快速定位需处理的页。
-- [ ] **AC11** 开启系统「减弱动态效果」后，界面无动画残留且功能完整。
+- [x] **AC7** 控制台、文本复核页、最终确认页三页在真机截图下与新 DESIGN.md 一致，无新旧混搭残留。
+- [~] **AC8** 焦点可见性部分**已达成**（控制台、复核页、最终确认页逐元素遍历，无焦点环者 0）；
+      但**「完整走完」不成立**：焦点一旦进入块列表就出不来（Tab/⇧Tab 在首尾项均被
+      `preventDefault` 且无位移，Esc 在常驻可编辑行无出口）。属 WCAG 2.1.2 键盘陷阱（A 级）。
+      **非本次引入**：`lib/review-keyboard.ts` 自 M4 的 `9d736ca` 起未改动，
+      `BlockListPanel` 的 `preventDefault` 位置本次也未动。详见 implement.md 末尾「需要用户定的两处」。
+- [x] **AC9** 五种页面状态在灰度截图下仍可彼此区分（验证 A3 不依赖颜色）。
+- [x] **AC10** 20–50 页规模下控制台可用：状态远距离可识别，能快速定位需处理的页。
+- [x] **AC11** 开启系统「减弱动态效果」后，界面无动画残留且功能完整。
 
 ### 主观验收
 
-- [ ] **AC12** 用户认可垂直样板（令牌 + 基座 + 控制台页）的方向后，方可铺开其余两页。此为分阶段交付的硬门禁。
+- [x] **AC12** 用户认可垂直样板（令牌 + 基座 + 控制台页）的方向后，方可铺开其余两页。此为分阶段交付的硬门禁。
 
 ## Open Questions
 
