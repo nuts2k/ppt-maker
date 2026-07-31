@@ -83,9 +83,14 @@ export const useDeckStore = create<DeckState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const detailed = await window.api.deck.statusDetailed(deckPath);
+      // 请求期间可能已切换工作区，此时写回会把旧 deck 的页贴到新 deck 上
+      if (get().deckPath !== deckPath) return;
       set({ ...applyDetailedResult(detailed), loading: false });
     } catch (err) {
-      set({ loading: false, error: toMessage(err) });
+      // 迟到的失败同样不写：错误条会指着一个用户已经离开的工作区
+      if (get().deckPath === deckPath) {
+        set({ loading: false, error: toMessage(err) });
+      }
       throw err;
     }
   },
@@ -103,6 +108,8 @@ export const useDeckStore = create<DeckState>((set, get) => ({
     if (!deckPath) return;
     try {
       const detailed = await window.api.deck.statusDetailed(deckPath);
+      // 同 refreshStatus：切换工作区后迟到的结果一律丢弃
+      if (get().deckPath !== deckPath) return;
       const next = findSlideById(detailed.slides, slideId);
       if (!next) {
         set(applyDetailedResult(detailed));
@@ -114,7 +121,7 @@ export const useDeckStore = create<DeckState>((set, get) => ({
         summary: detailed.summary,
       }));
     } catch (err) {
-      set({ error: toMessage(err) });
+      if (get().deckPath === deckPath) set({ error: toMessage(err) });
       throw err;
     }
   },

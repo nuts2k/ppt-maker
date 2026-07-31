@@ -59,20 +59,71 @@
 
 ## Acceptance Criteria
 
-- [ ] AC1 已打开 deck 时，顶栏名称/路径块可点并展开含两项的下拉；点击面板外关闭。（R1）
-- [ ] AC2 顶栏可点区域的点击不被拖拽区吞掉，下拉能正常展开。（R1）
-- [ ] AC3 选「打开其他工作区…」并选定另一个合法 deck 目录后，顶栏名称与路径更新为新 deck；
+- [x] AC1 已打开 deck 时，顶栏名称/路径块可点并展开含两项的下拉；点击面板外关闭。（R1）
+- [x] AC2 顶栏可点区域的点击不被拖拽区吞掉，下拉能正常展开。（R1）
+- [x] AC3 选「打开其他工作区…」并选定另一个合法 deck 目录后，顶栏名称与路径更新为新 deck；
       卡片网格、阶段轨道、待办队列、活动日志均为新 deck 内容，无上一个 deck 的残留条目。（R2）
-- [ ] AC4 切换前处于单页复核视图时，切换后视图回到控制台，选中页与选中块为空。（R2）
-- [ ] AC5 选一个非 deck 工作区的目录导致 open 失败时，顶栏路径与卡片网格仍是原 deck，
+- [x] AC4 切换前处于单页复核视图时，切换后视图回到控制台，选中页与选中块为空。（R2）
+- [x] AC5 选一个非 deck 工作区的目录导致 open 失败时，顶栏路径与卡片网格仍是原 deck，
       错误信息以现有错误条呈现。（R3）
-- [ ] AC6 `runStatus !== "idle"` 时下拉两项为禁用态并带「执行中不可切换，请先停止」提示；
+- [x] AC6 `runStatus !== "idle"` 时下拉两项为禁用态并带「执行中不可切换，请先停止」提示；
       停止执行后恢复可用。（R4）
-- [ ] AC7 单页复核改动未保存（黄点在）时点下拉任一项，先出确认条；
+- [x] AC7 单页复核改动未保存（黄点在）时点下拉任一项，先出确认条；
       点「取消」不切换且改动仍在（黄点仍在、内容未丢）；点「仍要切换」才切换。（R5）
-- [ ] AC8 「从图片目录创建…」在已打开 deck 的状态下可用，创建成功后直接切到新建的 deck。（R1 R2）
-- [ ] AC9 `pnpm format:check && pnpm typecheck && pnpm test && pnpm build` 全绿；
+- [x] AC8 「从图片目录创建…」在已打开 deck 的状态下可用，创建成功后直接切到新建的 deck。（R1 R2）
+- [x] AC9 `pnpm format:check && pnpm typecheck && pnpm test && pnpm build` 全绿；
       新增的 store 清零与禁用判定有单测覆盖（基线 418 例，新增后不减少）。
+
+## 走查结果（2026-07-30，CDP 驱动真机）
+
+九条 AC 全部通过。校验：format 176 文件、typecheck 干净、**459 例全过**（core 76 + desktop 290 + cli 93，
+基线 418 → 新增 41）、`pnpm build` 三段成功。
+
+走查方式：`REMOTE_DEBUGGING_PORT=9222 pnpm dev` + CDP。**点击一律用 `Input.dispatchMouseEvent` 而非 `el.click()`**——
+no-drag 漏标恰恰表现为「真人点不动、脚本点得动」，用 `el.click()` 会让 AC2 假通过。
+源工作区 `~/test/ppttest-walkthrough-E2`，切换目标 `~/test/ppttest-switch-target`（E2 的副本，
+已把 `name` 改成「切换目标 Deck」、`deckId` 换成新的——两边 deckId 不同才能暴露「按 deckId 判断变化」这类 bug）。
+
+三条打了折扣的验证，如实记录：
+
+- **AC2** 除真实鼠标事件点开外，另取了 computed style `webkitAppRegion === "no-drag"` 作为静态证据。
+  严格说 CDP 注入的事件是否完全等价于窗口层命中测试无法自证，两条证据叠加后认为可信。
+- **AC6** 的「执行中」用 `run-store.setState({status:"running"})` 模拟，未真跑一轮流水线（会烧 gpt-image-2）。
+  验的是 UI 派生逻辑，判据函数另有单测。
+- **AC7** 的第三条「点『仍要切换』才切换」未在真机验证：它会打开原生目录框，CDP 够不到。
+  由 `workspace-menu.test.ts` 的「确认『仍要切换』后才真正切换」覆盖。
+
+## 实现中发现并一并修掉的既有竞态
+
+切换能力把四处「await 后无条件 set」从几乎不可触发变成了常规路径——旧 deck 的请求飞在半空时切过去，
+返回后就把旧数据写进新 deck 的界面，且完全静默。四处均已加守卫并配回归测试
+（`apps/desktop/test/store-race-guard.test.ts`，13 例）：
+
+| 位置 | 判据 |
+|---|---|
+| `deck-store.refreshStatus()` | `get().deckPath !== deckPath` 则丢弃（成功与失败两条路径都守） |
+| `deck-store.refreshSlide()` | 同上 |
+| `slide-store.loadSlide()` | `get().workspacePath !== workspacePath` 则丢弃，同时覆盖切页与切换工作区两条失效路径 |
+| `activity-store.load()` | 模块内 `listSeq` 最后请求 wins；`reset()` 里一并 `listSeq += 1`，堵住 reset 到新 load 之间的空档 |
+
+测试做过变异验证（守卫逐处改成 `if (false)` 重跑）：13 例中 9 例转红、4 例正对照保持绿，
+确认守卫不是恒真也能过。其中 `refreshSlide` 的用例第一版在变异下没红（两个 deck 用了不同 slideId，
+`replaceSlide` 找不到就原样返回），已改成两边同名 `page-01` 后转红。
+
+## 遗留（未处理，非本任务引入）
+
+- 切换失败的错误文案是原始 IPC 报错（`Error invoking remote method 'deck:open': Error: ENOENT…`），
+  技术化但可见。属 `openDeck` 既有错误处理。
+- 工作区命名用 `new Date().toISOString()` 取 UTC 日期，本地入夜后创建会「提前一天」
+  （走查实证：本地 07-30 20:25 创建出 `tiny-images-2026-07-31`）。既有规则，本次只是原样抽取。
+- 为让三个 store 进得了 test 的类型图，新增了 `test/renderer-window.d.ts`（ambient `window: { api: IpcApi }`）
+  并把 `slide-store.ts` 的两个 import 由 `@/lib/...` 改为相对 `.js`（同 `run-bridge.ts` 的既有取舍）。
+  代价：main 侧误写 `window.api` 不再被类型系统拦住（`window.document` 之类仍会报错）。
+  更干净的替代是让 `lib/ipc-client.ts` 改用 `(globalThis as { api?: IpcApi }).api` 把断言收在一处，
+  再让 `deck-store` / `activity-store` 也统一走 `getApi()`（`slide-store` 已经是）。收益偏小，未做。
+- 切换后新 deck 首次执行时 ticker 重启与 IPC 订阅存续，只做了代码论证未真机跑
+  （`startTicker` 唯一调用点在事件处理里、守卫为 `tickerHandle !== null`；订阅句柄在 `useRunBridge`
+  的 effect cleanup 里，`reset()` 的浅合并动不到它）。真机验证需跑一轮流水线，会烧 API。
 
 ## Out of Scope
 

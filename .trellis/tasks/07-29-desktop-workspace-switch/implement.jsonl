@@ -1,1 +1,4 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "本任务的核心动作就是跨 deck 清零五个 store，直接踩在该文档四条已验证缺陷的地基上：会话层盖住耐久层、start/finish 不成对导致 running 撤不掉。切换 deck 是一条全新的『不重跑的状态重置路径』，必须确认 run-store 的会话层不会把旧 deck 的状态带进新 deck"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "R3（open 失败必须停在当前 deck 并报错）与 R5（未保存改动拦确认）两条要求都是为了防静默失败；另外切换后若某个 store 漏清，界面会显示上一个 deck 的残留数据且毫无提示，属该指南『界面有反馈但反馈是假的』一类"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "打开/创建工作区的逻辑现已存在于 DeckEmptyState.tsx:24/:34，本任务要在顶栏再提供一次。必须抽取复用而非复制，否则两处入口的行为会分叉"}
+{"file": "DESIGN.md", "reason": "新增顶栏可点区域与下拉面板，颜色、圆角、间距、按钮样式必须遵从；下拉面板抄 DoctorChip.tsx:52 的既有实现以保持一致"}

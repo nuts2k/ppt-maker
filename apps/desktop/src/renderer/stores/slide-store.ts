@@ -1,12 +1,14 @@
 import type { TextReviewBlock, TextReviewDocument } from "@ppt-maker/core";
 import { create } from "zustand";
+import type { SaveReviewResult } from "../../main/ipc/channels.js";
+// 相对 `.js` 导入而非 `@/` 别名：test 走 tsconfig.node.json，别名在那边解析不到，
+// 本 store 的时序守卫需要能被直接单测（同 run-bridge.ts 的取舍）
 import {
   applyManualEdit,
   deleteBlockById,
   markBlocksReviewedById,
-} from "@/lib/block-edit";
-import { getApi } from "@/lib/ipc-client";
-import type { SaveReviewResult } from "../../main/ipc/channels.js";
+} from "../lib/block-edit.js";
+import { getApi } from "../lib/ipc-client.js";
 
 interface SlideState {
   // 当前 slide 的工作区路径与标识
@@ -77,6 +79,9 @@ export const useSlideStore = create<SlideState>((set, get) => ({
       api.slide.loadImage(workspacePath, "source_image"),
       api.slide.loadImage(workspacePath, "clean_plate"),
     ]);
+    // 加载期间可能已切页或切换工作区（切换会 reset 掉 workspacePath），
+    // 此时写回会把上一页的复核文档贴到新页上
+    if (get().workspacePath !== workspacePath) return;
     set({
       reviewDocument,
       sourceImageUrl,

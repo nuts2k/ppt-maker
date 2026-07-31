@@ -24,18 +24,29 @@ interface ActivityState {
   reset(): void;
 }
 
+/**
+ * 请求序号：本 store 不持有 deckPath，无从比对身份，改用「最后一次请求 wins」。
+ * 切换工作区后旧 deck 的列表请求会带着过期序号返回，直接丢弃——否则迟到的响应
+ * 会把上一个 deck 的日志贴到新 deck 的抽屉里，且毫无提示。
+ * 不 import deck-store 取 deckPath 比对，是不想为一句守卫把日志层耦合到 deck 层。
+ */
+let listSeq = 0;
+
 export const useActivityStore = create<ActivityState>((set) => ({
   records: [],
   loading: false,
   error: null,
 
   async load(deckPath, limit) {
+    const seq = ++listSeq;
     set({ loading: true, error: null });
     try {
       const records = await window.api.activity.list(deckPath, limit);
+      if (seq !== listSeq) return;
       set({ records, loading: false });
     } catch (err) {
-      set({ loading: false, error: toMessage(err) });
+      // 迟到的失败同样不写：错误属于用户已经离开的那个 deck
+      if (seq === listSeq) set({ loading: false, error: toMessage(err) });
       throw err;
     }
   },
@@ -45,6 +56,9 @@ export const useActivityStore = create<ActivityState>((set) => ({
   },
 
   reset() {
+    // 一并作废在途请求：切换工作区后新 deck 的 load 由 ConsolePage 的 effect 发出，
+    // 中间这段空档里旧 deck 的响应若落地，日志抽屉会闪一下上一个 deck 的记录
+    listSeq += 1;
     set({ records: [], loading: false, error: null });
   },
 }));

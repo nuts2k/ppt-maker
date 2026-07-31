@@ -166,3 +166,37 @@ export function blockingStageView(views: readonly StageView[]): StageView | null
 **顺带的一条措辞约定**：`stale` 不是 `failed`。「失效」是改了上游后的常规路径（保存复核内容就会产生），文案统一为「上游已变更，需重跑」；「执行失败」只留给 `failed` / `interrupted`。都写成失败会把一次正常的「改完了、重跑一下」报成红色故障。
 
 **自查**：同一件事在多处展示时，问一句——*它们是同一个函数算出来的吗？* 不是的话，迟早会各说各话。
+
+### 新增一个「切换维度」的能力，会把既有竞态从不可触发变成常规路径
+
+**性质**：与上面几条不同，这条不是线上踩出来的，是 2026-07-30 加桌面端切换工作区时 review 发现的隐患，经变异测试确认真实存在（去掉守卫后回归用例转红）。记在这里是因为**触发条件的变化本身就是一类风险**，容易在做新能力时整个漏掉。
+
+**背景**：桌面端此前打开 deck 后 `deckPath` 一辈子不变，于是四处「`await` 后无条件 `set`」从来没出过事：
+
+- `deck-store.refreshStatus()` / `refreshSlide()`
+- `slide-store.loadSlide()`
+- `activity-store.load()`
+
+切换工作区一上线，它们全部变成真实路径：旧 deck 的请求飞在半空时切过去，返回后把旧数据写进新 deck 的界面，**而且完全静默**——界面看着正常，数据是上一个工作区的。
+
+**修法**：给每处补「发请求时的身份 vs 响应到达时的身份」守卫，判据就近取：
+
+```ts
+// 有身份字段的，直接比对
+const detailed = await window.api.deck.statusDetailed(deckPath);
+if (get().deckPath !== deckPath) return;          // 已切换，丢弃
+
+// 没有身份字段的（activity-store 不持有 deckPath），用序号，别为一句守卫去 import 别的 store
+const seq = ++listSeq;
+const records = await window.api.activity.list(deckPath, limit);
+if (seq !== listSeq) return;
+```
+
+**两个容易漏的半边**：
+
+1. **失败路径也要守**。迟到的失败若照写 `error`，错误条会指着一个用户已经离开的工作区。
+2. **`reset()` 里要一并作废在途请求**（`listSeq += 1`）。切换后新数据的加载往往由某个 `useEffect` 发出，`reset()` 到新请求之间有一段空档；旧响应正好落在这段里，序号没变就会被写进去。
+
+**自查**：给系统加「切换 X」的能力时，别只问新代码对不对，先问一句——*现有哪些异步写入是按 X 索引的？它们此前是不是靠「X 不会变」才安全？* 凡是靠这个前提的，全部需要守卫。同理适用于将来加「多窗口」「同时打开两个 deck」。
+
+**测试要点**：用手动控制响应时机的 deferred 复现完整时序（请求发出 → 期间切换 → 迟到响应到达），并给每处守卫配一条**正对照**（不切换时结果必须照常写入），否则守卫写成恒真也能过。写完做一次变异验证：把守卫逐处改成 `if (false)` 重跑，该红的必须红——本次就靠这一步查出一条假通过的用例（两个 deck 用了不同 slideId，`replaceSlide` 找不到便原样返回，守卫失效也看不出来；改成两边同名 `page-01` 后才真正生效）。
