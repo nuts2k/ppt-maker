@@ -207,3 +207,38 @@ V1 桌面工作台被判定用户体验不合格（无批量执行、无进度/�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: 复核与验收链路三处缺陷
+
+**Date**: 2026-07-30
+**Task**: 复核与验收链路三处缺陷
+**Branch**: `main`
+
+### Summary
+
+修掉 07-30 真机暴露的三处「想做的事做不了」。R1：agreed 档只渲染只读段落，双源同错（己/已、专有名词）的块无法修正，错字静默进最终 PPTX——改为点击文本转编辑，textarea 与切行逻辑抽成 BlockTextEditor 与 text-pending 档共用；正文沿用可点非交互元素而非 button，否则 Enter 被放行、键盘流断掉。R2：awaitingFinalConfirm 兼职「待办」与「页面可达」两件事，验收一写入确认页连同页内「重做底图」一起消失，界面上再无重做入口——拆成原子判据 pptxReady/finalAccepted 合成，闸门带 accepted，已验收页呈现已验收状态并保留重做类动作，自动切档改用待办判据。R3：CheckSummary 占右栏 68% 把操作推出视口 1083px——全过折叠、有失败默认展开，操作区底部 sticky，内容高 2089px→762px。四关全绿 465 例（+6）；CDP 1280×800 真机逐条验完 AC1–AC10，零付费接口调用。教训入 spec：state-management「一个判据兼职两件事」、silent-failure 预防清单补「只读展示是隐含断言，启发式给出的断言必须留人工推翻入口」。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0654798` | (see git log) |
+| `cabbcde` | (see git log) |
+| `6238ece` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
