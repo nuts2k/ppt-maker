@@ -49,6 +49,14 @@ export interface FinalConfirmPageProps {
   readonly submitting: boolean;
   /** 闸门来源，durable 时提示「状态由工作区恢复」 */
   readonly gateSource: "session" | "durable";
+  /**
+   * 该页已完成最终确认。
+   *
+   * 本页对已验收页仍然可达（否则「重做底图」会随页面一起消失，界面上再无重做入口），
+   * 但不能原样呈现——`accept-final` 虽是幂等的，一个看着还能按的「完成」会让人
+   * 以为这页还没验收。改为呈现已验收状态，只留重做类动作。
+   */
+  readonly accepted: boolean;
   /** 完成：调用方负责调 slide.acceptFinal 并刷新 */
   readonly onComplete: (note: string) => void;
   /** 重做底图：调用方负责 invalidate(clean) 后重跑 */
@@ -66,6 +74,7 @@ export function FinalConfirmPage({
   busy,
   submitting,
   gateSource,
+  accepted,
   onComplete,
   onRedoCleanPlate,
   onBackToReview,
@@ -196,80 +205,59 @@ export function FinalConfirmPage({
         </div>
       </div>
 
-      <aside className="flex w-96 shrink-0 flex-col gap-6 overflow-y-auto border-l border-hairline bg-surface-soft p-8">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-lg font-medium text-ink">确认最终产物</h2>
-          <p className="text-sm leading-relaxed text-body">
-            核对合成预览与去字底板；确认后一次写入干净底图与 PPTX
-            两条验收记录，该页即完成。不满意时用下方两个动作退回相应环节重做。
-          </p>
-          {gateSource === "durable" && (
-            <p className="text-sm font-medium text-muted">
-              该页在此前的执行中已停在最终确认，状态由工作区恢复
+      {/*
+        右栏分两段：可滚动的说明与检查明细，加一条底部 sticky 的操作区。
+
+        2026-07-30 真机实测（1280×800）：右栏内容 2089px / 可视 559px，其中
+        CheckSummary 独占 1416px（68%），把「在 PowerPoint 中打开」「完成」推到
+        视口外 1083px 处——要连滚 3.7 屏才能按到这一页真正要做的事，而检查全过
+        时正是明细价值最低的时候。明细的折叠在 CheckSummary 内部做，这里负责
+        让操作恒在手边。
+      */}
+      <aside className="flex w-96 shrink-0 flex-col overflow-y-auto border-l border-hairline bg-surface-soft">
+        <div className="flex flex-col gap-6 p-8 pb-6">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-lg font-medium text-ink">
+              {accepted ? "本页已验收" : "确认最终产物"}
+            </h2>
+            <p className="text-sm leading-relaxed text-body">
+              {accepted
+                ? "该页已写入干净底图与 PPTX 两条验收记录。仍可打开产物复看；若底板本身有问题，用下方「重做底图」重做。"
+                : "核对合成预览与去字底板；确认后一次写入干净底图与 PPTX 两条验收记录，该页即完成。不满意时用下方两个动作退回相应环节重做。"}
             </p>
-          )}
-        </div>
+            {!accepted && gateSource === "durable" && (
+              <p className="text-sm font-medium text-muted">
+                该页在此前的执行中已停在最终确认，状态由工作区恢复
+              </p>
+            )}
+          </div>
 
-        {/* 自动检查只呈现不拦截（R2.5）：clean 的指标当前没有判定阈值（F-4），
-            用它做硬门禁会把人拦在一个自己都不可信的数字后面 */}
-        {checksError !== null ? (
-          <p className="rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral">
-            {checksError}
-          </p>
-        ) : (
-          <CheckSummary
-            pptx={checks?.pptx ?? null}
-            clean={checks?.clean ?? null}
-            loading={checksLoading}
-          />
-        )}
-
-        <div className="flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={handleOpenPptx}
-            className={BUTTON_SECONDARY}
-          >
-            在 PowerPoint 中打开
-          </button>
-          {openMessage !== null && (
+          {/* 自动检查只呈现不拦截（R2.5）：clean 的指标当前没有判定阈值（F-4），
+              用它做硬门禁会把人拦在一个自己都不可信的数字后面 */}
+          {checksError !== null ? (
             <p className="rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral">
-              {openMessage}
+              {checksError}
             </p>
+          ) : (
+            <CheckSummary
+              key={workspacePath}
+              pptx={checks?.pptx ?? null}
+              clean={checks?.clean ?? null}
+              loading={checksLoading}
+            />
           )}
-        </div>
-
-        <label className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-muted">备注（可选）</span>
-          <textarea
-            rows={3}
-            value={note}
-            disabled={actionsDisabled}
-            onChange={(event) => setNote(event.target.value)}
-            placeholder="记录验收判断依据，会随两条验收记录写入 manifest"
-            className="w-full rounded-sm border border-hairline bg-canvas px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-info-border focus:outline-none disabled:opacity-40"
-          />
-        </label>
-
-        <div className="flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={() => onComplete(note)}
-            disabled={actionsDisabled}
-            className={BUTTON_PRIMARY}
-          >
-            {submitting ? "提交中…" : "完成"}
-          </button>
 
           {/*
             两个退回动作的层级刻意不等：文字/分类不对是绝大多数情形，回到文本复核
             是那条正路；重做底图只在底板本身坏掉时才有用——文本复核内容没改的话，
             重新生成出来的底板通常和现在这张一样，还要再花一次付费调用。
             因此它降为文字按钮，排在下面。
+
+            两者都留在可滚动区：它们是例外路径，与常驻手边的「完成」不同档。
           */}
           <div className="flex flex-col gap-3">
             <span className="text-sm font-medium text-muted">
-              不满意？退回重做
+              {accepted ? "需要重做？" : "不满意？退回重做"}
             </span>
             <button
               type="button"
@@ -296,6 +284,59 @@ export function FinalConfirmPage({
               </p>
             </div>
           </div>
+        </div>
+
+        {/* mt-auto：内容不足一屏时贴住栏底；sticky：内容超一屏时仍留在视口底部 */}
+        <div className="sticky bottom-0 mt-auto flex shrink-0 flex-col gap-4 border-t border-hairline bg-surface-soft px-8 pb-8 pt-5">
+          <div className="flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={handleOpenPptx}
+              className={BUTTON_SECONDARY}
+            >
+              在 PowerPoint 中打开
+            </button>
+            {openMessage !== null && (
+              <p className="rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral">
+                {openMessage}
+              </p>
+            )}
+          </div>
+
+          {accepted ? (
+            // 已验收：不给「完成」，也不给备注——没有写入去处的输入框是假控件
+            <p className="flex items-center gap-2 rounded-lg bg-success/10 px-4 py-2.5 text-sm font-medium text-success">
+              <span
+                aria-hidden="true"
+                className="h-2 w-2 rounded-full bg-success"
+              />
+              已完成最终确认
+            </p>
+          ) : (
+            <>
+              <label className="flex flex-col gap-2">
+                <span className="text-sm font-medium text-muted">
+                  备注（可选）
+                </span>
+                <textarea
+                  rows={2}
+                  value={note}
+                  disabled={actionsDisabled}
+                  onChange={(event) => setNote(event.target.value)}
+                  placeholder="记录验收判断依据，会随两条验收记录写入 manifest"
+                  className="w-full rounded-sm border border-hairline bg-canvas px-4 py-3 text-sm text-ink placeholder:text-muted focus:border-info-border focus:outline-none disabled:opacity-40"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => onComplete(note)}
+                disabled={actionsDisabled}
+                className={BUTTON_PRIMARY}
+              >
+                {submitting ? "提交中…" : "完成"}
+              </button>
+            </>
+          )}
         </div>
       </aside>
     </div>

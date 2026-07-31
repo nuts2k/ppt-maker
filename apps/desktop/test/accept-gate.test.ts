@@ -6,6 +6,8 @@ import type {
 import {
   awaitingFinalConfirm,
   deriveFinalGate,
+  finalAccepted,
+  pptxReady,
   stageStatusOf,
 } from "../src/renderer/lib/accept-gate.js";
 import type { SessionRunResult } from "../src/renderer/stores/run-types.js";
@@ -72,6 +74,36 @@ describe("awaitingFinalConfirm（耐久层判据）", () => {
   });
 });
 
+describe("pptxReady / finalAccepted（页面可达与已验收各自的原子判据）", () => {
+  it("pptxReady 不看 accept 状态：已验收页仍然可达", () => {
+    expect(pptxReady(makeSlide(THROUGH_PPTX))).toBe(true);
+    expect(pptxReady(makeSlide([...THROUGH_PPTX, "accept-pptx"]))).toBe(true);
+    expect(pptxReady(makeSlide(THROUGH_CLEAN))).toBe(false);
+  });
+
+  it("finalAccepted 只看 accept-pptx", () => {
+    expect(finalAccepted(makeSlide(THROUGH_PPTX))).toBe(false);
+    expect(finalAccepted(makeSlide([...THROUGH_PPTX, "accept-pptx"]))).toBe(
+      true,
+    );
+  });
+
+  it("待办口径恒等于「可达且未验收」，两处不得各写一份 filter", () => {
+    for (const completed of [
+      [],
+      THROUGH_CLEAN,
+      THROUGH_PPTX,
+      [...THROUGH_PPTX, "accept-pptx"] as RunStage[],
+      RUN_STAGE_SEQUENCE,
+    ]) {
+      const slide = makeSlide(completed as readonly RunStage[]);
+      expect(awaitingFinalConfirm(slide)).toBe(
+        pptxReady(slide) && !finalAccepted(slide),
+      );
+    }
+  });
+});
+
 describe("deriveFinalGate 会话层优先", () => {
   it("manual 闸门即最终确认，无需等耐久层写入", () => {
     // pptx 阶段状态尚未刷新到 renderer，会话层仍应立刻给出闸门
@@ -79,7 +111,7 @@ describe("deriveFinalGate 会话层优先", () => {
       makeSlide(THROUGH_CLEAN),
       session("manual", "accept-pptx"),
     );
-    expect(gate).toEqual({ source: "session" });
+    expect(gate).toEqual({ source: "session", accepted: false });
   });
 
   it("其它 gate 不构成最终确认闸门", () => {
@@ -102,16 +134,40 @@ describe("deriveFinalGate 耐久层（重启后仍可确认）", () => {
   it("无会话结果时由 manifest 推导", () => {
     expect(deriveFinalGate(makeSlide(THROUGH_PPTX), undefined)).toEqual({
       source: "durable",
+      accepted: false,
     });
-  });
-
-  it("全部阶段完成后无闸门", () => {
-    expect(
-      deriveFinalGate(makeSlide(RUN_STAGE_SEQUENCE), undefined),
-    ).toBeNull();
   });
 
   it("尚未产出 PPTX 时无闸门", () => {
     expect(deriveFinalGate(makeSlide(THROUGH_CLEAN), undefined)).toBeNull();
+  });
+});
+
+/*
+ * 2026-07-30 R2：验收一写入，最终确认页连同页内的「重做底图」一起消失，此后界面上
+ * 没有任何办法重做底图（改文字不触发 mask 失效，改了再改回去 decideInvalidation
+ * 直接返回 null），只剩 CLI `slide run --from clean`。放宽为「PPTX 产出即可达」。
+ */
+describe("deriveFinalGate 对已验收页仍然可达（R2）", () => {
+  it("accept-pptx 完成后闸门不消失，只是标记为已验收", () => {
+    expect(
+      deriveFinalGate(makeSlide([...THROUGH_PPTX, "accept-pptx"]), undefined),
+    ).toEqual({ source: "durable", accepted: true });
+  });
+
+  it("全部阶段完成后仍可达（report 已跑完的页同样要能重做底图）", () => {
+    expect(deriveFinalGate(makeSlide(RUN_STAGE_SEQUENCE), undefined)).toEqual({
+      source: "durable",
+      accepted: true,
+    });
+  });
+
+  it("accepted 一律取耐久层，会话层不表达验收有没有落盘", () => {
+    expect(
+      deriveFinalGate(
+        makeSlide([...THROUGH_PPTX, "accept-pptx"]),
+        session("manual", "accept-pptx"),
+      ),
+    ).toEqual({ source: "session", accepted: true });
   });
 });

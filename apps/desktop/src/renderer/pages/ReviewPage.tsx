@@ -140,16 +140,21 @@ export function ReviewPage(): React.JSX.Element {
   }, [pageBusy, reloadImages]);
 
   /**
-   * 闸门变化时切换视图态。签名含 source，因此"重做底图 → 再次停在最终确认"也会
-   * 重新进入确认页；用户手动切回复核后签名不变，不会被强行拉回。
+   * 「待确认」变化时切换视图态。签名含 source，因此"重做底图 → 再次停在最终确认"
+   * 也会重新进入确认页；用户手动切回复核后签名不变，不会被强行拉回。
+   *
+   * 判据取「待确认」而非「确认页可达」：闸门放宽后已验收页也有确认页可进
+   * （为了重做底图），但进已验收页多半是想看复核内容，自动跳过去等于每次都要
+   * 手动切回来。自动切换只在真的有待办时发生；已验收页默认停在文本复核，
+   * 「最终确认」档可点但不自动进。
    */
   const gateSignature =
-    finalGate === null || slideId === null
+    finalGate === null || finalGate.accepted || slideId === null
       ? null
       : `${slideId}:${finalGate.source}`;
   useEffect(() => {
     if (gateSignature === null) {
-      // 闸门消失（已完成或产物失效）：确认页已无意义，退回文本复核
+      // 无待确认事项（刚验收完、或产物失效）：不把用户留在确认页
       setViewMode((mode) => (mode === "final" ? "review" : mode));
       return;
     }
@@ -476,6 +481,7 @@ export function ReviewPage(): React.JSX.Element {
             busy={pageBusy}
             submitting={submitting}
             gateSource={finalGate.source}
+            accepted={finalGate.accepted}
             onComplete={(note) => void handleComplete(note)}
             onRedoCleanPlate={() => rerunFrom("clean")}
             onBackToReview={handleBackToReview}

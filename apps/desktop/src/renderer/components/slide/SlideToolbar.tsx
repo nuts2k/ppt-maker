@@ -43,7 +43,12 @@ interface SlideToolbarProps {
   readonly pageLabel: string;
   readonly navigation: SlideNavigation;
   readonly viewMode: SlideViewMode;
-  /** 该页已停在最终确认门；决定「最终确认」档是否出现 */
+  /**
+   * 该页的最终确认页是否可达（PPTX 已产出）；决定「最终确认」档是否出现。
+   *
+   * 不等于「还没验收」：已验收页同样要能进去重做底图，否则那个按钮随确认页一起
+   * 消失，界面上再无任何重做入口（2026-07-30 R2）。
+   */
   readonly hasFinalGate: boolean;
   readonly dirty: boolean;
   /**

@@ -1,9 +1,17 @@
 import type { CleanPlateChecks, PptxCheckReport } from "@ppt-maker/core";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 /**
  * 自动检查汇总（PRD R2.5、design §4.3）：最终确认页上把机器能查的都摊开，
  * 人只需要判断机器查不了的那部分。
+ *
+ * ## 全部通过时折叠（2026-07-30 R3）
+ *
+ * 摊开是有代价的：真机实测本组件在 384px 右栏里占 1416px，是该栏 2089px 内容的
+ * 68%，把「在 PowerPoint 中打开」「完成」推到视口外 1083px 处。而**检查全过时
+ * 正是明细价值最低的时候**——一份全绿的清单不需要逐条读。所以全过折叠为一行
+ * 摘要，点开才展开；存在未通过项则默认展开，失败才是需要看的时候。
  *
  * ## 两组检查的性质截然不同，呈现方式必须区分
  *
@@ -145,6 +153,18 @@ export function CheckSummary({
   clean,
   loading,
 }: CheckSummaryProps): React.JSX.Element {
+  /**
+   * 展开态：`null` 表示随数据走，用户点过之后由他的选择接管。
+   *
+   * 刻意不用 `useState(默认值) + useEffect(同步)`：检查记录是异步读进来的，
+   * 初值那一刻 `pptx` 恒为 null，随后用 effect 覆盖就成了「覆盖式派生」——
+   * 谁写入谁负责清理，而这里根本不需要写入。取默认值即可，用户的选择优先。
+   */
+  const [expandOverride, setExpandOverride] = useState<boolean | null>(null);
+  // 全部通过才折叠；未通过、无记录、读取中一律摊开
+  const allPassed = pptx !== null && pptx.status === "passed";
+  const expanded = expandOverride ?? !allPassed;
+
   if (loading) {
     return (
       <div className="flex flex-col gap-4 rounded-lg bg-surface-soft p-8">
@@ -165,6 +185,23 @@ export function CheckSummary({
     );
   }
 
+  if (!expanded) {
+    return (
+      <button
+        type="button"
+        onClick={() => setExpandOverride(true)}
+        title="展开自动检查明细"
+        className="flex items-center gap-3 rounded-lg bg-surface-soft px-4 py-3 text-left transition active:bg-surface-strong"
+      >
+        <span className={SECTION_TITLE}>PPTX 自动检查</span>
+        <span className="text-sm font-medium text-success">全部通过</span>
+        <span aria-hidden="true" className="ml-auto text-sm text-muted">
+          ▾
+        </span>
+      </button>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-8 rounded-lg bg-surface-soft p-8">
       <section className="flex flex-col gap-3">
@@ -181,6 +218,16 @@ export function CheckSummary({
             >
               {pptx.status === "passed" ? "全部通过" : "存在未通过项"}
             </span>
+          )}
+          {allPassed && (
+            <button
+              type="button"
+              onClick={() => setExpandOverride(false)}
+              title="收起自动检查明细"
+              className="ml-auto shrink-0 text-sm text-muted transition active:text-ink"
+            >
+              收起 ▴
+            </button>
           )}
         </div>
 

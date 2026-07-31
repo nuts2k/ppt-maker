@@ -274,6 +274,27 @@ describe("deriveTodoQueue 四组判定", () => {
     });
   });
 
+  /*
+   * 2026-07-30 R2 的回归保护：最终确认页的可达判据放宽为「pptx 已完成」，但队列
+   * 判据必须仍是「pptx 完成且 accept-pptx 未完成」。两者共用 accept-gate.ts，
+   * 跟错一处就会重演该文件注释里记的语义漂移——只是方向相反：队列把已经验收完的
+   * 页重新列成待办，用户永远处理不完。
+   */
+  it("accept-pptx 已完成的页不再入队（确认页可达不等于待办）", () => {
+    const queue = deriveTodoQueue(
+      [
+        makeSlide({
+          pageLabel: "page-01",
+          currentStage: "accept-pptx",
+          completed: [...THROUGH_PPTX, "accept-pptx"],
+        }),
+      ],
+      {},
+    );
+
+    expect(queue.total).toBe(0);
+  });
+
   it("clean 完成但 pptx 未完成时不产生待办（accept-clean 不再单独停顿）", () => {
     const queue = deriveTodoQueue(
       [
