@@ -1,0 +1,150 @@
+import { useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+import {
+  runWorkspaceAction,
+  type WorkspaceAction,
+  workspaceMenuIntent,
+  workspaceMenuItems,
+} from "@/lib/workspace-menu";
+import {
+  createWorkspaceFromImages,
+  switchWorkspace,
+} from "@/lib/workspace-switch";
+import { useRunStore } from "@/stores/run-store";
+import { useSlideStore } from "@/stores/slide-store";
+
+/**
+ * 顶栏当前工作区块 + 切换下拉（PRD R1）。
+ *
+ * 打开与创建的入口原本只在欢迎空态里，一旦打开 deck 就再也找不到，换 deck 只能重启进程。
+ * 这里把顶栏的名称/路径块本身变成入口——它已经是「当前工作区」的唯一指示物。
+ *
+ * 下拉形态抄 DoctorChip：绝对定位面板 + 点外关闭，不另起一套浮层机制。
+ */
+
+interface WorkspaceMenuProps {
+  readonly name: string | null;
+  readonly deckPath: string;
+  /** 有未保存复核改动时上抛，由 TopNav 在导航条下方渲染确认条 */
+  readonly onRequestConfirm: (action: WorkspaceAction) => void;
+}
+
+/**
+ * 选目录并执行切换。导出给 TopNav 的确认条复用，保证「直接切」与「确认后切」
+ * 走的是同一条链路——两处各写一份迟早会各说各话。
+ */
+export async function executeWorkspaceAction(
+  action: WorkspaceAction,
+): Promise<void> {
+  try {
+    await runWorkspaceAction(action, {
+      selectDirectory: () => window.api.system.selectDirectory(),
+      switchWorkspace,
+      createWorkspaceFromImages,
+    });
+  } catch {
+    // 忽略：错误已写入 deck-store 并由现有错误条呈现（与 DeckEmptyState 同一约定）
+  }
+}
+
+export function WorkspaceMenu({
+  name,
+  deckPath,
+  onRequestConfirm,
+}: WorkspaceMenuProps): React.JSX.Element {
+  const running = useRunStore((s) => s.status) !== "idle";
+  const dirty = useSlideStore((s) => s.dirty);
+
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  // 点击面板外部收起下拉
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: MouseEvent): void {
+      const node = rootRef.current;
+      if (node && !node.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
+
+  function handleSelect(action: WorkspaceAction): void {
+    const intent = workspaceMenuIntent(action, { running, dirty });
+    switch (intent.kind) {
+      case "ignored":
+        return;
+      case "confirm":
+        setOpen(false);
+        onRequestConfirm(intent.action);
+        return;
+      case "proceed":
+        setOpen(false);
+        void executeWorkspaceAction(intent.action);
+        return;
+    }
+  }
+
+  const items = workspaceMenuItems(running);
+
+  return (
+    // 顶栏整条是 macOS hiddenInset 拖拽区，其中可交互元素必须显式 no-drag，
+    // 否则点击被拖拽吞掉，表现为「点了没反应」。只标按钮与面板本身，
+    // 名称右侧的空白留给拖拽，别把整条标题栏变成死区。
+    <div className="relative flex min-w-0 flex-1" ref={rootRef}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+        className="flex min-w-0 max-w-full items-center gap-2 rounded-md px-2 py-1 text-left transition active:bg-surface-soft"
+      >
+        <span className="flex min-w-0 flex-col">
+          <span className="truncate text-lg font-medium text-ink">
+            {name ?? "未命名 Deck"}
+          </span>
+          <span
+            className="truncate text-sm font-medium text-muted"
+            title={deckPath}
+          >
+            {deckPath}
+          </span>
+        </span>
+        <span className="shrink-0 text-sm text-muted">⌄</span>
+      </button>
+
+      {open && (
+        <div
+          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+          className="absolute left-0 top-full z-20 mt-2 w-72 rounded-md border border-hairline bg-canvas p-1"
+        >
+          {items.map((item) => (
+            <button
+              key={item.action}
+              type="button"
+              disabled={item.disabled}
+              title={item.disabledReason ?? undefined}
+              onClick={() => handleSelect(item.action)}
+              className={cn(
+                "w-full rounded-sm px-3 py-2 text-left text-sm text-ink transition",
+                item.disabled ? "opacity-40" : "active:bg-surface-soft",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+
+          {/* 禁用原因写在面板里而不是只挂 title：灰掉却不说为什么等同于没反应 */}
+          {running && (
+            <p className="px-3 py-2 text-sm leading-relaxed text-muted">
+              执行中不可切换，请先停止。
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export type { WorkspaceMenuProps };

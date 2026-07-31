@@ -1,4 +1,8 @@
 import { cn } from "@/lib/utils";
+import {
+  createWorkspaceFromImages,
+  switchWorkspace,
+} from "@/lib/workspace-switch";
 import { useDeckStore } from "@/stores/deck-store";
 
 interface DeckEmptyStateProps {
@@ -16,33 +20,19 @@ export function DeckEmptyState({
 }: DeckEmptyStateProps): React.JSX.Element {
   const loading = useDeckStore((s) => s.loading);
   const error = useDeckStore((s) => s.error);
-  const openDeck = useDeckStore((s) => s.openDeck);
-  const createDeck = useDeckStore((s) => s.createDeck);
 
-  // openDeck / createDeck 失败会 throw，此处必须吞掉：
-  // 错误已写入 store 的 error 字段并在下方错误条呈现，再抛出只会变成未处理拒绝
+  // 打开/创建的编排（含工作区命名规则与切换后的状态清零）与顶栏入口共用
+  // `lib/workspace-switch`，两处不再各写一份；错误仍由 deck-store 承载并在下方错误条呈现
   async function handleOpen(): Promise<void> {
     const dir = await window.api.system.selectDirectory();
     if (!dir) return;
-    try {
-      await openDeck(dir);
-    } catch {
-      // 忽略：错误由 deck-store 承载
-    }
+    await switchWorkspace(dir);
   }
 
   async function handleCreate(): Promise<void> {
     const imagesDir = await window.api.system.selectDirectory();
     if (!imagesDir) return;
-    // 工作区建在图片目录同级，目录名带日期后缀，避免重复创建时互相覆盖
-    const parentDir = imagesDir.split("/").slice(0, -1).join("/");
-    const name = imagesDir.split("/").pop() ?? "deck";
-    const ts = new Date().toISOString().slice(0, 10);
-    try {
-      await createDeck(imagesDir, `${parentDir}/${name}-${ts}`);
-    } catch {
-      // 忽略：错误由 deck-store 承载
-    }
+    await createWorkspaceFromImages(imagesDir);
   }
 
   return (

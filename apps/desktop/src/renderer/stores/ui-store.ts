@@ -24,14 +24,20 @@ interface UIState {
   backToConsole(): void;
   toggleQueuePanel(open?: boolean): void;
   toggleActivityPanel(open?: boolean): void;
+  /** 视图态整体归零（切换工作区），含两个面板的展开态 */
+  reset(): void;
 }
 
-export const useUIStore = create<UIState>((set) => ({
+const INITIAL_STATE = {
   currentView: "console",
   selectedSlideId: null,
   selectedBlockId: null,
   queuePanelOpen: true,
   activityPanelOpen: false,
+} as const;
+
+export const useUIStore = create<UIState>((set) => ({
+  ...INITIAL_STATE,
 
   setView(view) {
     set({ currentView: view });
@@ -63,6 +69,10 @@ export const useUIStore = create<UIState>((set) => ({
 
   toggleActivityPanel(open) {
     set((state) => ({ activityPanelOpen: open ?? !state.activityPanelOpen }));
+  },
+
+  reset() {
+    set({ ...INITIAL_STATE });
   },
 }));
 

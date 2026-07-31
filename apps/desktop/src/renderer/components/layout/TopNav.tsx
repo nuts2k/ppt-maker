@@ -5,11 +5,16 @@ import {
   startupNotice,
 } from "@/lib/doctor-view";
 import { cn } from "@/lib/utils";
+import {
+  UNSAVED_SWITCH_NOTICE,
+  type WorkspaceAction,
+} from "@/lib/workspace-menu";
 import { useDeckStore } from "@/stores/deck-store";
 import { useRunStore } from "@/stores/run-store";
 import type { DoctorReport } from "../../../main/ipc/channels.js";
 import { DoctorChip } from "./DoctorChip";
 import { DoctorNoticeBar } from "./DoctorNoticeBar";
+import { executeWorkspaceAction, WorkspaceMenu } from "./WorkspaceMenu";
 
 interface ExportResult {
   ok: boolean;
@@ -40,6 +45,10 @@ export function TopNav(): React.JSX.Element {
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   // 非 null 表示导出被环境警告拦下，等待用户确认「仍要导出」
   const [exportConfirm, setExportConfirm] = useState<DoctorNotice | null>(null);
+  // 非 null 表示切换工作区被未保存的复核改动拦下，等待用户确认「仍要切换」
+  const [switchConfirm, setSwitchConfirm] = useState<WorkspaceAction | null>(
+    null,
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +107,14 @@ export function TopNav(): React.JSX.Element {
     void runExport();
   }
 
+  /** PRD R5：确认发生在开目录框之前，避免用户选完目录才被拦下 */
+  function handleConfirmSwitch(): void {
+    if (switchConfirm === null) return;
+    const action = switchConfirm;
+    setSwitchConfirm(null);
+    void executeWorkspaceAction(action);
+  }
+
   const notice = noticeDismissed ? null : startupNotice(report);
 
   return (
@@ -115,17 +132,11 @@ export function TopNav(): React.JSX.Element {
         </span>
 
         {deckPath ? (
-          <div className="flex min-w-0 flex-1 flex-col">
-            <span className="truncate text-lg font-medium text-ink">
-              {name ?? "未命名 Deck"}
-            </span>
-            <span
-              className="truncate text-sm font-medium text-muted"
-              title={deckPath}
-            >
-              {deckPath}
-            </span>
-          </div>
+          <WorkspaceMenu
+            name={name}
+            deckPath={deckPath}
+            onRequestConfirm={setSwitchConfirm}
+          />
         ) : (
           <div className="flex-1" />
         )}
@@ -193,6 +204,30 @@ export function TopNav(): React.JSX.Element {
               <button
                 type="button"
                 onClick={() => setExportConfirm(null)}
+                className={BUTTON_SECONDARY}
+              >
+                取消
+              </button>
+            </>
+          }
+        />
+      )}
+
+      {switchConfirm !== null && (
+        <DoctorNoticeBar
+          notice={UNSAVED_SWITCH_NOTICE}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={handleConfirmSwitch}
+                className={BUTTON_PRIMARY}
+              >
+                仍要切换
+              </button>
+              <button
+                type="button"
+                onClick={() => setSwitchConfirm(null)}
                 className={BUTTON_SECONDARY}
               >
                 取消

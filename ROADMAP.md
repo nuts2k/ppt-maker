@@ -182,17 +182,21 @@ Trellis 子任务：`07-22-local-deck-workflow`
 - **界面正反馈必须以磁盘状态为准**。全链路走查暴露的六个缺陷里有四个同属一类——界面给了成功反馈而实际什么都没发生，或写下的记录与事实相反（瞬态阶段失效是静默空操作、会话层状态盖住耐久层、验收写出与自动检查矛盾的人工清单、分区计数只增不减）。这类静默分歧比报错危险，因为它看起来是成功的。
 - **既有工作区无需数据迁移**：`schemaVersion` / `workspaceVersion` 均未变，M3 时代产出的 deck 可直接被新版打开并严格导出。
 
-已知缺口（均已定位到具体代码，待另立任务）：
+已知缺口：✅ 三条已全部解决（2026-07-30）。
 
-- 桌面端保存复核**不失效下游**，在已完成的页上改字并保存后产物不更新，界面却仍显示完成。
-- 打开 deck 后没有切换工作区的入口，换 deck 只能重启应用。
-- `apps/cli/src/report/run.ts` 取 `clean_record` / `pptx_check` 时按 role 取第一条，会混入旧 attempt。
+- ~~桌面端保存复核**不失效下游**，在已完成的页上改字并保存后产物不更新，界面却仍显示完成。~~
+  → `07-28-review-ux-convergence` R5，改由 `main/save-invalidation.ts` 的 `decideInvalidation` 按粒度判定。
+- ~~打开 deck 后没有切换工作区的入口，换 deck 只能重启应用。~~
+  → `07-29-desktop-workspace-switch`，顶栏当前工作区块改为可点下拉。
+- ~~`apps/cli/src/report/run.ts` 取 `clean_record` / `pptx_check` 时按 role 取第一条，会混入旧 attempt。~~
+  → `07-28-review-ux-convergence` R6，改按 `lastSuccessfulAttemptId` + role 双条件。
 
 完成条件：✅ 已满足 — 核心 CLI 能力均可从 UI 调用；界面不绕过复核、版本和恢复契约；全新 deck 端到端走查七项断言全过，既有工作区可打开并导出为全原生 PPTX。
 
 非目标：账号、云同步、多人协作和普通用户级新手引导。
 
-Trellis 子任务：`07-22-desktop-review-workbench`、`07-26-review-flow-simplification`
+Trellis 子任务：`07-22-desktop-review-workbench`、`07-26-review-flow-simplification`、
+`07-28-review-ux-convergence`（体验收敛）、`07-29-desktop-workspace-switch`（切换工作区）
 
 ### M5 内容策划与页面图片生成
 
