@@ -1,4 +1,8 @@
-import { CHECK_DOT_CLASS, type DoctorNotice } from "@/lib/doctor-view";
+import {
+  CHECK_DOT_CLASS,
+  CHECK_STATUS_TEXT,
+  type DoctorNotice,
+} from "@/lib/doctor-view";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,31 +26,34 @@ export function DoctorNoticeBar({
     <div
       className={cn(
         "flex items-start gap-4 border-t border-hairline px-6 py-3",
-        notice.level === "fail"
-          ? "bg-signature-coral/10"
-          : "bg-signature-mustard/10",
+        notice.level === "fail" ? "bg-state-failed/10" : "bg-state-stale/10",
       )}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <p className="text-sm font-medium text-ink">{notice.title}</p>
+        <p className="text-sm font-semibold text-ink">{notice.title}</p>
         <ul className="flex flex-col gap-1">
           {notice.items.map((item) => (
             <li key={item.id} className="flex items-start gap-2">
               <span
+                aria-hidden="true"
                 className={cn(
-                  "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                  "mt-1.5 size-2 shrink-0",
                   CHECK_DOT_CLASS[item.status],
                 )}
               />
-              <span className="min-w-0 text-sm text-body">
-                {item.label}：{item.message}
+              <span className="min-w-0 text-sm text-ink-secondary">
+                {item.label}
+                <span className="sr-only">
+                  （{CHECK_STATUS_TEXT[item.status]}）
+                </span>
+                ：{item.message}
               </span>
             </li>
           ))}
         </ul>
-        <p className="text-sm text-muted">{notice.hint}</p>
+        <p className="text-sm text-ink-muted">{notice.hint}</p>
       </div>
-      <div className="flex shrink-0 items-center gap-3">{actions}</div>
+      <div className="flex shrink-0 items-center gap-2">{actions}</div>
     </div>
   );
 }

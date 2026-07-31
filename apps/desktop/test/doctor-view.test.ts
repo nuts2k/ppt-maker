@@ -45,19 +45,28 @@ describe("doctorChipView", () => {
     expect(doctorChipView(healthyReport(), false)?.label).toBe("环境正常");
   });
 
+  /**
+   * 常态必须安静（DESIGN.md「有颜色 = 要你管」）。旧实现给「环境正常」上了饱和绿 chip，
+   * 顶栏最抢眼的一块颜色标的却是最不需要注意的信息。
+   */
+  it("环境正常不得使用任何状态色", () => {
+    const view = doctorChipView(healthyReport(), false);
+    expect(view?.className).not.toMatch(/state-|proof|success|signature-/);
+  });
+
   it("有失败项时优先显示失败计数", () => {
     const view = doctorChipView(
       report(check("pnpm", "warn"), check("powerpoint", "fail")),
       false,
     );
     expect(view?.label).toBe("环境异常 1 项");
-    expect(view?.className).toContain("signature-coral");
+    expect(view?.className).toContain("state-failed");
   });
 
   it("只有警告时显示警告计数（含基线项，与下拉明细同口径）", () => {
     const view = doctorChipView(report(check("pnpm", "warn")), false);
     expect(view?.label).toBe("环境警告 1 项");
-    expect(view?.className).toContain("signature-mustard");
+    expect(view?.className).toContain("state-stale");
   });
 });
 

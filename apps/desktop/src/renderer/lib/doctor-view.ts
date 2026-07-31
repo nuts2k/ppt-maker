@@ -31,11 +31,22 @@ export const EXPORT_CHECK_IDS: readonly string[] = [
   "font-microsoft-yahei",
 ];
 
-/** doctor 单项状态 → 状态点颜色（与阶段轨道同一套语义色：coral 失败、mustard 警告） */
+/**
+ * doctor 单项状态 → 状态点样式（颜色 + 形状），与阶段状态表同一套语义：
+ * 通过是常态、走中性实心圆；警告用失效色三角，失败用失败色方块。
+ * 形状与颜色同时给出，灰度与色弱下也分得开（PRODUCT.md 无障碍第三条）。
+ */
 export const CHECK_DOT_CLASS: Record<DoctorCheckItem["status"], string> = {
-  pass: "bg-success",
-  warn: "bg-signature-mustard",
-  fail: "bg-signature-coral",
+  pass: "rounded-full bg-border",
+  warn: "bg-state-stale [clip-path:polygon(50%_0%,100%_100%,0%_100%)]",
+  fail: "rounded-xs bg-state-failed",
+};
+
+/** 状态点的文字等价物：点本身对读屏不可见，形状与颜色也不该是唯一载体 */
+export const CHECK_STATUS_TEXT: Record<DoctorCheckItem["status"], string> = {
+  pass: "通过",
+  warn: "警告",
+  fail: "异常",
 };
 
 export interface DoctorChipView {
@@ -64,7 +75,7 @@ export function doctorChipView(
 ): DoctorChipView | null {
   if (report === null) {
     return failed
-      ? { label: "环境未知", className: "bg-surface-strong text-muted" }
+      ? { label: "环境未知", className: "bg-surface text-ink-muted" }
       : null;
   }
 
@@ -72,16 +83,18 @@ export function doctorChipView(
   if (fail > 0) {
     return {
       label: `环境异常 ${fail} 项`,
-      className: "bg-signature-coral text-on-primary",
+      className: "bg-state-failed/10 text-state-failed",
     };
   }
   if (warn > 0) {
     return {
       label: `环境警告 ${warn} 项`,
-      className: "bg-signature-mustard text-ink",
+      className: "bg-state-stale/10 text-state-stale",
     };
   }
-  return { label: "环境正常", className: "bg-success/10 text-success" };
+  // 常态必须安静：「环境正常」是绝大多数时候的样子，用饱和绿标它等于
+  // 把顶栏最强的一抹颜色给了最不需要注意的信息（有颜色 = 要你管）。
+  return { label: "环境正常", className: "text-ink-muted hover:text-ink" };
 }
 
 /** 按给定 id 集合筛出未通过项；顺序沿用报告本身，保持与 chip 明细一致 */

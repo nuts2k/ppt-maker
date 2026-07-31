@@ -34,6 +34,29 @@ describe("useUIStore.reset", () => {
     expect(useUIStore.getState().activityPanelOpen).toBe(false);
   });
 
+  it("控制台筛选回默认（只看待处理）", () => {
+    useUIStore.getState().setConsoleFilter("all");
+    expect(useUIStore.getState().consoleFilter).toBe("all");
+
+    useUIStore.getState().reset();
+
+    expect(useUIStore.getState().consoleFilter).toBe("todo");
+  });
+
+  /**
+   * 筛选只影响控制台列表渲染，不得顺手改动选中页或视图——否则「打开已完成页复看」
+   * 会随筛选一起消失（见 .trellis/spec/frontend/state-management.md「一个判据兼职两件事」）。
+   */
+  it("切筛选不影响当前视图与选中页", () => {
+    useUIStore.getState().openSlide("slide-9");
+
+    useUIStore.getState().setConsoleFilter("all");
+    useUIStore.getState().setConsoleFilter("todo");
+
+    expect(useUIStore.getState().currentView).toBe("slide");
+    expect(useUIStore.getState().selectedSlideId).toBe("slide-9");
+  });
+
   it("归零后仍可正常选页（action 未被覆盖）", () => {
     useUIStore.getState().reset();
     useUIStore.getState().openSlide("slide-1");

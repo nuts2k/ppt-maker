@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { CHECK_DOT_CLASS, doctorChipView } from "@/lib/doctor-view";
+import { Panel } from "@/components/ui";
+import {
+  CHECK_DOT_CLASS,
+  CHECK_STATUS_TEXT,
+  doctorChipView,
+} from "@/lib/doctor-view";
 import { cn } from "@/lib/utils";
 import type { DoctorReport } from "../../../main/ipc/channels.js";
 
@@ -41,31 +46,40 @@ export function DoctorChip({
     <div className="relative shrink-0" ref={rootRef}>
       <button
         type="button"
+        aria-haspopup="dialog"
+        aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
         className={cn(
-          "rounded-xs px-2 py-0.5 text-sm font-medium transition",
+          "rounded-sm px-2 py-1 text-sm font-medium transition-colors duration-fast hover:bg-surface active:bg-surface-sunken",
           chip.className,
         )}
       >
         {chip.label}
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-md border border-hairline bg-canvas p-4">
+        <Panel
+          elevation="raised"
+          className="absolute right-0 top-full z-20 mt-2 w-80 p-4"
+        >
           {report ? (
             <ul className="flex flex-col gap-3">
               {report.checks.map((check) => (
                 <li key={check.id} className="flex gap-2">
                   <span
+                    aria-hidden="true"
                     className={cn(
-                      "mt-1.5 h-2 w-2 shrink-0 rounded-full",
+                      "mt-1.5 size-2 shrink-0",
                       CHECK_DOT_CLASS[check.status],
                     )}
                   />
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-ink">
                       {check.label}
+                      <span className="sr-only">
+                        ：{CHECK_STATUS_TEXT[check.status]}
+                      </span>
                     </p>
-                    <p className="text-sm leading-relaxed text-body">
+                    <p className="text-sm leading-relaxed text-ink-secondary">
                       {check.message}
                     </p>
                   </div>
@@ -73,11 +87,11 @@ export function DoctorChip({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-body">
+            <p className="text-sm text-ink-secondary">
               环境检查未能完成，请确认依赖是否可用。
             </p>
           )}
-        </div>
+        </Panel>
       )}
     </div>
   );

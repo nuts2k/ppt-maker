@@ -1,27 +1,21 @@
 import { stageLabel } from "@shared/stages";
+import { Play, Square } from "lucide-react";
+import { Button, Panel } from "@/components/ui";
 import { elapsedSince } from "@/lib/stage-view";
 import { cn } from "@/lib/utils";
 import { useDeckStore } from "@/stores/deck-store";
 import { useRunStore } from "@/stores/run-store";
 
 /**
- * 批量执行控制条（design.md 3.3）。
+ * 批量执行控制条。
  *
  * 两态共用同一容器，避免切换时布局跳动：
- * - **空闲态**：全局摘要 +（若本次会话跑完过）上一轮汇总，右侧「处理全部」为主行动。
+ * - **空闲态**：deck 累计摘要 +（若本次会话跑完过）上一轮结果，右侧「处理全部」为主行动。
  * - **执行态**：总进度条 + 「第 N/M 页 · 页名 · 阶段 · 已用 42s」，右侧「停止」接管。
  *
  * 数据一律自 store 逐字段订阅，不经 props 传入——控制条是全局单例，
  * 由父级透传只会让 ConsolePage 跟着每秒 tick 重渲染。
  */
-
-/** DESIGN.md `button-primary`：近黑底、12px 圆角，全屏仅此一个主行动 */
-const BUTTON_PRIMARY =
-  "rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
-
-/** DESIGN.md `button-secondary`：白底 + hairline 描边，与主按钮成对出现 */
-const BUTTON_SECONDARY =
-  "rounded-lg border border-hairline bg-canvas px-4 py-2.5 text-sm text-ink transition active:border-border-strong disabled:opacity-40";
 
 interface RunControlBarProps {
   readonly className?: string;
@@ -66,8 +60,8 @@ export function RunControlBar({
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
-      <div className="flex items-center gap-4 rounded-lg border border-hairline bg-surface-soft px-6 py-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-2">
+      <Panel className="flex items-center gap-4 bg-surface px-4 py-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           {running ? (
             <>
               <div
@@ -76,16 +70,16 @@ export function RunControlBar({
                 aria-valuemin={0}
                 aria-valuemax={total}
                 aria-valuenow={doneCount}
-                className="h-1.5 w-full overflow-hidden rounded-xs bg-surface-strong"
+                className="h-1.5 w-full overflow-hidden rounded-xs bg-surface-sunken"
               >
                 {total > 0 && (
                   <div
-                    className="h-full rounded-xs bg-info transition-[width]"
+                    className="h-full rounded-xs bg-state-running transition-[width] duration-slow"
                     style={{ width: `${percent}%` }}
                   />
                 )}
               </div>
-              <span className="truncate text-sm font-medium text-muted">
+              <span className="truncate text-sm font-medium tabular-nums text-ink">
                 {buildRunningText({
                   stopping: status === "stopping",
                   currentIndex,
@@ -98,41 +92,37 @@ export function RunControlBar({
             </>
           ) : (
             <>
-              <span className="truncate text-sm text-body">
+              <span className="truncate text-sm tabular-nums text-ink-secondary">
                 {buildSummaryText(summary)}
               </span>
               {lastSummary !== null && (
-                <span className="truncate text-sm font-medium text-muted">
-                  {`上轮：完成 ${lastSummary.completed} · 待人工 ${lastSummary.gated} · 失败 ${lastSummary.failed}`}
+                <span className="truncate text-2xs tabular-nums text-ink-muted">
+                  {`本轮执行：完成 ${lastSummary.completed} · 待人工 ${lastSummary.gated} · 失败 ${lastSummary.failed}`}
                 </span>
               )}
             </>
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
-          <button
-            type="button"
-            onClick={handleRunAll}
-            disabled={!canStart}
-            className={BUTTON_PRIMARY}
-          >
+        <div className="flex shrink-0 items-center gap-2">
+          <Button variant="primary" onClick={handleRunAll} disabled={!canStart}>
+            <Play aria-hidden="true" className="size-3.5" />
             处理全部
-          </button>
+          </Button>
           {/* 停止在空闲态保留占位并禁用，避免执行态出现时按钮组宽度突变 */}
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={handleStop}
             disabled={status !== "running"}
-            className={BUTTON_SECONDARY}
           >
+            <Square aria-hidden="true" className="size-3.5" />
             停止
-          </button>
+          </Button>
         </div>
-      </div>
+      </Panel>
 
       {startError !== null && (
-        <p className="rounded-sm bg-signature-coral/10 px-3 py-2 text-sm font-medium text-signature-coral">
+        <p className="rounded-sm bg-state-failed/10 px-3 py-2 text-sm font-medium text-state-failed">
           {startError}
         </p>
       )}
@@ -140,7 +130,14 @@ export function RunControlBar({
   );
 }
 
-/** 空闲态摘要：口径与 CLI `deck status` 一致（completed + inProgress + notStarted = active） */
+/**
+ * 空闲态摘要：口径与 CLI `deck status` 一致（completed + inProgress + notStarted = active）。
+ *
+ * 前缀「Deck 累计」是刻意的——这行说的是**整个 deck 到目前为止**的状态，
+ * 而底部活动日志的「执行结束：完成 0，待人工 1」说的是**本次 run 的结果**。
+ * 两者并排出现时若都只写「已完成 N」，读起来自相矛盾（走查实测：顶部「已完成 2」
+ * 与底部「完成 0」同屏）。同理下方一行写「本轮执行」而非「上轮」。
+ */
 function buildSummaryText(
   summary: {
     readonly active: number;
@@ -150,7 +147,7 @@ function buildSummaryText(
   } | null,
 ): string {
   if (summary === null) return "尚未打开 Deck";
-  return `共 ${summary.active} 页 · 已完成 ${summary.completed} · 进行中 ${summary.inProgress} · 未开始 ${summary.notStarted}`;
+  return `Deck 累计：共 ${summary.active} 页 · 已完成 ${summary.completed} · 进行中 ${summary.inProgress} · 未开始 ${summary.notStarted}`;
 }
 
 /** 执行态状态行；缺失的片段（未开始的页/阶段、无计时）直接省略而非显示占位符 */

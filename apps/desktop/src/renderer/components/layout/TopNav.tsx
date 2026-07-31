@@ -1,4 +1,6 @@
+import { Upload, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Button, Checkbox, IconButton } from "@/components/ui";
 import {
   type DoctorNotice,
   exportNotice,
@@ -20,14 +22,6 @@ interface ExportResult {
   ok: boolean;
   message: string;
 }
-
-/** DESIGN.md `button-primary`：近黑底、12px 圆角；条内动作按钮比控制条主按钮略紧凑 */
-const BUTTON_PRIMARY =
-  "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40";
-
-/** DESIGN.md `button-secondary`：白底 + hairline 描边 */
-const BUTTON_SECONDARY =
-  "rounded-lg border border-hairline bg-canvas px-4 py-2 text-sm text-ink transition active:border-border-strong";
 
 export function TopNav(): React.JSX.Element {
   const deckPath = useDeckStore((s) => s.deckPath);
@@ -124,10 +118,14 @@ export function TopNav(): React.JSX.Element {
         左内距让开红绿灯按钮；其中所有可交互元素必须显式 no-drag，否则点击会被拖拽吞掉。
       */}
       <div
-        className="flex h-16 items-center gap-6 pl-20 pr-6"
+        className="flex h-14 items-center gap-4 pl-20 pr-6"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
       >
-        <span className="shrink-0 text-base font-medium text-ink">
+        {/*
+          品牌名弱化为一枚标识：这是一个单窗口工具，用户从不需要辨认自己在哪个应用里，
+          顶栏第一顺位应当是「当前是哪个 deck」。
+        */}
+        <span className="shrink-0 text-2xs font-semibold uppercase tracking-wide text-ink-muted">
           PPT Maker
         </span>
 
@@ -142,35 +140,38 @@ export function TopNav(): React.JSX.Element {
         )}
 
         <div
-          className="flex shrink-0 items-center gap-4"
+          className="flex shrink-0 items-center gap-3"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
         >
           <DoctorChip report={report} failed={doctorFailed} />
 
           {/* 未打开 deck 时导出无从谈起，严格模式开关一并隐藏以减少空态噪音 */}
           {deckPath !== null && (
-            <label
-              className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted"
-              title="要求所有页面通过 accept-pptx 验收后才允许导出"
-            >
-              <input
-                type="checkbox"
-                checked={strict}
-                onChange={(e) => setStrict(e.target.checked)}
-              />
-              严格模式
-            </label>
+            <Checkbox
+              className="shrink-0"
+              label="严格模式"
+              hint="要求所有页面通过 accept-pptx 验收后才允许导出"
+              checked={strict}
+              onChange={(e) => setStrict(e.target.checked)}
+            />
           )}
 
-          <button
-            type="button"
+          {/*
+            导出是次要变体：全屏唯一的主行动是控制台的「处理全部」（DESIGN.md
+            `Buttons`）。两个墨底按钮同屏会让用户分不清这一步该先点哪个，
+            而在流程上导出恰恰是最后一步。
+          */}
+          <Button
+            variant="secondary"
+            className="shrink-0"
             onClick={handleExportClick}
             disabled={exportDisabled}
+            loading={exporting}
             title={running ? "执行中不可导出" : undefined}
-            className={cn("shrink-0", BUTTON_PRIMARY)}
           >
+            {!exporting && <Upload aria-hidden="true" className="size-3.5" />}
             {exporting ? "导出中…" : "导出 PPTX"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -178,13 +179,9 @@ export function TopNav(): React.JSX.Element {
         <DoctorNoticeBar
           notice={notice}
           actions={
-            <button
-              type="button"
-              onClick={() => setNoticeDismissed(true)}
-              className={BUTTON_SECONDARY}
-            >
+            <Button size="sm" onClick={() => setNoticeDismissed(true)}>
               知道了
-            </button>
+            </Button>
           }
         />
       )}
@@ -194,20 +191,12 @@ export function TopNav(): React.JSX.Element {
           notice={exportConfirm}
           actions={
             <>
-              <button
-                type="button"
-                onClick={handleConfirmExport}
-                className={BUTTON_PRIMARY}
-              >
+              <Button size="sm" variant="primary" onClick={handleConfirmExport}>
                 仍要导出
-              </button>
-              <button
-                type="button"
-                onClick={() => setExportConfirm(null)}
-                className={BUTTON_SECONDARY}
-              >
+              </Button>
+              <Button size="sm" onClick={() => setExportConfirm(null)}>
                 取消
-              </button>
+              </Button>
             </>
           }
         />
@@ -218,32 +207,28 @@ export function TopNav(): React.JSX.Element {
           notice={UNSAVED_SWITCH_NOTICE}
           actions={
             <>
-              <button
-                type="button"
-                onClick={handleConfirmSwitch}
-                className={BUTTON_PRIMARY}
-              >
+              <Button size="sm" variant="primary" onClick={handleConfirmSwitch}>
                 仍要切换
-              </button>
-              <button
-                type="button"
-                onClick={() => setSwitchConfirm(null)}
-                className={BUTTON_SECONDARY}
-              >
+              </Button>
+              <Button size="sm" onClick={() => setSwitchConfirm(null)}>
                 取消
-              </button>
+              </Button>
             </>
           }
         />
       )}
 
+      {/*
+        导出结果条。成功走中性——它是一次完成态反馈，不需要用户再做什么；
+        失败才给颜色（有颜色 = 要你管）。
+      */}
       {exportResult && (
         <div
           className={cn(
-            "flex items-center gap-4 border-t border-hairline px-6 py-2 text-sm",
+            "flex items-center gap-3 border-t border-hairline px-6 py-2 text-sm",
             exportResult.ok
-              ? "bg-success/10 text-success"
-              : "bg-signature-coral/10 text-signature-coral",
+              ? "bg-surface text-ink-secondary"
+              : "bg-state-failed/10 text-state-failed",
           )}
         >
           <span
@@ -252,13 +237,14 @@ export function TopNav(): React.JSX.Element {
           >
             {exportResult.message}
           </span>
-          <button
-            type="button"
+          <IconButton
+            size="sm"
+            variant="ghost"
+            label="关闭导出结果"
             onClick={() => setExportResult(null)}
-            className="shrink-0 rounded-xs px-2 py-0.5 text-sm font-medium transition active:bg-surface-strong"
           >
-            关闭
-          </button>
+            <X aria-hidden="true" className="size-4" />
+          </IconButton>
         </div>
       )}
     </div>

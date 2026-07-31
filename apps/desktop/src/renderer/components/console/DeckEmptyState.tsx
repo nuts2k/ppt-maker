@@ -1,3 +1,5 @@
+import { FolderOpen, Images } from "lucide-react";
+import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import {
   createWorkspaceFromImages,
@@ -10,10 +12,10 @@ interface DeckEmptyStateProps {
 }
 
 /**
- * 未打开 Deck 时的欢迎/入口态（design.md 3.3）。
+ * 未打开 Deck 时的欢迎/入口态。
  *
- * 纯白 canvas + 签名按钮对 + 大留白，不加任何装饰背景——
- * DESIGN.md 明确要求 hero 靠留白与字号建立层级。
+ * 纯白 canvas + 一对动作 + 大留白，不加任何装饰背景——层级靠留白与字号建立。
+ * 「打开」是这里唯一的主行动，「从图片目录创建」是与之成对的次要动作。
  */
 export function DeckEmptyState({
   className,
@@ -38,50 +40,53 @@ export function DeckEmptyState({
   return (
     <div
       className={cn(
-        "flex h-full flex-col items-center justify-center gap-10 px-6",
+        "flex h-full flex-col items-center justify-center gap-8 px-6",
         className,
       )}
     >
-      <div className="flex flex-col items-center gap-4 text-center">
-        <h1 className="text-display-md font-normal text-ink">PPT Maker</h1>
-        <p className="max-w-md text-sm leading-relaxed text-body">
-          可视化复核 PPT
-          中的文字检测结果，批量运行去字与重建流水线，导出为可编辑 PPTX。
+      <div className="flex flex-col items-center gap-3 text-center">
+        <h1 className="text-display-md font-semibold tracking-tight text-ink">
+          PPT Maker
+        </h1>
+        <p className="max-w-md text-sm leading-relaxed text-ink-secondary">
+          把一叠 16:9 页面图片变成 PowerPoint
+          里真正可编辑的原生文本：批量跑去字与重建流水线，逐页复核文字，导出
+          PPTX。
         </p>
       </div>
 
       <div className="flex items-center gap-3">
-        <button
-          type="button"
+        <Button
+          variant="primary"
           onClick={() => void handleOpen()}
           disabled={loading}
-          className="rounded-lg bg-primary px-6 py-4 text-base font-medium text-on-primary transition active:bg-primary-active disabled:opacity-40"
         >
+          <FolderOpen aria-hidden="true" className="size-3.5" />
           打开已有 Deck
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="secondary"
           onClick={() => void handleCreate()}
           disabled={loading}
-          className="rounded-lg border border-hairline bg-canvas px-6 py-4 text-base font-medium text-ink transition active:border-border-strong disabled:opacity-40"
         >
+          <Images aria-hidden="true" className="size-3.5" />
           从图片目录创建
-        </button>
+        </Button>
       </div>
 
-      <div className="flex max-w-sm flex-col gap-1 text-center text-sm font-medium leading-relaxed text-muted">
+      <div className="flex max-w-sm flex-col gap-1 text-center text-sm leading-relaxed text-ink-muted">
         <p>
-          <strong className="font-medium text-body">打开</strong> —
+          <strong className="font-medium text-ink-secondary">打开</strong> —
           选择一个已有的 Deck 工作区目录
         </p>
         <p>
-          <strong className="font-medium text-body">创建</strong> — 选择包含 PPT
-          截图的图片目录，自动在同级创建工作区
+          <strong className="font-medium text-ink-secondary">创建</strong> —
+          选择包含 PPT 截图的图片目录，自动在同级创建工作区
         </p>
       </div>
 
       {error !== null && error !== "" && (
-        <p className="rounded-sm bg-signature-coral/10 px-4 py-2 text-sm font-medium text-signature-coral">
+        <p className="rounded-sm bg-state-failed/10 px-3 py-2 text-sm font-medium text-state-failed">
           {error}
         </p>
       )}

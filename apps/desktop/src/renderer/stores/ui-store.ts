@@ -6,6 +6,16 @@ import { create } from "zustand";
  */
 type AppView = "console" | "slide";
 
+/**
+ * 控制台卡片筛选口径。
+ *
+ * `todo` 的成员判定**一律取 `stores/todo-queue.ts` 的 `deriveTodoQueue`**，此处只存
+ * 用户选了哪一档，不存页面集合——同一件事在两处各算一份迟早各说各话。
+ *
+ * 会话级，不写磁盘：不产生新的持久化状态，也就不可能与耐久层分歧。
+ */
+type ConsoleFilter = "all" | "todo";
+
 interface UIState {
   currentView: AppView;
   selectedSlideId: string | null;
@@ -14,6 +24,15 @@ interface UIState {
   queuePanelOpen: boolean;
   /** 底部活动日志抽屉是否展开；属于回溯用途，默认收起 */
   activityPanelOpen: boolean;
+  /**
+   * 卡片网格筛选档位。默认只看待处理——一叠 20–50 页里绝大多数是完成态，
+   * 默认铺满已完成页等于让用户每次都自己扫一遍。
+   *
+   * 「全部 / 待处理」切换在控制台常驻可见、不折叠不藏菜单，且筛选**只影响列表渲染**，
+   * 不影响任何判据、导航或键盘遍历口径——否则「打开已完成页复看」这个能力会随
+   * 默认筛选一起消失（见 .trellis/spec/frontend/state-management.md「一个判据兼职两件事」）。
+   */
+  consoleFilter: ConsoleFilter;
 
   setView(view: AppView): void;
   selectSlide(slideId: string | null): void;
@@ -24,7 +43,8 @@ interface UIState {
   backToConsole(): void;
   toggleQueuePanel(open?: boolean): void;
   toggleActivityPanel(open?: boolean): void;
-  /** 视图态整体归零（切换工作区），含两个面板的展开态 */
+  setConsoleFilter(filter: ConsoleFilter): void;
+  /** 视图态整体归零（切换工作区），含两个面板的展开态与筛选档位 */
   reset(): void;
 }
 
@@ -34,6 +54,7 @@ const INITIAL_STATE = {
   selectedBlockId: null,
   queuePanelOpen: true,
   activityPanelOpen: false,
+  consoleFilter: "todo",
 } as const;
 
 export const useUIStore = create<UIState>((set) => ({
@@ -71,9 +92,13 @@ export const useUIStore = create<UIState>((set) => ({
     set((state) => ({ activityPanelOpen: open ?? !state.activityPanelOpen }));
   },
 
+  setConsoleFilter(filter) {
+    set({ consoleFilter: filter });
+  },
+
   reset() {
     set({ ...INITIAL_STATE });
   },
 }));
 
-export type { AppView, UIState };
+export type { AppView, ConsoleFilter, UIState };

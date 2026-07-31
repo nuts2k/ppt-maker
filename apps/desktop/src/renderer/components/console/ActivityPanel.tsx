@@ -1,4 +1,6 @@
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useMemo } from "react";
+import { IconButton } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { describeActivity, groupByDate } from "@/stores/activity-format";
 import { useActivityStore } from "@/stores/activity-store";
@@ -10,10 +12,18 @@ interface ActivityPanelProps {
 }
 
 /**
- * 底部活动日志抽屉（design.md 3.3）。
+ * 底部活动日志抽屉。
  *
  * 只消费 activity-store，不主动 `load`：deckPath 变化时的拉取由 ConsolePage
  * 统一负责，避免同一份日志被多处重复请求。
+ *
+ * 日志里的「执行结束：完成 N，待人工 M」说的是**本次 run 的结果**，与控制条上的
+ * 「Deck 累计：…已完成 N」不是一回事。并排读起来曾经矛盾（顶部「已完成 19」、
+ * 底部「完成 0」），现由控制条侧的「Deck 累计：」前缀消歧。
+ *
+ * 日志这一侧**尚未**加限定语，是刻意留的：同一句文案由主进程的
+ * `main/runner/deck-runner.ts` 一并写入持久化 jsonl，只改渲染层会让实时显示
+ * 与重启后从日志读出的内容不一致。要改得两边一起改，属于渲染层之外的改动。
  */
 export function ActivityPanel({
   className,
@@ -46,20 +56,20 @@ export function ActivityPanel({
           className,
         )}
       >
-        <span className="shrink-0 text-sm font-medium text-muted">
+        <span className="shrink-0 text-2xs font-semibold text-ink-muted">
           活动日志
         </span>
-        <span className="min-w-0 flex-1 truncate text-sm text-muted">
+        <span className="min-w-0 flex-1 truncate text-sm text-ink-secondary">
           {latest ? describeActivity(latest) : "暂无记录"}
         </span>
-        <button
-          type="button"
-          aria-label="展开活动日志"
+        <IconButton
+          size="sm"
+          variant="ghost"
+          label="展开活动日志"
           onClick={() => toggle(true)}
-          className="shrink-0 rounded-sm border border-hairline px-2 py-0.5 text-sm text-muted transition active:border-border-strong"
         >
-          ⌃
-        </button>
+          <ChevronUp aria-hidden="true" className="size-4" />
+        </IconButton>
       </div>
     );
   }
@@ -72,30 +82,30 @@ export function ActivityPanel({
       )}
     >
       <div className="sticky top-0 z-10 flex h-10 items-center gap-3 border-b border-hairline bg-canvas px-6">
-        <span className="text-base font-medium text-ink">活动日志</span>
-        <span className="flex-1 text-sm font-medium text-muted">
+        <span className="text-sm font-semibold text-ink">活动日志</span>
+        <span className="flex-1 text-2xs tabular-nums text-ink-muted">
           {records.length} 条
         </span>
-        <button
-          type="button"
-          aria-label="收起活动日志"
+        <IconButton
+          size="sm"
+          variant="ghost"
+          label="收起活动日志"
           onClick={() => toggle(false)}
-          className="shrink-0 rounded-sm border border-hairline px-2 py-0.5 text-sm text-muted transition active:border-border-strong"
         >
-          ⌄
-        </button>
+          <ChevronDown aria-hidden="true" className="size-4" />
+        </IconButton>
       </div>
 
       {records.length === 0 ? (
-        <div className="flex h-[calc(100%-40px)] items-center justify-center text-sm font-medium text-muted">
-          {loading ? "加载中…" : "暂无活动记录"}
+        <div className="flex h-[calc(100%-40px)] items-center justify-center text-sm text-ink-muted">
+          {loading ? "加载中…" : "还没有活动记录 · 跑一轮后这里会逐条留痕"}
         </div>
       ) : (
         <div className="flex flex-col gap-4 px-6 py-3">
           {groups.map((group) => (
             <section key={group.date} className="flex flex-col gap-1">
               <div className="flex items-center gap-3">
-                <span className="shrink-0 text-sm font-medium text-muted">
+                <span className="shrink-0 text-2xs font-semibold tabular-nums text-ink-muted">
                   {group.date}
                 </span>
                 <span className="flex-1 border-t border-hairline" />
@@ -120,24 +130,28 @@ function ActivityRow({
   return (
     <div className="flex items-stretch gap-3 py-0.5">
       <span
+        aria-hidden="true"
         className={cn("w-0.5 shrink-0 rounded-xs", RESULT_BAR[record.result])}
       />
-      <span className="w-20 shrink-0 text-sm font-medium tabular-nums text-muted">
+      <span className="w-20 shrink-0 text-sm tabular-nums text-ink-muted">
         {formatTime(record.at)}
       </span>
-      <span className="min-w-0 flex-1 text-sm text-body">
+      <span className="min-w-0 flex-1 text-sm text-ink-secondary">
         {describeActivity(record)}
       </span>
     </div>
   );
 }
 
-/** 结果语义色，与 design.md 3.3 的状态色约定一致 */
+/**
+ * 结果语义色。成功与普通信息走中性——一次执行里成功记录占绝大多数，
+ * 用彩色标常态等于把最强的视觉手段给了最不需要注意的信息（有颜色 = 要你管）。
+ */
 const RESULT_BAR: Readonly<Record<ActivityRecord["result"], string>> = {
-  success: "bg-success",
-  failure: "bg-signature-coral",
-  gate: "bg-signature-mustard",
-  info: "bg-surface-strong",
+  success: "bg-border",
+  failure: "bg-state-failed",
+  gate: "bg-state-stale",
+  info: "bg-hairline",
 };
 
 /** `at` 无法解析时给出占位，避免整行因一条脏记录消失 */

@@ -1,35 +1,37 @@
-import { useMemo } from "react";
-import { useDeckStore } from "@/stores/deck-store";
+import type { SlideDetail } from "../../../main/ipc/channels.js";
 import { SlideCard } from "./SlideCard";
 
 /**
  * 控制台卡片网格 —— 控制台的主视图区域。
  *
- * 列数按 DESIGN.md 响应式约定：mobile 1 列、tablet 2 列、desktop 3–4 列，gutter 24px。
- * 已移除页不进入网格（软删除只保留在 manifest 里，界面不再干扰用户）。
+ * 纯展示：渲染哪些页由 ConsolePage 决定（含「全部 / 待处理」筛选与已移除页的过滤），
+ * 本组件不自行取数也不自行判定，避免筛选口径在两处各写一份。
+ *
+ * 密度按一叠 20–50 页设计：`auto-fill` + 168px 下限，1400px 窗口下约 6 列，
+ * 一屏（约 3 行）容纳 ≥12 张。列数无断点，窗口缩放时自然回流。
  */
 
-export function SlideCardGrid(): React.JSX.Element {
-  // 直接订阅 slides 数组本身：selector 里过滤会每次返回新数组，触发无限重渲染
-  const slides = useDeckStore((s) => s.slides);
-  const activeSlides = useMemo(
-    () => slides.filter((slide) => !slide.removed),
-    [slides],
-  );
+interface SlideCardGridProps {
+  readonly slides: readonly SlideDetail[];
+  /** slideId → 待办原因，来自 `deriveTodoQueue`；卡片不自行判定，见 SlideCard 注释 */
+  readonly todoReasons: ReadonlyMap<string, string>;
+}
 
-  if (activeSlides.length === 0) {
-    return (
-      <div className="flex w-full items-center justify-center py-12 text-sm text-muted">
-        当前 Deck 还没有任何页面
-      </div>
-    );
-  }
-
+export function SlideCardGrid({
+  slides,
+  todoReasons,
+}: SlideCardGridProps): React.JSX.Element {
   return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-      {activeSlides.map((slide) => (
-        <SlideCard key={slide.slideId} slide={slide} />
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(168px,1fr))] gap-3">
+      {slides.map((slide) => (
+        <SlideCard
+          key={slide.slideId}
+          slide={slide}
+          todoReason={todoReasons.get(slide.slideId)}
+        />
       ))}
     </div>
   );
 }
+
+export type { SlideCardGridProps };

@@ -1,4 +1,6 @@
+import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Panel } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import {
   runWorkspaceAction,
@@ -92,32 +94,33 @@ export function WorkspaceMenu({
     // 否则点击被拖拽吞掉，表现为「点了没反应」。只标按钮与面板本身，
     // 名称右侧的空白留给拖拽，别把整条标题栏变成死区。
     <div className="relative flex min-w-0 flex-1" ref={rootRef}>
+      {/*
+        只显示 deck 名。完整路径降级为 title 提示——它长、无层级、且几乎从不需要读，
+        却在旧实现里以近似标题的字号占着顶栏第二显眼的位置。
+      */}
       <button
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
+        title={deckPath}
         onClick={() => setOpen((value) => !value)}
         style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-        className="flex min-w-0 max-w-full items-center gap-2 rounded-md px-2 py-1 text-left transition active:bg-surface-soft"
+        className="flex min-w-0 max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-left transition-colors duration-fast hover:bg-surface active:bg-surface-sunken"
       >
-        <span className="flex min-w-0 flex-col">
-          <span className="truncate text-lg font-medium text-ink">
-            {name ?? "未命名 Deck"}
-          </span>
-          <span
-            className="truncate text-sm font-medium text-muted"
-            title={deckPath}
-          >
-            {deckPath}
-          </span>
+        <span className="truncate text-base font-semibold text-ink">
+          {name ?? "未命名 Deck"}
         </span>
-        <span className="shrink-0 text-sm text-muted">⌄</span>
+        <ChevronDown
+          aria-hidden="true"
+          className="size-4 shrink-0 text-ink-muted"
+        />
       </button>
 
       {open && (
-        <div
+        <Panel
+          elevation="raised"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-          className="absolute left-0 top-full z-20 mt-2 w-72 rounded-md border border-hairline bg-canvas p-1"
+          className="absolute left-0 top-full z-20 mt-2 w-72 p-1"
         >
           {items.map((item) => (
             <button
@@ -127,8 +130,10 @@ export function WorkspaceMenu({
               title={item.disabledReason ?? undefined}
               onClick={() => handleSelect(item.action)}
               className={cn(
-                "w-full rounded-sm px-3 py-2 text-left text-sm text-ink transition",
-                item.disabled ? "opacity-40" : "active:bg-surface-soft",
+                "w-full rounded-sm px-3 py-2 text-left text-sm text-ink transition-colors duration-fast",
+                item.disabled
+                  ? "cursor-not-allowed opacity-40"
+                  : "hover:bg-surface active:bg-surface-sunken",
               )}
             >
               {item.label}
@@ -137,11 +142,11 @@ export function WorkspaceMenu({
 
           {/* 禁用原因写在面板里而不是只挂 title：灰掉却不说为什么等同于没反应 */}
           {running && (
-            <p className="px-3 py-2 text-sm leading-relaxed text-muted">
+            <p className="px-3 py-2 text-sm leading-relaxed text-ink-muted">
               执行中不可切换，请先停止。
             </p>
           )}
-        </div>
+        </Panel>
       )}
     </div>
   );
