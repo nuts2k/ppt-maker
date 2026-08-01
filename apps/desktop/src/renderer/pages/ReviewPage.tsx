@@ -1,6 +1,6 @@
 import type { TextReviewBlock } from "@ppt-maker/core";
 import { type RunStage, stageLabel } from "@shared/stages";
-import { Check, CircleX, LoaderCircle, X } from "lucide-react";
+import { Check, CircleX, LoaderCircle, ScanEye, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReviewCanvas } from "@/components/canvas/ReviewCanvas";
 import { BlockListPanel } from "@/components/review/BlockListPanel";
@@ -11,7 +11,7 @@ import {
 } from "@/components/slide/SlideToolbar";
 import { StageRail } from "@/components/slide/StageRail";
 import { Button, IconButton } from "@/components/ui";
-import { deriveFinalGate } from "@/lib/accept-gate";
+import { awaitingSourceConfirm, deriveFinalGate } from "@/lib/accept-gate";
 import type { ReviewEntryIntent } from "@/lib/review-filter";
 import { countUnreviewed } from "@/lib/review-status";
 import { adjacentSlides } from "@/lib/slide-nav";
@@ -86,6 +86,12 @@ export function ReviewPage(): React.JSX.Element {
     () => (slide === null ? null : deriveFinalGate(slide, sessionResult)),
     [slide, sessionResult],
   );
+
+  /**
+   * 该页停在源图确认（M5 D6）。取耐久层判据，与待办队列同源——会话层的
+   * `gate === "source"` 只活在本次进程里，刷新后这页就再没有任何可见线索了。
+   */
+  const needsSourceConfirm = slide !== null && awaitingSourceConfirm(slide);
 
   const navigation = useMemo(
     () => adjacentSlides(slides, slideId),
@@ -391,6 +397,36 @@ export function ReviewPage(): React.JSX.Element {
   ]);
 
   /**
+   * 确认源图：链路最前的人工点，只有停在这里的页（生成图）才有这个入口。
+   *
+   * 不顺带自动重跑——确认与执行是两件事，用户可能确认完先去看别的页；下一步由
+   * 「运行此页」或批量续跑接手，提示语里直接说明。
+   */
+  const handleAcceptSource = useCallback(() => {
+    if (workspacePath === null || slideId === null) return;
+    void (async (): Promise<void> => {
+      setSubmitting(true);
+      try {
+        await window.api.slide.acceptSource(workspacePath);
+        // 先清会话层的 source 闸门再刷耐久层，理由同最终确认
+        clearSessionResult(slideId);
+        await refreshSlide(slideId);
+        setNotice({
+          ok: true,
+          message: "已确认源图可用；点「运行此页」继续处理",
+        });
+      } catch (error) {
+        setNotice({
+          ok: false,
+          message: `确认源图失败：${error instanceof Error ? error.message : String(error)}`,
+        });
+      } finally {
+        setSubmitting(false);
+      }
+    })();
+  }, [workspacePath, slideId, clearSessionResult, refreshSlide]);
+
+  /**
    * 换源：main 侧串起选图与二次确认，这里只负责把界面拉回与磁盘一致的状态。
    *
    * 三样都要刷新，少一样就会出现「界面说的和磁盘不一样」：
@@ -456,6 +492,8 @@ export function ReviewPage(): React.JSX.Element {
         hasFinalGate={finalGate !== null}
         dirty={dirty}
         unreviewedCount={unreviewedCount}
+        awaitingSourceConfirm={needsSourceConfirm}
+        submitting={submitting}
         pageBusy={pageBusy}
         nextTodo={
           nextTodo === null
@@ -464,6 +502,7 @@ export function ReviewPage(): React.JSX.Element {
         }
         onBack={backToConsole}
         onNavigate={openSlide}
+        onAcceptSource={handleAcceptSource}
         onReplaceSource={handleReplaceSource}
         onViewModeChange={setViewMode}
         onSave={() => void handleSave()}
@@ -478,8 +517,23 @@ export function ReviewPage(): React.JSX.Element {
         sessionError={sessionResult?.error ?? null}
       />
 
-      {(notice !== null || startError !== null) && (
+      {(needsSourceConfirm || notice !== null || startError !== null) && (
         <div className="flex shrink-0 flex-col gap-1 px-6 pt-3">
+          {/*
+            停在源图确认：这是一条**常驻**提示，由耐久层判据决定，因此不给关闭按钮
+            ——关掉它等于把一个真实的阻断藏起来。此前这个停顿只落在默认折叠的活动
+            日志里，详情页毫无表示（2026-08-01 真机走查）。
+
+            用校对红而非失败色：它字面意义上就是「待我处理」，不是故障。
+          */}
+          {needsSourceConfirm && (
+            <div className="flex items-center gap-3 rounded-sm bg-proof-wash px-4 py-1.5 text-sm font-medium text-proof">
+              <ScanEye aria-hidden="true" className="size-4 shrink-0" />
+              <span className="min-w-0 flex-1">
+                这一页停在源图确认：确认源图可用后下游才会执行；图不合适就直接换源。
+              </span>
+            </div>
+          )}
           {/*
             成功提示走中性、失败才给颜色（有颜色 = 要你管）。两者的图标不同，
             因此不只靠颜色区分——保存成功与保存失败在灰度下也分得开。

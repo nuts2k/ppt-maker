@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type {
   AcceptFinalResult,
   AcceptOptions,
+  AcceptSourceResult,
   ActivityRecord,
   DeckExportResult,
   DeckRunEvent,
@@ -60,6 +61,11 @@ const api: IpcApi = {
       document: TextReviewDocument,
     ): Promise<SaveReviewResult> =>
       ipcRenderer.invoke("slide:save-review", workspacePath, document),
+    acceptSource: (
+      workspacePath: string,
+      opts?: AcceptOptions,
+    ): Promise<AcceptSourceResult> =>
+      ipcRenderer.invoke("slide:accept-source", workspacePath, opts),
     acceptClean: (
       workspacePath: string,
       opts?: AcceptOptions,

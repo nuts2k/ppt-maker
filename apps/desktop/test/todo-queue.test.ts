@@ -59,7 +59,9 @@ function sessionResult(slideId: string, gate: string | null): SessionRunResult {
       ? "validate-review"
       : gate === "human-edit"
         ? "review"
-        : null;
+        : gate === "source"
+          ? "accept-source"
+          : null;
   return {
     slideId,
     gate,
@@ -71,8 +73,21 @@ function sessionResult(slideId: string, gate: string | null): SessionRunResult {
 
 /** 跑完全流程的页（所有执行阶段 completed） */
 const ALL_DONE = RUN_STAGE_SEQUENCE;
+/**
+ * 源图已确认。
+ *
+ * 凡是跑过 ocr 的页都必然满足它：`accept-source` 是 ocr 的前置依赖，导入页在建立
+ * 工作区时就自动放行为 completed。夹具里不列它，等于造出一个真实链路里不存在的
+ * 「源图没确认却已经跑到 pptx」的页。
+ */
+const SOURCE_CONFIRMED: RunStage[] = ["accept-source"];
 /** 复核稿已生成 */
-const THROUGH_REVIEW: RunStage[] = ["ocr", "review", "assist-review"];
+const THROUGH_REVIEW: RunStage[] = [
+  ...SOURCE_CONFIRMED,
+  "ocr",
+  "review",
+  "assist-review",
+];
 /** 跑到 clean 完成（收敛后 accept-clean 不再单独停顿） */
 const THROUGH_CLEAN: RunStage[] = [
   ...THROUGH_REVIEW,
@@ -82,6 +97,96 @@ const THROUGH_CLEAN: RunStage[] = [
 ];
 /** 跑到 pptx 完成、等待最终确认 */
 const THROUGH_PPTX: RunStage[] = [...THROUGH_CLEAN, "pptx"];
+
+/*
+ * 2026-08-01 真机走查暴露的缺口：生成图停在源图确认后，队列与「待处理」筛选里
+ * 都没有这一页——`gate: "source"` 落在会话层，而 deriveSlideItem 只认
+ * validation-failed 与 human-edit 两个 gate。刷新之后连会话层也没了，这页被
+ * 归入「未开始」，界面上再没有任何线索。
+ */
+describe("deriveTodoQueue 待确认源图组", () => {
+  it("accept-source 未完成即入队，无需任何会话结果（刷新后仍在）", () => {
+    const queue = deriveTodoQueue(
+      [makeSlide({ pageLabel: "page-02", currentStage: "init" })],
+      {},
+    );
+
+    expect(queue.total).toBe(1);
+    expect(queue.groups[0]?.group).toBe("confirm-source");
+    expect(queue.groups[0]?.label).toBe("待确认源图");
+    expect(queue.groups[0]?.items[0]).toMatchObject({
+      pageLabel: "page-02",
+      reason: "源图待人工确认，确认后链路才会继续",
+      stage: "accept-source",
+    });
+  });
+
+  it("自动放行的导入页不入队（accept-source 建立工作区时即 completed）", () => {
+    const queue = deriveTodoQueue(
+      [
+        makeSlide({
+          pageLabel: "page-01",
+          currentStage: "accept-source",
+          completed: SOURCE_CONFIRMED,
+        }),
+      ],
+      {},
+    );
+
+    expect(queue.total).toBe(0);
+  });
+
+  /** 判据必须取耐久层：会话层的 source 闸门管不了刷新，也不该反过来盖住耐久事实 */
+  it("accept-source 已完成时，残留的 source 会话闸门不足以让它重新入队", () => {
+    const slide = makeSlide({
+      pageLabel: "page-01",
+      currentStage: "accept-source",
+      completed: SOURCE_CONFIRMED,
+    });
+    const queue = deriveTodoQueue([slide], {
+      [slide.slideId]: sessionResult(slide.slideId, "source"),
+    });
+
+    expect(queue.total).toBe(0);
+  });
+
+  /** 显式失效源图确认（阶段轨道上重跑该节点）同样是欠着的人工确认 */
+  it("accept-source 被置为 stale 时仍算欠一次确认", () => {
+    const queue = deriveTodoQueue(
+      [
+        makeSlide({
+          pageLabel: "page-02",
+          currentStage: "init",
+          stageStatuses: { "accept-source": "stale" },
+        }),
+      ],
+      {},
+    );
+
+    expect(queue.groups[0]?.group).toBe("confirm-source");
+  });
+
+  it("失败态仍然优先（failed 居首是既定约定，源图确认不抢它）", () => {
+    const queue = deriveTodoQueue(
+      [
+        makeSlide({
+          pageLabel: "page-02",
+          currentStage: "init",
+          stageStatus: "failed",
+          lastError: {
+            stage: "init",
+            code: "INVALID_ASPECT_RATIO",
+            message: "源图不是 16:9",
+            at: "2026-08-01T00:00:00.000Z",
+          },
+        }),
+      ],
+      {},
+    );
+
+    expect(queue.groups[0]?.group).toBe("failed");
+  });
+});
 
 describe("deriveTodoQueue 四组判定", () => {
   it("耐久层 failed 归入失败组，原因取 lastError 的 code + message", () => {
@@ -229,7 +334,7 @@ describe("deriveTodoQueue 四组判定", () => {
         makeSlide({
           pageLabel: "page-01",
           currentStage: "ocr",
-          completed: ["ocr"],
+          completed: [...SOURCE_CONFIRMED, "ocr"],
           pendingTextReview: 12,
         }),
       ],
@@ -360,26 +465,28 @@ describe("deriveTodoQueue 优先级与去重", () => {
     expect(queue.groups[0]?.group).toBe("review-text");
   });
 
-  it("组顺序固定为 failed → fix-validation → review-text → final-confirm", () => {
+  it("组顺序固定为 failed → confirm-source → fix-validation → review-text → final-confirm", () => {
     const revalidating = makeSlide({
-      pageLabel: "page-02",
+      pageLabel: "page-03",
       currentStage: "assist-review",
       completed: THROUGH_REVIEW,
     });
     const queue = deriveTodoQueue(
       [
         makeSlide({
-          pageLabel: "page-04",
+          pageLabel: "page-05",
           currentStage: "pptx",
           completed: THROUGH_PPTX,
         }),
         makeSlide({
-          pageLabel: "page-03",
+          pageLabel: "page-04",
           currentStage: "assist-review",
           completed: THROUGH_REVIEW,
           pendingTextReview: 7,
         }),
         revalidating,
+        // 生成图，停在源图确认：init 完成、accept-source 仍 pending
+        makeSlide({ pageLabel: "page-02", currentStage: "init" }),
         makeSlide({
           pageLabel: "page-01",
           currentStage: "ocr",
@@ -396,11 +503,12 @@ describe("deriveTodoQueue 优先级与去重", () => {
 
     expect(queue.groups.map((group) => group.group)).toEqual([
       "failed",
+      "confirm-source",
       "fix-validation",
       "review-text",
       "final-confirm",
     ]);
-    expect(queue.total).toBe(4);
+    expect(queue.total).toBe(5);
   });
 });
 

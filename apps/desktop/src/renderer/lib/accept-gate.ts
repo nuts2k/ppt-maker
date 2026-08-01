@@ -1,5 +1,9 @@
 /**
- * 最终确认闸门判定 —— 单页确认页与待办队列共用的唯一判据来源。
+ * 人工闸门判定 —— 单页视图与待办队列共用的唯一判据来源。
+ *
+ * 覆盖链路两端的两个耐久闸门：开头的源图确认（`awaitingSourceConfirm`，M5 D6 起
+ * 按来源条件性激活）与末尾的最终产物确认（下方全部判据）。中段的文本复核门没有
+ * 独立的耐久阶段，判据在 todo-queue 里由 `pendingTextReview` 承担。
  *
  * 链路收敛后（PRD D1）人工停点只剩两个：前段的文本复核门与末尾的最终产物确认。
  * `accept-clean` 不再单独停顿，本文件也随之从「两个验收阶段」收敛为单一闸门。
@@ -59,6 +63,32 @@ export function stageStatusOf(
   stage: RunStage,
 ): string | undefined {
   return slide.stages.find((detail) => detail.stage === stage)?.status;
+}
+
+/**
+ * 该页仍欠一次源图确认（纯耐久层判据）。
+ *
+ * `accept-source` 对 `imported` / `extracted` 在建立工作区或换源时就被自动放行为
+ * `completed`（不写 accepted.json，事实记在 attempt 上），因此这条判据只会在
+ * `generated` 页上成立——消费方不必也不得自己去看 `source.kind`。
+ *
+ * **必须取耐久层，不能取会话层的 `gate === "source"`**：run 停在源图确认时会话层
+ * 确实带着这个 gate，但它只活在本次进程里。2026-08-01 真机走查实测——刷新之后
+ * 这一页从待办队列与「待处理」筛选里一起消失，只剩活动日志里一行默认折叠的记录，
+ * 界面上再无任何线索说明它为什么不往下走。
+ *
+ * 判据写成「非 completed」而不是「pending」：显式失效（阶段轨道上点这个节点重跑）
+ * 会把它置为 `stale`，那同样是一次欠着的人工确认。
+ *
+ * 阶段整个缺失是**状态未知**（已移除的页、manifest 读不出来的页在 `deck.ts` 里
+ * 拿到的都是 `stages: []`），不是「欠一次确认」——对一个连工作区都加载不了的页
+ * 说「去确认源图」是假信息，那页真正的问题写在 `lastError` 里。
+ */
+export function awaitingSourceConfirm(
+  slide: Pick<SlideDetail, "stages">,
+): boolean {
+  const status = stageStatusOf(slide, "accept-source");
+  return status !== undefined && status !== "completed";
 }
 
 /** PPTX 已产出：最终确认页有内容可看，与是否已验收无关（纯耐久层判据） */

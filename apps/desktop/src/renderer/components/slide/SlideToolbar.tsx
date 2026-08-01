@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ImageUp,
   Play,
+  ScanEye,
 } from "lucide-react";
 import {
   Button,
@@ -69,6 +70,20 @@ interface SlideToolbarProps {
    * 逐项确认在 BlockListPanel 内完成。
    */
   readonly unreviewedCount: number;
+  /**
+   * 该页仍欠一次源图确认（`accept-source` 未完成）；决定「确认源图」是否出现。
+   *
+   * 只有 `generated` 页会为真——判据由 `lib/accept-gate` 的 `awaitingSourceConfirm`
+   * 单点给出，工具栏不自己看来源。
+   */
+  readonly awaitingSourceConfirm: boolean;
+  /**
+   * 人工验收正在写盘（源图确认与最终确认共用这一个在途标记，两者互斥出现）。
+   *
+   * 有它才能把「确认源图」压成 loading 态——否则重复点击会在 manifest 里追加出
+   * 第二条本不该存在的验收 attempt。
+   */
+  readonly submitting: boolean;
   /** 本页正在执行：禁用执行类动作，避免同一页被重复入队 */
   readonly pageBusy: boolean;
   /** 待办队列中的下一项；null 表示队列内已无其它页 */
@@ -79,6 +94,8 @@ interface SlideToolbarProps {
 
   readonly onBack: () => void;
   readonly onNavigate: (slideId: string) => void;
+  /** 确认这一页的源图可用，放行下游 */
+  readonly onAcceptSource: () => void;
   /** 换掉这一页的源图；选图与二次确认由 main 侧的系统对话框承担 */
   readonly onReplaceSource: () => void;
   readonly onViewModeChange: (mode: SlideViewMode) => void;
@@ -95,10 +112,13 @@ export function SlideToolbar({
   hasFinalGate,
   dirty,
   unreviewedCount,
+  awaitingSourceConfirm,
+  submitting,
   pageBusy,
   nextTodo,
   onBack,
   onNavigate,
+  onAcceptSource,
   onReplaceSource,
   onViewModeChange,
   onSave,
@@ -237,6 +257,26 @@ export function SlideToolbar({
             />
             未保存
           </span>
+        )}
+
+        {/*
+          「确认源图 / 换源」成对出现，是这一页停在源图确认时的全部选择：这张图能用
+          就放行，不能用就换一张。因此确认取 secondary 而非 primary——同屏的
+          primary 已经给了「运行此页」，两个主按钮并排就没有主行动可言了
+          （DESIGN.md：primary 全屏唯一）。
+        */}
+        {awaitingSourceConfirm && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onAcceptSource}
+            disabled={pageBusy || submitting}
+            loading={submitting}
+            title="确认这一页的源图可用；确认后下游阶段才会执行"
+          >
+            {!submitting && <ScanEye aria-hidden="true" className="size-3.5" />}
+            确认源图
+          </Button>
         )}
 
         {/*

@@ -5,6 +5,7 @@ import type {
 } from "../src/main/ipc/channels.js";
 import {
   awaitingFinalConfirm,
+  awaitingSourceConfirm,
   deriveFinalGate,
   finalAccepted,
   pptxReady,
@@ -54,6 +55,40 @@ describe("stageStatusOf", () => {
     const slide = makeSlide(THROUGH_CLEAN);
     expect(stageStatusOf(slide, "clean")).toBe("completed");
     expect(stageStatusOf(slide, "pptx")).toBe("pending");
+  });
+});
+
+/*
+ * 源图确认（M5 D6）：链路最前的人工点，判据只看耐久层的 accept-source 阶段状态。
+ * 单页工具栏的「确认源图」入口与待办队列的「待确认源图」组共用这一个函数——
+ * 两处各写一份 filter 必然漂移，而这里漂移的后果是「界面说要确认、队列里没有」。
+ */
+describe("awaitingSourceConfirm（耐久层判据）", () => {
+  it("accept-source 未完成时成立（生成图停在这里）", () => {
+    expect(awaitingSourceConfirm(makeSlide([]))).toBe(true);
+  });
+
+  it("自动放行的导入页不成立", () => {
+    expect(awaitingSourceConfirm(makeSlide(["accept-source"]))).toBe(false);
+    expect(awaitingSourceConfirm(makeSlide(RUN_STAGE_SEQUENCE))).toBe(false);
+  });
+
+  /** 已移除 / manifest 读不出来的页在 deck.ts 里拿到的是 stages: []，状态未知 */
+  it("阶段整个缺失时不成立（未知 ≠ 欠一次确认）", () => {
+    expect(awaitingSourceConfirm({ stages: [] })).toBe(false);
+  });
+
+  it("被显式失效为 stale 时仍成立（不是只认 pending）", () => {
+    const slide = {
+      stages: RUN_STAGE_SEQUENCE.map((stage) => ({
+        stage,
+        status:
+          stage === "accept-source"
+            ? ("stale" as const)
+            : ("completed" as const),
+      })),
+    };
+    expect(awaitingSourceConfirm(slide)).toBe(true);
   });
 });
 

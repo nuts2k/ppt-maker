@@ -3,11 +3,12 @@
  *
  * 链路收敛后（PRD D1/R1.6）人工停点只剩文本复核与最终确认两个，分组随之改为
  * 失败 / 需修数据错误 / 需文本复核 / 待最终确认，原「待验收底图」组删除。
+ * M5 D6 起源图确认成为按来源条件性激活的第三个人工点，对应「待确认源图」组。
  *
  * 队列由两层数据合并而来：
  * - **耐久层**：`SlideDetail`（manifest 聚合 + main 侧读复核稿得到的
- *   `pendingTextReview`），重启后仍可恢复。覆盖失败/中断/失效、需文本复核、
- *   待最终确认三类。
+ *   `pendingTextReview`），重启后仍可恢复。覆盖失败/中断/失效、待确认源图、
+ *   需文本复核、待最终确认四类。
  * - **会话层**：`SessionRunResult`（本次进程的 page-done 结果），用于表达耐久层
  *   无法区分或写入时序尚未反映的态：`validation-failed` 没有任何耐久标记，
  *   应用重启后这些页会被耐久层归入失败组（停在 validate-review 之前的阶段），
@@ -26,12 +27,17 @@
 
 import type { SlideDetail } from "../../main/ipc/channels.js";
 import { stageLabel } from "../../shared/stages.js";
-import { awaitingFinalConfirm, stageStatusOf } from "../lib/accept-gate.js";
+import {
+  awaitingFinalConfirm,
+  awaitingSourceConfirm,
+  stageStatusOf,
+} from "../lib/accept-gate.js";
 import { blockingStageView, deriveStageViews } from "../lib/stage-view.js";
 import type { SessionRunResult } from "./run-types.js";
 
 export type TodoGroup =
   | "failed"
+  | "confirm-source"
   | "fix-validation"
   | "review-text"
   | "final-confirm";
@@ -57,9 +63,16 @@ export interface TodoQueue {
   readonly total: number;
 }
 
-/** 分组优先级 = 分组展示顺序 = 单页命中多条规则时的取用顺序 */
+/**
+ * 分组优先级 = 分组展示顺序 = 单页命中多条规则时的取用顺序。
+ *
+ * `confirm-source` 排在 `failed` 之后、其余之前：它是链路最前的人工点，一页停在
+ * 这里时下游一个阶段都跑不了，所以要靠前；但它不是错误态，不该抢 `failed` 的首位
+ * （`failed` 居首是本文件既有的约定，见上方注释，不动它）。
+ */
 const GROUP_ORDER: readonly TodoGroup[] = [
   "failed",
+  "confirm-source",
   "fix-validation",
   "review-text",
   "final-confirm",
@@ -67,6 +80,7 @@ const GROUP_ORDER: readonly TodoGroup[] = [
 
 const GROUP_LABELS: Readonly<Record<TodoGroup, string>> = {
   failed: "失败/需重跑",
+  "confirm-source": "待确认源图",
   "fix-validation": "需修数据错误",
   "review-text": "需文本复核",
   "final-confirm": "待最终确认",
@@ -151,6 +165,22 @@ function deriveSlideItem(
       group: "failed",
       reason: failedReason(slide),
       stage: slide.lastError?.stage ?? slide.currentStage,
+    };
+  }
+
+  /*
+   * 源图确认（M5 D6）：判据取耐久层的 `accept-source` 阶段状态，**不看**会话层的
+   * `gate === "source"`。2026-08-01 真机走查实测：run 停在源图确认时会话层确实带着
+   * 这个 gate，但它只活在本次进程里——刷新之后该页从队列与「待处理」筛选里一起
+   * 消失（`stageStatus` 为 init 的 completed，被归入「未开始」），界面上再没有任何
+   * 线索说明它为什么不往下走。
+   */
+  if (awaitingSourceConfirm(slide)) {
+    return {
+      ...base,
+      group: "confirm-source",
+      reason: "源图待人工确认，确认后链路才会继续",
+      stage: "accept-source",
     };
   }
 

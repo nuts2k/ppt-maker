@@ -5,6 +5,7 @@ import {
   CircleX,
   type LucideIcon,
   PenLine,
+  ScanEye,
   Stamp,
   TriangleAlert,
 } from "lucide-react";
@@ -30,7 +31,8 @@ import { useUIStore } from "@/stores/ui-store";
  *
  * 两条视觉约定：
  * 1. **不用彩色左竖条**（DESIGN.md 明令禁止）。分组紧迫度由顺序 + 图标 + 一处文字色承担：
- *    失败给失败色、需修数据给失效色、需文本复核给校对红（这是字面意义上的「待我处理」），
+ *    失败给失败色、需修数据给失效色、待确认源图与需文本复核给校对红（这两个都是
+ *    字面意义上的「待我处理」，且各自卡着后面全部阶段），
  *    待最终确认保持中性——它不是故障，只是等你拍板。
  * 2. **空态不占固定宽度**。无待办时整栏收成 40px 窄条，不再拿 240px 去显示一行
  *    「暂无待办」。窄条上不放展开按钮：没有内容可展开时给个按钮等于制造一次空点击。
@@ -45,6 +47,7 @@ const GROUP_SPEC: Readonly<
   Record<TodoGroup, { readonly icon: LucideIcon; readonly tone: string }>
 > = {
   failed: { icon: CircleX, tone: "text-state-failed" },
+  "confirm-source": { icon: ScanEye, tone: "text-proof" },
   "fix-validation": { icon: TriangleAlert, tone: "text-state-stale" },
   "review-text": { icon: PenLine, tone: "text-proof" },
   "final-confirm": { icon: Stamp, tone: "text-ink-secondary" },

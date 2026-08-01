@@ -119,6 +119,17 @@ export interface ReplaceSourceResult {
   readonly requiresAcceptance?: boolean;
 }
 
+/**
+ * 源图确认结果（M5 D6）。
+ *
+ * 只有 `generated` 页会走到这里，`imported` / `extracted` 在建立工作区或换源时
+ * 已自动放行；对它们调用会被 CLI 侧拒绝并抛错，界面照常显示原因。
+ */
+export interface AcceptSourceResult {
+  readonly acceptedPath: string;
+  readonly acceptanceId: string;
+}
+
 /** 最终确认一次写入 accept-clean + accept-pptx 两条验收记录的结果 */
 export interface AcceptFinalResult {
   readonly cleanAcceptanceId: string;
@@ -261,6 +272,11 @@ export interface IpcApi {
       workspacePath: string,
       document: TextReviewDocument,
     ): Promise<SaveReviewResult>;
+    /** 源图确认：链路最前的人工点，只对需要确认的来源（生成图）开放 */
+    acceptSource(
+      workspacePath: string,
+      opts?: AcceptOptions,
+    ): Promise<AcceptSourceResult>;
     acceptClean(
       workspacePath: string,
       opts?: AcceptOptions,

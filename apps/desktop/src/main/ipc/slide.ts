@@ -4,6 +4,7 @@ import { runAcceptClean } from "@cli/clean/accept.js";
 import { runAcceptPptx } from "@cli/pptx/accept.js";
 import { runSlideReport } from "@cli/report/run.js";
 import { runAcceptFinal } from "@cli/slide/accept-final.js";
+import { runAcceptSource } from "@cli/slide/accept-source.js";
 import { invalidateSlideStage } from "@cli/slide/invalidate.js";
 import { replaceSlideSource } from "@cli/slide/replace-source.js";
 import { loadSlideWorkspace } from "@cli/slide/workspace.js";
@@ -28,6 +29,7 @@ import {
 import type {
   AcceptFinalResult,
   AcceptOptions,
+  AcceptSourceResult,
   ActivityResult,
   FinalChecks,
   ReplaceSourceResult,
@@ -123,6 +125,51 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
         (v) => v.severity === "warning",
       ).length;
       return { valid: errors === 0, errors, warnings, invalidated };
+    },
+  );
+
+  /*
+   * 源图确认（M5 D6）：链路最前的人工闸门，`generated` 页在此停下等人拍板。
+   *
+   * 全部语义在 CLI 的 runAcceptSource 内——来源是否需要确认、上游 init 是否成立、
+   * 产物完整性、accepted.json 与 attempt 怎么写，main 侧一律不复写（design S9）。
+   * 对 imported / extracted 调用会被那边直接拒绝，错误照常冒泡给界面。
+   */
+  ipcMain.handle(
+    "slide:accept-source",
+    async (
+      _event,
+      workspacePath: string,
+      opts?: AcceptOptions,
+    ): Promise<AcceptSourceResult> => {
+      try {
+        const result = await runAcceptSource({
+          workspacePath: resolve(workspacePath),
+          ...(opts?.acceptedBy ? { acceptedBy: opts.acceptedBy } : {}),
+          ...(opts?.note ? { note: opts.note } : {}),
+        });
+        await log(
+          workspacePath,
+          "accept-source",
+          "accept-source",
+          "success",
+          `确认源图可用：${result.acceptanceId}`,
+        );
+        return {
+          acceptedPath: result.acceptedPath,
+          acceptanceId: result.acceptanceId,
+        };
+      } catch (error) {
+        await log(
+          workspacePath,
+          "accept-source",
+          "accept-source",
+          "failure",
+          `确认源图失败：${error instanceof Error ? error.message : String(error)}`,
+        );
+        // 与换源同一口径：界面必须看见失败，不能吞掉后返回一个成功壳
+        throw error;
+      }
     },
   );
 
