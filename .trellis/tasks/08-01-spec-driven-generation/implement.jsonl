@@ -1,1 +1,7 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "含〈多代资产与「当前产物」选取契约〉——本任务新增的 content_spec / generation_prompt 每次重生成各出一份，必然多代，禁止裸 role 查找，判据须从该节三类里选。同时含工作区 manifest、指纹与失效投影、ArtifactAcceptance 三门的既有契约，deck generate 落库不得另造机制"}
+{"file": ".trellis/spec/guides/verification-coverage-thinking-guide.md", "reason": "prd 的 C5 / C9 / C10 三条验收标准的形状直接照它设计。核心是「验收止步于哪里，缺陷就藏在哪之后」：C5 必须跑完整链路后重生成再继续跑到底，C9 的 fixture 必须先断言该 role 恰好 3 条，否则用例可能什么都没覆盖"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "阶段一扩三处闭合枚举（role / ProviderCallRecord.stage / provider），会同时波及 core 契约校验、CLI 消费点与桌面端展示；provider 由 literal 放宽为 enum 是唯一的非追加式变更，漏改任一层即退化为静默不一致"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "本任务两处高危静默失败：生成资产尺寸若用请求参数填充则 manifest 与磁盘不符而 sha 校验查不出（RK1 衍生约束，clean/run.ts:329 是现成反例）；replaceSlideSource 不更新 reference_text 会让规格文字与图声称的意图脱节"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "生成失败、规格校验失败、specEntryId 重复、条目失联都要用既有 FoundationError 错误码体系表达，不自造错误表达；deck generate 单页失败不中断整批的退出码口径须与既有约定一致"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "本任务大量复用而非重写：generatePageImage 已存在无调用点、replaceSlideSource 已实现换源全套语义、responses.parse + zodTextFormat 已是既有结构化输出模式、sha256Values 已是既有稳定哈希。任何「另写一份」都要先说明为何不能复用"}
+{"file": ".trellis/tasks/08-01-spec-driven-generation/research/rk1/CONCLUSION.md", "reason": "RK1 实证结论与两条衍生约束的完整证据链。动手前必读第 4 条判读：尺寸不稳定（940/941 都出现过），生成资产尺寸必须落盘后实测"}

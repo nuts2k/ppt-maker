@@ -1,1 +1,5 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/guides/verification-coverage-thinking-guide.md", "reason": "判断每条验收标准能否勾掉的唯一依据。特别是那张表：自动化测试全绿但没在真实历史数据上跑过则兼容类（C13）不能勾；操作成功但没跑下游则涉及新一代产物的（C5）不能勾；人工步骤被代劳且结论依赖人工质量（C12 风格一致性）只能标 [~]"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "核对本任务是否违反既有跨层契约：新增 role 的当前产物选取是否用了裸 find、生成落库是否同时写了 assets/stages/attempts 三样（阶段落库契约，漏写会让阶段恒 pending）、自动放行是否仍未伪造人工痕迹"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "后端代码质量门槛与测试要求的既有标准，check 阶段照它核对"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "「界面说成功但产物不对」的定位顺序。本任务最可能的静默失败是生成成功但资产元数据与磁盘不符、以及重生成后 reference_text 未更新"}
+{"file": ".trellis/tasks/08-01-spec-driven-generation/prd.md", "reason": "C1–C13 验收标准的权威定义与每条的覆盖形状要求，逐条核对时以它为准"}
