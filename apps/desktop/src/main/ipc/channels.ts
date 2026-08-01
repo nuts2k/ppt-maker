@@ -104,6 +104,21 @@ export interface SaveReviewResult {
   readonly invalidated: readonly string[];
 }
 
+/**
+ * 换源结果。
+ *
+ * `replaced: false` 表示用户在选图或二次确认处取消——不是失败。真正的失败会抛错，
+ * 让界面看见原因，而不是退化成一个「没换成但也没说为什么」的成功壳。
+ */
+export interface ReplaceSourceResult {
+  readonly replaced: boolean;
+  /** 由 completed 转为 stale 的阶段 */
+  readonly invalidated?: readonly string[];
+  readonly archivedReview?: boolean;
+  /** 新来源是否需要人工确认源图（换成生成图时为 true） */
+  readonly requiresAcceptance?: boolean;
+}
+
 /** 最终确认一次写入 accept-clean + accept-pptx 两条验收记录的结果 */
 export interface AcceptFinalResult {
   readonly cleanAcceptanceId: string;
@@ -266,6 +281,11 @@ export interface IpcApi {
     /** 读取最终确认页要展示的 pptx 六项检查与 clean 裸指标 */
     loadFinalChecks(workspacePath: string): Promise<FinalChecks>;
     loadImage(workspacePath: string, role: string): Promise<string | null>;
+    /**
+     * 换源：main 侧串起「选图 → 二次确认 → 执行」。
+     * 用户在任一步取消时返回 `{ replaced: false }`，renderer 据此不刷新也不报成功。
+     */
+    replaceSource(workspacePath: string): Promise<ReplaceSourceResult>;
     /** 拒绝验收：把该阶段及下游标为 stale，让随后的 run 强制重做 */
     invalidateStage(
       workspacePath: string,

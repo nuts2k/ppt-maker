@@ -1,5 +1,11 @@
 import { stageLabel } from "@shared/stages";
-import { ArrowLeft, ChevronLeft, ChevronRight, Play } from "lucide-react";
+import {
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  ImageUp,
+  Play,
+} from "lucide-react";
 import {
   Button,
   IconButton,
@@ -73,6 +79,8 @@ interface SlideToolbarProps {
 
   readonly onBack: () => void;
   readonly onNavigate: (slideId: string) => void;
+  /** 换掉这一页的源图；选图与二次确认由 main 侧的系统对话框承担 */
+  readonly onReplaceSource: () => void;
   readonly onViewModeChange: (mode: SlideViewMode) => void;
   readonly onSave: () => void;
   readonly onRunSlide: () => void;
@@ -91,6 +99,7 @@ export function SlideToolbar({
   nextTodo,
   onBack,
   onNavigate,
+  onReplaceSource,
   onViewModeChange,
   onSave,
   onRunSlide,
@@ -229,6 +238,22 @@ export function SlideToolbar({
             未保存
           </span>
         )}
+
+        {/*
+          换源是低频且带破坏性的动作：ghost 权重、排在保存与运行之前，
+          确认与「保留已确认文字块」勾选交给系统原生对话框（破坏性动作的标准控件）。
+          本页执行中时禁用——换源会重写 manifest，与执行器并发写同一份文件。
+        */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onReplaceSource}
+          disabled={pageBusy}
+          title="替换这一页的源图；该页下游会重新执行，其它页不受影响"
+        >
+          <ImageUp aria-hidden="true" className="size-3.5" />
+          换源
+        </Button>
 
         <Button
           variant="secondary"

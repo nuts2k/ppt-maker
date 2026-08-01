@@ -1,6 +1,7 @@
 import type {
   SlideStage,
   SlideWorkspaceManifest,
+  WorkspaceAsset,
   WorkspaceStageAttempt,
   WorkspaceStageState,
 } from "@ppt-maker/core";
@@ -8,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeResumeStage,
   computeStageDurations,
+  currentSourceImageAsset,
   deriveStageDetails,
   extractLastError,
 } from "../src/main/slide-detail.js";
@@ -320,5 +322,50 @@ describe("computeStageDurations", () => {
       attempt("ocr", "running", "2026-07-01T00:00:00.000Z", null),
     ]);
     expect(computeStageDurations(manifest)).toEqual({});
+  });
+});
+
+describe("currentSourceImageAsset", () => {
+  function sourceAsset(id: string, path: string): WorkspaceAsset {
+    return {
+      schemaVersion: 1,
+      id,
+      path,
+      role: "source_image",
+      sha256: "a".repeat(64),
+      byteSize: 1,
+      createdAt: "2026-07-01T00:00:00.000Z",
+      producedBy: "init",
+      attemptId: "init-001",
+      image: { width: 1920, height: 1080, format: "png" },
+    };
+  }
+
+  /*
+   * 换源后 assets 里同时有旧图与新图（旧图刻意保留，换源历史因此可查）。
+   * 按 role 取第一条拿到的是已被替换掉的那张——换完源界面继续显示旧图，
+   * 与磁盘事实相反。唯一可信的判据是 sourceImageAssetId。
+   */
+  it("换源后取的是 sourceImageAssetId 指向的那张，不是第一条", () => {
+    const manifest: SlideWorkspaceManifest = {
+      ...buildManifest(["init"]),
+      sourceImageAssetId: "asset-source-image-2",
+      assets: [
+        sourceAsset("asset-source-image", "inputs/source.png"),
+        sourceAsset("asset-source-image-2", "inputs/source-2.png"),
+      ],
+    };
+
+    expect(currentSourceImageAsset(manifest)?.path).toBe("inputs/source-2.png");
+  });
+
+  it("找不到时返回 undefined，不退回任意一条", () => {
+    const manifest: SlideWorkspaceManifest = {
+      ...buildManifest(["init"]),
+      sourceImageAssetId: "asset-missing",
+      assets: [sourceAsset("asset-source-image", "inputs/source.png")],
+    };
+
+    expect(currentSourceImageAsset(manifest)).toBeUndefined();
   });
 });

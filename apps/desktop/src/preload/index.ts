@@ -13,6 +13,7 @@ import type {
   DoctorReport,
   FinalChecks,
   IpcApi,
+  ReplaceSourceResult,
   SaveReviewResult,
 } from "../main/ipc/channels.js";
 import type { RunStage } from "../shared/stages.js";
@@ -82,6 +83,8 @@ const api: IpcApi = {
       ipcRenderer.invoke("slide:load-final-checks", workspacePath),
     loadImage: (workspacePath: string, role: string): Promise<string | null> =>
       ipcRenderer.invoke("slide:load-image", workspacePath, role),
+    replaceSource: (workspacePath: string): Promise<ReplaceSourceResult> =>
+      ipcRenderer.invoke("slide:replace-source", workspacePath),
     invalidateStage: (
       workspacePath: string,
       stage: RunStage,

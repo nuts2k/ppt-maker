@@ -112,6 +112,21 @@ function currentSuccessAsset(
   );
 }
 
+/**
+ * 当前源图资产。
+ *
+ * 换源后 `assets` 里会有多条 `source_image`（旧图刻意保留，换源历史因此可查），
+ * 按 role 取第一条拿到的是**已被替换掉的旧图**——界面会在换完源之后继续显示旧图，
+ * 与磁盘事实相反。唯一可信的判据是 `sourceImageAssetId`。
+ */
+export function currentSourceImageAsset(
+  manifest: SlideWorkspaceManifest,
+): WorkspaceAsset | undefined {
+  return manifest.assets.find(
+    (asset) => asset.id === manifest.sourceImageAssetId,
+  );
+}
+
 async function readJsonAsset<T>(
   absWorkspacePath: string,
   asset: WorkspaceAsset | undefined,

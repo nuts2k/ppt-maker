@@ -390,6 +390,44 @@ export function ReviewPage(): React.JSX.Element {
     refreshSlide,
   ]);
 
+  /**
+   * 换源：main 侧串起选图与二次确认，这里只负责把界面拉回与磁盘一致的状态。
+   *
+   * 三样都要刷新，少一样就会出现「界面说的和磁盘不一样」：
+   * 复核文档（默认已被归档，界面上那份是旧图的）、源图预览、卡片的阶段状态。
+   */
+  const handleReplaceSource = useCallback(() => {
+    if (workspacePath === null || slideId === null) return;
+    void (async () => {
+      try {
+        const result = await window.api.slide.replaceSource(workspacePath);
+        if (!result.replaced) return;
+        clearSessionResult(slideId);
+        clearLiveStages(slideId);
+        await loadSlide(workspacePath);
+        await refreshSlide(slideId);
+        setNotice({
+          ok: true,
+          message: result.requiresAcceptance
+            ? "已换源；新源图需先确认才会继续下游"
+            : `已换源${result.archivedReview ? "，旧复核稿已归档" : ""}；点「运行此页」重新处理`,
+        });
+      } catch (error) {
+        setNotice({
+          ok: false,
+          message: `换源失败：${error instanceof Error ? error.message : String(error)}`,
+        });
+      }
+    })();
+  }, [
+    workspacePath,
+    slideId,
+    loadSlide,
+    refreshSlide,
+    clearSessionResult,
+    clearLiveStages,
+  ]);
+
   const handleNextTodo = useCallback(() => {
     if (nextTodo === null) return;
     openSlide(nextTodo.slideId);
@@ -426,6 +464,7 @@ export function ReviewPage(): React.JSX.Element {
         }
         onBack={backToConsole}
         onNavigate={openSlide}
+        onReplaceSource={handleReplaceSource}
         onViewModeChange={setViewMode}
         onSave={() => void handleSave()}
         onRunSlide={() => startRun()}

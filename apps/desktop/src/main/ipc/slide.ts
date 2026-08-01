@@ -1,10 +1,11 @@
 import { readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { runAcceptClean } from "@cli/clean/accept.js";
 import { runAcceptPptx } from "@cli/pptx/accept.js";
 import { runSlideReport } from "@cli/report/run.js";
 import { runAcceptFinal } from "@cli/slide/accept-final.js";
 import { invalidateSlideStage } from "@cli/slide/invalidate.js";
+import { replaceSlideSource } from "@cli/slide/replace-source.js";
 import { loadSlideWorkspace } from "@cli/slide/workspace.js";
 import {
   type SlideStage,
@@ -12,12 +13,13 @@ import {
   TextReviewDocumentSchema,
   validateTextReviewDocument,
 } from "@ppt-maker/core";
-import { ipcMain, shell } from "electron";
+import { dialog, ipcMain, shell } from "electron";
 import { resolveInvalidationTarget } from "../../shared/stages.js";
 import { type ActivityLog, buildActivityRecord } from "../activity-log.js";
 import { resolveDeckContext } from "../deck-context.js";
 import { decideInvalidation } from "../save-invalidation.js";
 import {
+  currentSourceImageAsset,
   loadTextReviewDocument,
   REVIEW_RELATIVE_PATH,
   readFinalChecks,
@@ -28,6 +30,7 @@ import type {
   AcceptOptions,
   ActivityResult,
   FinalChecks,
+  ReplaceSourceResult,
 } from "./channels.js";
 
 export function registerSlideHandlers(activityLog: ActivityLog): void {
@@ -109,9 +112,9 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
       }
 
       const workspace = await loadSlideWorkspace(ws);
-      const sourceImage = workspace.manifest.assets.find(
-        (a) => a.role === "source_image",
-      );
+      // 按 sourceImageAssetId 取：换源后 assets 里的第一条是旧图，用它的尺寸校验
+      // 文字块坐标会得出与当前图无关的结论
+      const sourceImage = currentSourceImageAsset(workspace.manifest);
       const violations = validateTextReviewDocument(parsed, {
         image: sourceImage?.image ?? parsed.image,
       });
@@ -301,7 +304,12 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
     ): Promise<string | null> => {
       const ws = resolve(workspacePath);
       const workspace = await loadSlideWorkspace(ws);
-      const asset = workspace.manifest.assets.find((a) => a.role === role);
+      // 源图有多条资产（换源保留旧图），只有 sourceImageAssetId 指向当前那张。
+      // 其余 role 保持既有按 role 取首条的行为，不在本次改动范围内。
+      const asset =
+        role === "source_image"
+          ? currentSourceImageAsset(workspace.manifest)
+          : workspace.manifest.assets.find((a) => a.role === role);
       if (!asset) return null;
       const imagePath = join(ws, asset.path);
       try {
@@ -310,6 +318,72 @@ export function registerSlideHandlers(activityLog: ActivityLog): void {
         return `data:image/${ext};base64,${buffer.toString("base64")}`;
       } catch {
         return null;
+      }
+    },
+  );
+
+  /*
+   * 换源：选新图 → 二次确认 → 执行。
+   *
+   * 二次确认用系统原生 messageBox（含 checkbox）而不是自造 modal——它是破坏性
+   * 动作的标准控件，且「保留已确认文字块」这个选项必须默认**不勾**：
+   * 换源后旧图上的人工判断对新图不成立，继承它不是保留成果，是把过期结论
+   * 冒充为当前结论。保留是用户显式选择的结果，因此不构成静默分歧。
+   */
+  ipcMain.handle(
+    "slide:replace-source",
+    async (_event, workspacePath: string): Promise<ReplaceSourceResult> => {
+      const ws = resolve(workspacePath);
+      const picked = await dialog.showOpenDialog({
+        properties: ["openFile"],
+        filters: [{ name: "16:9 页面图", extensions: ["png", "jpg", "jpeg"] }],
+      });
+      const imagePath = picked.canceled ? undefined : picked.filePaths[0];
+      if (imagePath === undefined) {
+        return { replaced: false };
+      }
+
+      const confirm = await dialog.showMessageBox({
+        type: "warning",
+        message: "替换这一页的源图？",
+        detail:
+          "该页已确认的文字块会被归档，源图确认及下游阶段全部需要重新执行。其它页不受影响。",
+        checkboxLabel: "保留已确认的文字块（仅适用于同版式微调）",
+        checkboxChecked: false,
+        buttons: ["取消", "替换源图"],
+        defaultId: 1,
+        cancelId: 0,
+      });
+      if (confirm.response !== 1) {
+        return { replaced: false };
+      }
+
+      try {
+        const result = await replaceSlideSource({
+          workspacePath: ws,
+          imagePath,
+          keepReview: confirm.checkboxChecked,
+        });
+        await log(
+          workspacePath,
+          "replace-source",
+          "init",
+          "success",
+          `已换源为 ${basename(imagePath)}，失效：${result.invalidated.join("、") || "无"}${
+            result.archivedReview ? "，旧复核稿已归档" : ""
+          }`,
+        );
+        return {
+          replaced: true,
+          invalidated: [...result.invalidated],
+          archivedReview: result.archivedReview,
+          requiresAcceptance: result.requiresAcceptance,
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await log(workspacePath, "replace-source", "init", "failure", message);
+        // 界面必须看见失败，不能吞掉后返回一个「没换成但也没说为什么」的成功壳
+        throw error;
       }
     },
   );
