@@ -1,0 +1,4 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "父任务集成走查与子任务验收的质量口径（Node 24 / TypeScript / Biome / Vitest）"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "换源失效与来源显示是「界面说成功但产物不对」的高危区，A3 走查须按该指南定位真实失败点"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "桌面端来源入口与换源 UI 涉及会话层与耐久层状态，该文件已记录六条由真实缺陷验证的坑"}

@@ -1,0 +1,4 @@
+{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "来源契约与换源语义必须与既有跨层契约（工作区、阶段图、双人工点闸门、瞬态阶段失效）对齐，父任务 design.md 的契约定义以此为基准"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "来源维度贯穿 core 契约 / CLI / 桌面端三层，且要新增 manifest 字段与枚举值，属于该指南点名的跨层触发场景"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "PDF 逐页判定要求「部分成功不算命令失败」，需按既有稳定错误码与 CLI 退出行为约定实现"}
