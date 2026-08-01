@@ -2,6 +2,36 @@
 
 ---
 
+# ⚑ 换机器继续（2026-07-31）
+
+分支 `design/desktop-language-rebuild`，最后一个提交 `6a67ed4`，工作树干净。
+代码与任务文档都在 git 里，**但下面五样东西不在**，只 clone 是跑不起来的：
+
+| 缺什么 | 为什么不在仓库 | 怎么补 |
+|---|---|---|
+| `.env` | `.gitignore` 忽略 | 从原机器手工拷。键名见 `.env.example`：`OPENAI_API_KEY` 必填、`OPENAI_BASE_URL` 可选。**别走聊天或提交传密钥** |
+| `open-design/`（318MB） | `.gitignore` 忽略，且它**不是子模块也没有 .git**，无法 `git submodule update` | 重新 clone <https://github.com/nexu-io/open-design>。CLAUDE.md 规定它是**只读**参考，不得写入 |
+| `.codegraph/` 索引 | 忽略；且索引按 worktree 独立维护 | 仓库根目录跑 `codegraph init -i` |
+| 走查工作区 `~/test/ppttest-walkthrough-E2`（29M）、`~/test/ppttest-switch-target`（29M） | 在仓库外 | 直接拷贝目录。**没有它们就跑不了真机走查**。`~/test/ppttest-walkthrough-E1` 继续跑会烧 gpt-image-2，别拷也别跑 |
+| Claude 记忆 `~/.claude/projects/-Users-kelin-Work-ppt-maker/memory/` | 在用户目录、按项目路径命名 | 手工拷。**若新机器的仓库路径不同，目录名要跟着改**（路径里的 `/` 换成 `-`） |
+
+新机器上的顺序：
+
+```bash
+git clone https://github.com/nuts2k/ppt-maker.git && cd ppt-maker
+git checkout design/desktop-language-rebuild
+node -v                       # 需要 24，见 .node-version / .nvmrc
+pnpm install
+# 拷 .env、open-design/、~/test/ 两个工作区、memory/
+cd apps/desktop && pnpm typecheck && pnpm test    # 基线：27 文件 / 323 用例全绿
+cd ../.. && pnpm format:check
+node .trellis/tasks/07-30-desktop-design-language-rebuild/research/palette-contrast.mjs  # 26 项全过
+```
+
+四关全绿即环境无误，可以接着做下面「需要用户定的两处」。
+
+---
+
 # ⚑ 交接状态（2026-07-31 · 阶段二完成）
 
 **阶段一、阶段二均已完成。** 用户以「继续阶段二」表达了 AC12 认可。
