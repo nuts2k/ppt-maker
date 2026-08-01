@@ -175,7 +175,15 @@
       **失效不等于没跑过**——这类页归「进行中」，并由 `blockingStage` 在失败列表单独指名。
       两个方向都上了锁：退回按位置判断 → 换源用例红；放松到「非 init」→ 新建 deck 用例红。
 
-- [ ] 5.9 提交并归档
+- [x] 5.9 提交并归档（2026-08-01，4 个提交，未 push）
+
+      `893aa9c` fix(core,cli) 阶段阻塞判据下沉 core
+      `cde54b5` fix(cli) 换源路径三个必现缺陷
+      `e5da82f` feat(desktop) 源图确认入口与待办队列组
+      `b15ca8b` docs(spec,task) 多代资产选取契约与验收覆盖教训，B1–B10 全部通过
+
+      准入实测：`pnpm format:check` 203 files no fixes、`pnpm typecheck` 三包 Done、
+      `pnpm -r build` 三包 Done、`pnpm test` **576 项全绿**（core 90 + desktop 359 + cli 127）。
 
 ## 验证命令
 
