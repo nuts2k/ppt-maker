@@ -18,7 +18,9 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [],
+  "children": [
+    "07-31-page-source-contract"
+  ],
   "parent": "07-20-ppt-maker-mvp-roadmap",
   "relatedFiles": [],
   "notes": "",

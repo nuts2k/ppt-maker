@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "验收口径：Node 24 / TypeScript / Biome / Vitest 的执行与通过标准"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "B1/B5/B6 全是静默失败判据（读操作不得改盘、自动放行不得留人工痕迹、资产不得悬空），须按该指南定位真实失败点而非表面反馈"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "检查契约改动是否与既有跨层约定一致，以及 Phase 3 的 spec 更新是否覆盖人工点数量口径变更"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "accept-source 应复用 clean/accept.ts 的验收范式、deck replace-source 应复用 add-slide 的薄包装范式，避免平行实现"}

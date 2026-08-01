@@ -13,7 +13,13 @@ import { basename, dirname, join, relative, resolve } from "node:path";
 import {
   createInitialStageStates,
   FoundationError,
+  materializeSource,
+  normalizeSlideManifest,
+  type PreCompletedStage,
+  requiresSourceAcceptance,
   SCHEMA_VERSION,
+  type SlideSource,
+  type SlideSourceDraft,
   type SlideWorkspaceConfig,
   SlideWorkspaceConfigSchema,
   type SlideWorkspaceManifest,
@@ -27,6 +33,60 @@ export interface CreateSlideWorkspaceOptions {
   readonly imagePath: string;
   readonly workspacePath: string;
   readonly referencePath?: string;
+  /**
+   * 页面来源。缺省视作导入（`deck init --images` 与 `slide init` 的既有语义）。
+   * PDF 抽取与图片生成由各自子任务传入对应分支。
+   */
+  readonly source?: SlideSourceDraft;
+}
+
+const AUTO_SOURCE_TRUST_PROVIDER = "auto-source-trust";
+const SOURCE_ACCEPT_ATTEMPT_ID = "accept-source-001";
+
+/**
+ * 按来源决定源图确认闸门的初始状态（D6）。
+ *
+ * 自动放行时**只**追加一条 attempt 并把阶段置 completed，**不写** `accepted.json`、
+ * 不建验收资产——`ArtifactAcceptance` 只在真有人确认时产生。写一条 acceptedBy 指向系统的
+ * 记录，等于让报告声称「这页源图有人确认过」而事实没有，正是 M4 列为头号风险的
+ * 「记录与事实相反」。状态可以是 completed，但不能伪造人工痕迹。
+ */
+function buildSourceGate(
+  source: SlideSource,
+  initFingerprint: string,
+  at: string,
+): {
+  readonly preCompleted: PreCompletedStage[];
+  readonly attempts: WorkspaceStageAttempt[];
+} {
+  if (requiresSourceAcceptance(source)) {
+    return { preCompleted: [], attempts: [] };
+  }
+  return {
+    preCompleted: [
+      {
+        stage: "accept-source",
+        attemptId: SOURCE_ACCEPT_ATTEMPT_ID,
+        inputFingerprint: initFingerprint,
+      },
+    ],
+    attempts: [
+      {
+        schemaVersion: SCHEMA_VERSION,
+        id: SOURCE_ACCEPT_ATTEMPT_ID,
+        stage: "accept-source",
+        number: 1,
+        status: "completed",
+        inputFingerprint: initFingerprint,
+        startedAt: at,
+        endedAt: at,
+        provider: AUTO_SOURCE_TRUST_PROVIDER,
+        providerVersion: null,
+        assetIds: [],
+        error: null,
+      },
+    ],
+  };
 }
 
 export interface LoadedSlideWorkspace {
@@ -248,6 +308,15 @@ export async function createSlideWorkspace(
       ],
       error: null,
     };
+    const source: SlideSource = materializeSource(
+      options.source ?? {
+        kind: "imported",
+        originalFileName: basename(imagePath),
+      },
+      attemptId,
+      createdAt,
+    );
+    const gate = buildSourceGate(source, inputFingerprint, createdAt);
     const config: SlideWorkspaceConfig = {
       schemaVersion: SCHEMA_VERSION,
       slideId,
@@ -264,14 +333,19 @@ export async function createSlideWorkspace(
       createdAt,
       updatedAt: createdAt,
       configPath: "config.json",
+      source,
       sourceImageAssetId: sourceAsset.id,
       referenceTextAssetId: referenceAsset?.id ?? null,
       assets: [
         sourceAsset,
         ...(referenceAsset === null ? [] : [referenceAsset]),
       ],
-      stages: createInitialStageStates(attemptId, inputFingerprint),
-      attempts: [initAttempt],
+      stages: createInitialStageStates(
+        attemptId,
+        inputFingerprint,
+        gate.preCompleted,
+      ),
+      attempts: [initAttempt, ...gate.attempts],
     };
 
     await writeJsonAtomic(
@@ -306,19 +380,43 @@ export async function createSlideWorkspace(
   }
 }
 
+const DEFAULT_CONFIG_PATH = "config.json";
+
+function readConfigPath(rawManifest: unknown): string {
+  if (typeof rawManifest === "object" && rawManifest !== null) {
+    const value = (rawManifest as Record<string, unknown>).configPath;
+    if (typeof value === "string" && value.length > 0) {
+      return value;
+    }
+  }
+  return DEFAULT_CONFIG_PATH;
+}
+
 export async function loadSlideWorkspace(
   workspacePath: string,
 ): Promise<LoadedSlideWorkspace> {
   const path = resolve(workspacePath);
-  const manifest = SlideWorkspaceManifestSchema.parse(
-    JSON.parse(
-      await readFile(resolveWorkspacePath(path, "manifest.json"), "utf8"),
-    ),
+  const rawManifest: unknown = JSON.parse(
+    await readFile(resolveWorkspacePath(path, "manifest.json"), "utf8"),
   );
+  // config 先于 manifest 解析：归一化要用 config.sourceImagePath 给旧数据补来源。
+  // 不能反过来先 parse manifest 再取 configPath——parse 正是会失败的那一步，
+  // 所以 configPath 从未校验的原始对象里取，取不到才退回默认值。
   const config = SlideWorkspaceConfigSchema.parse(
     JSON.parse(
-      await readFile(resolveWorkspacePath(path, manifest.configPath), "utf8"),
+      await readFile(
+        resolveWorkspacePath(path, readConfigPath(rawManifest)),
+        "utf8",
+      ),
     ),
+  );
+  // 归一化必须早于 parse：M3/M4 的 manifest 没有 source、没有 accept-source 状态，
+  // 直接 parse 会撞上 superRefine 的阶段完整性校验而整份加载失败。
+  // 这里只在内存中补齐，不写盘——只读命令不改动旧工作区的磁盘内容。
+  const manifest = SlideWorkspaceManifestSchema.parse(
+    normalizeSlideManifest(rawManifest, {
+      sourceImagePath: config.sourceImagePath,
+    }),
   );
   if (manifest.slideId !== config.slideId) {
     throw new FoundationError(

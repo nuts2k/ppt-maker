@@ -22,7 +22,7 @@ describe("stage graph", () => {
 
   it("初始化时只完成 init", () => {
     const states = createInitialStageStates("init-001", HASH);
-    expect(states).toHaveLength(10);
+    expect(states).toHaveLength(11);
     expect(states.find((state) => state.stage === "init")).toMatchObject({
       status: "completed",
       latestAttemptId: "init-001",
@@ -31,6 +31,41 @@ describe("stage graph", () => {
     });
     expect(states.find((state) => state.stage === "ocr")?.status).toBe(
       "pending",
+    );
+    // 不传 preCompleted 时源图确认闸门是待处理的：自动放行是来源规则的结论，
+    // 由调用方传进来，阶段图自己不作此判断。
+    expect(
+      states.find((state) => state.stage === "accept-source")?.status,
+    ).toBe("pending");
+  });
+
+  it("preCompleted 让指定阶段随 init 一并完成", () => {
+    const states = createInitialStageStates("init-001", HASH, [
+      {
+        stage: "accept-source",
+        attemptId: "accept-source-001",
+        inputFingerprint: HASH,
+      },
+    ]);
+    expect(
+      states.find((state) => state.stage === "accept-source"),
+    ).toMatchObject({
+      status: "completed",
+      latestAttemptId: "accept-source-001",
+      lastSuccessfulAttemptId: "accept-source-001",
+      completedInputFingerprint: HASH,
+    });
+    expect(states.find((state) => state.stage === "ocr")?.status).toBe(
+      "pending",
+    );
+  });
+
+  it("accept-source 挡在 init 与 ocr 之间", () => {
+    expect(getDownstreamStages("init")).toContain("accept-source");
+    const states = createInitialStageStates("init-001", HASH);
+    // 未确认源图时 ocr 被依赖守卫拒绝——闸门由 core 兜底，消费方绕不过去
+    expect(() => assertStageDependenciesCompleted(states, "ocr")).toThrow(
+      "accept-source",
     );
   });
 

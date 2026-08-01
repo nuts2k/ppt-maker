@@ -1,0 +1,5 @@
+{"file": ".trellis/spec/backend/contracts.md", "reason": "本任务改动的正是这里固化的跨层契约：工作区 manifest、阶段图与依赖守卫、ArtifactAcceptance 验收门、「合并保留既有人工确认值」。换源清空复核成果与该条的边界须按父任务 design.md §4.4 书写"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "新增 SlideStage 枚举值同时波及 core 契约校验、CLI 执行序列与桌面端展示序列三层，漏改任一层就退化成「界面说完成、实际没跑」"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "本任务两处高危静默失败：归一化若排在 parse 之后则永不执行；自动放行若写 accepted.json 则记录与事实相反"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "换源与源图确认要用既有 FoundationError 错误码体系（INVALID_STAGE_STATE / INVALID_WORKSPACE），不自造错误表达"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "阶段四桌面端换源入口涉及会话层与耐久层状态，该文件记录了六条由真实缺陷验证的坑"}

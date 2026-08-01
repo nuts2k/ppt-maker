@@ -103,6 +103,12 @@ function buildManifest(
     createdAt: "2026-07-01T00:00:00.000Z",
     updatedAt: "2026-07-01T00:00:00.000Z",
     configPath: "config.json",
+    source: {
+      kind: "imported",
+      originalFileName: "source.png",
+      recordedAt: "2026-07-01T00:00:00.000Z",
+      attemptId: "init-001",
+    },
     sourceImageAssetId: "asset-source",
     referenceTextAssetId: null,
     assets,

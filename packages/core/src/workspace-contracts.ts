@@ -1,10 +1,13 @@
 import { z } from "zod";
-import { SCHEMA_VERSION } from "./constants.js";
-
-export const SHA256_PATTERN = /^[a-f0-9]{64}$/;
+import { SCHEMA_VERSION, SHA256_PATTERN } from "./constants.js";
+import { SlideSourceSchema } from "./source-contracts.js";
 
 export const SlideStageSchema = z.enum([
   "init",
+  // 源图确认闸门（D6）：generated 页必须由人确认源图才进入 ocr，
+  // imported / extracted 在建立工作区时即自动放行。它是 ArtifactAcceptance
+  // 的第三个同构实例，不是新的处理阶段——阶段图对三种来源完全相同。
+  "accept-source",
   "ocr",
   "review",
   "assist-review",
@@ -52,6 +55,7 @@ export const WorkspaceAssetSchema = z.object({
     "clean_record",
     "clean_check",
     "clean_acceptance",
+    "source_acceptance",
     "pptx",
     "pptx_check",
     "pptx_record",
@@ -141,7 +145,7 @@ export const ProviderCallRecordSchema = z.object({
 export const ArtifactAcceptanceSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
   id: z.string().min(1),
-  stage: z.enum(["accept-clean", "accept-pptx"]),
+  stage: z.enum(["accept-source", "accept-clean", "accept-pptx"]),
   artifactAssetId: z.string().min(1),
   artifactSha256: z.string().regex(SHA256_PATTERN),
   upstreamFingerprint: z.string().regex(SHA256_PATTERN),
@@ -194,6 +198,13 @@ export const SlideWorkspaceManifestSchema = z
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
     configPath: WorkspaceRelativePathSchema,
+    /**
+     * 页面来源。schema 层**必填**，磁盘层可缺省——旧 manifest 由
+     * `normalizeSlideManifest` 在 parse 之前补齐（见 manifest-normalize.ts）。
+     * 可选性只存在于归一化函数的入参类型上，业务代码读到的永远是完整来源，
+     * 不需要散落的 `?? "imported"` 兜底。
+     */
+    source: SlideSourceSchema,
     sourceImageAssetId: z.string().min(1),
     referenceTextAssetId: z.string().min(1).nullable(),
     assets: z.array(WorkspaceAssetSchema),

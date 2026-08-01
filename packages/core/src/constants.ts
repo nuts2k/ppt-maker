@@ -1,5 +1,11 @@
 export const SCHEMA_VERSION = 1 as const;
 
+/**
+ * 定义在此而非 workspace-contracts.ts：来源契约（source-contracts.ts）也要用它，
+ * 而 workspace-contracts.ts 反过来依赖来源契约，放在契约层会形成循环导入。
+ */
+export const SHA256_PATTERN = /^[a-f0-9]{64}$/;
+
 export const WIDE_ASPECT_RATIO = 16 / 9;
 export const WIDE_ASPECT_RATIO_RELATIVE_TOLERANCE = 0.005;
 

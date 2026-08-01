@@ -1,9 +1,6 @@
 import { z } from "zod";
-import { SCHEMA_VERSION } from "./constants.js";
-import {
-  SHA256_PATTERN,
-  WorkspaceRelativePathSchema,
-} from "./workspace-contracts.js";
+import { SCHEMA_VERSION, SHA256_PATTERN } from "./constants.js";
+import { WorkspaceRelativePathSchema } from "./workspace-contracts.js";
 
 export const DeckSlideEntrySchema = z.object({
   slideId: z.string().min(1),

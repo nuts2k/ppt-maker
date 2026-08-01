@@ -11,7 +11,11 @@ export const SLIDE_STAGE_ORDER = SlideStageSchema.options;
 const STAGE_DEPENDENCIES: Readonly<Record<SlideStage, readonly SlideStage[]>> =
   {
     init: [],
-    ocr: ["init"],
+    // 源图确认闸门（D6）。ocr 改依赖它而非 init：闸门因此由 core 的
+    // assertStageDependenciesCompleted 统一兜底，CLI 与桌面端都绕不过去，
+    // 不需要在每个消费方各写一遍「这页要不要先确认源图」。
+    "accept-source": ["init"],
+    ocr: ["accept-source"],
     review: ["ocr"],
     "assist-review": ["review"],
     mask: ["assist-review"],
@@ -51,20 +55,61 @@ export function getDownstreamStages(stage: SlideStage): readonly SlideStage[] {
   return SLIDE_STAGE_ORDER.filter((candidate) => downstream.has(candidate));
 }
 
+/** 建立工作区时即已完成的非 init 阶段（目前只有自动放行的 `accept-source`） */
+export interface PreCompletedStage {
+  readonly stage: SlideStage;
+  readonly attemptId: string;
+  readonly inputFingerprint: string;
+}
+
 export function createInitialStageStates(
   initAttemptId: string,
   initInputFingerprint: string,
+  /**
+   * 来源自动放行时传 `accept-source`。core 不判断「哪种来源要自动放行」——
+   * 那是来源规则（`requiresSourceAcceptance`），由调用方决定后把结论传进来，
+   * 阶段图本身对三种来源完全相同。
+   */
+  preCompleted: readonly PreCompletedStage[] = [],
 ): WorkspaceStageState[] {
-  return SLIDE_STAGE_ORDER.map((stage) => ({
-    schemaVersion: SCHEMA_VERSION,
-    stage,
-    status: stage === "init" ? "completed" : "pending",
-    latestAttemptId: stage === "init" ? initAttemptId : null,
-    lastSuccessfulAttemptId: stage === "init" ? initAttemptId : null,
-    completedInputFingerprint: stage === "init" ? initInputFingerprint : null,
-    invalidatedAt: null,
-    invalidationReason: null,
-  }));
+  const byStage = new Map(preCompleted.map((entry) => [entry.stage, entry]));
+  return SLIDE_STAGE_ORDER.map((stage) => {
+    if (stage === "init") {
+      return {
+        schemaVersion: SCHEMA_VERSION,
+        stage,
+        status: "completed" as const,
+        latestAttemptId: initAttemptId,
+        lastSuccessfulAttemptId: initAttemptId,
+        completedInputFingerprint: initInputFingerprint,
+        invalidatedAt: null,
+        invalidationReason: null,
+      };
+    }
+    const done = byStage.get(stage);
+    if (done !== undefined) {
+      return {
+        schemaVersion: SCHEMA_VERSION,
+        stage,
+        status: "completed" as const,
+        latestAttemptId: done.attemptId,
+        lastSuccessfulAttemptId: done.attemptId,
+        completedInputFingerprint: done.inputFingerprint,
+        invalidatedAt: null,
+        invalidationReason: null,
+      };
+    }
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      stage,
+      status: "pending" as const,
+      latestAttemptId: null,
+      lastSuccessfulAttemptId: null,
+      completedInputFingerprint: null,
+      invalidatedAt: null,
+      invalidationReason: null,
+    };
+  });
 }
 
 export function invalidateStageAndDownstream(
