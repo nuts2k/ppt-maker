@@ -25,6 +25,7 @@
 - 命令行为测试必须断言退出语义、结构化输出或生成物关键内容。
 - PPTX 除自动检查 ZIP/XML 外，还要记录 Microsoft PowerPoint for Mac 的人工打开、文本可编辑和字体属性验证。
 - OCR 必须区分沙箱权限失败与正常 macOS 环境结果，并记录是否使用网络。
+- **`apps/cli` 的 `testTimeout` 设为 30s（`apps/cli/vitest.config.ts`），不要改回默认值。** 该包的用例大量走真实链路：起 Node 子进程冒充原生二进制、用 sharp 处理真实 fixture PNG、逐阶段落库。常态下最慢的单个用例约 3.7s，对默认 5000ms 余量不到 26%；`pnpm test` 三包并跑时会越过阈值，表现为**随机某个用例 `Test timed out`，而单跑必过**——这个形态极易被误判为「偶发、与本次改动无关」而放过。判据不是重跑几次，而是 `npx vitest run --testTimeout=3000`：若失败集中在固定几条慢用例且报的是超时，就是余量问题，不是竞态。`apps/desktop`（最慢文件 841ms）与 `packages/core`（11ms）离阈值很远，无需同样处理。
 
 ## 禁止模式
 
