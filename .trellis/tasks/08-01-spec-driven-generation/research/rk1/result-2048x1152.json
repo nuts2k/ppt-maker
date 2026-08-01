@@ -1,0 +1,35 @@
+{
+  "probedAt": "2026-08-01T09:10:46.341Z",
+  "baseUrl": "https://dtcpa.nuts2k.eu.org/v1",
+  "request": {
+    "model": "gpt-image-2",
+    "prompt": "<36 字符>",
+    "size": "2048x1152",
+    "quality": "high",
+    "output_format": "png",
+    "n": 1,
+    "stream": false
+  },
+  "elapsedMs": 31205,
+  "ok": true,
+  "requestId": null,
+  "usage": {
+    "input_tokens": 35,
+    "input_tokens_details": {
+      "image_tokens": 0,
+      "text_tokens": 35
+    },
+    "output_tokens": 1158,
+    "output_tokens_details": {
+      "image_tokens": 1158,
+      "text_tokens": 0
+    },
+    "total_tokens": 1193
+  },
+  "responseSizeField": "1672x941",
+  "actualPixels": {
+    "width": 1672,
+    "height": 941
+  },
+  "deliveryMode": "b64_json"
+}

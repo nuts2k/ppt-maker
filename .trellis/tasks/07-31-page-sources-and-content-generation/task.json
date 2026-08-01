@@ -19,7 +19,8 @@
   "pr_url": null,
   "subtasks": [],
   "children": [
-    "07-31-page-source-contract"
+    "07-31-page-source-contract",
+    "08-01-spec-driven-generation"
   ],
   "parent": "07-20-ppt-maker-mvp-roadmap",
   "relatedFiles": [],

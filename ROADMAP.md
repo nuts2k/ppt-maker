@@ -84,7 +84,7 @@ PPT Maker 的核心价值是在保留 AI 生成页面视觉效果的同时，把
 - 16:9 校验、微软雅黑预检、Apple Vision 离线 OCR（含字符/子串 `glyphHints`）。
 - 显式云端视觉分析（Responses API `gpt-5.6-sol`），候选合并生成可编辑 `text-blocks.json`，`validate-review` 结构化校验。
 - 自动字形 mask（sharp I/O + TS 像素算法：颜色/边缘/连通域/膨胀/多边形/glyphHints 软先验）与覆盖率统计。
-- gpt-image-2 clean plate（固定 2048x1152/high/PNG）+ 离线检查（尺寸/文字残留/mask 外差异/容器环）+ 人工 accept 门。
+- gpt-image-2 clean plate（固定**请求** 2048x1152/high/PNG，实返尺寸见 M2 技术结论）+ 离线检查（尺寸/文字残留/mask 外差异/容器环）+ 人工 accept 门。
 - 微软雅黑原生文本框 PPTX + ZIP/XML/16:9/文字/字体/形状自动检查 + PowerPoint for Mac 人工 accept 门。
 - 分阶段报告（自动检查与人工接受分区，未完成不为成功）；合成 fixture 五类元素端到端覆盖。
 
@@ -118,7 +118,9 @@ Trellis 子任务：`07-20-single-slide-editable-pptx`
 
 技术结论：
 
-- gpt-image-2 生成接口直接支持 2048x1152（实际返回 1672x941，16:9 比例正确）。
+- gpt-image-2 生成接口可直出 16:9 比例，但**不接受精确像素指定**：请求 2048x1152 被静默
+  改写为 1672x941（高度在 940/941 间浮动），比例误差 0.06%，在 0.5% 容差内。
+  由此得出的落地约束——生成资产尺寸必须落盘后实测、不得用请求参数填充——见 M5 期间条目。
 - 25 页批量处理验证了 pipeline 的稳定性和可重复性。
 - assist-review 的 GPT-5.6-Luna 分类在中文商务 PPT 场景下基本可用，但 risk 块的 mask 默认行为需要修正（已修复）。
 
@@ -345,10 +347,15 @@ M5 是**执行侧**：规格 → 图 → slide。M6 是**策划侧**：构思 �
 
 ### M5 期间
 
-- **生成图能否直出 16:9 需实证，不得在实现中默认**。现有 `images.edit` 的 `2048x1152`
-  走的是 SDK 自由 size 通道，不构成 `images.generate` 也支持的证据。
-  若实证失败，是裁剪自产图还是换 Provider 属产品决策，须回到 M5 父任务定论；
-  此时可只交付 `imported` / `extracted` 两种来源，相应调整 M5 完成条件。
+- **生成图直出 16:9 已实证通过**（2026-08-01，RK1）。✅ 回滚点解除，四种来源范围不变。
+  实测 1672x941、比例误差 0.06%，证据与判读见
+  `.trellis/tasks/08-01-spec-driven-generation/research/rk1/CONCLUSION.md`。
+  实证走的是 `.env` 配置的第三方网关，**换官方端点或换 Provider 须重验**。
+- **生成资产的尺寸必须落盘后实测，禁止用请求参数或常量填充**（RK1 衍生约束）。
+  网关不保证返回请求尺寸，且高度在两次观测间浮动过。
+  仓库已有反例：`clean/run.ts:329` 用常量硬填 `clean_plate` 资产尺寸，
+  manifest 记 2048x1152 而磁盘实为 1672x941。这与「多代资产选取契约」同类——
+  `assertWorkspaceAssetIntegrity` 只校验 sha256，抓不到元数据与文件不符。
 - **来源契约由 M5 父任务独占**。四个子任务任一方发现契约需要改动，回父任务改，
   不在各自实现里微调——否则混合来源要到最后集成才炸。
 - **若 `accept-source` 的加载期归一化被证明不可行**，须重新考虑该闸门的落地形式，
