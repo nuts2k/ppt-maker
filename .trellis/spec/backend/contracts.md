@@ -231,14 +231,19 @@ await writeWorkspaceManifest(workspacePath, completedManifest);
 
 ### 2. Contracts
 
-阶段 DAG（`workspace-contracts.ts` 的 `SlideStage`）：`init → ocr → analyze(可选) → review → mask → clean → accept-clean → pptx → accept-pptx → report`。全部可持久化对象为 `schemaVersion: 1`。
+阶段 DAG（`workspace-contracts.ts` 的 `SlideStage`）：`init → accept-source → ocr → analyze(可选) → review → mask → clean → accept-clean → pptx → accept-pptx → report`。全部可持久化对象为 `schemaVersion: 1`。
 
-- `TextReviewDocument`（`stages/review/text-blocks.json`，唯一人工编辑入口）：`slideId`、`image`、`generatedAt`、`reviewStartedAt`（首次候选时间，跨重跑保留）、`blocks[]`、`unmatchedReferenceCandidates[]`。每个 `TextReviewBlock`：`id`、`text`、`lines`、`bboxPx`、`quadPx|null`、`rotationDeg`、`zIndex`、`classification(layout_text|object_integrated_symbol|uncertain)`、`sources[]`（offline_ocr/cloud_vision/reference_text/manual 带来源）、`includeInMask`、`reviewStatus(unreviewed|reviewed|accepted_with_risk)`、`riskAcceptance|null`、`style`、`maskParams`、`updatedAt`。合并保留既有人工确认值，不静默覆盖；逐字符 `glyphHints` 不进复核文件，由 mask 从 OCR 产物按 bbox 重叠读取作软先验。
+- `SlideSource`（`source-contracts.ts`，落在 slide manifest 的 `source` 字段，deck 不冗余存）：按 `kind` 判别联合 `imported | extracted | generated`，三分支共有 `recordedAt` 与 `attemptId`（锚定到具体一次 `init` attempt，换源历史因此经 `attempts` 数组天然可追溯）。成本与用量**不进本契约**，由 `ProviderCallRecord` 持有，经 `attemptId` 关联。`generated` 的规格指纹必须是**条目级**（`specEntrySha256`）——整份文件级指纹会让改一页污染全 deck 的漂移判断。
+- **零迁移铁律**：`source` 与 `accept-source` 阶段状态对旧 manifest 缺省，由 `normalizeSlideManifest` 在 `SlideWorkspaceManifestSchema.parse` **之前**补齐。顺序颠倒则 `superRefine` 的阶段完整性校验先行报错，M3/M4 时代的每一个工作区都会加载失败。归一化只在内存中进行，只读命令不改动旧工作区磁盘；首次写操作时新字段自然落盘，没有独立迁移程序。
+- **当前源图只认 `sourceImageAssetId`**：换源保留旧图资产（供追溯），`assets` 里会有多条 `source_image`。任何按 `role` 取首条的读法拿到的都是已被替换掉的那张，界面会在换源后继续显示旧图。
+
+- `TextReviewDocument`（`stages/review/text-blocks.json`，唯一人工编辑入口）：`slideId`、`image`、`generatedAt`、`reviewStartedAt`（首次候选时间，跨重跑保留）、`blocks[]`、`unmatchedReferenceCandidates[]`。每个 `TextReviewBlock`：`id`、`text`、`lines`、`bboxPx`、`quadPx|null`、`rotationDeg`、`zIndex`、`classification(layout_text|object_integrated_symbol|uncertain)`、`sources[]`（offline_ocr/cloud_vision/reference_text/manual 带来源）、`includeInMask`、`reviewStatus(unreviewed|reviewed|accepted_with_risk)`、`riskAcceptance|null`、`style`、`maskParams`、`updatedAt`。合并保留既有人工确认值，不静默覆盖（**边界**：该规则约束的是**同一源图下的重跑合并**。换源改变的是源图本身，旧图上的人工判断对新图不成立，继承它不是保留成果而是把过期结论冒充为当前结论。`replaceSlideSource` 默认把复核稿按 attempt 归档到 `stages/review/archived/<initAttemptId>/`，`readExistingReview` 读固定路径拿不到即不继承；`--keep-review` 是用户显式选择，因此同样不构成静默覆盖）；逐字符 `glyphHints` 不进复核文件，由 mask 从 OCR 产物按 bbox 重叠读取作软先验。
 - `TextReviewValidationReport`（`stages/review/validation.json`）：`status(passed|failed)`、`documentSha256`（被校验文件哈希，作为 mask 消费门禁锚点）、`violations[]`（blockId/field/code/message/severity）。规则：`includeInMask` 仅 `layout_text`；bbox/quad 界内且四边形非退化；旋转 `≤±360`；字号 `≤` 页高；`accepted_with_risk` 须有 riskAcceptance 且状态一致；未复核版式文字为 warning（硬门禁在 mask/pptx）。
 - `MaskRecord`（`stages/mask/record.json`）：`algorithmVersion`、`sourceImageSha256`、`reviewDocumentSha256`、`reviewValidationSha256`、`maskedBlockIds[]`、`blocks[]`（每块 maskedPixels/bboxAreaPx/coverageRatio）、`totals`、`outputs`（mask/preview/overlay 哈希）。mask PNG 为源图同尺寸带 alpha，字形 `alpha=0`（gpt-image-2 待编辑语义）。
 - `CleanAttemptRecord`（`stages/clean/clean-NNN/record.json`）：`model=gpt-image-2`、`promptVersion`、`size=2048x1152`、`quality=high`、`outputFormat=png`、`sourceImageSha256`、`maskSha256`、`resultSha256`、`requestId`、`usage`、`durationMs`、`checks`（size/textResidue/outsideMaskDiff/containerRingDiff 离线数值）。多次尝试序号递增不覆盖。
 - `PptxCheckReport`（`stages/pptx/check.json`）：`status`、`layout`（cx/cy EMU + 16:9）、`shapes`（images=1 背景图 + textBoxes=N）、`fontDeclared`、`missingTexts[]`。仅 `layout_text` 且已复核块生成微软雅黑文本框；坐标经 `pixelsToPptxBox` 换算，字号 `fontSizePx × 72 × 13.333 / 源图宽` 磅。
-- `ArtifactAcceptance`（`stages/clean/accepted.json`、`stages/pptx/accepted.json`）：`stage(accept-clean|accept-pptx)`、`artifactAssetId`、`artifactSha256`、`upstreamFingerprint`（对应阶段完成指纹）、`acceptedBy`、`note`、`checklist`。
+- `ArtifactAcceptance`（`stages/source/accepted.json`、`stages/clean/accepted.json`、`stages/pptx/accepted.json`）：`stage(accept-source|accept-clean|accept-pptx)`、`artifactAssetId`、`artifactSha256`、`upstreamFingerprint`（对应阶段完成指纹）、`acceptedBy`、`note`、`checklist`。三个验收门是同一契约的三个实例，新增验收门照此结构落地，不另造机制。
+  - **自动放行不得伪造人工痕迹**：`imported` / `extracted` 的 `accept-source` 置 `completed`，但**不写** `accepted.json`、不建验收资产，事实只记在该阶段 attempt 的 `provider: "auto-source-trust"` 上。写一条 `acceptedBy` 指向系统的记录，等于让报告声称「这页源图有人确认过」而事实没有。判据就是磁盘上这个文件在不在。
 - `SlideReport`（`stages/report/report.json`）：`overallStatus(complete|incomplete)`、`discovery`、`classification`、`mask`、`autoChecks`（自动检查）与 `manualAcceptance`（人工接受）分区、`providerCalls`、`manualReview`（reviewStartedAt→pptx 接受耗时）。任何未通过/未完成不汇总为 complete。
 
 ### 3. 指纹与失效投影（design §6）
@@ -362,13 +367,14 @@ await invalidateSlideStage({ workspacePath, stage, reason: "人工要求从该�
 startRun(stage);
 ```
 
-## 场景：双人工点闸门、瞬态阶段失效与双源比对（M4 复核链路简化，2026-07-27 走查验证）
+## 场景：人工闸门、瞬态阶段失效与双源比对（M4 复核链路简化，2026-07-27 走查验证；M5 起人工点由两个改为最多三个）
 
 ### 1. Scope / Trigger
 
 - 触发条件：新增或修改人工闸门的停顿点与文案、验收记录的写入方式、复核分区判据、任何「失效某阶段」的界面入口，或桌面端任何需要与 PPTX 导出保持一致的换算。
 - 适用范围：`packages/core/src/text-blocks.ts`、`pptx-text-style.ts`、`apps/cli/src/slide/accept-final.ts`、`apps/desktop/src/shared/stages.ts` 与 `shared/gates.ts`。
 - 已由真实代码与端到端走查验证：链路由五个人工门收敛为两个；`validate-review` 的失效曾是静默空操作。
+- **M5 更新（2026-07-31 走查验证）**：新增第三个闸门 `accept-source`，按来源条件性激活。改动人工闸门时 `apps/cli/src/slide/run-from.ts` 的 `RUN_SEQUENCE`、`shared/stages.ts` 的 `RUN_STAGE_SEQUENCE` / `STAGE_LABELS`、`shared/gates.ts` 的 `GATE_LABELS` 必须同批改——漏一处就退化成轨道缺节点或日志显示英文 id。
 
 ### 2. Signatures
 
@@ -404,8 +410,13 @@ export function resolveInvalidationTarget(stage: string): RunStage;
 
 | 停顿点 | `gate` | 停在哪 | 恢复方式 |
 |---|---|---|---|
+| 源图确认（**按来源条件性激活**） | `source` | `init: completed` → `accept-source: pending` | `slide accept-source` / 界面确认 |
 | 文本复核门 | `human-edit` | `assist-review: completed` → `mask: pending` | 复核完点「运行此页」 |
 | 最终产物确认 | `manual` | `pptx: completed` → `accept-pptx: pending` | 「完成」写两条验收记录 |
+
+**人工点数量口径（M5 D6 起）**：**最多三个**，其中源图确认只对 `generated` 页激活——`imported` / `extracted` 在建立工作区或换源时自动放行，仍是两个。判定由 core 的 `requiresSourceAcceptance` 单点定义，禁止在消费方各写一遍 `kind === "generated"`。
+
+**闸门靠 core 兜底，不靠调用方自觉**：`ocr` 依赖 `accept-source`，`assertStageDependenciesCompleted` 因此对 CLI 与桌面端同时生效。但 `run --from` 必须在**循环外**先检查该闸门：只按序判定时 `run --from ocr` 会绕过它、改由依赖守卫抛错，把「等一个人来确认」误报成「阶段 ocr 无法自动执行」。
 
 `accept-clean` **不再单独停顿**，滑块对比降级为最终确认页内的一档视图。闸门中文文案由 `apps/desktop/src/shared/gates.ts` 单点定义——main 的活动日志与 renderer 的即时记录都从这里取，否则同一条事件在刷新前后会出现两种说法。
 

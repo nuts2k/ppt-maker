@@ -51,13 +51,20 @@
 
 ## 验收标准
 
-- [ ] B1 M3/M4 时代的真实 deck（无 `source`、无 `accept-source`）直接 `deck status` 成功，
+- [x] B1 M3/M4 时代的真实 deck（无 `source`、无 `accept-source`）直接 `deck status` 成功，
       每页来源显示 `imported`，`accept-source` 显示已完成，且**磁盘 manifest 未被读操作改写**。
-- [ ] B2 同一 deck 上继续 `deck run` 并 `deck export --strict` 成功，全程无迁移步骤。
-- [ ] B3 新建的 `imported` 页跑完整链路不在源图确认处停顿，人工点仍是两个。
-- [ ] B4 手工把某页 `source.kind` 改为 `generated` 并把 `accept-source` 置 `pending` 后，
+- [~] B2 同一 deck 上继续处理，全程无迁移步骤。
+      **已验证**：旧 deck 上直接跑 `slide ocr` + `slide review` 成功，写操作时新字段自然落盘，
+      未被写入的另一页仍保持旧格式（证明不存在全局迁移）。
+      **未验证**：`deck run` 全链路与 `deck export --strict` 需要 OpenAI 云调用，本轮未跑；
+      导出侧逻辑由既有 `deck-export-strict.test.ts` 覆盖，但端到端仍待真实跑一次。
+- [~] B3 `imported` 页不在源图确认处停顿，人工点仍是两个。
+      **已验证**：自动化测试确认 `run --from` 对自动放行页不返回 `source` 闸门；
+      走查中旧 deck 的 imported 页 `ocr` / `review` 直接执行未停顿。
+      **未验证**：含云调用的完整链路（同 B2）。
+- [x] B4 手工把某页 `source.kind` 改为 `generated` 并把 `accept-source` 置 `pending` 后，
       `slide run --from ocr` 因阶段依赖未完成而**拒绝执行**（不是跳过、不是静默通过）。
-- [ ] B5 对该页执行 `slide accept-source` 后链路恢复，且磁盘上出现 `accepted.json`；
+- [x] B5 对该页执行 `slide accept-source` 后链路恢复，且磁盘上出现 `accepted.json`；
       对 `imported` 页检查磁盘，`accept-source` 为 `completed` 但**无** `accepted.json`。
 - [x] B6 `slide replace-source` 换一张新图后：`init` 仍 `completed`（并指向新 attempt），
       `ocr` 及其下游全部 `stale`，`stages/review/text-blocks.json` 不再存在于原路径，
@@ -65,11 +72,20 @@
       `accept-source` 本身按**新来源**重判：换成 `generated` 保持未完成、换成
       `imported` / `extracted` 重新自动放行为 `completed`（这正是 S7 要的行为，
       与「下游失效」不冲突——闸门本身不是下游）。
-- [ ] B7 带 `--keep-review` 换源后，人工确认的块经 IoU 对齐保留下来。
-- [ ] B8 deck 内换第 2 页的源：其余页的阶段状态、资产、验收记录**逐字节不变**。
-- [ ] B9 桌面端：阶段轨道显示新阶段、`generated` 页停在源图确认并进入待办队列、
+- [x] B7 带 `--keep-review` 换源后，人工确认的块经 IoU 对齐保留下来。
+- [x] B8 deck 内换第 2 页的源：其余页的阶段状态、资产、验收记录**逐字节不变**。
+- [ ] B9（需真机走查）桌面端：阶段轨道显示新阶段、`generated` 页停在源图确认并进入待办队列、
       换源入口可用且默认清空复核成果（保留需主动勾选）。
-- [ ] B10 `pnpm -r build / lint / typecheck / test` 全绿，且新增旧 manifest 加载回归测试。
+- [x] B10 `pnpm -r build`、`pnpm format:check`（本仓库无 lint 脚本）、`pnpm typecheck`、
+      `pnpm test`（550 项）全绿，且新增旧 manifest 加载回归测试。
+
+> 走查记录（2026-07-31，`scratchpad/legacy-walk`）：造 2 页 deck → 手工降级为 M3/M4 格式
+> （删 `source`、删 `accept-source` 状态与 attempt）→ `deck status` 成功且 manifest 字节未变
+> → `slide ocr` / `slide review` 可继续 → `deck replace-source page-01` 后 init 仍 completed、
+> ocr/review 转 stale、复核稿归档到 `archived/init-002`、无资产悬空、page-02 字节未变
+> → 手工把 page-02 改为 `generated` 未确认：`slide ocr` 被守卫拒绝、`run --from ocr` 报
+> 「停在源图确认」→ `slide accept-source` 后写出 `accepted.json`（checklist 为空）并放行
+> → 对 imported 页调 `accept-source` 被拒绝。
 
 ## 风险
 

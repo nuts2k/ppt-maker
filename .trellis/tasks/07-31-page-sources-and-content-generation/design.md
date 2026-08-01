@@ -205,7 +205,7 @@ M4 固化的「链路收敛为双人工点」（`contracts.md:365` 场景节）�
 |---|---|---|---|
 | `SlideStage` | `workspace-contracts.ts:6` | `accept-source`（见 §4.5） | ① |
 | `ArtifactAcceptance.stage` | `workspace-contracts.ts:144` | `accept-source` | ① |
-| `WorkspaceAsset.role` | `workspace-contracts.ts:39` | `source_document`（PDF 原件或其引用）、`content_spec`（生成时的规格快照）、`generation_prompt`（提示词全文） | ②③ |
+| `WorkspaceAsset.role` | `workspace-contracts.ts:39` | `source_acceptance`（源图人工确认记录，随 §4.5 一并落地）、`source_document`（PDF 原件或其引用）、`content_spec`（生成时的规格快照）、`generation_prompt`（提示词全文） | ①（`source_acceptance`）、②③（其余） |
 | `ProviderCallRecord.stage` | `workspace-contracts.ts:111` | `init`（生成发生在 init 阶段） | ③ |
 | `ProviderCallRecord.provider` | `workspace-contracts.ts:112` | 由 `z.literal("openai")` 放宽为具名枚举，保留 `openai` 为其一 | ③ |
 

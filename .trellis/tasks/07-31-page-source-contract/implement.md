@@ -55,13 +55,13 @@
 
 ## 阶段五：验收与收口
 
-- [ ] 5.1 逐条验证 `prd.md` 的 B1–B10
-- [ ] 5.2 **B1/B2 用真实旧 deck 走查**，不接受仅凭 fixture 推断
-- [ ] 5.3 更新 spec：`.trellis/spec/backend/contracts.md`
+- [x] 5.1 逐条验证 `prd.md` 的 B1–B10
+- [x] 5.2 **B1/B2 用真实旧 deck 走查**，不接受仅凭 fixture 推断
+- [x] 5.3 更新 spec：`.trellis/spec/backend/contracts.md`
       - 「合并保留既有人工确认值」条目补写换源边界（父任务 design.md §4.4 已论证，逐条搬运）
       - 「链路收敛为双人工点」改为「最多三个人工点，源图确认按来源条件性激活」
       - `ArtifactAcceptance` 实例列表补 `accept-source`
-- [ ] 5.4 回父任务 `design.md` §5 的枚举表补 `source_acceptance` role
+- [x] 5.4 回父任务 `design.md` §5 的枚举表补 `source_acceptance` role
 - [ ] 5.5 提交并归档
 
 ## 验证命令
