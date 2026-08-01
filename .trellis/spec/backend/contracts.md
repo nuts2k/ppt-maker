@@ -235,7 +235,7 @@ await writeWorkspaceManifest(workspacePath, completedManifest);
 
 - `SlideSource`（`source-contracts.ts`，落在 slide manifest 的 `source` 字段，deck 不冗余存）：按 `kind` 判别联合 `imported | extracted | generated`，三分支共有 `recordedAt` 与 `attemptId`（锚定到具体一次 `init` attempt，换源历史因此经 `attempts` 数组天然可追溯）。成本与用量**不进本契约**，由 `ProviderCallRecord` 持有，经 `attemptId` 关联。`generated` 的规格指纹必须是**条目级**（`specEntrySha256`）——整份文件级指纹会让改一页污染全 deck 的漂移判断。
 - **零迁移铁律**：`source` 与 `accept-source` 阶段状态对旧 manifest 缺省，由 `normalizeSlideManifest` 在 `SlideWorkspaceManifestSchema.parse` **之前**补齐。顺序颠倒则 `superRefine` 的阶段完整性校验先行报错，M3/M4 时代的每一个工作区都会加载失败。归一化只在内存中进行，只读命令不改动旧工作区磁盘；首次写操作时新字段自然落盘，没有独立迁移程序。
-- **当前源图只认 `sourceImageAssetId`**：换源保留旧图资产（供追溯），`assets` 里会有多条 `source_image`。任何按 `role` 取首条的读法拿到的都是已被替换掉的那张，界面会在换源后继续显示旧图。
+- **当前源图只认 `sourceImageAssetId`**：换源保留旧图资产（供追溯），`assets` 里会有多条 `source_image`。任何按 `role` 取首条的读法拿到的都是已被替换掉的那张，界面会在换源后继续显示旧图。**这不是源图独有的**——换源与阶段重跑会让多个 role 同时出现多代资产，完整判据见《多代资产与「当前产物」选取契约》一节（2026-08-01 走查在 `review_validation`、`ocr_result`、`source_acceptance` 上各实证了一次同类缺陷）。
 
 - `TextReviewDocument`（`stages/review/text-blocks.json`，唯一人工编辑入口）：`slideId`、`image`、`generatedAt`、`reviewStartedAt`（首次候选时间，跨重跑保留）、`blocks[]`、`unmatchedReferenceCandidates[]`。每个 `TextReviewBlock`：`id`、`text`、`lines`、`bboxPx`、`quadPx|null`、`rotationDeg`、`zIndex`、`classification(layout_text|object_integrated_symbol|uncertain)`、`sources[]`（offline_ocr/cloud_vision/reference_text/manual 带来源）、`includeInMask`、`reviewStatus(unreviewed|reviewed|accepted_with_risk)`、`riskAcceptance|null`、`style`、`maskParams`、`updatedAt`。合并保留既有人工确认值，不静默覆盖（**边界**：该规则约束的是**同一源图下的重跑合并**。换源改变的是源图本身，旧图上的人工判断对新图不成立，继承它不是保留成果而是把过期结论冒充为当前结论。`replaceSlideSource` 默认把复核稿按 attempt 归档到 `stages/review/archived/<initAttemptId>/`，`readExistingReview` 读固定路径拿不到即不继承；`--keep-review` 是用户显式选择，因此同样不构成静默覆盖）；逐字符 `glyphHints` 不进复核文件，由 mask 从 OCR 产物按 bbox 重叠读取作软先验。
 - `TextReviewValidationReport`（`stages/review/validation.json`）：`status(passed|failed)`、`documentSha256`（被校验文件哈希，作为 mask 消费门禁锚点）、`violations[]`（blockId/field/code/message/severity）。规则：`includeInMask` 仅 `layout_text`；bbox/quad 界内且四边形非退化；旋转 `≤±360`；字号 `≤` 页高；`accepted_with_risk` 须有 riskAcceptance 且状态一致；未复核版式文字为 warning（硬门禁在 mask/pptx）。
@@ -477,4 +477,118 @@ await invalidateSlideStage({ workspacePath, stage: target, reason });
 
 // 预览与导出共用 core 的同一份公式
 const fontSizePx = resolveFontSizePt(block, imageWidth) * ptToPx;
+```
+
+## 场景：多代资产与「当前产物」选取契约（M5 换源路径，2026-08-01 真实 deck 走查验证）
+
+### 1. Scope / Trigger
+
+换源与阶段重跑都会让**同一个 `role` 在 `assets` 里出现多条**，分属不同世代。消费方若按裸 `role` 取首条，拿到的是上一代——文件确实存在、哈希也对，错的是它描述的对象已经不是当前那个。`assertWorkspaceAssetIntegrity` 查不出这类错误。
+
+本轮四个缺陷有三个源于此，全部在真实 deck（`ppttest-2026-07-25` 副本，两页十阶段跑完）上实证：
+
+| 消费点 | 取到的 | 表现 |
+|---|---|---|
+| `mask/run.ts` 的 `review_validation` | 归档件（排在当前之前） | 拿旧复核稿的 `documentSha256` 比对，误报「text-blocks.json 在校验后已改动」，**换过源的页一个都跑不过 mask** |
+| `report/run.ts` 的 `ocr_result` | 上一轮 OCR | 发现数报的是旧值 |
+| `replace-source.ts` 漏归档 `source_acceptance` | —— | 对**上一张图**的人工确认留在固定路径，自动放行的页磁盘上有 `accepted.json`，「文件在不在」这个判据被打穿 |
+
+### 2. Signatures
+
+```ts
+// 当前源图：显式指针，不按 role 找
+manifest.sourceImageAssetId: string
+currentSourceImageAsset(manifest): WorkspaceAsset | undefined   // desktop main/slide-detail.ts
+
+// 当前校验报告：按固定当前路径判定
+findCurrentValidationAsset(manifest): WorkspaceAsset | undefined // cli mask/run.ts
+
+// 当前阶段产物：按该阶段最后一次成功 attempt
+currentSuccessAsset(manifest, stage, role): WorkspaceAsset | undefined // cli report/run.ts
+                                                                       // 与 desktop main/slide-detail.ts 同源
+
+// 换源归档：目标以 {role, path, renameId} 描述，path 是判据而非 role
+archiveArtifacts(workspacePath, assets, initAttemptId, targets)  // cli slide/replace-source.ts
+```
+
+### 3. Contracts
+
+**归档形状**：`<dirname>/archived/<initAttemptId>/<basename>`，复核件与验收记录同形。归档而非删除——资产记录必须始终指向真实存在的文件，且人工劳动留痕可追溯。
+
+**换源的归档目标**（`replace-source.ts`）：
+
+| role | 固定当前路径 | 归档时换 id | 受 `--keep-review` 影响 |
+|---|---|---|---|
+| `text_review` | `stages/review/text-blocks.json` | 否（id 已按 review attempt 唯一） | 是 |
+| `review_validation` | `stages/review/validation.json` | 是（`-archived-<initAttemptId>`，固定 id 会被下次 validate 覆盖） | 是 |
+| `source_acceptance` | `stages/source/accepted.json` | 是（同上） | **否，无条件归档** |
+
+`source_acceptance` 不受 `--keep-review` 影响：那个开关保的是文字复核的人工劳动（对新图仍有参考价值、走 IoU 对齐），而「上一张图我看过了，能用」对新图根本不成立。
+
+**「当前」的判据按 role 分三类**：
+
+| 判据 | 适用 | 例 |
+|---|---|---|
+| 显式指针 | `source_image` | `sourceImageAssetId` |
+| 固定当前路径 | 有唯一固定落点的产物 | `review_validation` |
+| 阶段最后一次成功 attempt | 每次 attempt 各出一份的产物 | `ocr_result`、`text_review`、`clean_plate` |
+
+**`role` 表达「这是什么」，不得用来编码「是不是当前的」。** 归档件在语义上仍是一份 `review_validation`，真正区分它的是「不是当前那份」——所以判据落在路径/指针/attempt，而不是给归档件换一个 role（那要动 `SlideAssetRoleSchema` 与父任务 §5 的 role 表，波及未落地的子任务）。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 要求 |
+|---|---|
+| 消费当前产物 | 禁止 `assets.find(a => a.role === X)`；必须附带指针、路径或 attemptId 判据 |
+| 换源产生新一代 | 上一代的固定路径产物必须移走，固定路径上不得残留 |
+| 换源后来源重判为自动放行 | 固定路径上**不得**存在 `accepted.json`（判据即「文件在不在」） |
+| 归档多条资产指向同一文件 | 同一源路径只搬一次，所有引用它的记录一并改指 |
+| 归档或写盘中途失败 | 回滚已搬文件与已写 config，不得留下 manifest 与磁盘分叉的半完成态 |
+
+### 5. Good / Base / Bad Cases
+
+- **Good**：换过源的页跑完 mask → clean → pptx → `export --strict`，归档件与当前件各就各位
+- **Base**：从未换过源的页，每个 role 仅一条，裸 `find` 恰好也对——**这正是危险所在，测试必须避开这种形态**
+- **Bad**：`assets.find(a => a.role === "review_validation")` 在换源后取到 `archived/init-002/validation.json`，报出一个磁盘上根本不存在的不一致
+
+### 6. Tests Required
+
+- 构造**归档件排在当前件之前**的资产形态，并加前置断言（该 role 恰好 2 条、第 0 条是归档路径、第 1 条是当前路径）——否则用例可能什么都没覆盖
+- 换源后 `accept-source` 自动放行时，固定路径无 `accepted.json`；换成 `generated` 时同样无
+- 归档中途失败（把归档目标占成目录触发 `EISDIR`）后磁盘无残留、manifest 逐字节未变
+- **验收必须跑到操作之后的下游**：只跑到「换源成功」为止会漏掉「换源之后链路断了」。本轮 B6/B7 判过一次仍漏了 mask 这一关，就是因为自动化测试止于换源。涉及换源这类产生新一代产物的操作，验收形状必须是**跑完完整链路 → 执行该操作 → 继续跑下游到底**
+- fixture 必须复刻真实 deck 的资产形态：真实页跑完链路后 `review` 与 `assist-review` 各写过一次复核稿，`text_review` 有**两条指向同一路径**；只造一条的 fixture 会让缺陷全程隐身
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+// 按裸 role 取首条 —— 换源后取到归档件，且 assertWorkspaceAssetIntegrity 查不出来
+const validationAsset = manifest.assets.find(
+  (asset) => asset.role === "review_validation",
+);
+
+// 归档时逐条 rename —— 多条资产指向同一文件，第二条必 ENOENT
+for (const asset of matched) {
+  await rename(resolve(asset.path), resolve(archivedPath));
+}
+```
+
+#### Correct
+
+```ts
+// 判据能区分「当前」与「归档」
+const validationAsset = manifest.assets.find(
+  (asset) =>
+    asset.role === "review_validation" && asset.path === VALIDATION_OUTPUT_PATH,
+);
+
+// 同一源路径只搬一次，所有引用一并改指
+let archivedPath = archivedPaths.get(asset.path);
+if (archivedPath === undefined) {
+  archivedPath = `${dirname(asset.path)}/archived/${initAttemptId}/${basename(asset.path)}`;
+  await rename(from, to);
+  archivedPaths.set(asset.path, archivedPath);
+}
 ```

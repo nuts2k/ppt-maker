@@ -138,7 +138,14 @@ CLI、桌面端、②③④ 全部调它，不各写各的 `kind === "generated"
 3. 追加 `init` attempt（number 递增），`inputFingerprint` 按 `createSlideWorkspace` 同一公式
    （`sha256Values([源图 sha, 参考文 sha ?? "no-reference", "workspace-version:1"])`）重算
 4. 更新 `sourceImageAssetId`、`config.sourceImagePath`、`manifest.source`（来源信息随本次 attempt）
-5. 按 §4 归档或保留 `text_review`
+5. 按 §4 归档或保留 `text_review`（连同 `review_validation`）
+5b. **无条件**归档 `source_acceptance`（`stages/source/accepted.json` →
+   `stages/source/archived/<新 init attemptId>/accepted.json`，id 加 `-archived-<attemptId>` 后缀）。
+   不受 `--keep-review` 影响：那个开关保的是文字复核的人工劳动（对新图仍有参考价值，
+   走 IoU 对齐），而这条记录说的是「上一张图我看过了，能用」——换图之后对新图根本不成立。
+   漏掉这一步会打穿本任务自己立的判据（B5「判据就是磁盘上这个文件在不在」）：
+   自动放行的页磁盘上躺着 `accepted.json`，或换成 `generated` 后闸门未过却留着旧记录，
+   等于对一张没人看过的图声称「已确认」（2026-08-01 桌面端走查实证）。
 6. `invalidateStageAndDownstream(stages, "accept-source", reason, now)`
 7. 覆写 `accept-source` 状态：按**新来源**重新判定（生成 → `pending` 且清空 attempt 关联；
    其余 → `completed` 并追加一条 `auto-source-trust` attempt）
@@ -165,7 +172,18 @@ CLI、桌面端、②③④ 全部调它，不各写各的 `kind === "generated"
 
 桌面端 `deriveStageDetails`（`main/slide-detail.ts:179`）按 `RUN_STAGE_SEQUENCE` 映射
 manifest 状态，加了阶段即自动出现在轨道上，无需额外改动。
-待办队列按 `gate !== null` 收集，新 gate 自动进队列——父任务 §4.5「无需新造机制」在此验证成立。
+~~待办队列按 `gate !== null` 收集，新 gate 自动进队列——父任务 §4.5「无需新造机制」在此验证成立。~~
+
+**上一句是错的，2026-08-01 真机走查证伪。** 待办队列**不**按 `gate !== null` 收集：
+`todo-queue.ts` 的 `deriveSlideItem` 逐条匹配具体判据，会话层只认
+`validation-failed` 与 `human-edit` 两个 gate 常量，`gate: "source"` 直接落空。
+实测停在源图确认的页既不进待办队列，也不进控制台「待处理」筛选（被归入「未开始」），
+刷新后连活动日志之外的线索都没有。
+
+因此新增了 `confirm-source` 分组，且判据**取自耐久层**
+（`accept-source` 阶段状态非 `completed`，见 `lib/accept-gate.ts` 的
+`awaitingSourceConfirm`）而不是会话 gate——会话 gate 只活在本次进程里，
+重启即失。控制台筛选与队列同源于 `deriveTodoQueue`，改一处即两处生效。
 
 ## 8. deck 层
 
@@ -183,6 +201,12 @@ load deck → 按 `pageLabel` / `slideId` 定位 entry → 调 slide 层 `replac
 实现前读 `DESIGN.md`，遵循既有对话框/按钮样式，不新造视觉语言。
 
 IPC 新增一个 handler，直接调 CLI 的 `replaceSlideSource`，不在 main 侧复写判断逻辑（S9）。
+
+**走查补充（2026-08-01）**：换源入口不够——停在源图确认的页在桌面端只能看不能办，
+必须回 CLI 敲 `ppt-maker slide accept-source`。已补 `slide:accept-source` handler
+（直调 `runAcceptSource`，来源判断仍全部在 CLI 侧）、preload 与 `channels.ts` 的
+`acceptSource`，以及工具栏的「确认源图」按钮 + 详情页常驻提示条。
+按钮取 `secondary`：同屏的 primary 已经给了「运行此页」，DESIGN.md 要求 primary 全屏唯一。
 
 ## 10. 测试策略
 

@@ -163,6 +163,24 @@ liveStages: withoutRunningLiveStages(snapshot.liveStages, event.slideId),
 export function blockingStageView(views: readonly StageView[]): StageView | null;
 ```
 
+**CLI 侧同一判据（2026-08-01 补齐）**：`deck status` 当时仍在用那对错位字段，M5 给
+`SLIDE_STAGE_ORDER` 插入 `accept-source` 之后，换源这条高频路径每次都会报出
+`失败: page-01 (accept-source)`——指着一个 completed 的阶段，而且正是新加的那个。
+判据下沉到 core：
+
+```ts
+// packages/core/src/stage-graph.ts —— 纯耐久层的消费方一律调它
+export function findBlockingStage(states: readonly WorkspaceStageState[]): WorkspaceStageState | null;
+```
+
+`DeckSlideStatus` 随之拆成两个字段：`currentStage`（进度，最后一个已完成阶段）与
+`blockingStage`（故障，卡住的那个阶段，无则 `null`）。**合成一个必然要为另一个的语义买单**
+——这正是下一条「一个判据兼职两件事」的同型错误。桌面端的 `blockingStageView` 作用在
+合并了会话层的展示视图上，两者是同一判据的两个层次，不得各写一套优先级。
+
+错位口径还会**漏报**：失败阶段与最后一个已完成阶段之间夹着 `pending` 时（如
+`ocr: pending, review: failed`），它只看「下一个阶段」，于是整页被报成正常进行中。
+
 **顺带的一条措辞约定**：`stale` 不是 `failed`。「失效」是改了上游后的常规路径（保存复核内容就会产生），文案统一为「上游已变更，需重跑」；「执行失败」只留给 `failed` / `interrupted`。都写成失败会把一次正常的「改完了、重跑一下」报成红色故障。
 
 **自查**：同一件事在多处展示时，问一句——*它们是同一个函数算出来的吗？* 不是的话，迟早会各说各话。
