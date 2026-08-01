@@ -76,7 +76,16 @@ specViewFingerprint(style, entry) = sha256Values([
 
 ## 3. 生成流程
 
-### 3.1 `deck generate --spec <file> [--confirm-upload]`
+### 3.1 `deck generate --spec <file> --deck <path> [--confirm-upload]`
+
+**deck 不存在则创建，存在则按页序追加末尾**（与子任务② 的 `deck extract` 同构）。
+追加时既有页零改动：只往 `manifest.slides` 末尾 push，`page-NN` 由 `nextPageNumber`
+分配、不重排（`deck/add-slide.ts:23`）。父任务 A2 的交错混合 deck 即靠按页序
+依次调用不同来源的命令实现。
+
+**对账只覆盖 `source.kind === "generated"` 的页**。同 deck 内的 `imported` / `extracted`
+页没有 `specEntryId`，既不算失联也不算新增——否则往混合 deck 跑一次 `deck generate`，
+所有导入页与抽取页都会被报成「失联」。
 
 ```
 读规格 → 复制进 deck（或对账已有的）

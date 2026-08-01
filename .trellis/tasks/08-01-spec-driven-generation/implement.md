@@ -38,9 +38,11 @@ JSON 键重排不改变指纹。
 - [ ] 3.2 断点续跑：已存在且 `specEntryId` 匹配的页跳过；单页失败不中断整批，
       退出码按「至少建立一页」不视为失败。
 - [ ] 3.3 落 `content_spec` 资产，内容是**合并视图** `{style, entry}` 而非裸条目（design §2.4）。
-- [ ] 3.4 CLI 注册 `deck generate --spec <file> [--confirm-upload]`。
+- [ ] 3.4 CLI 注册 `deck generate --spec <file> --deck <path> [--confirm-upload]`。
+      **deck 不存在则创建，存在则按页序追加末尾**，既有页零改动、`page-NN` 不重排
+      （与子任务② 的 `deck extract` 同构，design §3.1）。
 
-验证：C2 / C3 / C4。**C3 须显式断言资产尺寸与磁盘 PNG 实际像素逐字节一致**，
+验证：C2 / C3 / C4 / **C14**。**C3 须显式断言资产尺寸与磁盘 PNG 实际像素逐字节一致**，
 不接受「等于请求参数」——RK1 已证明网关不返回请求尺寸。
 
 ## 阶段四：`reference_text` 缺口（R9，必须早于阶段五）
@@ -71,6 +73,9 @@ JSON 键重排不改变指纹。
 - [ ] 6.1 派生计算漂移（design §5），在 `deck status` 呈现。不落盘、不改任何阶段状态。
 - [ ] 6.2 `deck generate` 重跑对账，报告【新增 / 失联 / 漂移】三类（E3）；
       只自动生成新增条目对应的页，失联页原封不动。
+      **对账只覆盖 `source.kind === "generated"` 的页**——混合 deck 里的
+      `imported` / `extracted` 页没有 `specEntryId`，不参与对账，
+      否则跑一次就会把它们全报成「失联」（C14）。
 - [ ] 6.3 按 design §6 实现 `content_spec` / `generation_prompt` 的当前产物选取：
       按 `attemptId === initStage.lastSuccessfulAttemptId`。**禁止裸 `role` 查找。**
 

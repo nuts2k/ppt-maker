@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/guides/verification-coverage-thinking-guide.md", "reason": "判断每条验收标准能否勾掉的唯一依据。P3 用合成 PDF 验则不能勾（自己造的数据带着自己的假设）；P7 只验到抽取成功不能勾；P12 未在真实历史 deck 上跑过不能勾"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "核对是否违反既有跨层契约：抽取建页是否同时写了 assets/stages/attempts、extracted 页是否仍未伪造人工验收记录、追加是否动了既有页"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "后端代码质量门槛与测试要求的既有标准，check 阶段照它核对"}
+{"file": ".trellis/tasks/08-01-pdf-page-extraction/prd.md", "reason": "P1–P12 验收标准的权威定义与每条的覆盖形状要求，逐条核对时以它为准"}

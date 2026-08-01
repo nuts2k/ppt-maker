@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/backend/contracts.md", "reason": "抽取建页要走既有工作区落库契约：每个阶段收尾必须同时写 assets/stages/attempts 三样（漏写会让阶段恒 pending）；自动放行不得伪造人工痕迹（extracted 页 accept-source 为 completed 但磁盘无 accepted.json，判据就是文件在不在）"}
+{"file": ".trellis/spec/guides/verification-coverage-thinking-guide.md", "reason": "P7 / P12 的形状照它设计。P7 必须抽取后继续跑下游到 pptx 成功，只验到「抽取成功」等于只证明了没有立刻炸；P12 的兼容性必须在真实历史 deck 上验，不接受仅凭 fixture 推断"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "加密 PDF、二进制缺失、单页渲染失败、整份为空都要用既有 FoundationError 错误码体系表达；退出码口径（至少建立一页即 0）须与父任务对 D2 的规定一致，不自造"}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "新增 apps/cli/src/pdf/ 模块与 native/macos-pdf-render/ 的落位须符合既有目录约定；抽取报告落 deck 级约定目录而非 manifest"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "本任务几乎全是复用：native/macos-vision-ocr 是原生二进制的现成模板、ocr.ts:14 是 execFile+zod+友好报错的现成写法、addSlideToDeck 是追加规则的唯一来源、createDeckWorkspace 的 mkdtemp+rename 是原子建目录的现成模式。任何「另写一份」都要先说明为何不能复用"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "16:9 判定的容差必须单点定义在 core，不得在 Swift 侧再判一次——判定逻辑分裂成两份是容差改一处忘一处的直接成因"}
