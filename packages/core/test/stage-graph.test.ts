@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   assertStageDependenciesCompleted,
   createInitialStageStates,
+  findBlockingStage,
   getDownstreamStages,
   invalidateStageAndDownstream,
   isStageReusable,
+  type SlideStage,
+  type WorkspaceStageState,
 } from "../src/index.js";
 
 const HASH = "a".repeat(64);
@@ -109,5 +112,77 @@ describe("stage graph", () => {
     expect(isStageReusable(state, HASH)).toBe(true);
     expect(isStageReusable(state, "b".repeat(64))).toBe(false);
     expect(isStageReusable({ ...state, status: "stale" }, HASH)).toBe(false);
+  });
+});
+
+describe("findBlockingStage", () => {
+  /** 按阶段名指定状态，其余阶段一律 completed */
+  function statesWith(
+    overrides: Partial<Record<SlideStage, WorkspaceStageState["status"]>>,
+  ): WorkspaceStageState[] {
+    return createInitialStageStates("init-001", HASH).map((state) => ({
+      ...state,
+      status: overrides[state.stage] ?? "completed",
+    }));
+  }
+
+  it("全部完成时没有阻塞阶段", () => {
+    expect(findBlockingStage(statesWith({}))).toBeNull();
+  });
+
+  it("换源后指名 ocr，而不是那个已完成的 accept-source", () => {
+    // 换源的真实形态：init 与 accept-source 都 completed，ocr 及下游 stale。
+    // 「最后一个已完成阶段」正好是 accept-source，错位口径会指着它报失败。
+    const blocking = findBlockingStage(
+      statesWith({
+        ocr: "stale",
+        review: "stale",
+        "assist-review": "stale",
+        mask: "stale",
+        clean: "stale",
+        "accept-clean": "stale",
+        pptx: "stale",
+        "accept-pptx": "stale",
+        report: "stale",
+      }),
+    );
+    expect(blocking?.stage).toBe("ocr");
+    expect(blocking?.status).toBe("stale");
+  });
+
+  it("中段失效时指名失效的那个阶段", () => {
+    const blocking = findBlockingStage(
+      statesWith({ mask: "stale", clean: "stale" }),
+    );
+    expect(blocking?.stage).toBe("mask");
+  });
+
+  it("真失败优先于失效：失效只要重跑，失败得先修", () => {
+    const blocking = findBlockingStage(
+      statesWith({ mask: "stale", clean: "failed" }),
+    );
+    expect(blocking?.stage).toBe("clean");
+    expect(blocking?.status).toBe("failed");
+  });
+
+  it("中断与失败同级", () => {
+    expect(findBlockingStage(statesWith({ clean: "interrupted" }))?.stage).toBe(
+      "clean",
+    );
+  });
+
+  it("失败阶段与最后一个已完成阶段之间隔着 pending 时也能发现", () => {
+    // 错位口径只看「最后一个已完成阶段的下一个」，这里看到的是 pending 的 ocr，
+    // 于是整页被报成正常进行中，真正失败的 review 被漏掉。
+    const blocking = findBlockingStage(
+      statesWith({ ocr: "pending", review: "failed" }),
+    );
+    expect(blocking?.stage).toBe("review");
+  });
+
+  it("pending 与 running 不算阻塞", () => {
+    expect(
+      findBlockingStage(statesWith({ ocr: "running", review: "pending" })),
+    ).toBeNull();
   });
 });

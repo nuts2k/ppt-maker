@@ -155,6 +155,38 @@ export function assertStageDependenciesCompleted(
   }
 }
 
+/**
+ * 需要用户处理的那一个阶段：真失败优先，其次才是失效；都没有则 `null`。
+ *
+ * **不能用「最后一个已完成阶段的下一个」顶替。** 那对字段是错位的：前者是进度，
+ * 后者是故障，拼起来就成了「阶段「已完成的那个」上游已变更」。换源后
+ * `init` / `accept-source` 都 completed、`ocr` stale，错位口径会指着 `accept-source`
+ * 报失败——一个明明完成了的阶段（2026-08-01 实测）。它还会漏报：失败阶段不紧挨着
+ * 最后一个已完成阶段时（中间夹着 pending），错位口径根本看不见那个失败。
+ *
+ * `failed` / `interrupted` 排在 `stale` 前：一页同时有真失败与失效时，用户要先看见
+ * 失败的那个——失效只要重跑，失败得先修。
+ *
+ * **单点定义**：CLI 的 `deck status` 与桌面端的 `blockingStageView` 是同一个判据，
+ * 两侧对同一个 deck 的说法不得分叉。桌面端的版本作用在合并了会话层的展示视图上，
+ * 纯耐久层的消费方一律调本函数。
+ */
+export function findBlockingStage(
+  states: readonly WorkspaceStageState[],
+): WorkspaceStageState | null {
+  const byStage = new Map(states.map((state) => [state.stage, state]));
+  const ordered = SLIDE_STAGE_ORDER.map((stage) => byStage.get(stage)).filter(
+    (state): state is WorkspaceStageState => state !== undefined,
+  );
+  return (
+    ordered.find(
+      (state) => state.status === "failed" || state.status === "interrupted",
+    ) ??
+    ordered.find((state) => state.status === "stale") ??
+    null
+  );
+}
+
 export function isStageReusable(
   state: WorkspaceStageState,
   inputFingerprint: string,
