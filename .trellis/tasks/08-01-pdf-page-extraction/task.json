@@ -3,7 +3,7 @@
   "name": "pdf-page-extraction",
   "title": "PDF 抽取",
   "description": "文档逐页转位图并建立 slide workspace，含矢量文本层探测与按页 16:9 判定（M5 子任务②）",
-  "status": "planning",
+  "status": "in_progress",
   "dev_type": null,
   "scope": null,
   "package": null,

@@ -9,9 +9,11 @@
     "pnpm": ">=10 <11"
   },
   "scripts": {
-    "build": "pnpm -r --if-present build && pnpm build:vision",
+    "build": "pnpm -r --if-present build && pnpm build:vision && pnpm build:pdf",
     "build:vision": "mkdir -p native/macos-vision-ocr/.build/module-cache && xcrun swiftc -module-cache-path native/macos-vision-ocr/.build/module-cache native/macos-vision-ocr/Sources/main.swift -o native/macos-vision-ocr/.build/macos-vision-ocr",
+    "build:pdf": "mkdir -p native/macos-pdf-render/.build/module-cache && xcrun swiftc -module-cache-path native/macos-pdf-render/.build/module-cache native/macos-pdf-render/Sources/main.swift -o native/macos-pdf-render/.build/macos-pdf-render",
     "fixture:foundation": "mkdir -p fixtures/foundation native/macos-vision-ocr/.build/module-cache && xcrun swift -module-cache-path native/macos-vision-ocr/.build/module-cache native/macos-vision-ocr/Sources/generate-fixture.swift fixtures/foundation/mixed-text.png && xcrun swift -module-cache-path native/macos-vision-ocr/.build/module-cache native/macos-vision-ocr/Sources/generate-fixture.swift fixtures/foundation/mixed-text.jpg",
+    "fixture:pdf": "mkdir -p fixtures/pdf-extraction native/macos-pdf-render/.build/module-cache && xcrun swift -module-cache-path native/macos-pdf-render/.build/module-cache native/macos-pdf-render/Sources/generate-test-pdf.swift fixtures/pdf-extraction",
     "fixture:single-slide": "mkdir -p fixtures/single-slide native/macos-vision-ocr/.build/module-cache && xcrun swift -module-cache-path native/macos-vision-ocr/.build/module-cache native/macos-vision-ocr/Sources/generate-complex-fixture.swift fixtures/single-slide/complex-page.png",
     "format": "biome check --write apps/*/src apps/*/test packages/*/src packages/*/test",
     "format:check": "biome check apps/*/src apps/*/test packages/*/src packages/*/test",

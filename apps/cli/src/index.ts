@@ -25,6 +25,8 @@ import {
 import { readImageMetadata } from "./image.js";
 import { runSlideMask } from "./mask/run.js";
 import { runVisionOcr, writeOcrResult } from "./ocr.js";
+import { extractPdfToDeck } from "./pdf/extract.js";
+import { formatExtractionReport } from "./pdf/report.js";
 import { runAcceptPptx } from "./pptx/accept.js";
 import { runSlidePptx } from "./pptx/run.js";
 import { createPptxProbe } from "./pptx.js";
@@ -393,6 +395,45 @@ slide
   );
 
 const deck = program.command("deck").description("多页 Deck 工作流");
+
+deck
+  .command("extract")
+  .requiredOption("--pdf <file>", "PDF 文件")
+  .requiredOption(
+    "--deck <path>",
+    "deck 工作区（不存在则创建，存在则追加到末尾）",
+  )
+  .option("--pages <range>", "只抽取指定页，如 3-8,12；缺省为全部")
+  .option("--name <title>", "新建 deck 时的显示名称")
+  .option("--binary <path>", "PDF 渲染二进制路径")
+  .description(
+    "逐页把 PDF 渲染为 16:9 位图并建立页面；非 16:9 页跳过并进入报告",
+  )
+  .action(
+    async (options: {
+      pdf: string;
+      deck: string;
+      pages?: string;
+      name?: string;
+      binary?: string;
+    }) => {
+      const result = await extractPdfToDeck({
+        pdfPath: resolve(options.pdf),
+        deckPath: resolve(options.deck),
+        ...(options.pages === undefined ? {} : { pages: options.pages }),
+        ...(options.name === undefined ? {} : { deckName: options.name }),
+        ...(options.binary === undefined
+          ? {}
+          : { binaryPath: resolve(options.binary) }),
+        onProgress: (message) => {
+          process.stderr.write(`${message}\n`);
+        },
+      });
+      process.stderr.write(`${formatExtractionReport(result.report)}\n`);
+      process.stdout.write(`${result.deckPath}\n`);
+      process.stdout.write(`${result.reportPath}\n`);
+    },
+  );
 
 deck
   .command("init")

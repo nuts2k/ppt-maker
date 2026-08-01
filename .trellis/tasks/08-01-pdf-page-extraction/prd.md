@@ -103,29 +103,55 @@ rendererId / rendererVersion / renderDpi / recordedAt / attemptId
 
 > 覆盖形状照 `.trellis/spec/guides/verification-coverage-thinking-guide.md` 检查。
 
-- [ ] **P1 逐页建立**：N 页全 16:9 的 PDF 抽取后建出 N 页，每页
+> 验证于 2026-08-01 实现会话。走查产物在会话 scratchpad，不入库。
+
+- [x] **P1 逐页建立**：N 页全 16:9 的 PDF 抽取后建出 N 页，每页
       `source.kind === "extracted"`，`documentSha256` / `pageNumber` / `renderDpi` 等字段齐备。
-- [ ] **P2 尺寸实测**：抽取页的 `source_image` 资产 `image.width/height` 与磁盘 PNG 实际像素
+      验于 `~/test/b2-export-strict.pdf`（2 页全 16:9 → 2 页）与 `mixed-aspect.pdf`；
+      单测 `pdf-extract.test.ts` 逐字段断言。
+- [x] **P2 尺寸实测**：抽取页的 `source_image` 资产 `image.width/height` 与磁盘 PNG 实际像素
       **逐字节一致**（沿用③ 的同一约束：不接受「等于请求的目标宽度」）。
-- [ ] **P3 文本层探测（父任务 A5）**：含矢量文本层的 PDF 抽取后，
+      单测用 sharp（与填充用的 image-size 不是同一个库）独立实测；走查另用 PNG IHDR
+      原始字节复核 b2 两页均为 2048×1152 一致。
+- [x] **P3 文本层探测（父任务 A5）**：含矢量文本层的 PDF 抽取后，
       每页 `hasExtractableText` 落盘且值正确。**须用 F4 的真实导出 PDF 验。**
-- [ ] **P4 逐页判定与跳过（父任务 A6）**：混合宽高比的 PDF 抽取后，16:9 页正常建立、
+      用 `~/test/b2-export-strict.pdf`（PowerPoint for Mac 真实导出）验，两页均 `true`；
+      合成件第 5 页（纯图形）为 `false`，说明探测不是恒真。
+- [x] **P4 逐页判定与跳过（父任务 A6）**：混合宽高比的 PDF 抽取后，16:9 页正常建立、
       非 16:9 页带**尺寸与原因**进入报告并跳过，**命令不整体失败**（退出码 0）。
-- [ ] **P5 整份为空才失败**：一份全是非 16:9 页的 PDF 抽取后命令失败（非零退出码），
-      且不留下半成品 deck。
-- [ ] **P6 页号溯源**：跳过中间页后，建出页的 `pageNumber` 指向 PDF 原始页号而非 deck 内序号。
-- [ ] **P7 抽取的页能跑完下游**（覆盖形状，不可简化）：取一个抽取出的页，
+      CLI 实跑 `deck extract` 建 3 页跳 2 页，退出码 0；跳过项含 pt 尺寸、实际比例、
+      偏离百分比与容差。
+- [x] **P5 整份为空才失败**：一份全是非 16:9 页的 PDF 抽取后命令失败（非零退出码），
+      且不留下半成品 deck。CLI 实跑 `no-wide.pdf`：退出码 1，目标目录不存在，
+      父目录下无 `.<name>.tmp-*` 残留。
+- [x] **P6 页号溯源**：跳过中间页后，建出页的 `pageNumber` 指向 PDF 原始页号而非 deck 内序号。
+      `slides/page-02` 的 `pageNumber` 为 3、`page-03` 为 5。
+- [x] **P7 抽取的页能跑完下游**（覆盖形状，不可简化）：取一个抽取出的页，
       **继续跑 `ocr` → `review` → `mask` → `pptx` 成功**。
-      只验到「抽取成功」等于只证明了「没有立刻炸」。
-- [ ] **P8 追加到已有 deck**：向一个已有页的 deck 抽取追加，新页接在末尾，
+      b2 第 1 页跑完 ocr → review → assist-review（真实 OpenAI）→ validate-review →
+      mask → clean（真实 gpt-image-2）→ pptx，`check.json` 为 `passed`：
+      1 张背景图 + 40 个文本框、字体声明为微软雅黑、无缺失文字。
+      **代劳处**：复核门由脚本批量把 20 个版式文字标为 reviewed。
+      不受影响的结论是链路连通性；复核质量未经人工判断。
+- [x] **P8 追加到已有 deck**：向一个已有页的 deck 抽取追加，新页接在末尾，
       **既有页的阶段状态与已确认产物完全不受影响**，`page-NN` 目录名不重排。
-- [ ] **P9 自动放行不伪造人工痕迹**：抽取页的 `accept-source` 为 `completed`，
+      单测断言既有页 `manifest.json` 逐字节相同、deck 条目前 N 条 deep-equal；
+      走查在真实旧 deck 上复验（见 P12）。
+- [x] **P9 自动放行不伪造人工痕迹**：抽取页的 `accept-source` 为 `completed`，
       但磁盘上**没有** `stages/source/accepted.json`（父任务 A10 的口径，判据就是文件在不在）。
-- [ ] **P10 换源互通**：把一个抽取页换源为导入图，来源正确翻转为 `imported`
+      b2 走查页跑完十阶段后 `stages/source/` 整个目录都不存在，
+      资产里无 `source_acceptance`，attempt 的 provider 为 `auto-source-trust`。
+- [x] **P10 换源互通**：把一个抽取页换源为导入图，来源正确翻转为 `imported`
       且不再需要人工确认；反向亦然（父任务 A11 的 `extracted` 侧）。
-- [ ] **P11 报告可读**：抽取报告落盘且含建立页与跳过页两部分，跳过项有尺寸与原因。
-- [ ] **P12 既有工作区零影响**：M3/M4 时代的旧 deck 在本任务改动后仍可打开、继续处理、
+      单测在真实抽取页上双向换源，两侧 `requiresAcceptance` 均为 false 且无 `accepted.json`。
+- [x] **P11 报告可读**：抽取报告落盘且含建立页与跳过页两部分，跳过项有尺寸与原因。
+      落 `<deck>/extractions/<时间戳>-<docSha8>.json`，跳过项的 `reason` 是
+      `{code, message}` 结构化枚举 + 人类可读消息。
+- [x] **P12 既有工作区零影响**：M3/M4 时代的旧 deck 在本任务改动后仍可打开、继续处理、
       `--strict` 导出。**须在真实历史 deck 上验**（`~/test/ppttest-2026-07-25` 的副本）。
+      在副本上用**当前源码**验：打开读状态 2/2 完成 → `--strict` 导出 2 页原生 0 页占位 →
+      追加 1 页抽取页后既有两页 `manifest.json` 逐字节未变、`page-NN` 不重排 →
+      重跑 `slide report` 仍汇总为 complete。基线目录本身未被触碰。
 
 ## 不做
 
