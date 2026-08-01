@@ -1,90 +1,146 @@
-# 会话交接：M5 父任务规划已完成，未启动
+# 会话交接：子任务① 已归档，②③ 待创建
 
-写于 2026-07-31 规划会话结束时，供新会话接续。
+写于 2026-08-01 会话结束时。工作区干净，5 个提交落在 `main`，**未 push**（领先远程 17 个）。
+
+> 本文件替换了 2026-07-31 那版（当时父任务尚未启动）。阶段一与子任务① 都已完成，
+> 那版描述的状态已全部作废。
 
 ## 立刻做这一步
 
-新会话的 Trellis SessionStart 很可能显示 `Current task: none`——活动任务是按会话 id 绑定的
-（本次为 `session:claude_4011e303-…`），换会话后不会自动指向。先重新指向本任务：
+Trellis 活动任务按会话 id 绑定，换会话不会自动指向。新会话先：
 
 ```bash
 python3 ./.trellis/scripts/task.py current --source
 ```
 
-若不是 `.trellis/tasks/07-31-page-sources-and-content-generation`，直接读本目录的
-`prd.md` → `design.md` → `implement.md` 三份文档即可接续，不要重新规划。
-
-## 当前状态
-
-- 任务状态：`planning`，**尚未 `task.py start`**
-- 规划产物：`prd.md`、`design.md`、`implement.md` 三份齐备并已交叉核对一致
-- 上下文清单：`implement.jsonl` 3 条、`check.jsonl` 3 条，均为真实条目（非种子）
-- 子任务：**尚未创建**（`task.json` 的 `children` 为空），按计划在阶段一之后创建
-- 代码改动：**零**。本次会话只写了任务目录下的规划文档，仓库其余部分未动
-
-## 用户已拍板的七条决策
-
-D1–D7 全部记在 `prd.md` 的「已定决策」表里，含结论与影响。不要重新提问，
-除非实现中发现决策前提不成立——那种情况回父任务改决策，不要在实现里绕过。
-
-其中 D6、D7 是用户在规划后段追加的，也是最容易被漏掉的两条：
-
-- **D6**：`generated` 页批量生成后必须逐张人工确认才走 `ocr`，`imported` / `extracted`
-  自动放行。落地为第三个验收闸门 `accept-source`。
-- **D7**：规格双层（deck 级可编辑意图 + slide 级不可变快照），规格改动只产生只读漂移标注、
-  不自动失效阶段；调整主路径是「重生成时附带一句说明」并回写规格条目。
-
-## 下一步：执行 `implement.md` 阶段一
-
-审阅已通过口径由用户在上一会话给出（「文档我就不细看了」+ 两轮追加需求后未再提异议）。
-新会话可直接：
+若不是 `.trellis/tasks/07-31-page-sources-and-content-generation`，执行：
 
 ```bash
 python3 ./.trellis/scripts/task.py start .trellis/tasks/07-31-page-sources-and-content-generation
 ```
 
-然后按 `implement.md` 阶段一执行 ROADMAP 对齐（1.1–1.5 五项），**先不要碰产品代码**。
-阶段一提交后再创建子任务 ①：
+**不要重新规划父任务**。`prd.md` / `design.md` / `implement.md` 三份齐备且已随子任务① 的
+实现修订过（§5 role 表、§6 换源序列各补过一处）。
+
+## 当前状态
+
+| 项 | 状态 |
+|---|---|
+| 父任务 | `in_progress`，阶段一（ROADMAP 对齐）完成，阶段二进行中 |
+| 子任务① 页面来源契约与换源操作 | **已完成并归档** → `.trellis/tasks/archive/2026-08/07-31-page-source-contract/` |
+| 子任务②③④ | **尚未创建** |
+| 测试 | 576 项全绿（core 90 + desktop 359 + cli 127） |
+| 代码改动 | 已全部提交，工作区 clean |
+
+`main` 上本轮的 5 个提交：
+
+```
+893aa9c fix(core,cli): 阶段阻塞判据下沉 core，deck status 不再指错阶段
+cde54b5 fix(cli): 换源路径三个必现缺陷，多代资产不再冒充当前产物
+e5da82f feat(desktop): 源图确认入口与待办队列「待确认源图」组
+b15ca8b docs(spec,task): 固化多代资产选取契约与验收覆盖教训，B1-B10 全部通过
+（+ 1 个 task.py archive 的自动提交）
+```
+
+## 下一步：创建子任务②③
+
+按 `implement.md` 阶段二，两者可并行创建（都只依赖① 的来源契约，彼此不依赖）：
 
 ```bash
-python3 ./.trellis/scripts/task.py create "<标题>" --slug <slug> \
+python3 ./.trellis/scripts/task.py create "PDF 抽取" --slug pdf-page-extraction \
+  --parent 07-31-page-sources-and-content-generation
+python3 ./.trellis/scripts/task.py create "图片生成" --slug spec-driven-generation \
   --parent 07-31-page-sources-and-content-generation
 ```
 
-## 三个必须带进下一会话的判断
+ROADMAP 的 M5 小节写了这四个计划 slug（不带日期前缀），创建后目录名会带 `MM-DD`，
+届时回填实际目录名。
 
-这三条是本次规划中代价最高的推理，重述一遍以免在子任务里被推翻或遗忘。
+**子任务③ 的第一步必须是 RK1 实证**：实调 `images.generate` 验证能否直出 16:9
+（2048×1152 或等比档位）。现有 `images.edit` 用的该尺寸走的是 SDK `(string & {})`
+自由通道（`openai-image.ts:52` 注释自陈无字面量校验），**不构成 generate 也支持的证据**。
+**验证失败就停下回父任务**——裁剪自产图还是换 Provider 属产品决策，不得在实现里自行选择。
+此时①② 已完成且不依赖③，可以只交付两种来源，M5 完成条件相应调整。
 
-**1. `accept-source` 是唯一允许新增的阶段，且只因为它是验收闸门。**
-`ArtifactAcceptance` 已是通用验收契约（`.trellis/spec/backend/contracts.md:241,257`），
-`accept-clean` / `accept-pptx` 是它的两个实例。阶段图对三种来源**完全相同**，
-差别只在 `accept-source` 的初始状态。若子任务发现还需要新增**处理阶段**（非验收闸门），
-说明来源抽象没成立，回父任务重新决策。
+## ②③④ 动手前必读的两份 spec
 
-**2. RK4 是本任务的头号风险，且它推翻了「零迁移」的承诺。**
-新增阶段会让旧 manifest 撞上「所有 `SlideStage` 都必须有对应状态」的校验
-（`packages/core/src/workspace-contracts.ts:249`），**旧工作区会直接加载失败**。
-子任务 ① 必须让加载期归一化与契约字段同批落地，且旧 manifest 加载回归测试是准入条件。
+这是子任务① 用六个缺陷换来的，**不读会原样重犯**：
 
-**3. 自动放行不得伪造人工痕迹。**
-`imported` / `extracted` 的 `accept-source` 置 `completed` 但**不写** `accepted.json`。
-写一条 `acceptedBy` 指向系统的验收记录，等于让报告声称「这页源图有人确认过」而事实没有——
-这正是 M4 列为头号风险的「记录与事实相反」。
+1. `.trellis/spec/backend/contracts.md`〈多代资产与「当前产物」选取契约〉
+2. `.trellis/spec/guides/verification-coverage-thinking-guide.md`
 
-## 一个未验证的可行性前提
+核心一句：**换源与阶段重跑会让同一 `role` 在 `assets` 里出现多代，
+`assets.find(a => a.role === X)` 拿到的是上一代**——文件确实存在、哈希也对，
+错的是它描述的对象已经不是当前那个，`assertWorkspaceAssetIntegrity` 查不出来。
 
-**RK1**：`images.generate` 能否直出 16:9（2048×1152）**没有验证过**。现有
-`images.edit` 用的该尺寸走的是 SDK `(string & {})` 自由通道（`openai-image.ts:52`
-注释自陈无字面量校验），不构成 generate 也支持的证据。
+②③ 会新增 `source_document` / `content_spec` / `generation_prompt` 三个 role
+（父任务 `design.md` §5 枚举表里已列、待落地）。**这三个只要会被重新生成或替换，
+就同样会有多代问题**，判据从下面三类里选，别写裸 `role`：
 
-子任务 ③ 的第一步必须是实调验证。**验证失败就停下回父任务**，不要在实现里自行选择
-裁剪自产图或换 Provider——那是需要用户拍板的产品决策。此时 ①② 已完成且不依赖 ③，
-可以只交付两种来源，M5 完成条件相应调整。
+| 判据 | 适用 | 现成例子 |
+|---|---|---|
+| 显式指针 | 有「当前是哪个」概念的 | `sourceImageAssetId` / `currentSourceImageAsset` |
+| 固定当前路径 | 有唯一固定落点的 | `findCurrentValidationAsset`（`mask/run.ts`） |
+| 阶段最后一次成功 attempt | 每次 attempt 各出一份的 | `currentSuccessAsset`（`report/run.ts`） |
+
+## 六个必须带进下一会话的判断
+
+前五条来自子任务① 的实现，第六条来自它的验收。
+
+**1. 归一化必须排在 `parse` 之前**（`apps/cli/src/slide/workspace.ts` 的 `loadSlideWorkspace`）。
+写反了 `superRefine` 会先报「缺少阶段状态：accept-source」，M3/M4 的每个工作区都加载失败。
+连带两处：`SHA256_PATTERN` 已从 `workspace-contracts.ts` 下沉到 `constants.ts`（否则
+`source-contracts` 与它循环导入）；`config` 改为先于 manifest 解析（归一化要用
+`sourceImagePath`），`configPath` 从未校验的原始对象里取。
+
+**2. 当前源图只认 `sourceImageAssetId`**，见上一节——这条已推广成通用契约。
+
+**3. 闸门靠 core 兜底**。`ocr` 依赖 `accept-source`，`assertStageDependenciesCompleted`
+因此对 CLI 与桌面端同时生效。但 `run --from` 必须在**循环外**先检查闸门——只按序判定时
+`run --from ocr` 会绕过它、改由依赖守卫抛错，把「等人确认」误报成「执行失败」。
+
+**4. 自动放行不写 `accepted.json`**，判据就是磁盘上这个文件在不在。
+来源判定统一走 core 的 `requiresSourceAcceptance`，禁止在消费方各写一遍 `kind === "generated"`。
+**（2026-08-01 补）** 正因为判据是「文件在不在」，换源时必须把它移走——漏了这一步，
+一份对上一张图的人工确认会留在固定路径上冒充当前验收。已修，见 `design.md` §6 第 5b 步。
+
+**5. 换源时来源重判必须排在失效之后**。`invalidateStageAndDownstream` 会把
+`accept-source` 一并转 stale，顺序颠倒会被覆盖回去。失效起点是 `accept-source` 而非
+`init`——init 刚刚成功，标 stale 与事实相反。
+
+**6.（新）验收止步于哪里，缺陷就藏在哪之后。**
+B1–B10 曾在 550 项全绿 + 一次两页小 deck 走查后判过一轮，随后在真实 deck 上补跑含云调用
+的完整链路，一次性又暴露四个缺陷、三个必现。不是判据写错，是判据从没在会出问题的形态上
+跑过：fixture 每个 role 恰好一条（裸 `find` 碰巧也对）、测试止于「换源成功」不跑下游、
+从没「先人工确认再换源」过。②③④ 的验收标准要照《验收覆盖思考指南》检查覆盖形状。
+
+## 走查环境（②③④ 会再用到）
+
+- **`~/test/ppttest-2026-07-25` 是基线**：两页、十阶段全 completed、**无 `source` 字段的
+  M3/M4 旧格式**。验证兼容性一律从它复制，别在它本身上跑。
+- **`~/test/ppttest-archive-fix` 是唯一跑完含云调用完整链路的 deck**：page-01 实调过
+  openai 与 gpt-image-2，两页均已 accept-final，`~/test/b2-export-strict.pptx` 是它导出的
+  （2 页原生、可编辑文本）。要复现完整链路优先用它。
+- 换源走查用图在 `~/test/`：`new-source-flipped.png`（原图旋转 180°，换没换一眼可辨）、
+  `back-to-normal.png`、`b2-newsource.png`。**放 `~/test/` 是因为 macOS 选图框够不到
+  `/private/tmp`**，会话 scratchpad 里的图用户选不到。
+- 桌面端走查开 `REMOTE_DEBUGGING_PORT=9222 pnpm --filter @ppt-maker/desktop dev`，
+  用 CDP 连 `http://127.0.0.1:9222/json/list` 的 page 目标发 `Runtime.evaluate`。
+  dev 模式下 `await import('/stores/deck-store.ts')` 拿到的就是界面正在用的那个 store，
+  可直接 `openDeck(path)` 绕过「打开 Deck」的原生框。
+  但 `window.api` 是 contextBridge 只读代理**stub 不掉**，且本机无屏幕录制与辅助访问权限
+  （`screencapture` 与 `osascript` 都被拒），**原生对话框只能请用户亲自点**。
+- `pnpm typecheck` 前必须先 `pnpm --filter @ppt-maker/core build`（dist 不入库）。
+  本仓库**没有 lint 脚本**，风格检查是 `pnpm format:check`。
 
 ## 已知仍待定的（留给子任务 brainstorm，不是遗漏）
 
-- RK2 生成图的跨页风格一致性方案 → 子任务 ③
-- 内容规格的具体形状（定稿即冻结为跨里程碑契约）→ 子任务 ③
-- `text_review` 清空的实现口径（移除资产记录 vs 按 attempt 归档）→ 子任务 ①，
-  `design.md` §4.3 已列出两个可接受方向与硬约束
-- 批量源图确认界面的交互形态 → 子任务 ④
+- RK2 生成图的跨页风格一致性方案 → 子任务③
+- 内容规格的具体形状（定稿即冻结为跨里程碑契约）→ 子任务③
+- 批量源图确认界面的交互形态 → 子任务④
+
+## 一条可选的独立清理
+
+`"stages/review/text-blocks.json"` 这个字面量在 CLI 里有 11 处各写一份（10 个文件）。
+这正是缺陷「按裸 role / 各写各的路径」能存在的土壤。集中到单一来源是一次机械清理，
+本轮刻意没混进缺陷修复。要做的话单独开一条，不要顺手夹带。
