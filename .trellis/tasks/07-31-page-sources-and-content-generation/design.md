@@ -236,6 +236,32 @@ M4 固化的「链路收敛为双人工点」（`contracts.md:365` 场景节）�
 因此规格的形状由子任务 ③ 定稿后即冻结为契约，策划里程碑接上时生成侧不应改动。
 规格至少要能表达：deck 级视觉风格约定、逐页的文字内容与视觉意图。
 
+> **已由子任务 ③ 定稿并冻结（2026-08-01）。**
+> 形状指针：`packages/core/src/content-spec-contracts.ts` 的 `ContentSpecSchema`
+> （条目为 `ContentSpecEntrySchema`，slide 级快照为 `ContentSpecViewSchema`）。
+> 决策依据见 `.trellis/tasks/08-01-spec-driven-generation/prd.md` 的 E1–E6。
+>
+> ```
+> ContentSpec { schemaVersion, specId, createdAt, updatedAt,
+>               style: { description }, entries: ContentSpecEntry[] }
+> ContentSpecEntry { specEntryId, pageType,
+>                    textGroups: [{ label, items: string[] }],
+>                    visualIntent, revisionNotes: string[] }
+> ```
+>
+> 三条冻结时就要知道的性质：
+> - `pageType` 与 `textGroups[].label` 是**自由字符串而非枚举**——枚举会让策划侧
+>   撞上「我要的页型不在枚举里」。
+> - `textGroups[].items[]` **不得含换行**：展平后每条恰好占 `reference_text` 一行，
+>   内嵌换行会被 `attachReferenceCandidates` 拆成两个候选。
+> - `visualIntent` **只进提示词，绝不进 `reference_text`**，否则整条落入
+>   `unmatchedReferenceCandidates`，在复核界面表现为假的「漏识别文字」。
+>
+> **一个留给 M6 的已知张力**：本节原文既说「与 `SCHEMA_VERSION` 同源」又说
+> 「需要自己的版本轴」，实现取了前者（`z.literal(SCHEMA_VERSION)`）。
+> 后果是 manifest 侧因自身原因升 `SCHEMA_VERSION` 时，全部既有
+> `content-spec.json` 会一并校验失败。M6 扩展规格前应先决定是否给它独立版本号。
+
 **规格文字 → `reference_text` 的落地**：生成某页时，把该页规格条目中的文字写入该页
 `reference_text` 资产，并让 `config.referenceTextPath` 指向它。既有链路
 （`attachReferenceCandidates`）会自动把它作为识别参考。这符合 ROADMAP §2

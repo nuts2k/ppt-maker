@@ -592,3 +592,172 @@ if (archivedPath === undefined) {
   archivedPaths.set(asset.path, archivedPath);
 }
 ```
+
+---
+
+## 场景：原生二进制的契约边界与系统 API 的单向自适应（M5 PDF 抽取，2026-08-01 实证）
+
+### 1. Scope / Trigger
+
+新增或修改 `native/*` 下的原生二进制，或消费系统绘图 / 渲染 API 的「自适应」变换时适用。
+
+两条独立的教训，都在 `native/macos-pdf-render` 落地时实证：
+
+1. **系统 API 的「自适应」可能只单向生效**。`CGPDFPage.getDrawingTransform(_:rect:rotate:preserveAspectRatio:)` 只把页面**缩小**以塞进目标矩形，**从不放大**。直接喂 2048×1152 的矩形，一页 960×540 的 PDF 会以 1:1 居中绘制、四周大片留白——**不报错、不返回失败、图也确实产出了**，只是内容小了一圈。这是典型的静默降级（见 [silent-failure-thinking-guide](../guides/silent-failure-thinking-guide.md)）。
+2. **业务判定不得下沉进原生二进制**。二进制只做「系统 API 能做而 TS 做不了的事」，判定留在 TS 侧用 core 的单点定义。否则同一个容差会有 TS 与 Swift 两份实现，改一处忘一处。
+
+### 2. Signatures
+
+```
+macos-pdf-render probe  <pdf>
+  → { rendererId, rendererVersion, documentPageCount, encrypted,
+      pages: [{ pageNumber, widthPt, heightPt, hasExtractableText }] }
+
+macos-pdf-render render <pdf> <outDir> <targetWidth> [--pages 1,2,5]
+  → { pages: [{ pageNumber, path, width, height, renderDpi }] }
+```
+
+**拆成两个子命令是契约设计的一部分**，不是为了省事：`probe` 不渲染，TS 侧拿 `widthPt/heightPt` 判完 16:9 再让它只渲染合格页。收益是二进制里零业务逻辑 + 不渲染注定要跳过的页；代价是两次进程启动。
+
+### 3. Contracts
+
+**几何取值**：用 `CGPDFPage.getBoxRect(.mediaBox)` + `rotationAngle`，`/Rotate` 为 90 或 270 时**必须交换宽高**。不用 `PDFPage.bounds(for:)`——它是否算入页面旋转在文档上并不明确，而 CGPDFPage 这两个值是无歧义的原始值。漏掉旋转会让横放的竖版页被误判成 16:9。
+
+**加密判据用 `isLocked` 而非 `isEncrypted`**：只设了权限口令的 PDF 会被 PDFKit 自动解锁、可以正常渲染，按 `isEncrypted` 拒绝它是错的。
+
+**版本标识**：`rendererId` 是稳定常量（`"macos-pdfkit"`），`rendererVersion` = 二进制自身版本常量 + 运行时系统版本（`ProcessInfo.operatingSystemVersion`）。系统框架多半没有独立版本号，宿主系统版本是唯一可复现锚点——而 `ExtractedSource` 存这两个字段就是为了「同一页可复现」。
+
+**TS 侧不信任二进制自报的像素尺寸**：资产的 `image.width/height` 一律由建页路径实测磁盘文件填充。与生成路径的 RK1 衍生约束同源——渲染器报的尺寸与磁盘文件不符时，实测才是真的。
+
+**契约切在二进制边界上**，因此换渲染后端（如 `pdftoppm`）时 TS 侧零改动。**渲染保真度出问题时不要改 TS 侧去将就**，换后端才是回滚路径。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 要求 |
+|---|---|
+| 目标尺寸大于页面原始尺寸 | 必须自行 `scaleBy`，不得依赖 `getDrawingTransform` 放大 |
+| 页面 `/Rotate` 为 90 / 270 | 交换 `widthPt` / `heightPt` 后再参与比例判定 |
+| 文档 `isLocked` | 以既有错误码体系报错退出，不做交互解锁 |
+| 二进制不存在 | 报「请先运行 `pnpm build:<name>`」，不得是裸 ENOENT |
+| 需要业务判定（容差、阈值、格式白名单） | 留在 TS 侧调 core 的单点定义，二进制不得自行判定 |
+| 消费二进制自报的尺寸 | 禁止直接写入资产元数据，必须实测磁盘文件 |
+
+### 5. Good / Base / Bad Cases
+
+- **Good**：小尺寸矢量页（960×540）放大到目标宽度 2048，内容铺满画布无留白
+- **Base**：页面原始尺寸恰好 ≥ 目标宽度——此时 `getDrawingTransform` 的缩小路径生效，**看起来一切正常，缺陷完全隐身**。只用大尺寸样张测就永远发现不了
+- **Bad**：直接把目标矩形喂给 `getDrawingTransform`，小页 1:1 居中绘制，产出图四周大片白边，命令退出码 0、报告一切正常
+
+### 6. Tests Required
+
+- 合成 fixture 必须**同时含小于和大于目标宽度的页**——只有小页能暴露单向自适应
+- 断言产出 PNG 的实际像素等于目标宽度，且**内容非空白**（纯尺寸断言过不了这一关：留白的图尺寸也是对的）
+- `/Rotate 90` 的页参与比例判定时用交换后的宽高
+- 只设权限口令的 PDF 能正常抽取，不被 `isEncrypted` 误拒
+- 资产尺寸断言必须对**磁盘实测值**，不接受「等于请求的目标宽度」
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```swift
+// 指望 getDrawingTransform 把页面缩放到目标矩形 —— 它只缩不放，
+// 小页会 1:1 居中绘制，四周留白，且不报任何错
+let target = CGRect(x: 0, y: 0, width: 2048, height: 1152)
+context.concatenate(
+    ref.getDrawingTransform(.mediaBox, rect: target, rotate: 0, preserveAspectRatio: true)
+)
+context.drawPDFPage(ref)
+```
+
+#### Correct
+
+```swift
+// 放大自己算，只让 getDrawingTransform 按页面点尺寸处理旋转与原点平移
+let scale = CGFloat(Double(pixelWidth) / size.widthPt)
+let pageRect = CGRect(x: 0, y: 0,
+                      width: CGFloat(size.widthPt), height: CGFloat(size.heightPt))
+context.scaleBy(x: scale, y: scale)
+context.concatenate(
+    ref.getDrawingTransform(.mediaBox, rect: pageRect, rotate: 0, preserveAspectRatio: true)
+)
+context.drawPDFPage(ref)
+```
+
+---
+
+## 场景：独立可寻址契约文件的版本轴（M5 内容规格定稿，2026-08-01）
+
+### 1. Scope / Trigger
+
+新增一个**独立可寻址的契约文件**（不是宿主 manifest 的属性，而是自己一个文件、被别的里程碑或别的层读写）时适用。例：`<deck>/content-spec.json`。
+
+判据：这份数据会不会**脱离宿主单独演进**？会，就需要自己的版本轴。
+
+### 2. Signatures
+
+```ts
+// 宿主 manifest 的版本 —— 描述工作区 / deck 自身的 schema 世代
+export const SCHEMA_VERSION = 1 as const;   // packages/core/src/constants.ts
+
+// 独立契约文件的版本 —— 应当独立演进
+ContentSpecSchema.shape.schemaVersion       // packages/core/src/content-spec-contracts.ts
+```
+
+### 3. Contracts
+
+**属性 vs 文件，版本策略不同**：
+
+| 形态 | 例 | 版本 |
+|---|---|---|
+| 宿主 manifest 的一个属性 | `SlideSource` | **不带**自己的版本号，随宿主走 |
+| 独立可寻址文件 | `content-spec.json` | **应当带**自己的版本号，独立演进 |
+
+`SlideSource` 刻意不带版本号与本条不矛盾：它随宿主的 `schemaVersion` 一起被校验，宿主升版时它自然跟着走。独立文件没有这个宿主。
+
+**现状与已知张力（M5 遗留）**：`ContentSpec.schemaVersion` 实现取的是 `z.literal(SCHEMA_VERSION)`，即与宿主同源。后果是**宿主因自身原因升 `SCHEMA_VERSION` 时，全部既有 `content-spec.json` 会一并校验失败**——而它们的内容一个字节都没变。内容规格已冻结为 M5↔M6 的跨里程碑契约，M6 扩展它之前应先决定是否解绑。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 要求 |
+|---|---|
+| 新增独立可寻址契约文件 | 显式决定版本轴归属，并在 schema 注释里写明理由 |
+| 契约文件将被另一里程碑 / 另一层读写 | 版本号必须独立于宿主 `SCHEMA_VERSION` |
+| 宿主升 `SCHEMA_VERSION` | 逐个检查绑在它上面的独立文件，确认「这些文件真的也变了」 |
+| 契约字段新增 | 显式决定是否进指纹口径（见下） |
+
+**关联约束——指纹口径必须显式列字段**：跨里程碑契约的指纹不做通用 canonical JSON，而是按 schema 显式列字段喂给 `sha256Values`，并带前缀标签（`group:` / `item:`）防止不同结构拼出同一串。显式列举顺带保证「新增字段必须显式决定是否进指纹」，不会因为加了个字段就静默改变所有历史数据的漂移判断。
+
+### 5. Good / Base / Bad Cases
+
+- **Good**：宿主 `SCHEMA_VERSION` 从 1 升到 2，既有 `content-spec.json` 照常可读
+- **Base**：宿主版本号从未变过——**两种策略此时行为完全一致，差异不可见**
+- **Bad**：宿主为了 manifest 的一处改动升到 2，用户手里所有内容规格文件同时报「schemaVersion 不匹配」，而这些文件与那处改动毫无关系
+
+### 6. Tests Required
+
+- 用例断言的是**字面版本值**（`schemaVersion: 1`），不要写成引用宿主常量——否则宿主升版时用例跟着变，正好掩盖了这个缺陷
+- 指纹用例覆盖：改一条条目只有该条目指纹变、改 deck 级字段全部条目指纹变、**JSON 键顺序重排不改变指纹**、不同结构不碰撞
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+// 独立可寻址、且要被 M6 扩展的契约文件，版本绑死在宿主上
+export const ContentSpecSchema = z.object({
+  schemaVersion: z.literal(SCHEMA_VERSION),   // 宿主升版 → 既有规格文件全部失效
+  ...
+});
+```
+
+#### Correct
+
+```ts
+// 自己的版本轴，与宿主解耦
+export const CONTENT_SPEC_VERSION = 1 as const;
+export const ContentSpecSchema = z.object({
+  schemaVersion: z.literal(CONTENT_SPEC_VERSION),
+  ...
+});
+```
