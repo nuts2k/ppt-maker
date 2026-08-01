@@ -24,7 +24,10 @@ import {
   type ReviewEntryIntent,
   type ReviewFilter,
 } from "@/lib/review-filter";
-import { resolveReviewKeyAction } from "@/lib/review-keyboard";
+import {
+  resolveMoveTargetId,
+  resolveReviewKeyAction,
+} from "@/lib/review-keyboard";
 import {
   partitionOf,
   REVIEW_PARTITION_LABELS,
@@ -152,20 +155,22 @@ export function BlockListPanel({
     [keepVisible, onMarkReviewed],
   );
 
-  /** 在当前可见集合内逐项推进；不跨筛选、不自动展开任何东西 */
+  /**
+   * 在当前可见集合内逐项推进；不跨筛选、不自动展开任何东西。
+   *
+   * 返回是否真的移动了——Tab 的边界放行靠它决定要不要 preventDefault。
+   * 索引计算在 `resolveMoveTargetId`（纯函数、有边界用例）。
+   */
   const moveBy = useCallback(
-    (delta: number) => {
-      if (visible.length === 0) return;
-      const index = visible.findIndex((block) => block.id === currentBlockId);
-      const nextIndex =
-        index === -1
-          ? delta > 0
-            ? 0
-            : visible.length - 1
-          : Math.min(visible.length - 1, Math.max(0, index + delta));
-      const target = visible[nextIndex];
-      if (target === undefined || target.id === currentBlockId) return;
-      onSelectBlock(target.id);
+    (delta: number): boolean => {
+      const targetId = resolveMoveTargetId(
+        visible.map((block) => block.id),
+        currentBlockId,
+        delta,
+      );
+      if (targetId === null) return false;
+      onSelectBlock(targetId);
+      return true;
     },
     [visible, currentBlockId, onSelectBlock],
   );
@@ -220,12 +225,20 @@ export function BlockListPanel({
       });
 
       if (action.kind === "passthrough") return;
+
+      /*
+       * move 必须先动再决定拦不拦：撞到列表边界时 Tab 要交还给浏览器，
+       * 否则焦点进了列表就出不来（WCAG 2.1.2）。其余动作照旧无条件拦截。
+       */
+      if (action.kind === "move") {
+        const moved = moveBy(action.delta);
+        if (moved || !action.escapeAtEdge) event.preventDefault();
+        return;
+      }
+
       event.preventDefault();
 
       switch (action.kind) {
-        case "move":
-          moveBy(action.delta);
-          return;
         case "classify":
           if (currentBlock === null) return;
           setClassification(currentBlock, action.toLayoutText);

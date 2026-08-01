@@ -9,7 +9,11 @@ import { describe, expect, it } from "vitest";
 import {
   type ReviewKeyAction,
   type ReviewKeyInput,
+  resolveMoveTargetId,
   resolveReviewKeyAction,
+  resolveShortcutPanelKey,
+  type ShortcutPanelKeyAction,
+  type ShortcutPanelKeyInput,
 } from "../src/renderer/lib/review-keyboard.js";
 
 function press(overrides: Partial<ReviewKeyInput>): ReviewKeyAction {
@@ -27,17 +31,30 @@ function press(overrides: Partial<ReviewKeyInput>): ReviewKeyAction {
 }
 
 describe("列表导航", () => {
-  it("Tab 前进、⇧Tab 后退", () => {
-    expect(press({ key: "Tab" })).toEqual({ kind: "move", delta: 1 });
+  it("Tab 前进、⇧Tab 后退，且到边界时可逃逸", () => {
+    expect(press({ key: "Tab" })).toEqual({
+      kind: "move",
+      delta: 1,
+      escapeAtEdge: true,
+    });
     expect(press({ key: "Tab", shiftKey: true })).toEqual({
       kind: "move",
       delta: -1,
+      escapeAtEdge: true,
     });
   });
 
-  it("↓ 前进、↑ 后退", () => {
-    expect(press({ key: "ArrowDown" })).toEqual({ kind: "move", delta: 1 });
-    expect(press({ key: "ArrowUp" })).toEqual({ kind: "move", delta: -1 });
+  it("↑↓ 前进后退，但到边界不逃逸（它们抢的是光标移动，放行会让光标乱跳）", () => {
+    expect(press({ key: "ArrowDown" })).toEqual({
+      kind: "move",
+      delta: 1,
+      escapeAtEdge: false,
+    });
+    expect(press({ key: "ArrowUp" })).toEqual({
+      kind: "move",
+      delta: -1,
+      escapeAtEdge: false,
+    });
   });
 
   it("Enter 标记已复核并前进，⇧Enter 放行以插入换行", () => {
@@ -121,7 +138,11 @@ describe("⌘↓ 跳到下一个未复核项", () => {
   });
 
   it("不带修饰键的 ↓ 仍是逐项推进", () => {
-    expect(press({ key: "ArrowDown" })).toEqual({ kind: "move", delta: 1 });
+    expect(press({ key: "ArrowDown" })).toEqual({
+      kind: "move",
+      delta: 1,
+      escapeAtEdge: false,
+    });
   });
 });
 
@@ -157,6 +178,94 @@ describe("输入法组字期间一律放行（E1 走查实测缺陷）", () => {
     expect(press({ key: "ArrowDown", isComposing: false })).toEqual({
       kind: "move",
       delta: 1,
+      escapeAtEdge: false,
     });
+  });
+});
+
+/**
+ * 键盘陷阱回归（WCAG 2.1.2，A 级）。
+ *
+ * 2026-07-31 真机走查实测：焦点一旦进入块列表就出不来——末项按 Tab 连按 12 次
+ * 无位移，首项 ⇧Tab 同理，因为 `handleKeyDown` 无条件 preventDefault，而 `moveBy`
+ * 撞到边界后什么也不做。溯源到 M4 `9d736ca`，非设计语言重构引入。
+ *
+ * 修法是「撞到头时不再吞掉按键」：列表中间照旧是列表导航，只有两端交还给浏览器。
+ * 下面用例锁住的正是这个边界语义。
+ */
+describe("列表边界（键盘陷阱回归）", () => {
+  const ids = ["a", "b", "c"];
+
+  it("中间位置向前向后都有目标", () => {
+    expect(resolveMoveTargetId(ids, "b", 1)).toBe("c");
+    expect(resolveMoveTargetId(ids, "b", -1)).toBe("a");
+  });
+
+  it("末项前进、首项后退都返回 null —— 调用方据此放行 Tab", () => {
+    expect(resolveMoveTargetId(ids, "c", 1)).toBeNull();
+    expect(resolveMoveTargetId(ids, "a", -1)).toBeNull();
+  });
+
+  it("空集合无处可去", () => {
+    expect(resolveMoveTargetId([], null, 1)).toBeNull();
+    expect(resolveMoveTargetId([], "a", -1)).toBeNull();
+  });
+
+  it("尚未选中任何项时，向下从头进、向上从尾进", () => {
+    expect(resolveMoveTargetId(ids, null, 1)).toBe("a");
+    expect(resolveMoveTargetId(ids, null, -1)).toBe("c");
+  });
+
+  it("当前项已不在可见集合内时按未选中处理（筛选切换后的常见状态）", () => {
+    expect(resolveMoveTargetId(ids, "zzz", 1)).toBe("a");
+  });
+
+  it("单项列表：任何方向都到不了别处", () => {
+    expect(resolveMoveTargetId(["only"], "only", 1)).toBeNull();
+    expect(resolveMoveTargetId(["only"], "only", -1)).toBeNull();
+  });
+});
+
+/**
+ * 快捷键面板的键盘可达性。
+ *
+ * `?` 在可编辑区刻意不拦截（那里它是内容），后果是焦点困在块列表常驻 textarea 时，
+ * 键盘用户连「求助」都打不开，唯一出口是鼠标。`⌘/` 带修饰键，因此不受此限制。
+ */
+describe("快捷键面板开关键", () => {
+  function panel(
+    overrides: Partial<ShortcutPanelKeyInput>,
+  ): ShortcutPanelKeyAction {
+    return resolveShortcutPanelKey({
+      key: "",
+      metaKey: false,
+      ctrlKey: false,
+      isTyping: false,
+      ...overrides,
+    });
+  }
+
+  it("非输入场景按 ? 开关面板", () => {
+    expect(panel({ key: "?" })).toBe("toggle");
+  });
+
+  it("输入文字时 ? 是内容，不开面板", () => {
+    expect(panel({ key: "?", isTyping: true })).toBe("ignore");
+  });
+
+  it("⌘/ 与 Ctrl+/ 在输入框内仍能唤起 —— 焦点在文本框时唯一的键盘出口", () => {
+    expect(panel({ key: "/", metaKey: true, isTyping: true })).toBe("toggle");
+    expect(panel({ key: "/", ctrlKey: true, isTyping: true })).toBe("toggle");
+  });
+
+  it("Esc 一律收起", () => {
+    expect(panel({ key: "Escape" })).toBe("close");
+    expect(panel({ key: "Escape", isTyping: true })).toBe("close");
+  });
+
+  it("其余键不干预（⌘S 保存等必须继续冒泡）", () => {
+    expect(panel({ key: "s", metaKey: true })).toBe("ignore");
+    expect(panel({ key: "/" })).toBe("ignore");
+    expect(panel({ key: "a" })).toBe("ignore");
   });
 });

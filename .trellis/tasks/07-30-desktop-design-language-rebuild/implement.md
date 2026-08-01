@@ -4,6 +4,18 @@
 
 # ⚑ 换机器继续（2026-07-31）
 
+> **本节已完成，保留作迁移记录。** 新机器环境已在 2026-07-31 补齐，与原表的差异：
+>
+> | 项 | 现状 |
+> |---|---|
+> | 仓库路径 | `/Users/kelin/Work/ppt-maker` → **`/Users/kelin/Workspace/ppt-maker`**。旧路径出现在 CLAUDE.md 的文档链接里，已一并修正 |
+> | 分支 | 六个提交已在 **`main`** 上，`design/desktop-language-rebuild` 不再需要 |
+> | 走查工作区 | `ppttest-walkthrough-E2` / `ppttest-switch-target` 未随迁。已从本机既有的 `~/test/ppttest-2026-07-25`（两页流水线全 `completed`）复制出 **`~/test/ppttest-walkthrough-E3`** 与 **`~/test/ppttest-switch-target`**。复制不触发任何云调用；因所有阶段已完成，走查中的重跑会走复用路径 |
+> | Claude 记忆 | 目录随路径改名为 `-Users-kelin-Workspace-ppt-maker`，但**内容为空**，未随迁 |
+> | `NODE_OPTIONS` | 指向一个随临时目录被清理的 `restore-node-options.cjs`，node 完全起不来。已重建该预加载脚本（作用是把自身的 `--require` 从 `NODE_OPTIONS` 剥离，避免传播给子进程） |
+> | `packages/core` | 需**先 `pnpm --filter @ppt-maker/core build`**，否则 `apps/cli` typecheck 报 9 个 `has no exported member`（解析到过期 `dist`）。这一步不在原清单里 |
+> | 调试端口 | `REMOTE_DEBUGGING_PORT=9222` 由 electron-vite 原生支持（`dist/cli.js:47`），`ELECTRON_ARGS` 无效 |
+
 分支 `design/desktop-language-rebuild`，最后一个提交 `6a67ed4`，工作树干净。
 代码与任务文档都在 git 里，**但下面五样东西不在**，只 clone 是跑不起来的：
 
@@ -286,7 +298,58 @@ rg -n '(^|[^a-z-])(bg|text|border|ring|outline|divide|placeholder|from|via|to|fi
 3. **`WorkspaceMenu.tsx:126-140` 菜单项仍是裸 button 手拼类**（是菜单项不是选中态，另一类）。
 4. **z-index 无语义刻度**，`StageRail` 折叠层、`DoctorChip`、`WorkspaceMenu` 三处各写各的数字。
 
-## 需要用户定的两处
+## 用户已定的两处（2026-07-31 · 已实施）
+
+| 待定项 | 用户结论 | 落地 |
+|---|---|---|
+| 块列表键盘陷阱 | **修边界放行 + 加 ⌘/ 求助键** | 见下「阶段三」 |
+| 分段控件字号 | **全部保持 12px**，不再改 | 无代码改动 |
+
+## 阶段三：键盘陷阱修复 ✅（2026-07-31）
+
+修的是 M4 遗留缺陷，不是本次重构引入。三处改动：
+
+- [x] `resolveReviewKeyAction` 的 `move` 增加 `escapeAtEdge`：**Tab 为 true、↑↓ 为 false**。
+      箭头键抢的是 textarea 内的光标移动，放行会让光标乱跳，且箭头本就带不出焦点，
+      对陷阱毫无帮助——所以出口只开给 Tab。
+- [x] `moveBy` 改为返回是否真的移动了，索引计算抽成纯函数 `resolveMoveTargetId`
+      （边界返回 `null`）。`handleKeyDown` 的 move 分支**先动再决定拦不拦**：
+      移动成功或非 Tab 才 `preventDefault`。
+- [x] 新增 `resolveShortcutPanelKey`，`⌘/`（Win/Linux `Ctrl+/`）在输入框内也能开关
+      快捷键面板。原有 `?` 在可编辑区不拦截的判断是对的，但它让「求助」在块列表的常驻
+      textarea 里只剩鼠标一条路；带修饰键的组合不与内容冲突，故不受该限制。
+      面板底部提示同步改为「按 Esc 收起；编辑文字时用 ⌘/ 开关」——旧文案对半数场景是错的。
+
+**Esc 未动**：文档原记的第三条出口（`BlockTextEditor` 不传 `onExit` 导致 Esc 无效）
+不在用户选定范围内，且 Tab 出口已解陷阱。留作后续。
+
+### 验证
+
+- 单测 323 → **334**（+11）：Tab/↑↓ 的 `escapeAtEdge` 语义、`resolveMoveTargetId`
+  六种边界、面板开关键六种组合。
+- 真机走查（`research/after-keyboard-trap/`，可复跑）：
+
+  | 场景 | 结果 |
+  |---|---|
+  | 末项连按 Tab ×4 | 第 1 次即移出列表 |
+  | 首项连按 ⇧Tab ×4 | 第 2 次移出列表（第 1 次落在本项内的删除按钮，属正常反向 Tab 顺序） |
+  | 焦点在 textarea 按 ⌘/ | 面板唤起 |
+  | 首项连按 Tab ×5（回归） | block-001→…→006 逐项推进，**边界放行未破坏列表导航** |
+
+  `nav-intact.mjs` 与 `trap-check.mjs` 是一对：前者证明出口只开在两端，后者证明出口存在。
+  少了前者，「放行」和「把列表导航改坏」在结果上无法区分。
+
+- 四关全绿：typecheck ✓ / 503 测试 ✓ / `format:check` ✓ / 对比度 26 项 ✓
+
+### 走查踩到的第三个坑
+
+**面板是 toggle，走查脚本必须自己归零前置状态**。首轮 `⌘/` 判为失败，实为上一步截图
+已把面板打开，这次按键正确地把它关掉了。判据 `!before && after` 隐含「初始关闭」这个
+未声明的前提。修法是测前先按 Esc。同类脚本都该先归零再断言。
+
+---
+
+## 需要用户定的两处（历史记录，均已定，见上）
 
 ### 一、块列表是键盘陷阱（WCAG 2.1.2，A 级）—— 非本次引入
 

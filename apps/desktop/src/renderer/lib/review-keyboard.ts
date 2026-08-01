@@ -19,7 +19,7 @@
 /** 判定结果。`passthrough` 表示不拦截，交还给浏览器 / 输入法 / 按钮自身。 */
 export type ReviewKeyAction =
   | { kind: "passthrough" }
-  | { kind: "move"; delta: 1 | -1 }
+  | { kind: "move"; delta: 1 | -1; escapeAtEdge: boolean }
   | { kind: "classify"; toLayoutText: boolean }
   | { kind: "review-and-move" }
   | { kind: "next-unreviewed" };
@@ -72,16 +72,99 @@ export function resolveReviewKeyAction(input: ReviewKeyInput): ReviewKeyAction {
   }
 
   switch (input.key) {
+    /*
+     * Tab 被改作「切换项」，但**撞到边界时必须交还给浏览器**（`escapeAtEdge`）。
+     * 此前无条件 preventDefault，末项按 Tab、首项按 ⇧Tab 都原地不动，焦点一旦
+     * 进入列表就再也出不去（WCAG 2.1.2 键盘陷阱，A 级）。放行只在列表两端发生，
+     * 中间照旧是列表导航，键盘模型不变。
+     */
     case "Tab":
-      return { kind: "move", delta: input.shiftKey ? -1 : 1 };
+      return {
+        kind: "move",
+        delta: input.shiftKey ? -1 : 1,
+        escapeAtEdge: true,
+      };
+    /*
+     * 箭头键相反：到边界仍然吞掉。它们抢占的是 textarea 内的光标移动（见
+     * BlockListPanel.handleKeyDown 注释），放行会让光标乱跳，且箭头本来就带不出
+     * 焦点，对键盘陷阱毫无帮助。
+     */
     case "ArrowDown":
-      return { kind: "move", delta: 1 };
+      return { kind: "move", delta: 1, escapeAtEdge: false };
     case "ArrowUp":
-      return { kind: "move", delta: -1 };
+      return { kind: "move", delta: -1, escapeAtEdge: false };
     case "Enter":
       // ⇧Enter 插入换行
       return input.shiftKey ? PASSTHROUGH : { kind: "review-and-move" };
     default:
       return PASSTHROUGH;
   }
+}
+
+/** 快捷键面板的键位判定结果。 */
+export type ShortcutPanelKeyAction = "toggle" | "close" | "ignore";
+
+/** `resolveShortcutPanelKey` 的入参切片。 */
+export interface ShortcutPanelKeyInput {
+  readonly key: string;
+  readonly metaKey: boolean;
+  readonly ctrlKey: boolean;
+  /** 焦点是否落在 input / textarea / contentEditable 内。 */
+  readonly isTyping: boolean;
+}
+
+/**
+ * 快捷键面板的开关键位。
+ *
+ * 两个入口而不是一个，因为它们覆盖的场景互补：
+ * - `?` 好按好记，但在可编辑区是**内容**，必须让位；
+ * - `⌘/`（Windows/Linux 为 `Ctrl+/`）带修饰键，在输入框里不与内容冲突，
+ *   于是成为「焦点在文本框时唯一的键盘求助出口」。
+ *
+ * 少了后者，块列表的常驻 textarea 里连快捷键面板都只能用鼠标打开。
+ */
+export function resolveShortcutPanelKey(
+  input: ShortcutPanelKeyInput,
+): ShortcutPanelKeyAction {
+  if (input.key === "Escape") return "close";
+  if ((input.metaKey || input.ctrlKey) && input.key === "/") return "toggle";
+  // 无修饰的 `?` 只在非输入场景生效
+  if (
+    input.key === "?" &&
+    !input.isTyping &&
+    !input.metaKey &&
+    !input.ctrlKey
+  ) {
+    return "toggle";
+  }
+  return "ignore";
+}
+
+/**
+ * 在当前可见集合内按 `delta` 推进，返回应选中的项；**已在边界时返回 `null`**。
+ *
+ * 从 `BlockListPanel.moveBy` 抽出，唯一目的是让「撞到边界」这个状态可测：
+ * Tab 的边界放行（`escapeAtEdge`）依赖它的返回值决定要不要 preventDefault，
+ * 而组件层在本项目没有 DOM 测试库可验证（见 implement.md 偏差 2）。
+ *
+ * `null` 有两种来源，对调用方是同一件事——没有可去的下一项：
+ * 集合为空，或当前项已在推进方向的尽头。
+ */
+export function resolveMoveTargetId(
+  visibleIds: readonly string[],
+  currentId: string | null,
+  delta: number,
+): string | null {
+  if (visibleIds.length === 0) return null;
+  const index = visibleIds.findIndex((id) => id === currentId);
+  // 焦点尚未落在任何项上时，向下从头进、向上从尾进
+  const nextIndex =
+    index === -1
+      ? delta > 0
+        ? 0
+        : visibleIds.length - 1
+      : Math.min(visibleIds.length - 1, Math.max(0, index + delta));
+  const target = visibleIds[nextIndex];
+  if (target === undefined || target === currentId) return null;
+  return target;
 }

@@ -9,7 +9,7 @@
 - 禁止：在 `open-design/` 内安装依赖或执行会产生文件写入的操作。
 - 本项目的代码、配置、依赖和实现必须放在 `open-design/` 之外。
 
-相关技术栈和架构记录见 [OPEN-DESIGN-REFERENCE.md](/Users/kelin/Work/ppt-maker/OPEN-DESIGN-REFERENCE.md)。
+相关技术栈和架构记录见 [OPEN-DESIGN-REFERENCE.md](./OPEN-DESIGN-REFERENCE.md)。
 
 ## 子代理派发原则
 
@@ -25,7 +25,7 @@
 
 ## 前端设计规范
 
-- 所有前端界面的视觉设计必须遵从 [DESIGN.md](/Users/kelin/Work/ppt-maker/DESIGN.md)。
+- 所有前端界面的视觉设计必须遵从 [DESIGN.md](./DESIGN.md)。
 - 包括但不限于：颜色、排版、圆角、间距、组件样式和响应式行为。
 - 实现前端代码前必须先读取 DESIGN.md，确保设计一致性。
 

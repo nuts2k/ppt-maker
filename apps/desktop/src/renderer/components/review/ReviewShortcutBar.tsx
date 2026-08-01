@@ -1,6 +1,7 @@
 import { Keyboard, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button, IconButton, Kbd, Panel } from "@/components/ui";
+import { resolveShortcutPanelKey } from "@/lib/review-keyboard";
 import { cn } from "@/lib/utils";
 
 /**
@@ -35,11 +36,18 @@ const SHORTCUTS: ReadonlyArray<{
   { keys: "⌥1", hint: "改为版式文字" },
   { keys: "⌥2", hint: "改为对象符号" },
   { keys: "⌘S", hint: "保存" },
+  { keys: "? / ⌘/", hint: "开关本面板" },
 ];
 
 const PANEL_ID = "review-shortcut-panel";
 
-/** 正在输入文字时 `?` 是内容而不是命令 */
+/**
+ * 正在输入文字时 `?` 是内容而不是命令。
+ *
+ * 这条判断本身是对的，但它曾让「求助」在可编辑行里完全键盘不可达：块列表的
+ * 「文字待确认」档常驻 textarea，焦点在那里时 `?` 不拦截、唯一入口只剩鼠标。
+ * 出口是下面的 `⌘/` —— 带修饰键，在输入框里不会与内容冲突，故不受此限制。
+ */
 function isTypingTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
@@ -59,11 +67,17 @@ export function ReviewShortcutBar({
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
-      if (event.key === "Escape") {
+      const action = resolveShortcutPanelKey({
+        key: event.key,
+        metaKey: event.metaKey,
+        ctrlKey: event.ctrlKey,
+        isTyping: isTypingTarget(event.target),
+      });
+      if (action === "ignore") return;
+      if (action === "close") {
         setOpen(false);
         return;
       }
-      if (event.key !== "?" || isTypingTarget(event.target)) return;
       event.preventDefault();
       setOpen((value) => !value);
     }
@@ -147,8 +161,9 @@ export function ReviewShortcutBar({
               </li>
             ))}
           </ul>
+          {/* 正在编辑文字时 ? 是内容不是命令，这里必须一并说出 ⌘/，否则提示对半数场景是错的 */}
           <p className="pt-2 text-2xs text-ink-muted">
-            按 Esc 或再按一次 ? 收起
+            按 Esc 收起；编辑文字时用 ⌘/ 开关
           </p>
         </Panel>
       )}
