@@ -66,6 +66,14 @@ const SOURCE_ACCEPTANCE_TARGET: ArchiveTarget = {
 export interface ReplaceSlideSourceOptions {
   readonly workspacePath: string;
   readonly imagePath: string;
+  /**
+   * 新的原始文案参考。给了就写入新的 `reference_text` 资产并把**新** sha 计入指纹；
+   * 不给则沿用旧的（`imported` 换源的既有行为）。
+   *
+   * 缺了这条通道，「改了规格文字再重生成」的页会留着上一版 `reference_text`：
+   * 参考文案与图声称的规格不符，复核时按旧文字匹配候选——又一个「元数据说谎」。
+   */
+  readonly referencePath?: string;
   /** 新图的来源。缺省视作导入 */
   readonly source?: SlideSourceDraft;
   /** 显式保留该页已确认的人工文字块（D4 的例外路径） */
@@ -222,13 +230,41 @@ export async function replaceSlideSource(
     },
   });
 
-  // 2) 指纹按与 createSlideWorkspace 相同的公式重算，否则下游复用判定认的还是旧图
-  const referenceAsset =
+  // 2) 新参考文案（若有）与源图同一处理原则：旧资产保留供追溯，新的成为当前。
+  //    因此 `reference_text` 也会多代，消费方必须按 `referenceTextAssetId` 这个
+  //    显式指针取（与 `sourceImageAssetId` 同型），不得裸 role 查找。
+  const previousReferenceAsset =
     workspace.manifest.referenceTextAssetId === null
       ? null
       : (workspace.manifest.assets.find(
           (asset) => asset.id === workspace.manifest.referenceTextAssetId,
         ) ?? null);
+  let referenceAsset = previousReferenceAsset;
+  if (options.referencePath !== undefined) {
+    const referenceIndex = nextIndex(
+      workspace.manifest.assets,
+      "reference_text",
+    );
+    const referenceRelativePath = `inputs/reference-${referenceIndex}.txt`;
+    const referenceTarget = resolveWorkspacePath(
+      workspace.path,
+      referenceRelativePath,
+    );
+    await mkdir(dirname(referenceTarget), { recursive: true });
+    await copyFile(resolve(options.referencePath), referenceTarget);
+    referenceAsset = await createWorkspaceAsset(referenceTarget, {
+      schemaVersion: SCHEMA_VERSION,
+      id: `asset-reference-text-${referenceIndex}`,
+      path: referenceRelativePath,
+      role: "reference_text",
+      createdAt: now,
+      producedBy: "init",
+      attemptId,
+      image: null,
+    });
+  }
+
+  // 3) 指纹按与 createSlideWorkspace 相同的公式重算，否则下游复用判定认的还是旧图
   const inputFingerprint = sha256Values([
     sourceAsset.sha256,
     referenceAsset?.sha256 ?? "no-reference",
@@ -245,7 +281,12 @@ export async function replaceSlideSource(
     endedAt: now,
     provider: "ppt-maker-cli",
     providerVersion: "0.0.0",
-    assetIds: [sourceAsset.id],
+    assetIds: [
+      sourceAsset.id,
+      ...(referenceAsset !== null && referenceAsset !== previousReferenceAsset
+        ? [referenceAsset.id]
+        : []),
+    ],
     error: null,
   };
 
@@ -258,7 +299,7 @@ export async function replaceSlideSource(
     now,
   );
 
-  // 3) 失效起点是 accept-source 而非 init：init 刚刚成功，标 stale 与事实相反
+  // 4) 失效起点是 accept-source 而非 init：init 刚刚成功，标 stale 与事实相反
   const reason = options.reason ?? "换源：源图已替换";
   const beforeStatus = new Map(
     workspace.manifest.stages.map((state) => [state.stage, state.status]),
@@ -270,7 +311,7 @@ export async function replaceSlideSource(
     now,
   );
 
-  // 4) 按**新来源**重新判定源图确认要求。必须排在失效之后——
+  // 5) 按**新来源**重新判定源图确认要求。必须排在失效之后——
   //    invalidateStageAndDownstream 会把 accept-source 一并转 stale，顺序颠倒会被覆盖。
   const gate = buildSourceGate(
     source,
@@ -307,7 +348,7 @@ export async function replaceSlideSource(
     return state;
   });
 
-  // 5) 落盘：搬文件与写 manifest 必须同进同退。搬完之后任何一步失败都把文件搬回原处，
+  // 6) 落盘：搬文件与写 manifest 必须同进同退。搬完之后任何一步失败都把文件搬回原处，
   //    否则 manifest 里的资产会指向一个已经不在那儿的文件（资产悬空）。
   //    源图验收记录无条件归档；人工复核成果默认归档，显式保留时原样留在固定路径走 IoU 对齐。
   const archived = await archiveArtifacts(
@@ -329,6 +370,7 @@ export async function replaceSlideSource(
       SlideWorkspaceConfigSchema.parse({
         ...workspace.config,
         sourceImagePath: sourceAsset.path,
+        referenceTextPath: referenceAsset?.path ?? null,
       }),
     );
     await writeWorkspaceManifest(workspace.path, {
@@ -336,7 +378,14 @@ export async function replaceSlideSource(
       updatedAt: now,
       source,
       sourceImageAssetId: sourceAsset.id,
-      assets: [...archived.assets, sourceAsset],
+      referenceTextAssetId: referenceAsset?.id ?? null,
+      assets: [
+        ...archived.assets,
+        sourceAsset,
+        ...(referenceAsset !== null && referenceAsset !== previousReferenceAsset
+          ? [referenceAsset]
+          : []),
+      ],
       stages,
       attempts: [...workspace.manifest.attempts, initAttempt, ...gate.attempts],
     });

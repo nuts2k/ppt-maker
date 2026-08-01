@@ -24,6 +24,11 @@ export interface CreateDeckWorkspaceOptions {
   readonly name?: string;
 }
 
+export interface CreateEmptyDeckWorkspaceOptions {
+  readonly workspacePath: string;
+  readonly name?: string;
+}
+
 export interface LoadedDeckWorkspace {
   readonly path: string;
   readonly manifest: DeckManifest;
@@ -193,6 +198,44 @@ export async function createDeckWorkspace(
     );
     throw error;
   }
+}
+
+/**
+ * 建一个没有页面的 deck 工作区。
+ *
+ * `createDeckWorkspace` 以「扫描一个图片目录」为前提，而按来源逐页建立的命令
+ * （`deck generate`，以及子任务② 的 `deck extract`）拿不到这样一个目录：页面是
+ * 一条条产出的。两条路径共用同一份 manifest 形状与 16:9/字体约定，只是页面来处不同。
+ */
+export async function createEmptyDeckWorkspace(
+  options: CreateEmptyDeckWorkspaceOptions,
+): Promise<LoadedDeckWorkspace> {
+  const workspacePath = resolve(options.workspacePath);
+  const name = options.name ?? basename(workspacePath);
+
+  await mkdir(dirname(workspacePath), { recursive: true });
+  await assertDeckDoesNotExist(workspacePath);
+  await mkdir(resolveDeckPath(workspacePath, "slides"), { recursive: true });
+
+  const createdAt = new Date().toISOString();
+  const manifest: DeckManifest = {
+    schemaVersion: SCHEMA_VERSION,
+    deckVersion: 1,
+    deckId: randomUUID(),
+    name,
+    createdAt,
+    updatedAt: createdAt,
+    aspectRatio: "16:9",
+    fontFace: "Microsoft YaHei",
+    cloudCalls: "explicit_only",
+    slides: [],
+    exports: [],
+  };
+  await writeJsonAtomic(
+    resolveDeckPath(workspacePath, "deck-manifest.json"),
+    DeckManifestSchema.parse(manifest),
+  );
+  return { path: workspacePath, manifest };
 }
 
 export async function loadDeckWorkspace(

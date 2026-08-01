@@ -56,6 +56,12 @@ export const WorkspaceAssetSchema = z.object({
     "clean_check",
     "clean_acceptance",
     "source_acceptance",
+    // 生成来源（M5 子任务③）：每次生成/重生成各出一份，**必然多代**。
+    // 消费方必须按「该阶段最后一次成功 attempt」取当前那份，禁止裸 role 查找——
+    // 归档件文件在、哈希也对，错的是它描述的对象已经不是当前那个，
+    // `assertWorkspaceAssetIntegrity` 查不出这类错。
+    "content_spec",
+    "generation_prompt",
     "pptx",
     "pptx_check",
     "pptx_record",
@@ -113,8 +119,12 @@ export const WorkspaceStageAttemptSchema = z.object({
 export const ProviderCallRecordSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
   id: z.string().min(1),
-  stage: z.enum(["assist-review", "clean"]),
-  provider: z.literal("openai"),
+  // `init` 由 M5 子任务③ 追加：图片生成发生在建立工作区/换源这一刻，属 init 阶段。
+  stage: z.enum(["init", "assist-review", "clean"]),
+  // 由 `z.literal("openai")` 放宽为具名枚举——旧值 `"openai"` 仍合法，零迁移。
+  // 这是本任务唯一的**放宽**而非追加式变更：已 grep 确认全仓无消费方依赖
+  // 「该值必为字面量 openai」做类型收窄（现有 11 处全是写入方）。
+  provider: z.enum(["openai"]),
   endpoint: z.string().min(1),
   model: z.string().min(1),
   parameters: z.record(z.string(), z.unknown()),

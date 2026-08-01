@@ -521,6 +521,83 @@ describe("换源与源图验收记录", () => {
   });
 });
 
+describe("换源携带新参考文案（R9）", () => {
+  it("新 reference 成为当前、旧的保留，且新 sha 计入输入指纹", async () => {
+    const parent = await mkdtemp(join(tmpdir(), "ppt-maker-replace-ref-"));
+    const workspacePath = join(parent, "slide");
+    const oldReference = join(parent, "old.txt");
+    const newReference = join(parent, "new.txt");
+    await writeFile(oldReference, "旧文案\n", "utf8");
+    await writeFile(newReference, "新文案\n", "utf8");
+
+    const created = await createSlideWorkspace({
+      imagePath: pngFixture(),
+      workspacePath,
+      referencePath: oldReference,
+    });
+    const beforeFingerprint = created.manifest.stages.find(
+      (state) => state.stage === "init",
+    )?.completedInputFingerprint;
+
+    await replaceSlideSource({
+      workspacePath,
+      imagePath: jpgFixture(),
+      referencePath: newReference,
+    });
+
+    const after = await loadSlideWorkspace(workspacePath);
+    expect(after.config.referenceTextPath).toBe("inputs/reference-2.txt");
+    expect(
+      await readFile(join(workspacePath, "inputs/reference-2.txt"), "utf8"),
+    ).toBe("新文案\n");
+    // 旧的保留供追溯，但不再是「当前」——判据是 referenceTextAssetId 这个显式指针
+    const references = after.manifest.assets.filter(
+      (asset) => asset.role === "reference_text",
+    );
+    expect(references.map((asset) => asset.path)).toEqual([
+      "inputs/reference.txt",
+      "inputs/reference-2.txt",
+    ]);
+    expect(
+      after.manifest.assets.find(
+        (asset) => asset.id === after.manifest.referenceTextAssetId,
+      )?.path,
+    ).toBe("inputs/reference-2.txt");
+    expect(await exists(join(workspacePath, "inputs/reference.txt"))).toBe(
+      true,
+    );
+
+    // 新 sha 计入指纹：不计入的话下游复用判定认的还是旧文案
+    const afterFingerprint = after.manifest.stages.find(
+      (state) => state.stage === "init",
+    )?.completedInputFingerprint;
+    expect(afterFingerprint).not.toBe(beforeFingerprint);
+  });
+
+  it("不给 referencePath 时行为与现状完全一致", async () => {
+    const parent = await mkdtemp(join(tmpdir(), "ppt-maker-replace-ref-"));
+    const workspacePath = join(parent, "slide");
+    const reference = join(parent, "reference.txt");
+    await writeFile(reference, "原始文案\n", "utf8");
+    const created = await createSlideWorkspace({
+      imagePath: pngFixture(),
+      workspacePath,
+      referencePath: reference,
+    });
+
+    await replaceSlideSource({ workspacePath, imagePath: jpgFixture() });
+
+    const after = await loadSlideWorkspace(workspacePath);
+    expect(after.config.referenceTextPath).toBe("inputs/reference.txt");
+    expect(after.manifest.referenceTextAssetId).toBe(
+      created.manifest.referenceTextAssetId,
+    );
+    expect(
+      after.manifest.assets.filter((asset) => asset.role === "reference_text"),
+    ).toHaveLength(1);
+  });
+});
+
 describe("deck 层换源", () => {
   it("只影响目标页，其它页 manifest 逐字节不变", async () => {
     const parent = await mkdtemp(join(tmpdir(), "ppt-maker-deck-replace-"));

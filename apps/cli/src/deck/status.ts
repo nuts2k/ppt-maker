@@ -2,10 +2,14 @@ import { basename } from "node:path";
 import {
   findBlockingStage,
   SLIDE_STAGE_ORDER,
+  type SlideSourceKind,
   type SlideStage,
   type WorkspaceStageState,
 } from "@ppt-maker/core";
+import { specViewFingerprint } from "../providers/page-generation.js";
 import { loadSlideWorkspace } from "../slide/workspace.js";
+import { loadDeckContentSpec } from "./content-spec.js";
+import { currentGenerationAsset } from "./generate-page.js";
 import { loadDeckWorkspace, resolveDeckPath } from "./workspace.js";
 
 const ACCEPT_PPTX_INDEX = SLIDE_STAGE_ORDER.indexOf("accept-pptx");
@@ -57,6 +61,34 @@ export interface DeckSlideStatus {
   /** 这一页动没动过（源图确认闸门之后有阶段产出过）。见 `computeStarted` */
   readonly started: boolean;
   readonly removed: boolean;
+  /** 页面来源。移除的页不加载工作区，故为 null */
+  readonly sourceKind: SlideSourceKind | null;
+  /** 生成页对应的规格条目；非生成页为 null */
+  readonly specEntryId: string | null;
+  /**
+   * 规格漂移状态（R6，只读派生）。
+   *
+   * - `null`：不适用（非生成页，或 deck 里根本没有规格文件）
+   * - `"in-sync"`：当前规格视图指纹与生成时快照一致
+   * - `"drifted"`：规格改过、图没跟上
+   * - `"missing"`：规格里已无对应条目（失联）
+   *
+   * **纯派生、不落盘、不改变任何阶段状态**：改回原样自动消失，不需要状态复位逻辑。
+   */
+  readonly specDrift: "in-sync" | "drifted" | "missing" | null;
+  /**
+   * **当前**这一代生成产物的溯源指针（父任务 A7）；非生成页为 null。
+   *
+   * 三份资产每次重生成各出一份、必然多代，因此按「init 阶段最后一次成功 attempt」
+   * 选取，**不按裸 role 查找**——归档件文件在、哈希也对，错的是它描述的对象已经
+   * 不是当前那张图。
+   */
+  readonly generation: {
+    readonly attemptId: string;
+    readonly contentSpecPath: string | null;
+    readonly promptPath: string | null;
+    readonly providerRecordPath: string | null;
+  } | null;
 }
 
 export interface DeckStatusResult {
@@ -104,6 +136,10 @@ function computeProgress(stages: readonly WorkspaceStageState[]): {
 
 export async function deckStatus(deckPath: string): Promise<DeckStatusResult> {
   const deck = await loadDeckWorkspace(deckPath);
+  const spec = await loadDeckContentSpec(deck.path);
+  const specEntries = new Map(
+    (spec?.entries ?? []).map((entry) => [entry.specEntryId, entry]),
+  );
 
   const slides: DeckSlideStatus[] = [];
   let completed = 0;
@@ -123,6 +159,10 @@ export async function deckStatus(deckPath: string): Promise<DeckStatusResult> {
         blockingStage: null,
         started: false,
         removed: true,
+        sourceKind: null,
+        specEntryId: null,
+        specDrift: null,
+        generation: null,
       });
       continue;
     }
@@ -131,6 +171,21 @@ export async function deckStatus(deckPath: string): Promise<DeckStatusResult> {
       resolveDeckPath(deck.path, entry.workspacePath),
     );
     const progress = computeProgress(workspace.manifest.stages);
+    const source = workspace.manifest.source;
+    // 只对 generated 页判漂移：imported / extracted 页没有 specEntryId，
+    // 把它们卷进来会让混合 deck 的每一页都被报成失联。
+    const specEntryId = source.kind === "generated" ? source.specEntryId : null;
+    let specDrift: DeckSlideStatus["specDrift"] = null;
+    if (source.kind === "generated" && spec !== null) {
+      const specEntry = specEntries.get(source.specEntryId);
+      specDrift =
+        specEntry === undefined
+          ? "missing"
+          : specViewFingerprint(spec.style, specEntry) ===
+              source.specEntrySha256
+            ? "in-sync"
+            : "drifted";
+    }
     slides.push({
       slideId: entry.slideId,
       workspacePath: entry.workspacePath,
@@ -140,6 +195,24 @@ export async function deckStatus(deckPath: string): Promise<DeckStatusResult> {
       blockingStage: progress.blockingStage,
       started: progress.started,
       removed: false,
+      sourceKind: source.kind,
+      specEntryId,
+      specDrift,
+      generation:
+        source.kind === "generated"
+          ? {
+              attemptId: source.attemptId,
+              contentSpecPath:
+                currentGenerationAsset(workspace.manifest, "content_spec")
+                  ?.path ?? null,
+              promptPath:
+                currentGenerationAsset(workspace.manifest, "generation_prompt")
+                  ?.path ?? null,
+              providerRecordPath:
+                currentGenerationAsset(workspace.manifest, "provider_record")
+                  ?.path ?? null,
+            }
+          : null,
     });
 
     if (progress.acceptPptxCompleted) {
@@ -208,6 +281,21 @@ export function formatDeckStatus(result: DeckStatusResult): string {
   }
   if (failed.length > 0) {
     lines.push(`  失败: ${failed.join(", ")}`);
+  }
+
+  // 规格漂移是**只读提示**，不是故障：阶段状态一个都没变，产物也还在。
+  // 与「失败」分开列，免得被当成需要重跑的阻塞项。
+  const drifted = result.slides
+    .filter((slide) => slide.specDrift === "drifted")
+    .map((slide) => `${basename(slide.workspacePath)} (${slide.specEntryId})`);
+  const missing = result.slides
+    .filter((slide) => slide.specDrift === "missing")
+    .map((slide) => `${basename(slide.workspacePath)} (${slide.specEntryId})`);
+  if (drifted.length > 0) {
+    lines.push(`  规格漂移: ${drifted.join(", ")}（deck regenerate 可重出图）`);
+  }
+  if (missing.length > 0) {
+    lines.push(`  规格失联: ${missing.join(", ")}（规格里已无对应条目）`);
   }
 
   return lines.join("\n");

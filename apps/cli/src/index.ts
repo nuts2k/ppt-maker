@@ -6,9 +6,15 @@ import { runAcceptClean } from "./clean/accept.js";
 import { runSlideClean } from "./clean/run.js";
 import { addSlideToDeck } from "./deck/add-slide.js";
 import { exportDeckPptx } from "./deck/export.js";
+import { formatDeckGenerateResult, runDeckGenerate } from "./deck/generate.js";
+import {
+  formatDeckRegenerateResult,
+  runDeckRegenerate,
+} from "./deck/regenerate.js";
 import { removeSlideFromDeck } from "./deck/remove-slide.js";
 import { replaceDeckSlideSource } from "./deck/replace-source.js";
 import { formatDeckRunResult, runDeckPipeline } from "./deck/run.js";
+import { runDeckSpecDraft } from "./deck/spec-draft.js";
 import { deckStatus, formatDeckStatus } from "./deck/status.js";
 import { createDeckWorkspace } from "./deck/workspace.js";
 import {
@@ -528,6 +534,111 @@ deck
     });
     process.stderr.write(`已移除 ${result.workspacePath}\n`);
   });
+
+deck
+  .command("generate")
+  .requiredOption(
+    "--deck <path>",
+    "deck 工作区（不存在则创建，存在则追加末尾）",
+  )
+  .option("--spec <file>", "内容规格 JSON；deck 内已有权威副本时可省略")
+  .option("--name <title>", "新建 deck 时的显示名称")
+  .option("--confirm-upload", "确认把内容规格提示词发送到 OpenAI 生成页面图")
+  .description("按内容规格逐页生成 16:9 页面图并建立 slide 工作区")
+  .action(
+    async (options: {
+      deck: string;
+      spec?: string;
+      name?: string;
+      confirmUpload?: boolean;
+    }) => {
+      const result = await runDeckGenerate({
+        deckPath: resolve(options.deck),
+        confirmUpload: options.confirmUpload === true,
+        ...(options.spec === undefined
+          ? {}
+          : { specPath: resolve(options.spec) }),
+        ...(options.name === undefined ? {} : { name: options.name }),
+        onBeforeUpload: (notice) => {
+          process.stderr.write(
+            `即将发送到 ${OPENAI_IMAGE_MODEL}：${notice.specEntryId} 提示词 ${notice.promptBytes} 字节 (${notice.promptSha256})\n`,
+          );
+        },
+        onProgress: (event) => {
+          if (event.phase === "start") {
+            process.stderr.write(
+              `[${event.index}/${event.total}] 生成 ${event.specEntryId}…\n`,
+            );
+            return;
+          }
+          if (event.phase === "done") {
+            process.stderr.write(
+              `[${event.index}/${event.total}] ${event.specEntryId} → ${event.pageLabel}\n`,
+            );
+            return;
+          }
+          process.stderr.write(
+            `[${event.index}/${event.total}] ${event.specEntryId} 失败：${event.message}\n`,
+          );
+        },
+      });
+      process.stdout.write(`${formatDeckGenerateResult(result)}\n`);
+      // 一页都没建起来才算失败：批量里第 7 页出错不该让前 6 页的产出被判为失败
+      if (result.failed.length > 0 && result.created.length === 0) {
+        process.exitCode = 1;
+      }
+    },
+  );
+
+deck
+  .command("regenerate")
+  .argument("<deck>", "deck 工作区")
+  .requiredOption("--page <label>", "页面标识（如 page-04）或 slideId")
+  .option("--note <text>", "调整说明，机械追加进该条目 revisionNotes")
+  .option(
+    "--confirm-upload",
+    "确认把内容规格提示词发送到 OpenAI 重新生成页面图",
+  )
+  .description("按调整说明重新生成某页并换源；该页下游失效，其它页不受影响")
+  .action(
+    async (
+      deckPath: string,
+      options: { page: string; note?: string; confirmUpload?: boolean },
+    ) => {
+      const result = await runDeckRegenerate({
+        deckPath: resolve(deckPath),
+        page: options.page,
+        confirmUpload: options.confirmUpload === true,
+        ...(options.note === undefined ? {} : { note: options.note }),
+        onBeforeUpload: (notice) => {
+          process.stderr.write(
+            `即将发送到 ${OPENAI_IMAGE_MODEL}：${notice.specEntryId} 提示词 ${notice.promptBytes} 字节 (${notice.promptSha256})\n`,
+          );
+        },
+      });
+      process.stdout.write(`${formatDeckRegenerateResult(result)}\n`);
+    },
+  );
+
+deck
+  .command("spec-draft")
+  .requiredOption("--from <file>", "自由文本构思/大纲")
+  .requiredOption("-o, --output <path>", "输出内容规格 JSON")
+  .option("--confirm-api", "确认调用 OpenAI 生成内容规格初稿")
+  .description("由一段构思文本一次性产出可编辑的内容规格初稿（无对话）")
+  .action(
+    async (options: { from: string; output: string; confirmApi?: boolean }) => {
+      const result = await runDeckSpecDraft({
+        fromPath: resolve(options.from),
+        outputPath: resolve(options.output),
+        confirmApi: options.confirmApi === true,
+      });
+      process.stderr.write(
+        `已生成 ${result.spec.entries.length} 页规格初稿；模型的分页不具约束力，可直接编辑该文件\n`,
+      );
+      process.stdout.write(`${result.outputPath}\n`);
+    },
+  );
 
 probe
   .command("pptx")

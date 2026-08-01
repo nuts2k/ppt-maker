@@ -1,5 +1,6 @@
 export * from "./clean-contracts.js";
 export * from "./constants.js";
+export * from "./content-spec-contracts.js";
 export * from "./contracts.js";
 export * from "./deck-contracts.js";
 export * from "./errors.js";
