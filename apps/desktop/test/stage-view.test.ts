@@ -12,21 +12,38 @@ import {
 import type { LiveStageMap } from "../src/renderer/stores/run-types.js";
 import { RUN_STAGE_SEQUENCE, type RunStage } from "../src/shared/stages.js";
 
-/** 只给定若干阶段状态，其余按 pending 补齐（与 main 的 detailed 聚合口径一致） */
+/**
+ * 只给定若干阶段状态，其余按 pending 补齐（与 main 的 detailed 聚合口径一致）。
+ *
+ * `accept-source` 默认已完成：这些用例描述的是 imported 页，其源图确认在建立工作区时
+ * 自动放行。generated 页由 overrides 显式置 pending。
+ */
 function makeStages(
   overrides: Partial<Record<RunStage, SlideStageDetail["status"]>>,
 ): { stages: readonly SlideStageDetail[] } {
   return {
     stages: RUN_STAGE_SEQUENCE.map((stage) => ({
       stage,
-      status: overrides[stage] ?? "pending",
+      status:
+        overrides[stage] ??
+        (stage === "accept-source" ? "completed" : "pending"),
     })),
   };
 }
 
+function viewOf<T extends { readonly stage: string }>(
+  views: readonly T[],
+  stage: RunStage,
+): T | undefined {
+  return views.find((view) => view.stage === stage);
+}
+
 describe("deriveStageViews", () => {
   it("输出执行序列全量 10 阶段且顺序固定", () => {
-    const views = deriveStageViews(makeStages({}), undefined);
+    const views = deriveStageViews(
+      makeStages({ "accept-source": "pending" }),
+      undefined,
+    );
     expect(views.map((v) => v.stage)).toEqual([...RUN_STAGE_SEQUENCE]);
     expect(views.every((v) => v.status === "pending")).toBe(true);
   });
@@ -37,8 +54,8 @@ describe("deriveStageViews", () => {
       makeStages({ ocr: "pending", review: "pending" }),
       live,
     );
-    expect(views[0]?.status).toBe("completed");
-    expect(views[1]?.status).toBe("running");
+    expect(viewOf(views, "ocr")?.status).toBe("completed");
+    expect(viewOf(views, "review")?.status).toBe("running");
   });
 
   it("未被会话层覆盖的阶段保留耐久层状态", () => {
@@ -58,7 +75,8 @@ describe("deriveStageViews", () => {
 
   it("附带中文阶段名，卡片与轨道无需再查表", () => {
     const views = deriveStageViews(makeStages({}), undefined);
-    expect(views[0]?.label).toBe("文字识别");
+    expect(viewOf(views, "ocr")?.label).toBe("文字识别");
+    expect(viewOf(views, "accept-source")?.label).toBe("确认源图");
   });
 });
 
@@ -86,6 +104,14 @@ describe("currentStageView", () => {
     expect(currentStageView(views)?.stage).toBe("review");
   });
 
+  it("生成图未确认源图时当前阶段是确认源图", () => {
+    const views = deriveStageViews(
+      makeStages({ "accept-source": "pending" }),
+      undefined,
+    );
+    expect(currentStageView(views)?.stage).toBe("accept-source");
+  });
+
   it("全部完成时返回 null", () => {
     const all = Object.fromEntries(
       RUN_STAGE_SEQUENCE.map((stage) => [stage, "completed" as const]),
@@ -102,7 +128,8 @@ describe("completedStageCount / hasFailingStage", () => {
       makeStages({ ocr: "completed", review: "completed", mask: "failed" }),
       undefined,
     );
-    expect(completedStageCount(views)).toBe(2);
+    // 3 = ocr + review + 自动放行的 accept-source
+    expect(completedStageCount(views)).toBe(3);
   });
 
   it("failed / interrupted / stale 均视为需处理的失败态", () => {

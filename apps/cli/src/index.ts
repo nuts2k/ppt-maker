@@ -24,6 +24,7 @@ import { createPptxProbe } from "./pptx.js";
 import { OPENAI_IMAGE_MODEL } from "./providers/openai-image.js";
 import { formatSlideReport, runSlideReport } from "./report/run.js";
 import { runAcceptFinal } from "./slide/accept-final.js";
+import { runAcceptSource } from "./slide/accept-source.js";
 import { runAssistReview } from "./slide/assist-review.js";
 import { runSlideOcr } from "./slide/ocr.js";
 import { runSlideReview } from "./slide/review.js";
@@ -206,6 +207,25 @@ slide
     });
     process.stdout.write(`${result.cleanPath}\n`);
   });
+
+slide
+  .command("accept-source")
+  .argument("<workspace>", "页面工作区")
+  .option("--by <name>", "接受者标识")
+  .option("--note <text>", "确认备注")
+  .description(
+    "确认这一页的源图可用；仅生成图需要，导入与抽取的源图在建立工作区时已自动放行",
+  )
+  .action(
+    async (workspace: string, options: { by?: string; note?: string }) => {
+      const result = await runAcceptSource({
+        workspacePath: resolve(workspace),
+        ...(options.by === undefined ? {} : { acceptedBy: options.by }),
+        ...(options.note === undefined ? {} : { note: options.note }),
+      });
+      process.stdout.write(`${result.acceptedPath}\n`);
+    },
+  );
 
 slide
   .command("accept-clean")

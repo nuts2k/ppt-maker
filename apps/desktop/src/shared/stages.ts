@@ -14,6 +14,9 @@
  */
 
 export const RUN_STAGE_SEQUENCE = [
+  // 源图确认（M5 D6）：generated 页停在这里等人确认，imported / extracted 建立
+  // 工作区时即自动放行，轨道上直接显示为已完成。
+  "accept-source",
   "ocr",
   "review",
   "assist-review",
@@ -35,6 +38,7 @@ export const TRANSIENT_STAGES: readonly RunStage[] = ["validate-review"];
 
 /** 阶段展示名（中文），卡片轨道、活动日志、队列共用 */
 export const STAGE_LABELS: Readonly<Record<StageLabelKey, string>> = {
+  "accept-source": "确认源图",
   ocr: "文字识别",
   review: "生成复核稿",
   "assist-review": "AI 辅助复核",

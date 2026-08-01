@@ -10,6 +10,8 @@
 
 /** 闸门 -> 中文短语；`error` 不在此列（失败走错误文案，不是闸门） */
 const GATE_LABELS: Readonly<Record<string, string>> = {
+  // 第三个人工点（M5 D6），按来源条件性激活：只有生成图会停在这里
+  source: "停在源图确认",
   "human-edit": "停在文本复核门",
   api: "停在 API 调用确认",
   upload: "停在上传确认",

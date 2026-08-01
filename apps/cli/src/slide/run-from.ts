@@ -17,6 +17,7 @@ import { loadSlideWorkspace, resolveWorkspacePath } from "./workspace.js";
 const REVIEW_PATH = "stages/review/text-blocks.json";
 
 const RUN_SEQUENCE = [
+  "accept-source",
   "ocr",
   "review",
   "assist-review",
@@ -43,6 +44,7 @@ export interface RunFromResult {
   readonly executed: string[];
   readonly stoppedAt: string | null;
   readonly gate:
+    | "source"
     | "human-edit"
     | "upload"
     | "api"
@@ -88,6 +90,26 @@ export async function runSlideRunFrom(
   }
 
   const executed: string[] = [];
+
+  /*
+   * 源图确认门（D6）放在循环外，对**任何** --from 起点都先过一遍。
+   *
+   * generated 页必须由人确认源图才继续；imported / extracted 在建立工作区时已自动放行。
+   * 若只靠循环内的顺序判定，`run --from ocr` 会绕过它、改由 ocr 的依赖守卫抛错，
+   * 用户看到的是「阶段 ocr 无法自动执行」——把「等一个人来确认」误报成「执行失败」。
+   * 不在这里判断来源：状态本身就是来源规则的结论，重复判断只会让两处口径漂移。
+   */
+  const gateCheck = await loadSlideWorkspace(options.workspacePath);
+  if (stageState(gateCheck.manifest, "accept-source")?.status !== "completed") {
+    return {
+      executed,
+      stoppedAt: "accept-source",
+      gate: "source",
+      nextCommand: `ppt-maker slide accept-source ${options.workspacePath}`,
+      message: "请确认这一页的源图可用，之后链路才会继续",
+    };
+  }
+
   for (let i = startIndex; i < RUN_SEQUENCE.length; i += 1) {
     const stage = RUN_SEQUENCE[i];
     if (stage === undefined) {
@@ -97,7 +119,9 @@ export async function runSlideRunFrom(
     options.onStageStart?.(stage);
 
     try {
-      if (stage === "ocr") {
+      if (stage === "accept-source") {
+        // 已在循环外统一把关（见 runSlideRunFrom 开头），此处只占位保持序列完整
+      } else if (stage === "ocr") {
         await runSlideOcr({ workspacePath: options.workspacePath });
         executed.push(stage);
       } else if (stage === "review") {

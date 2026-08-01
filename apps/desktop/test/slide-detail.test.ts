@@ -14,6 +14,7 @@ import {
 
 const ALL_STAGES: SlideStage[] = [
   "init",
+  "accept-source",
   "ocr",
   "review",
   "assist-review",
@@ -67,7 +68,12 @@ function buildManifest(
     stages: ALL_STAGES.map((stage) =>
       stageState(
         stage,
-        overrides[stage] ?? (completedSet.has(stage) ? "completed" : "pending"),
+        overrides[stage] ??
+          // 本 fixture 是 imported 页（见上面的 source），其源图确认在建立工作区时
+          // 自动放行，故默认已完成。generated 页由 overrides 显式置 pending。
+          (completedSet.has(stage) || stage === "accept-source"
+            ? "completed"
+            : "pending"),
       ),
     ),
     attempts,
@@ -100,6 +106,12 @@ function attempt(
 describe("computeResumeStage", () => {
   it("全新工作区从 ocr 开始", () => {
     expect(computeResumeStage(buildManifest(["init"]))).toBe("ocr");
+  });
+
+  it("生成图未确认源图时起点是 accept-source（D6 第三个人工点）", () => {
+    // imported / extracted 页不会走到这里——它们的源图确认在建立工作区时已自动放行。
+    const manifest = buildManifest(["init"], { "accept-source": "pending" });
+    expect(computeResumeStage(manifest)).toBe("accept-source");
   });
 
   it("跳过已完成阶段，回退到未完成阶段前的 validate-review", () => {
@@ -147,10 +159,11 @@ describe("computeResumeStage", () => {
 
 describe("deriveStageDetails", () => {
   // report 不在此列：它是验收后静默补跑的本地汇总，不占可见轨道（shared/stages.ts）
-  it("输出执行序列的 9 个阶段，不含 init 与 report", () => {
+  it("输出执行序列的 10 个阶段，不含 init 与 report", () => {
     const details = deriveStageDetails(buildManifest(["init"]));
-    expect(details).toHaveLength(9);
+    expect(details).toHaveLength(10);
     expect(details.map((d) => d.stage)).toEqual([
+      "accept-source",
       "ocr",
       "review",
       "assist-review",
