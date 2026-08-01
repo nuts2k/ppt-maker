@@ -59,9 +59,12 @@
       `slide run --from ocr` 因阶段依赖未完成而**拒绝执行**（不是跳过、不是静默通过）。
 - [ ] B5 对该页执行 `slide accept-source` 后链路恢复，且磁盘上出现 `accepted.json`；
       对 `imported` 页检查磁盘，`accept-source` 为 `completed` 但**无** `accepted.json`。
-- [ ] B6 `slide replace-source` 换一张新图后：`init` 仍 `completed`，`accept-source` 及下游
-      全部 `stale`，`stages/review/text-blocks.json` 不再存在于原路径，
+- [x] B6 `slide replace-source` 换一张新图后：`init` 仍 `completed`（并指向新 attempt），
+      `ocr` 及其下游全部 `stale`，`stages/review/text-blocks.json` 不再存在于原路径，
       manifest 中无任何资产指向不存在的文件。
+      `accept-source` 本身按**新来源**重判：换成 `generated` 保持未完成、换成
+      `imported` / `extracted` 重新自动放行为 `completed`（这正是 S7 要的行为，
+      与「下游失效」不冲突——闸门本身不是下游）。
 - [ ] B7 带 `--keep-review` 换源后，人工确认的块经 IoU 对齐保留下来。
 - [ ] B8 deck 内换第 2 页的源：其余页的阶段状态、资产、验收记录**逐字节不变**。
 - [ ] B9 桌面端：阶段轨道显示新阶段、`generated` 页停在源图确认并进入待办队列、

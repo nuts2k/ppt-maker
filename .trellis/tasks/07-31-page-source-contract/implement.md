@@ -28,27 +28,27 @@
 
 ## 阶段二：确认闸门
 
-- [ ] 2.1 `createSlideWorkspace` 写入 `source`（`imported`）并按 `requiresSourceAcceptance`
+- [x] 2.1 `createSlideWorkspace` 写入 `source`（`imported`）并按 `requiresSourceAcceptance`
       决定 `accept-source` 初始状态；自动放行时追加 `auto-source-trust` attempt，
       **不写** `accepted.json`
-- [ ] 2.2 新建 `apps/cli/src/slide/accept-source.ts`（人工确认，照 `clean/accept.ts` 结构）
-- [ ] 2.3 CLI 注册 `slide accept-source`
-- [ ] 2.4 `run-from.ts`：`RUN_SEQUENCE` 插入 `accept-source`，新增 `gate: "source"` 分支，
+- [x] 2.2 新建 `apps/cli/src/slide/accept-source.ts`（人工确认，照 `clean/accept.ts` 结构）
+- [x] 2.3 CLI 注册 `slide accept-source`
+- [x] 2.4 `run-from.ts`：`RUN_SEQUENCE` 插入 `accept-source`，新增 `gate: "source"` 分支，
       扩展 `RunFromResult.gate` 联合类型
-- [ ] 2.5 测试：自动放行页无 `accepted.json`、`generated` 页被 `ocr` 守卫拒绝、
+- [x] 2.5 测试：自动放行页无 `accepted.json`、`generated` 页被 `ocr` 守卫拒绝、
       人工确认后链路恢复
 
 ## 阶段三：换源
 
-- [ ] 3.1 `apps/cli/src/slide/replace-source.ts`，按 design §6 的七步序列（注意第 6/7 步顺序）
-- [ ] 3.2 `text_review` / `review_validation` 归档（design §4），`--keep-review` 时跳过归档
-- [ ] 3.3 `apps/cli/src/deck/replace-source.ts` 薄包装 + CLI 注册两条命令
-- [ ] 3.4 测试：失效范围、资产悬空检查、`--keep-review`、deck 内其它页零变化
+- [x] 3.1 `apps/cli/src/slide/replace-source.ts`，按 design §6 的七步序列（注意第 6/7 步顺序）
+- [x] 3.2 `text_review` / `review_validation` 归档（design §4），`--keep-review` 时跳过归档
+- [x] 3.3 `apps/cli/src/deck/replace-source.ts` 薄包装 + CLI 注册两条命令
+- [x] 3.4 测试：失效范围、资产悬空检查、`--keep-review`、deck 内其它页零变化
 
 ## 阶段四：桌面端
 
 - [ ] 4.1 **先读 `DESIGN.md`**
-- [ ] 4.2 `shared/stages.ts` 与 `shared/gates.ts` 同步新阶段与新闸门文案
+- [x] 4.2 `shared/stages.ts` 与 `shared/gates.ts` 同步新阶段与新闸门文案
 - [ ] 4.3 IPC handler：换源（直调 CLI 逻辑）
 - [ ] 4.4 slide 详情视图的换源入口 + 二次确认 + 「保留已确认文字块」勾选框（默认不勾）
 - [ ] 4.5 走查：`generated` 页停在源图确认并进待办队列；阶段轨道显示新节点

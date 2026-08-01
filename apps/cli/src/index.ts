@@ -7,6 +7,7 @@ import { runSlideClean } from "./clean/run.js";
 import { addSlideToDeck } from "./deck/add-slide.js";
 import { exportDeckPptx } from "./deck/export.js";
 import { removeSlideFromDeck } from "./deck/remove-slide.js";
+import { replaceDeckSlideSource } from "./deck/replace-source.js";
 import { formatDeckRunResult, runDeckPipeline } from "./deck/run.js";
 import { deckStatus, formatDeckStatus } from "./deck/status.js";
 import { createDeckWorkspace } from "./deck/workspace.js";
@@ -27,6 +28,7 @@ import { runAcceptFinal } from "./slide/accept-final.js";
 import { runAcceptSource } from "./slide/accept-source.js";
 import { runAssistReview } from "./slide/assist-review.js";
 import { runSlideOcr } from "./slide/ocr.js";
+import { replaceSlideSource } from "./slide/replace-source.js";
 import { runSlideReview } from "./slide/review.js";
 import { runSlideRunFrom } from "./slide/run-from.js";
 import { runSlideValidateReview } from "./slide/validate-review.js";
@@ -207,6 +209,35 @@ slide
     });
     process.stdout.write(`${result.cleanPath}\n`);
   });
+
+slide
+  .command("replace-source")
+  .argument("<workspace>", "页面工作区")
+  .argument("<image>", "16:9 PNG/JPEG 新源图")
+  .option("--keep-review", "保留已确认的人工文字块（默认清空，走归档）")
+  .description(
+    "替换该页源图：init 保持完成，源图确认及下游全部失效，来源随新图重新判定",
+  )
+  .action(
+    async (
+      workspace: string,
+      image: string,
+      options: { keepReview?: boolean },
+    ) => {
+      const result = await replaceSlideSource({
+        workspacePath: resolve(workspace),
+        imagePath: resolve(image),
+        ...(options.keepReview === true ? { keepReview: true } : {}),
+      });
+      process.stderr.write(
+        `失效阶段：${result.invalidated.join(", ") || "无"}${result.archivedReview ? "；已归档旧复核稿" : ""}\n`,
+      );
+      if (result.requiresAcceptance) {
+        process.stderr.write("新源图需人工确认后才会继续下游\n");
+      }
+      process.stdout.write(`${result.sourceImagePath}\n`);
+    },
+  );
 
 slide
   .command("accept-source")
@@ -454,6 +485,36 @@ deck
     process.stdout.write(`${result.pageLabel}\n`);
     process.stderr.write(`已添加 ${result.pageLabel} (${result.slideId})\n`);
   });
+
+deck
+  .command("replace-source")
+  .argument("<deck>", "deck 工作区")
+  .argument("<page>", "页面标识（如 page-04）")
+  .argument("<image>", "16:9 PNG/JPEG 新源图")
+  .option("--keep-review", "保留该页已确认的人工文字块（默认清空）")
+  .description("替换某页源图并使该页下游失效；其它页不受影响")
+  .action(
+    async (
+      deckPath: string,
+      page: string,
+      image: string,
+      options: { keepReview?: boolean },
+    ) => {
+      const result = await replaceDeckSlideSource({
+        deckPath: resolve(deckPath),
+        page,
+        imagePath: resolve(image),
+        ...(options.keepReview === true ? { keepReview: true } : {}),
+      });
+      process.stderr.write(
+        `已换源 ${result.workspacePath}；失效阶段：${result.invalidated.join(", ") || "无"}\n`,
+      );
+      if (result.requiresAcceptance) {
+        process.stderr.write("新源图需人工确认后才会继续下游\n");
+      }
+      process.stdout.write(`${result.workspacePath}\n`);
+    },
+  );
 
 deck
   .command("remove-slide")

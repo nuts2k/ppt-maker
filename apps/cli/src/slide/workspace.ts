@@ -40,8 +40,7 @@ export interface CreateSlideWorkspaceOptions {
   readonly source?: SlideSourceDraft;
 }
 
-const AUTO_SOURCE_TRUST_PROVIDER = "auto-source-trust";
-const SOURCE_ACCEPT_ATTEMPT_ID = "accept-source-001";
+export const AUTO_SOURCE_TRUST_PROVIDER = "auto-source-trust";
 
 /**
  * 按来源决定源图确认闸门的初始状态（D6）。
@@ -51,10 +50,12 @@ const SOURCE_ACCEPT_ATTEMPT_ID = "accept-source-001";
  * 记录，等于让报告声称「这页源图有人确认过」而事实没有，正是 M4 列为头号风险的
  * 「记录与事实相反」。状态可以是 completed，但不能伪造人工痕迹。
  */
-function buildSourceGate(
+export function buildSourceGate(
   source: SlideSource,
   initFingerprint: string,
   at: string,
+  /** accept-source 的第几次 attempt（换源时递增） */
+  attemptNumber = 1,
 ): {
   readonly preCompleted: PreCompletedStage[];
   readonly attempts: WorkspaceStageAttempt[];
@@ -62,20 +63,21 @@ function buildSourceGate(
   if (requiresSourceAcceptance(source)) {
     return { preCompleted: [], attempts: [] };
   }
+  const attemptId = `accept-source-${String(attemptNumber).padStart(3, "0")}`;
   return {
     preCompleted: [
       {
         stage: "accept-source",
-        attemptId: SOURCE_ACCEPT_ATTEMPT_ID,
+        attemptId,
         inputFingerprint: initFingerprint,
       },
     ],
     attempts: [
       {
         schemaVersion: SCHEMA_VERSION,
-        id: SOURCE_ACCEPT_ATTEMPT_ID,
+        id: attemptId,
         stage: "accept-source",
-        number: 1,
+        number: attemptNumber,
         status: "completed",
         inputFingerprint: initFingerprint,
         startedAt: at,
