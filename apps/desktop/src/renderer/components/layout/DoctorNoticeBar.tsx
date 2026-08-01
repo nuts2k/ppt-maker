@@ -1,3 +1,4 @@
+import { NoticeBar } from "@/components/ui";
 import {
   CHECK_DOT_CLASS,
   CHECK_STATUS_TEXT,
@@ -23,11 +24,9 @@ export function DoctorNoticeBar({
   actions,
 }: DoctorNoticeBarProps): React.JSX.Element {
   return (
-    <div
-      className={cn(
-        "flex items-start gap-4 border-t border-hairline px-6 py-3",
-        notice.level === "fail" ? "bg-state-failed/10" : "bg-state-stale/10",
-      )}
+    <NoticeBar
+      level={notice.level === "fail" ? "failed" : "stale"}
+      className="flex items-start gap-4"
     >
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <p className="text-sm font-semibold text-ink">{notice.title}</p>
@@ -54,6 +53,6 @@ export function DoctorNoticeBar({
         <p className="text-sm text-ink-muted">{notice.hint}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">{actions}</div>
-    </div>
+    </NoticeBar>
   );
 }

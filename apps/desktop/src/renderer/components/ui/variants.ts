@@ -151,3 +151,16 @@ export const FIELD_BASE = cn(
   "transition-colors duration-fast hover:border-border-strong",
   "disabled:cursor-not-allowed disabled:bg-surface disabled:opacity-60",
 );
+
+/**
+ * 小节标签 —— DESIGN.md badge 档（11px / 600）。
+ *
+ * 最终确认页与检查摘要各写过一份同样的字符串，两处已经在同一次改动里被同时编辑
+ * 过两回。它是排版档而非组件，所以收成常量而不是包一层 `<SectionLabel>`：
+ * 调用点仍然是 `<p className={SECTION_LABEL}>`，语义标签由调用点自己选。
+ *
+ * 中文不受 `uppercase` 影响，故不加；`tracking` 保留极小的一点，
+ * 让 11px 的中文小标题不至于挤在一起。
+ */
+export const SECTION_LABEL =
+  "text-2xs font-semibold tracking-[0.02em] text-ink-muted";

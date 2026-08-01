@@ -288,15 +288,84 @@ rg -n '(^|[^a-z-])(bg|text|border|ring|outline|divide|placeholder|from|via|to|fi
 | 阶段一结束 | `git reset --hard 0a58829` | 阶段二改动全清，阶段一保留 |
 | 完全回退 | `git checkout main` | 回到重构前 |
 
-## 未做、留给后续的四条
+## 阶段四：基座收口 ✅（2026-07-31）
 
-1. **基座仍有三处重复**：小节标签排版档（`FinalConfirmPage` 与 `CheckSummary` 各一份）、
-   行内错误条、`Panel` 只能是 `div` 导致折叠态只能 `cn(panelVariants(), …)` 手拼。
-   压着没做是因为不想在尾声连续第三轮改基座。
-2. **`SegmentedItem` 用 `aria-pressed`**，严格说互斥档位该用 `role="radiogroup"` + `aria-checked`，
-   但会改动键盘遍历行为，不该在收尾时动。
-3. **`WorkspaceMenu.tsx:126-140` 菜单项仍是裸 button 手拼类**（是菜单项不是选中态，另一类）。
-4. **z-index 无语义刻度**，`StageRail` 折叠层、`DoctorChip`、`WorkspaceMenu` 三处各写各的数字。
+原「未做、留给后续的四条」全部完成，加上 Esc 出口共五项。
+
+### 1. 基座三处重复 ✅
+
+- [x] `SECTION_LABEL` 收进 `variants.ts`。是**排版档不是组件**，所以收成常量而非
+      包一层 `<SectionLabel>`——调用点仍写 `<h3 className={SECTION_LABEL}>`，
+      语义标签由调用点自己选。两处本地定义删净。
+- [x] `NoticeBar` 基座。环境提示条与阶段错误条的**内容结构差别很大**（前者是
+      「标题 + 逐条清单 + 建议」，后者是「图标 + 单行摘要 + 动作 + 可展开详情」），
+      硬合成一个组件只会得到一堆互斥的可选 props。所以只收外壳，
+      真正需要单源的是 **level → 底色**：底色取自 `STATUS_SPEC[level].wash`，
+      与状态点、状态徽标同一张表。
+- [x] `Panel` 加 `as`（div / section / aside / article）。层级是视觉属性，
+      与「这块内容在文档结构里是什么」无关，写死 `div` 逼得调用点为拿正确标签
+      而绕开基座——`CheckSummary` 里就这样出现过三处。现已改用 `<Panel as="section">`。
+
+### 2. 分段控件语义 ✅
+
+- [x] `role="radiogroup"` / `role="radio"` + `aria-checked` 取代 `aria-pressed`。
+      `aria-pressed` 说的是「这个按钮被按下」、各档互相独立；实际是「一组里选一个，
+      选了别的这个自动松开」。
+- [x] **连键盘行为一起换**。只改 role 是更糟的：radiogroup 模式承诺「整组一个 Tab
+      停靠点、组内箭头键移动」，声称却不兑现比诚实的 `aria-pressed` 更误导。
+      已实现 roving `tabIndex`（选中项 0、其余 -1）+ 箭头键 / Home / End 导航
+      （判定在 `components/ui/segmented-nav.ts`，两端环绕，移动即选中）。
+- [x] `SegmentedGroup` 兜底：一组里若一个都没选中，所有 `tabIndex` 都是 -1、
+      整组从 Tab 序列消失。此时把第一档设为 0。不是理论情况——
+      「可用性随产物变化」的视图切换就可能短暂无选中态。
+- [x] `SegmentedItem` 改为直接渲染 `<button>` + `buttonVariants(...)`，不再套 `Button`。
+      `Button` 把 `selected` 与 `aria-pressed` 绑死（对独立切换按钮是对的），
+      给它加一个「不要输出 aria-pressed」的开关等于把分段控件的特殊情况渗进通用按钮。
+
+### 3. WorkspaceMenu 裸 button ✅
+
+- [x] 新增 `MenuItem` 基座。**不是 `Button` 的一档**：按钮是「一个可点的东西」，
+      有自己的边界与内边距；菜单项是「一份清单里的一行」，满宽左对齐靠悬停底色。
+      形状语言不同，硬塞进 `buttonVariants` 会给按钮加一档只有菜单在用的变体。
+
+### 4. z-index 语义刻度 ✅
+
+- [x] `tailwind.config.ts` 加 `sticky` / `popover` / `overlay` 三档，四个调用点全迁。
+      裸数字的问题不是「不够用」而是「不可比」——三处 popover 各写 `z-20` 时，
+      谁也说不清它们该不该相等。画布内文本块的 1/2/3 不走这套：那是同一平面内部的
+      相对次序，与页面级浮层不构成同一个比较域。
+
+### 5. Esc 出口（键盘陷阱第三条）✅
+
+- [x] Esc 判定为 `exit-editor`：**把焦点交还给项外壳，不是退出编辑态**。
+      「文字待确认」档常驻可编辑、没有只读态可退，此前 `BlockTextEditor` 在不传
+      `onExit` 时直接放行 Esc，于是这一档（块列表最主要的一档）里 Esc 什么也不做。
+      「已一致」的就地编辑另有出口（传了 `onExit`，自己 `stopPropagation`），两条路不干扰。
+- [x] 调用方**不 preventDefault、不 stopPropagation**：Esc 还要冒泡出去关快捷键面板。
+
+### 验证
+
+- 单测 334 → **346**（+12）：分段导航四方向 / 环绕 / Home-End / 空组 / 单档组，
+  Esc 的 `exit-editor` 与组字期间放行。
+- 真机走查（`research/after-base-cleanup/`，可复跑）：
+
+  | 脚本 | 结果 |
+  |---|---|
+  | `segmented-a11y.mjs` | **10/10** — 语义无残留 `aria-pressed`、组内单一 Tab 停靠点、Tab 直接离开整组、箭头键移动即选中、环绕、Home |
+  | `esc-exit.mjs` | **5/5** — 焦点 TEXTAREA → LI、落在同一项、仍是当前项、Esc 后 Tab 继续推进 |
+  | 真实鼠标点击 | `aria-checked` 由 `true,false` → `false,true`，键盘改造未伤鼠标路径 |
+  | 上一轮两个脚本复跑 | 无回归 |
+
+- 四关全绿：typecheck ✓ / 515 测试 ✓ / `format:check` ✓ / 对比度 26 项 ✓
+
+### 收口时踩到的两处
+
+1. **biome 拒绝 `aria-pressed={undefined}`**（只接受 false/true/mixed）。
+   这条 lint 反而指对了方向：想「摘掉一个属性」本身就说明不该套那个组件。
+   最终按与 `Panel` 折叠态相同的原则处理——**语义不同就复用变体、不复用组件**。
+2. **`biome-ignore` 必须紧邻报错行**。写成多行 `//` 注释块时，`biome-ignore` 那行
+   与目标之间隔了续行，结果同时报「suppression unused」和原规则未被抑制。
+   解法是长解释用 `/* */` 块，`biome-ignore` 单独一行紧贴目标。
 
 ## 用户已定的两处（2026-07-31 · 已实施）
 

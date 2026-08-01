@@ -6,6 +6,7 @@ import { CheckSummary } from "@/components/final/CheckSummary";
 import { CompositePreview } from "@/components/final/CompositePreview";
 import {
   Button,
+  SECTION_LABEL,
   SegmentedGroup,
   SegmentedItem,
   StatusChip,
@@ -41,9 +42,6 @@ import type { FinalChecks } from "../../main/ipc/channels.js";
  *
  * 字号层级 20 / 14 / 12 / 11 一路建到底：标题 → 正文说明 → 辅助解释 → 小节标签。
  */
-
-/** 小节标签，DESIGN.md badge 档（11px / 600）。中文不受 uppercase 影响，故不加 */
-const SECTION_LABEL = "text-2xs font-semibold tracking-[0.02em] text-ink-muted";
 
 /** 备注输入框的 id：本页同时只存在一个，用常量即可关联 label */
 const NOTE_FIELD_ID = "final-confirm-note";

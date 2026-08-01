@@ -49,6 +49,31 @@ if (action.kind === "move") {
 而且箭头本来就带不出焦点，对陷阱毫无帮助。**「哪个键该放行」取决于该键在浏览器里
 原本承担什么，不是一刀切。**
 
+### 禁止只换 ARIA role 而不兑现该 role 承诺的键盘行为
+
+把一排 `aria-pressed` 按钮换成 `role="radiogroup"` / `role="radio"` 是对的——
+互斥档位本来就不是一组独立的切换按钮。但 role 不只是标签，它是**一份承诺**：
+radiogroup 意味着「整组只占一个 Tab 停靠点，组内用箭头键移动」。
+
+只改 role 不改键盘，读屏用户会按箭头键然后发现什么也没发生——**比诚实地保留
+`aria-pressed` 更误导人**。换 role 时必须同时给出：
+
+- roving `tabIndex`（选中项 0、其余 -1）
+- 箭头键 / Home / End 的组内导航（左右上下四个方向都收，习惯键位并不统一）
+- 一组都没选中时的兜底，否则全组 `tabIndex` 都是 -1，整组从 Tab 序列里消失
+
+### 禁止为了摘掉一个属性而给通用组件加开关
+
+分段档位需要 `aria-checked`，而基座 `Button` 把 `selected` 与 `aria-pressed` 绑死
+（那对独立的切换按钮是对的）。给 `Button` 加一个「不要输出 aria-pressed」的 prop，
+等于把分段控件的特殊情况渗进通用按钮——变体表就是这样开始腐化的。
+
+**语义不同就复用变体、不复用组件**：直接渲染 `<button>` + `buttonVariants(...)`，
+视觉仍出自同一张变体表，不构成漂移。同理，整块可点击的折叠面板用
+`cn(panelVariants(), …)` 拼在 `<button>` 上，而不是给 `Panel` 开放 `as="button"`。
+
+判断标准是「视觉是否仍单源」，不是「是否用了那个组件」。
+
 ### 禁止让「求助入口」只有一个会失效的键位
 
 `?` 在 input / textarea / contentEditable 内不拦截是对的——那里它是内容不是命令。
@@ -109,6 +134,22 @@ if (action.kind === "move") {
 所以走查脚本是成对的：`trap-check.mjs` 证明两端有出口，`nav-intact.mjs` 证明中间仍然
 逐项推进（block-001 → … → 006）。放宽一个约束时，总要问：**什么别的东西也会产生同样的
 观测结果？** 把那个也测掉。
+
+### `biome-ignore` 必须紧邻报错行
+
+写成多行 `//` 注释块时，`biome-ignore` 那行与目标之间隔着续行，结果是同时报
+「suppression unused」和原规则未被抑制——两条都指着同一个地方，很容易读成
+「注释语法写错了」而去改语法。
+
+长解释用 `/* */` 块，`biome-ignore` 单独一行紧贴目标：
+
+```tsx
+/*
+ * 这里为什么必须用 button + role="radio"（长解释）……
+ */
+// biome-ignore lint/a11y/useSemanticElements: 见上，APG radio group 模式
+<button role="radio" …>
+```
 
 ### 走查脚本必须自己归零前置状态
 

@@ -236,6 +236,19 @@ export function BlockListPanel({
         return;
       }
 
+      /*
+       * Esc 把焦点从编辑框交还给项外壳（li 有 tabIndex={-1}），此后 Tab 从该项
+       * 继续走正常顺序。不 preventDefault、不 stopPropagation：Esc 还要冒泡出去
+       * 关闭快捷键面板等浮层，在这里吞掉就会把另一条路也断了。
+       */
+      if (action.kind === "exit-editor") {
+        const row = (event.target as HTMLElement).closest<HTMLElement>(
+          'li[tabindex="-1"]',
+        );
+        row?.focus();
+        return;
+      }
+
       event.preventDefault();
 
       switch (action.kind) {

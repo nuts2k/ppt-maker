@@ -22,7 +22,8 @@ export type ReviewKeyAction =
   | { kind: "move"; delta: 1 | -1; escapeAtEdge: boolean }
   | { kind: "classify"; toLayoutText: boolean }
   | { kind: "review-and-move" }
-  | { kind: "next-unreviewed" };
+  | { kind: "next-unreviewed" }
+  | { kind: "exit-editor" };
 
 /** `KeyboardEvent` 的最小结构切片，便于测试直接构造。 */
 export interface ReviewKeyInput {
@@ -96,6 +97,20 @@ export function resolveReviewKeyAction(input: ReviewKeyInput): ReviewKeyAction {
     case "Enter":
       // ⇧Enter 插入换行
       return input.shiftKey ? PASSTHROUGH : { kind: "review-and-move" };
+    /*
+     * Esc = 把焦点交还给项外壳，**不是**退出编辑态。
+     *
+     * 「文字待确认」档常驻可编辑，没有可退回的只读态，所以 `BlockTextEditor`
+     * 在不传 `onExit` 时直接放行 Esc——结果是这一档里 Esc 什么也不做，而它恰好是
+     * 块列表最主要的一档。焦点留在 textarea 内，键盘用户按 Esc 的直觉落空。
+     *
+     * 「已一致」的就地编辑态另有出口：那里传了 `onExit`，`BlockTextEditor` 自己
+     * `stopPropagation` 并退回只读，事件到不了这里，两条路互不干扰。
+     *
+     * 调用方**不要 preventDefault**：Esc 还要继续冒泡去关快捷键面板等浮层。
+     */
+    case "Escape":
+      return { kind: "exit-editor" };
     default:
       return PASSTHROUGH;
   }
@@ -156,7 +171,8 @@ export function resolveMoveTargetId(
   delta: number,
 ): string | null {
   if (visibleIds.length === 0) return null;
-  const index = visibleIds.findIndex((id) => id === currentId);
+  // currentId 为 null 时 indexOf 返回 -1，正是「尚未选中」要走的分支
+  const index = currentId === null ? -1 : visibleIds.indexOf(currentId);
   // 焦点尚未落在任何项上时，向下从头进、向上从尾进
   const nextIndex =
     index === -1

@@ -1,7 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Panel } from "@/components/ui";
-import { cn } from "@/lib/utils";
+import { MenuItem, Panel } from "@/components/ui";
 import {
   runWorkspaceAction,
   type WorkspaceAction,
@@ -120,24 +119,17 @@ export function WorkspaceMenu({
         <Panel
           elevation="raised"
           style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-          className="absolute left-0 top-full z-20 mt-2 w-72 p-1"
+          className="absolute left-0 top-full z-popover mt-2 w-72 p-1"
         >
           {items.map((item) => (
-            <button
+            <MenuItem
               key={item.action}
-              type="button"
               disabled={item.disabled}
-              title={item.disabledReason ?? undefined}
+              disabledReason={item.disabledReason}
               onClick={() => handleSelect(item.action)}
-              className={cn(
-                "w-full rounded-sm px-3 py-2 text-left text-sm text-ink transition-colors duration-fast",
-                item.disabled
-                  ? "cursor-not-allowed opacity-40"
-                  : "hover:bg-surface active:bg-surface-sunken",
-              )}
             >
               {item.label}
-            </button>
+            </MenuItem>
           ))}
 
           {/* 禁用原因写在面板里而不是只挂 title：灰掉却不说为什么等同于没反应 */}

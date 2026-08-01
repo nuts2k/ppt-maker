@@ -64,6 +64,16 @@ describe("列表导航", () => {
     });
   });
 
+  it("Esc 交还焦点给项外壳（不是退出编辑态——那一档没有只读态可退）", () => {
+    expect(press({ key: "Escape" })).toEqual({ kind: "exit-editor" });
+  });
+
+  it("组字期间 Esc 归输入法取消候选，不动焦点", () => {
+    expect(press({ key: "Escape", isComposing: true })).toEqual({
+      kind: "passthrough",
+    });
+  });
+
   it("普通字符不拦截，聚焦项可直接打字", () => {
     expect(press({ key: "a", code: "KeyA" })).toEqual({ kind: "passthrough" });
     expect(press({ key: "1", code: "Digit1" })).toEqual({

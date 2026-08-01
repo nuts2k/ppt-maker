@@ -81,7 +81,7 @@ export function ActivityPanel({
         className,
       )}
     >
-      <div className="sticky top-0 z-10 flex h-10 items-center gap-3 border-b border-hairline bg-canvas px-6">
+      <div className="sticky top-0 z-sticky flex h-10 items-center gap-3 border-b border-hairline bg-canvas px-6">
         <span className="text-sm font-semibold text-ink">活动日志</span>
         <span className="flex-1 text-2xs tabular-nums text-ink-muted">
           {records.length} 条

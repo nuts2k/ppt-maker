@@ -59,7 +59,7 @@ export function DoctorChip({
       {open && (
         <Panel
           elevation="raised"
-          className="absolute right-0 top-full z-20 mt-2 w-80 p-4"
+          className="absolute right-0 top-full z-popover mt-2 w-80 p-4"
         >
           {report ? (
             <ul className="flex flex-col gap-3">

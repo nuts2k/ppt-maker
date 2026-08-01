@@ -13,7 +13,8 @@ import { cn } from "@/lib/utils";
  *
  * - 窄条上留一个可见入口（图标 + 文字 + `?` 键提示）与最常用的三条键位摘要，
  *   发现性由它承担；
- * - 完整九条收进面板，`?` 唤起、Esc 或再按 `?` 收起，点击外部亦收起。
+ * - 完整键位收进面板，`?` 唤起、Esc 或再按 `?` 收起，点击外部亦收起；
+ *   焦点在文本框时 `?` 是内容不是命令，此时改用 `⌘/`（见 `resolveShortcutPanelKey`）。
  *
  * 入口必须是可见控件而非纯隐藏键：只有隐藏快捷键等于能力静默消失，
  * 见 .trellis/spec/guides/silent-failure-thinking-guide.md 的「入口长在会消失的容器里」。
@@ -133,7 +134,7 @@ export function ReviewShortcutBar({
           role="dialog"
           aria-label="键盘快捷键"
           elevation="raised"
-          className="absolute bottom-full left-6 z-20 mb-2 w-[440px] p-3"
+          className="absolute bottom-full left-6 z-popover mb-2 w-[440px] p-3"
         >
           <div className="flex items-center gap-2 pb-2">
             <h2 className="min-w-0 flex-1 text-sm font-semibold text-ink">

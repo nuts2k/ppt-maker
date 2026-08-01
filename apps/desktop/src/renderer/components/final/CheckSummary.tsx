@@ -1,7 +1,13 @@
 import type { CleanPlateChecks, PptxCheckReport } from "@ppt-maker/core";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
-import { panelVariants, StatusChip, StatusDot } from "@/components/ui";
+import {
+  Panel,
+  panelVariants,
+  SECTION_LABEL,
+  StatusChip,
+  StatusDot,
+} from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 /**
@@ -49,9 +55,6 @@ const PPTX_CHECK_LABELS: Readonly<Record<string, string>> = {
   "font-declaration": "字体声明",
   "shape-count": "形状数量",
 };
-
-/** 小节标签，DESIGN.md badge 档（11px / 600）。与 FinalConfirmPage 的层级同档 */
-const SECTION_LABEL = "text-2xs font-semibold tracking-[0.02em] text-ink-muted";
 
 interface MetricRow {
   readonly label: string;
@@ -173,21 +176,21 @@ export function CheckSummary({
 
   if (loading) {
     return (
-      <div className={cn(panelVariants(), "flex flex-col gap-2 p-4")}>
+      <Panel as="section" className="flex flex-col gap-2 p-4">
         <h3 className={SECTION_LABEL}>自动检查</h3>
         <p className="text-xs text-ink-muted">正在读取检查记录…</p>
-      </div>
+      </Panel>
     );
   }
 
   if (pptx === null && clean === null) {
     return (
-      <div className={cn(panelVariants(), "flex flex-col gap-2 p-4")}>
+      <Panel as="section" className="flex flex-col gap-2 p-4">
         <h3 className={SECTION_LABEL}>自动检查</h3>
         <p className="text-xs leading-relaxed text-ink-muted">
           暂无检查记录——该页尚未生成 PPTX 与去字底板。
         </p>
-      </div>
+      </Panel>
     );
   }
 
@@ -215,7 +218,7 @@ export function CheckSummary({
   }
 
   return (
-    <div className={cn(panelVariants(), "flex flex-col gap-5 p-4")}>
+    <Panel as="section" className="flex flex-col gap-5 p-4">
       <section className="flex flex-col gap-2.5">
         <div className="flex items-center gap-2">
           <h3 className={SECTION_LABEL}>PPTX 自动检查</h3>
@@ -329,6 +332,6 @@ export function CheckSummary({
           </div>
         )}
       </section>
-    </div>
+    </Panel>
   );
 }

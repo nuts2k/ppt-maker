@@ -1,7 +1,7 @@
 import { ChevronDown, CircleX } from "lucide-react";
 import { useMemo, useState } from "react";
 import { StageTrack } from "@/components/console/StageTrack";
-import { Button, IconButton, StatusDot } from "@/components/ui";
+import { Button, IconButton, NoticeBar, StatusDot } from "@/components/ui";
 import {
   blockingStageView,
   completedStageCount,
@@ -180,7 +180,7 @@ export function StageRail({
 
       {/* 错误条挂在折叠区之外：收起态同样要能看见失败并直达重跑入口 */}
       {error !== null && (
-        <div className="flex flex-col gap-2 border-t border-hairline bg-state-failed/10 px-6 py-2">
+        <NoticeBar level="failed" className="flex flex-col gap-2 py-2">
           <div className="flex items-center gap-3">
             {/* 与 STATUS_SPEC.failed 同一个图标，形状 + 颜色 + 文字三重表达 */}
             <CircleX
@@ -222,7 +222,7 @@ export function StageRail({
               </p>
             </div>
           )}
-        </div>
+        </NoticeBar>
       )}
     </div>
   );

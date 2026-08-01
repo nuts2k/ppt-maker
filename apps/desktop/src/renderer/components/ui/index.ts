@@ -19,12 +19,24 @@ export {
 } from "./Field";
 export { IconButton, type IconButtonProps } from "./IconButton";
 export { Kbd, type KbdProps } from "./Kbd";
-export { Panel, type PanelProps } from "./Panel";
+export { MenuItem, type MenuItemProps } from "./MenuItem";
+export { NoticeBar, type NoticeBarProps, type NoticeLevel } from "./NoticeBar";
+export { Panel, type PanelProps, type PanelTag } from "./Panel";
 export {
   SegmentedGroup,
   SegmentedItem,
   type SegmentedItemProps,
 } from "./Segmented";
 export { StatusChip, StatusDot } from "./Status";
+export {
+  resolveSegmentedNav,
+  type SegmentedNavInput,
+  type SegmentedNavResult,
+} from "./segmented-nav";
 export { STATUS_DOT_SIZE, STATUS_SPEC, type StatusSpec } from "./status-spec";
-export { buttonVariants, kbdVariants, panelVariants } from "./variants";
+export {
+  buttonVariants,
+  kbdVariants,
+  panelVariants,
+  SECTION_LABEL,
+} from "./variants";
