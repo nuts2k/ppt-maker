@@ -280,3 +280,78 @@ V1 桌面工作台被判定用户体验不合格（无批量执行、无进度/�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 7: 桌面端设计语言重构 · 阶段三四（键盘陷阱修复 + 基座收口）与环境迁移补齐
+
+**Date**: 2026-07-31
+**Task**: 桌面端设计语言重构 · 阶段三四（键盘陷阱修复 + 基座收口）与环境迁移补齐
+**Branch**: `main`
+
+### Summary
+
+换机器后补齐环境（重建被清理的 NODE_OPTIONS 预加载脚本、先 build core 才能 typecheck、从既有 deck 复制出两个零云调用的走查工作区），随后按用户裁定完成两处待定：块列表键盘陷阱改为「先动再决定拦不拦」，出口只开给 Tab；分段字号保持 12px。再清空「未做、留给后续的四条」——三处基座重复、radiogroup 语义、MenuItem、z-index 语义刻度，外加 Esc 出口。分段控件是最大一处：只换 role 比不换更糟，因为该模式承诺了组内箭头键导航，所以 roving tabIndex 与键盘导航一并补齐。单测 323 → 346，四关全绿，真机走查四个可复跑脚本全通过。
+
+### Main Changes
+
+### Main Changes
+
+**环境迁移补齐**（仓库从 `/Users/kelin/Work/ppt-maker` 迁到 `/Users/kelin/Workspace/ppt-maker`）
+
+- `NODE_OPTIONS` 指向的 `restore-node-options.cjs` 随临时目录被清理，node 完全起不来，已重建。
+- `packages/core` 未构建导致 `apps/cli` typecheck 报 9 个 `has no exported member`——解析的是过期 `dist`。这一步不在原交接清单里。
+- 走查工作区未随迁，从 `~/test/ppttest-2026-07-25`（两页流水线全 completed）复制出 `ppttest-walkthrough-E3` 与 `ppttest-switch-target`，零云调用。
+- `CLAUDE.md` / `AGENTS.md` 里指向旧路径的文档链接改为相对路径。
+- 调试端口正确变量是 `REMOTE_DEBUGGING_PORT`（electron-vite 原生支持），`ELECTRON_ARGS` 无效。
+
+**键盘陷阱修复**（`dc18b1a`，WCAG 2.1.2 A 级，溯源 M4 `9d736ca`）
+
+- 改为「先动再决定拦不拦」：`move` 加 `escapeAtEdge`（Tab true、↑↓ false），派发层按 `moveBy` 是否真移动决定 `preventDefault`。出口只开给 Tab——箭头键抢的是 textarea 内光标移动，放行会让光标乱跳，且它本就带不出焦点。
+- 索引计算抽成纯函数 `resolveMoveTargetId`，边界返回 `null`，使「撞到头」可测。
+- 补 `⌘/` 开关快捷键面板。`?` 在可编辑区不拦截是对的，但它让「求助」在块列表常驻 textarea 里只剩鼠标，等于陷阱内无键盘自救手段。
+
+**基座收口**（`ef5842e`，清空「未做、留给后续的四条」+ Esc 出口）
+
+- `SECTION_LABEL` 收进 `variants.ts`（排版档非组件，故收成常量）。
+- 新增 `NoticeBar` 只收外壳——两处通知条内容结构差别很大，硬合成会得到一堆互斥可选 props；真正要单源的是 level → 底色，取自 `STATUS_SPEC[level].wash`。
+- `Panel` 加 `as`：层级是视觉属性，写死 `div` 逼调用点绕开基座手拼。
+- 分段控件换 `role="radiogroup"` + `aria-checked`，**并连键盘行为一起换**——只改 role 等于承诺了不兑现，比诚实的 `aria-pressed` 更误导。补 roving tabIndex + 箭头/Home/End 导航 + 无选中态兜底。
+- `SegmentedItem` 改直接渲染 `button` + `buttonVariants`：给 `Button` 加「不要输出 aria-pressed」的开关会把特殊情况渗进通用按钮。
+- 新增 `MenuItem` 基座（菜单项不是 Button 的一档，形状语言不同）。
+- z-index 收成 `sticky`/`popover`/`overlay` 三档语义刻度。
+- Esc 判为 `exit-editor`：交还焦点给项外壳，不是退出编辑态——「文字待确认」档没有只读态可退，此前该档 Esc 什么也不做。
+
+### Testing
+
+- 四关全绿：typecheck ✓ / **515 测试**（323 → 346 桌面端，+23）✓ / `pnpm format:check` ✓ / 对比度 26 项 ✓
+- 真机走查，脚本均可复跑：
+  - `research/after-keyboard-trap/`：`trap-check` 三场景通过（末项 Tab 第 1 次即出、首项 ⇧Tab 第 2 次出、textarea 内 ⌘/ 唤起面板）；`nav-intact` 证明中间仍逐项推进 block-001→006。
+  - `research/after-base-cleanup/`：`segmented-a11y` 10/10；`esc-exit` 5/5；另测真实鼠标点击确认键盘改造未伤鼠标路径。
+
+### 沉淀
+
+`.trellis/spec/frontend/quality-guidelines.md` 新增四条禁止项与三条测试要求：Tab 改列表导航时无条件 preventDefault、只换 ARIA role 不兑现键盘承诺、为摘属性给通用组件加开关、求助入口只有一个会失效的键位；放行类修复必须配反向用例、`biome-ignore` 紧邻报错行、走查脚本自己归零前置状态。
+
+### Status
+
+[OK] **Completed** —— 任务全部验收项与遗留清空，已归档。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dc18b1a` | (see git log) |
+| `ef5842e` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
