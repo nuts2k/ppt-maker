@@ -43,6 +43,7 @@ import {
 } from "../slide/workspace.js";
 
 const REVIEW_OUTPUT_PATH = "stages/review/text-blocks.json";
+const VALIDATION_OUTPUT_PATH = "stages/review/validation.json";
 const MASK_PATH = "stages/mask/mask.png";
 const PREVIEW_PATH = "stages/mask/preview.png";
 const OVERLAY_PATH = "stages/mask/overlay.png";
@@ -106,15 +107,38 @@ function stageError(error: unknown): WorkspaceStageAttempt["error"] {
   };
 }
 
+/**
+ * 当前的复核校验产物。
+ *
+ * **不能按裸 role 取首条。** 换源会把上一轮的校验报告按 attempt 归档，assets 里因此
+ * 有多条 `review_validation`，且归档那条排在当前那条前面。取到归档的，它记的
+ * `documentSha256` 是换源前旧复核稿的，与当前 text-blocks.json 必然对不上，于是
+ * 报「在校验后已改动」——换过源的页无论重跑多少次 validate-review 都进不了 mask
+ * （2026-08-01 真实 deck 实证）。
+ *
+ * 判据取固定的当前路径：validate-review 每次都写这一个路径，归档的都不在这里。
+ * 另一条路（给归档资产换一个 role）要动 `SlideAssetRoleSchema` 枚举并波及父任务
+ * 的 role 表与 ②③④，代价大得多；而归档件在语义上确实还是一份 review_validation，
+ * 区分它的是「不是当前那份」，用路径判定正对着这层含义。
+ */
+function findCurrentValidationAsset(
+  manifest: SlideWorkspaceManifest,
+): WorkspaceAsset | undefined {
+  return manifest.assets.find(
+    (asset) =>
+      asset.role === "review_validation" &&
+      asset.path === VALIDATION_OUTPUT_PATH,
+  );
+}
+
 // 门禁 a：mask 消费 review 前，必须存在通过的 validate-review 且其锚定哈希等于当前复核文件哈希。
+// 返回该校验产物，避免调用方再查一次——两处各查一次正是这个缺陷的来源。
 async function assertReviewValidated(
   workspacePath: string,
   manifest: SlideWorkspaceManifest,
   reviewDocumentSha256: string,
-): Promise<void> {
-  const validationAsset = manifest.assets.find(
-    (asset) => asset.role === "review_validation",
-  );
+): Promise<WorkspaceAsset> {
+  const validationAsset = findCurrentValidationAsset(manifest);
   if (validationAsset === undefined) {
     throw new FoundationError(
       "INVALID_STAGE_STATE",
@@ -147,6 +171,7 @@ async function assertReviewValidated(
       },
     );
   }
+  return validationAsset;
 }
 
 // 门禁 b：includeInMask 块必须已确认（reviewed / accepted_with_risk）且为版式目标文字。
@@ -279,16 +304,10 @@ export async function runSlideMask(
 
   const reviewPath = resolveWorkspacePath(workspace.path, REVIEW_OUTPUT_PATH);
   const reviewDocumentSha256 = await sha256File(reviewPath);
-  await assertReviewValidated(
+  const validationAsset = await assertReviewValidated(
     workspace.path,
     workspace.manifest,
     reviewDocumentSha256,
-  );
-  const validationAsset = findAssetById(
-    workspace.manifest,
-    workspace.manifest.assets.find(
-      (asset) => asset.role === "review_validation",
-    )?.id ?? "asset-review-validation",
   );
 
   const document = TextReviewDocumentSchema.parse(

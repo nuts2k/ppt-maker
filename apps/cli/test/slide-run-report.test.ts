@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -562,6 +562,51 @@ describe("slide report", () => {
       0.99,
     );
     expect(report.autoChecks.pptx?.status).toBe("passed");
+  });
+
+  it("OCR 跑过多轮时发现数取当前那轮，不取上一轮", async () => {
+    // 同上一条的同类缺陷，漏在 ocr_result 上：换源后 OCR 重跑会留下两条，
+    // 归档/旧那条排在前面，按裸 role 取首条就把旧图的块数写进 report.json。
+    const { workspacePath } = await setupThroughPptx();
+    await runAcceptPptx({ workspacePath, acceptedBy: "dev" });
+
+    const workspace = await loadSlideWorkspace(workspacePath);
+    const manifest = workspace.manifest;
+    const currentOcr = manifest.assets.find(
+      (asset) => asset.role === "ocr_result",
+    );
+    if (currentOcr === undefined) {
+      throw new Error("测试前置不成立：缺少 ocr_result 资产");
+    }
+
+    // 上一轮 OCR 的产物：块数与当前明显不同（fake Vision 只发 1 块）
+    const staleOcrPath = "stages/ocr/ocr-000/result.json";
+    const staleOcr = JSON.parse(
+      await readFile(join(workspacePath, currentOcr.path), "utf8"),
+    ) as { blocks: unknown[] };
+    staleOcr.blocks = [...staleOcr.blocks, ...staleOcr.blocks];
+    await mkdir(join(workspacePath, "stages/ocr/ocr-000"), { recursive: true });
+    await writeFile(
+      join(workspacePath, staleOcrPath),
+      `${JSON.stringify(staleOcr, null, 2)}\n`,
+      "utf8",
+    );
+
+    await writeWorkspaceManifest(workspace.path, {
+      ...manifest,
+      assets: [
+        {
+          ...currentOcr,
+          id: "asset-ocr-000-result",
+          path: staleOcrPath,
+          attemptId: "ocr-000",
+        },
+        ...manifest.assets,
+      ],
+    });
+
+    const { report } = await runSlideReport({ workspacePath });
+    expect(report.discovery.ocrBlockCount).toBe(1);
   });
 
   it("PPTX 自动检查失败不汇总为 complete", async () => {

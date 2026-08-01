@@ -7,6 +7,7 @@ import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { runSlideMask } from "../src/mask/run.js";
 import { runSlideOcr } from "../src/slide/ocr.js";
+import { replaceSlideSource } from "../src/slide/replace-source.js";
 import { runSlideReview } from "../src/slide/review.js";
 import { runSlideValidateReview } from "../src/slide/validate-review.js";
 import {
@@ -270,6 +271,54 @@ describe("slide mask", () => {
     await expect(runSlideMask({ workspacePath })).rejects.toThrow(
       "重新运行 validate-review",
     );
+  });
+
+  it("换源归档后 mask 认当前校验报告，不被归档那条误拦", async () => {
+    /*
+     * 缺陷回归（2026-08-01 真实 deck 实证）：门禁按裸 role 取首条 review_validation。
+     * 换源会把上一轮的校验报告按 attempt 归档，assets 里因此有两条，归档那条排在前面。
+     * 取到归档的，它记的 documentSha256 是换源前旧复核稿的，与当前 text-blocks.json
+     * 必然不等，于是无论重跑多少次 validate-review 都报「在校验后已改动」——
+     * 换过源的页永远进不了 mask，链路直接断在这里。
+     *
+     * 换的是同一张 fixture：源图内容一致，fake OCR 的坐标才继续成立；
+     * 本缺陷与新图长什么样无关，只取决于 assets 里多出一条归档记录。
+     */
+    const { workspacePath, reviewPath } = await prepareReviewed({
+      reviewStatus: "reviewed",
+    });
+    await runSlideValidateReview({ workspacePath });
+    await runSlideMask({ workspacePath });
+
+    const replaced = await replaceSlideSource({
+      workspacePath,
+      imagePath: fixturePath(),
+    });
+
+    // 重建复核链路（换源后 ocr 起全部 stale，旧复核稿已归档、不被继承）
+    const parent = join(workspacePath, "..");
+    await runSlideOcr({
+      workspacePath,
+      binaryPath: await createFakeVisionBinary(parent),
+    });
+    const review = await runSlideReview({ workspacePath });
+    await editReviewBlocks(review.outputPath, { reviewStatus: "reviewed" });
+    await markAssistReviewCompleted(workspacePath);
+    await runSlideValidateReview({ workspacePath });
+
+    // 前置断言：归档那条确实存在且排在当前那条之前，否则本用例什么都没覆盖
+    const { manifest } = await loadSlideWorkspace(workspacePath);
+    const validations = manifest.assets.filter(
+      (asset) => asset.role === "review_validation",
+    );
+    expect(validations).toHaveLength(2);
+    expect(validations[0]?.path).toBe(
+      `stages/review/archived/${replaced.attemptId}/validation.json`,
+    );
+    expect(validations[1]?.path).toBe("stages/review/validation.json");
+
+    await expect(runSlideMask({ workspacePath })).resolves.toBeDefined();
+    expect(reviewPath).toBe(review.outputPath);
   });
 
   it("人工篡改 mask.png 会被完整性校验拒绝", async () => {

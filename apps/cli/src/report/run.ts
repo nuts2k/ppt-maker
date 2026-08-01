@@ -119,7 +119,9 @@ export async function runSlideReport(
     },
   );
 
-  const ocrAsset = manifest.assets.find((asset) => asset.role === "ocr_result");
+  // 与本文件其它产物同口径按成功 attempt 取：OCR 重跑（含换源后重跑）会留下多条
+  // ocr_result，按裸 role 取首条拿到的是上一轮的，报告里的发现数就成了旧图的数字。
+  const ocrAsset = currentSuccessAsset(manifest, "ocr", "ocr_result");
   const ocr = await readJsonAsset(workspace.path, ocrAsset, (value) =>
     z_ocr(value),
   );
