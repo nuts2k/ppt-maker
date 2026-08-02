@@ -280,7 +280,7 @@ Trellis 父任务：`07-31-page-sources-and-content-generation`
 
 子任务（实际目录名）：
 `07-31-page-source-contract`（已归档）、`08-01-pdf-page-extraction`（已归档）、
-`08-01-spec-driven-generation`（已归档）、`08-01-desktop-source-entry`（已完成，待归档）
+`08-01-spec-driven-generation`（已归档）、`08-01-desktop-source-entry`（已归档）
 
 ### M6 内容策划工作台
 

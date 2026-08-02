@@ -67,7 +67,8 @@ Phase 1 → 3，父任务不代替其规划。
   - 含**批量源图确认界面**：批量生成后逐张接受 / 重新生成。
     生成图不满意的概率高，这个界面的效率直接决定 `generated` 来源好不好用
 
-  **U1–U14 全部通过**，逐条证据见 `08-01-desktop-source-entry/walkthrough.md`
+  **U1–U14 全部通过**，逐条证据见
+  `.trellis/tasks/archive/2026-08/08-01-desktop-source-entry/walkthrough.md`
   （2026-08-02 真机走查，含真实云调用：1 次规格初稿 + 6 次图像生成）。
   留给阶段三的三条：
 
