@@ -97,7 +97,7 @@ Phase 1 → 3，父任务不代替其规划。
 
 ```bash
 pnpm -r build            # core 必须先 build，桌面端与 CLI 依赖其产物
-pnpm -r lint
+pnpm format:check        # 本仓库没有 lint 脚本，风格检查是这条
 pnpm -r typecheck
 pnpm -r test
 ```
