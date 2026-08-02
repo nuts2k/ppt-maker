@@ -20,6 +20,7 @@ import { runSlideRunFrom } from "../src/slide/run-from.js";
 import { runSlideValidateReview } from "../src/slide/validate-review.js";
 import {
   createSlideWorkspace,
+  createWorkspaceAsset,
   loadSlideWorkspace,
   writeWorkspaceManifest,
 } from "../src/slide/workspace.js";
@@ -352,6 +353,77 @@ describe("slide run --from 停止点", () => {
     expect(result.gate).toBeNull();
     expect(result.stoppedAt).toBeNull();
   });
+
+  /*
+   * 缺陷回归（2026-08-02 阶段三走查）：11 页全部 completed 的 deck 再跑一次
+   * `deck run`，11 页的目录 shasum 全变。守卫只写在 assist-review / clean /
+   * accept-pptx 三个分支上，而 report 既没有守卫、函数内部也没有指纹复用，
+   * 于是每 run 一次就重写一遍 report.json 并追加一条 attempt（实测已累积 9 条）；
+   * validate-review 是瞬态阶段，同样每次重写 validation.json 的 checkedAt。
+   *
+   * 断言落在**磁盘字节**上而不是返回值：这条不变量的名字就是「已完成页零变化」。
+   */
+  it("已跑完的页再 run 一次：report 与 validation 逐字节不变，attempt 不增", async () => {
+    const { workspacePath } = await setupThroughPptx();
+    await runAcceptPptx({ workspacePath, acceptedBy: "dev" });
+
+    const validationPath = join(workspacePath, "stages/review/validation.json");
+    const reportPath = join(workspacePath, "stages/report/report.json");
+    const manifestPath = join(workspacePath, "manifest.json");
+    const validationBefore = await readFile(validationPath, "utf8");
+
+    const first = await runSlideRunFrom("validate-review", { workspacePath });
+    expect(first.executed).toContain("report");
+    // 复核稿一字未改，validate-review 复用既有结论而不是重写一份新 checkedAt
+    expect(await readFile(validationPath, "utf8")).toBe(validationBefore);
+
+    const reportBefore = await readFile(reportPath, "utf8");
+    const manifestBefore = await readFile(manifestPath, "utf8");
+
+    const second = await runSlideRunFrom("validate-review", { workspacePath });
+    expect(second.gate).toBeNull();
+    expect(second.executed).not.toContain("report");
+    expect(await readFile(reportPath, "utf8")).toBe(reportBefore);
+    expect(await readFile(validationPath, "utf8")).toBe(validationBefore);
+    expect(await readFile(manifestPath, "utf8")).toBe(manifestBefore);
+
+    const workspace = await loadSlideWorkspace(workspacePath);
+    expect(
+      workspace.manifest.attempts.filter(
+        (attempt) => attempt.stage === "report",
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("report 被失效后 run 会真的重跑它", async () => {
+    // 守卫的另一半：跳过的判据只认 completed，stale 必须重跑，
+    // 否则「从阶段 X 重跑」这类入口会退化成毫秒空转。
+    const { workspacePath } = await setupThroughPptx();
+    await runAcceptPptx({ workspacePath, acceptedBy: "dev" });
+    await runSlideRunFrom("pptx", { workspacePath });
+
+    const { manifest } = await loadSlideWorkspace(workspacePath);
+    await writeWorkspaceManifest(workspacePath, {
+      ...manifest,
+      stages: manifest.stages.map((state) =>
+        state.stage === "report"
+          ? {
+              ...state,
+              status: "stale" as const,
+              invalidatedAt: "2026-08-02T00:00:00.000Z",
+              invalidationReason: "人工要求重跑",
+            }
+          : state,
+      ),
+    });
+
+    const result = await runSlideRunFrom("pptx", { workspacePath });
+    expect(result.executed).toContain("report");
+    const after = await loadSlideWorkspace(workspacePath);
+    expect(
+      after.manifest.attempts.filter((attempt) => attempt.stage === "report"),
+    ).toHaveLength(2);
+  });
 });
 
 describe("slide accept-final", () => {
@@ -619,5 +691,92 @@ describe("slide report", () => {
     await writeFile(checkPath, `${JSON.stringify(check, null, 2)}\n`, "utf8");
     const { report } = await runSlideReport({ workspacePath });
     expect(report.overallStatus).toBe("incomplete");
+  });
+
+  /*
+   * 缺陷回归（2026-08-02 阶段三走查）：跑过两次生成的页在报告里出现两条
+   * `stage: "init"`，model 相同、`requestId` 都是 null（第三方代理不回传
+   * `x-request-id`），只有 durationMs 能勉强区分，回答不了「哪一条对应当前这张图」。
+   *
+   * 夹具刻意复刻真实形态：**同一 stage 两条 provider_record，分属两代 attempt**。
+   * 只造一条的夹具会让这个缺陷全程隐身。
+   */
+  it("providerCalls 带 attemptId，多代生成可区分", async () => {
+    const { workspacePath } = await setupThroughPptx();
+
+    const { manifest } = await loadSlideWorkspace(workspacePath);
+    const extra = [];
+    for (const attemptId of ["init-001", "init-002"] as const) {
+      const relativePath = `stages/init/${attemptId}/provider.json`;
+      const absolutePath = join(workspacePath, relativePath);
+      await mkdir(join(workspacePath, `stages/init/${attemptId}`), {
+        recursive: true,
+      });
+      await writeFile(
+        absolutePath,
+        `${JSON.stringify(
+          {
+            schemaVersion: 1,
+            id: `provider-${attemptId}`,
+            stage: "init",
+            provider: "openai",
+            endpoint: "/v1/images/generations",
+            model: "gpt-image-2",
+            parameters: { size: "2048x1152" },
+            promptVersion: "m5-generate-v1",
+            sentAssets: [],
+            requestId: null,
+            startedAt: "2026-08-02T00:00:00.000Z",
+            endedAt: "2026-08-02T00:00:10.000Z",
+            durationMs: 10000,
+            usage: { total_tokens: 1449 },
+            error: null,
+            rawResponsePath: null,
+            rawResponseSha256: null,
+            parsedResponsePath: null,
+            parsedResponseSha256: null,
+          },
+          null,
+          2,
+        )}\n`,
+        "utf8",
+      );
+      extra.push(
+        await createWorkspaceAsset(absolutePath, {
+          schemaVersion: 1,
+          id: `asset-${attemptId}-provider-record`,
+          path: relativePath,
+          role: "provider_record",
+          createdAt: "2026-08-02T00:00:10.000Z",
+          producedBy: "init",
+          attemptId,
+          image: null,
+        }),
+      );
+    }
+    await writeWorkspaceManifest(workspacePath, {
+      ...manifest,
+      assets: [...extra, ...manifest.assets],
+    });
+
+    const { report } = await runSlideReport({ workspacePath });
+    const initCalls = report.providerCalls.filter(
+      (call) => call.stage === "init",
+    );
+    expect(initCalls.map((call) => call.attemptId)).toEqual([
+      "init-001",
+      "init-002",
+    ]);
+
+    // 每条都与承载它的资产自洽，不是凭 id 字符串裁出来的
+    const workspace = await loadSlideWorkspace(workspacePath);
+    const byAttempt = new Map(
+      workspace.manifest.assets
+        .filter((asset) => asset.role === "provider_record")
+        .map((asset) => [asset.attemptId, asset.path]),
+    );
+    for (const call of report.providerCalls) {
+      expect(byAttempt.has(call.attemptId)).toBe(true);
+    }
   });
 });

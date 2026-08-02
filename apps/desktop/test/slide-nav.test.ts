@@ -24,6 +24,7 @@ function makeSlide(pageLabel: string, removed = false): SlideDetail {
     stageStatus: "pending",
     removed,
     sourceKind: "imported",
+    hasExtractableText: null,
     sourceAcceptance: "auto",
     specEntryId: null,
     regenerableSpecEntryId: null,

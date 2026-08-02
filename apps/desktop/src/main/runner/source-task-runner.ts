@@ -2,7 +2,10 @@ import { basename } from "node:path";
 import { addSlideToDeck } from "@cli/deck/add-slide.js";
 import { runDeckGenerate } from "@cli/deck/generate.js";
 import { runDeckRegenerate } from "@cli/deck/regenerate.js";
-import { extractPdfToDeck } from "@cli/pdf/extract.js";
+import {
+  extractionFailureDetails,
+  extractPdfToDeck,
+} from "@cli/pdf/extract.js";
 import type { BrowserWindow } from "electron";
 import { type ActivityLog, buildActivityRecord } from "../activity-log.js";
 import { resolveDeckId } from "../deck-context.js";
@@ -85,7 +88,14 @@ export class SourceTaskRunner {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       emit("failed", message);
-      await this.recordFailure(deckPath, request.kind, message);
+      // 抽取一页都没建成时报告仍然落了盘（追加路径），带上路径活动日志那行才有
+      // 「查看报告」可点——否则磁盘上那份逐页写着原因的报告在界面里完全不可达。
+      await this.recordFailure(
+        deckPath,
+        request.kind,
+        message,
+        extractionFailureDetails(error)?.reportPath ?? null,
+      );
       // 抛出而不是包成 `accepted: false`：`accepted: false` 的语义是「被互斥挡下」，
       // 真失败要让界面看见原因，两者混在一起就分不出「没跑」和「跑砸了」。
       throw error;
@@ -235,11 +245,13 @@ export class SourceTaskRunner {
     deckPath: string,
     kind: SourceTaskKind,
     message: string,
+    reportPath: string | null,
   ): Promise<void> {
     await this.append(deckPath, {
       kind: ACTIVITY_KINDS[kind],
       result: "failure",
       detail: message,
+      ...(reportPath === null ? {} : { reportPath }),
     });
   }
 

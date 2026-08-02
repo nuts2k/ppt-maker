@@ -6,14 +6,17 @@
  * 判据都可能顺手把漂移塞进去——而那一刻界面会开始催用户重跑一堆根本没坏的页。
  */
 
+import { extractableTextLabel } from "@ppt-maker/core";
 import { describe, expect, it } from "vitest";
 import type {
   SlideDetail,
   SlideStageDetail,
 } from "../src/main/ipc/channels.js";
 import {
+  extractableTextText,
   SOURCE_KIND_LABELS,
   sourceBadgeLabel,
+  sourceSummaryText,
   specDriftText,
 } from "../src/renderer/lib/source-view.js";
 import { deriveStageViews } from "../src/renderer/lib/stage-view.js";
@@ -36,6 +39,7 @@ function makeSlide(overrides: Partial<SlideDetail> = {}): SlideDetail {
     stageStatus: "completed",
     removed: false,
     sourceKind: "generated",
+    hasExtractableText: null,
     sourceAcceptance: "manual",
     specEntryId: "entry-001",
     regenerableSpecEntryId: "entry-001",
@@ -63,6 +67,47 @@ describe("来源徽标", () => {
   /** 移除页的 `sourceKind` 是 null（CLI 不加载已移除页的工作区），角位归「已移除」 */
   it("来源未知时不给徽标", () => {
     expect(sourceBadgeLabel(null)).toBeNull();
+  });
+});
+
+/*
+ * 缺陷回归（2026-08-02 阶段三走查，A5「探测结果在界面可见」）：
+ * `extraction-report-view.ts` 的注释写着「页面详情走 manifest.source 那条」，
+ * 但桌面端没有任何组件读它——IPC 只带 `sourceKind`，那句话只是注释里的承诺。
+ * 于是这个字段在界面上只存在于抽取报告面板，而报告是「看完就关」的会话级产物，
+ * CLI 建的 deck 更是完全无从看起。
+ */
+describe("抽取页的文本层探测结果", () => {
+  it("true / false 各有文案，非抽取页不标注", () => {
+    expect(extractableTextText(true)).toBe("含可提取文本层");
+    expect(extractableTextText(false)).toBe("无可提取文本层");
+    expect(extractableTextText(null)).toBeNull();
+  });
+
+  it("与抽取报告面板同一措辞，不各写一份", () => {
+    for (const value of [true, false] as const) {
+      expect(extractableTextText(value)).toBe(extractableTextLabel(value));
+    }
+  });
+
+  it("进入「来源 · 确认性质 · 文本层」摘要行", () => {
+    expect(
+      sourceSummaryText(
+        makeSlide({
+          sourceKind: "extracted",
+          sourceAcceptance: "auto",
+          hasExtractableText: false,
+        }),
+      ),
+    ).toBe("抽取 · 按来源自动放行 · 无可提取文本层");
+  });
+
+  it("非抽取页的摘要行不多出一段", () => {
+    expect(
+      sourceSummaryText(
+        makeSlide({ sourceKind: "imported", sourceAcceptance: "auto" }),
+      ),
+    ).toBe("导入 · 按来源自动放行");
   });
 });
 

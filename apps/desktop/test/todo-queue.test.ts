@@ -51,6 +51,7 @@ function makeSlide(fixture: SlideFixture): SlideDetail {
     stageStatus: fixture.stageStatus ?? "completed",
     removed: fixture.removed ?? false,
     sourceKind: fixture.sourceKind ?? "imported",
+    hasExtractableText: null,
     sourceAcceptance: completed.has("accept-source") ? "auto" : "pending",
     specEntryId: fixture.sourceKind === "generated" ? "entry-001" : null,
     regenerableSpecEntryId:

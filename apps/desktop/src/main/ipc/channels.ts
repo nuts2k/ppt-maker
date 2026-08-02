@@ -35,6 +35,14 @@ export interface DeckStatusSlide {
    */
   readonly sourceKind: SlideSourceKind | null;
   /**
+   * 抽取页的矢量文本层探测结果（D1）；非 `extracted` 页与移除页为 null。
+   *
+   * 页级权威来源是每页 `manifest.source`，经 CLI `deckStatus` 带过来。此前这个字段
+   * 在本层被截断，桌面端唯一能看到这句话的地方是抽取报告面板——而报告是「看完就关」
+   * 的会话级产物，CLI 建的 deck 在界面上则完全无从看起（A5 的可见性缺口）。
+   */
+  readonly hasExtractableText: boolean | null;
+  /**
    * 源图确认**是怎么通过的**：人工确认 / 按来源自动放行 / 待确认（父任务 A10）。
    *
    * 判据在 core（`resolveSourceAcceptanceMode`），经 CLI `deckStatus` 带过来。

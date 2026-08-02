@@ -54,6 +54,7 @@ function makeSlide(fixture: SlideFixture): SlideDetail {
     stageStatus: fixture.stageStatus ?? "completed",
     removed: fixture.removed ?? false,
     sourceKind,
+    hasExtractableText: null,
     sourceAcceptance: done.has("accept-source")
       ? sourceKind === "generated"
         ? "manual"

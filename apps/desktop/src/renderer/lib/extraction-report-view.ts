@@ -21,11 +21,12 @@
  * 以便同时被 renderer（vite）与测试（vitest + tsconfig.node，NodeNext）解析。
  */
 
-import type {
-  PdfExtractionCreatedPage,
-  PdfExtractionReport,
-  PdfExtractionSkippedPage,
-  PdfSkipReasonCode,
+import {
+  extractableTextLabel,
+  type PdfExtractionCreatedPage,
+  type PdfExtractionReport,
+  type PdfExtractionSkippedPage,
+  type PdfSkipReasonCode,
 } from "@ppt-maker/core";
 
 /** 跳过分组的视觉档位。含义与取舍见文件头第 2 条。 */
@@ -107,14 +108,19 @@ export interface SkipGroup {
  * 建立页一行：`第 3 页 → page-03 · 1224×792 pt · 含可提取文本层`。
  *
  * `hasExtractableText` 在这里只是抽取当时的观测值。页级的权威来源是每页
- * `manifest.source`（重抽后也不会失真），页面详情走那条，不靠这份报告。
+ * `manifest.source`（重抽后也不会失真），页面详情走那条，不靠这份报告——
+ * 那条路径现在是真的：`DeckStatusSlide.hasExtractableText` 经 CLI `deckStatus`
+ * 从 manifest 带过来，由 `source-view.ts` 的 `sourceSummaryText` 展示在卡片与
+ * 单页工具栏上。此前这一句只是注释里的承诺，桌面端无任何组件读它。
+ *
+ * 措辞取 core 的 `extractableTextLabel`，两条路径同一句话。
  */
 export function formatCreatedPage(page: PdfExtractionCreatedPage): string {
   const label = page.workspacePath.split("/").filter(Boolean).at(-1) ?? "";
   return [
     `第 ${page.pageNumber} 页 → ${label}`,
     `${formatPt(page.widthPt)}×${formatPt(page.heightPt)} pt`,
-    page.hasExtractableText ? "含可提取文本层" : "无可提取文本层",
+    extractableTextLabel(page.hasExtractableText),
   ].join(" · ");
 }
 

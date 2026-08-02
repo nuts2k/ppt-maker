@@ -25,7 +25,7 @@ import {
 import { readImageMetadata } from "./image.js";
 import { runSlideMask } from "./mask/run.js";
 import { runVisionOcr, writeOcrResult } from "./ocr.js";
-import { extractPdfToDeck } from "./pdf/extract.js";
+import { extractionFailureDetails, extractPdfToDeck } from "./pdf/extract.js";
 import { formatExtractionReport } from "./pdf/report.js";
 import { runAcceptPptx } from "./pptx/accept.js";
 import { runSlidePptx } from "./pptx/run.js";
@@ -169,9 +169,16 @@ slide
   .argument("<workspace>", "页面工作区")
   .description("离线校验人工编辑后的 text-blocks.json，违规时非零退出")
   .action(async (workspace: string) => {
-    const { reportPath, report } = await runSlideValidateReview({
-      workspacePath: resolve(workspace),
-    });
+    const { reportPath, report, previousRulesVersion } =
+      await runSlideValidateReview({
+        workspacePath: resolve(workspace),
+      });
+    if (previousRulesVersion !== null && report.status !== "passed") {
+      // 规则版本变了要明说，否则一份没动过的旧复核稿突然报错，看上去像是文件被改坏
+      process.stderr.write(
+        `提示：该文档上一次按规则 ${previousRulesVersion} 校验，现为 ${report.rulesVersion}，本次失败可能来自新增规则\n`,
+      );
+    }
     for (const violation of report.violations) {
       process.stderr.write(
         `[${violation.severity}] ${violation.blockId ?? "文档"} ${violation.field}：${violation.message} (${violation.code})\n`,
@@ -417,18 +424,32 @@ deck
       name?: string;
       binary?: string;
     }) => {
-      const result = await extractPdfToDeck({
-        pdfPath: resolve(options.pdf),
-        deckPath: resolve(options.deck),
-        ...(options.pages === undefined ? {} : { pages: options.pages }),
-        ...(options.name === undefined ? {} : { deckName: options.name }),
-        ...(options.binary === undefined
-          ? {}
-          : { binaryPath: resolve(options.binary) }),
-        onProgress: (message) => {
-          process.stderr.write(`${message}\n`);
-        },
-      });
+      let result: Awaited<ReturnType<typeof extractPdfToDeck>>;
+      try {
+        result = await extractPdfToDeck({
+          pdfPath: resolve(options.pdf),
+          deckPath: resolve(options.deck),
+          ...(options.pages === undefined ? {} : { pages: options.pages }),
+          ...(options.name === undefined ? {} : { deckName: options.name }),
+          ...(options.binary === undefined
+            ? {}
+            : { binaryPath: resolve(options.binary) }),
+          onProgress: (message) => {
+            process.stderr.write(`${message}\n`);
+          },
+        });
+      } catch (error) {
+        // 一页都没建成时报告仍然有话可说（每页的尺寸与被跳过的原因），只是命令失败了。
+        // 顶层 catch 只打印 error.message，逐页原因会连同报告路径一起丢掉。
+        const failure = extractionFailureDetails(error);
+        if (failure !== null) {
+          process.stderr.write(`${formatExtractionReport(failure.report)}\n`);
+          if (failure.reportPath !== null) {
+            process.stderr.write(`报告：${failure.reportPath}\n`);
+          }
+        }
+        throw error;
+      }
       process.stderr.write(`${formatExtractionReport(result.report)}\n`);
       process.stdout.write(`${result.deckPath}\n`);
       process.stdout.write(`${result.reportPath}\n`);
@@ -482,15 +503,21 @@ deck
   .command("status")
   .argument("<deck>", "deck 工作区")
   .option("--json", "输出结构化 JSON")
+  .option("--verbose", "逐页列出来源与阶段")
   .description("每页阶段状态与汇总统计")
-  .action(async (deckPath: string, options: { json?: boolean }) => {
-    const result = await deckStatus(resolve(deckPath));
-    process.stdout.write(
-      options.json
-        ? `${JSON.stringify(result, null, 2)}\n`
-        : `${formatDeckStatus(result)}\n`,
-    );
-  });
+  .action(
+    async (
+      deckPath: string,
+      options: { json?: boolean; verbose?: boolean },
+    ) => {
+      const result = await deckStatus(resolve(deckPath));
+      process.stdout.write(
+        options.json
+          ? `${JSON.stringify(result, null, 2)}\n`
+          : `${formatDeckStatus(result, { verbose: options.verbose === true })}\n`,
+      );
+    },
+  );
 
 deck
   .command("export")

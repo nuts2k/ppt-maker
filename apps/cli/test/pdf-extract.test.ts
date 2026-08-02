@@ -7,7 +7,10 @@ import type { ExtractedSource } from "@ppt-maker/core";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { loadDeckWorkspace } from "../src/deck/workspace.js";
-import { extractPdfToDeck } from "../src/pdf/extract.js";
+import {
+  extractionFailureDetails,
+  extractPdfToDeck,
+} from "../src/pdf/extract.js";
 import { parsePageSelection } from "../src/pdf/pages.js";
 import { replaceSlideSource } from "../src/slide/replace-source.js";
 import { loadSlideWorkspace } from "../src/slide/workspace.js";
@@ -156,6 +159,55 @@ describe("deck extract：PDF 逐页抽取", () => {
       }),
     ).rejects.toThrow("没有可用于建立页面的 16:9 页");
 
+    expect(await exists(deckPath)).toBe(false);
+  });
+
+  /*
+   * 缺陷回归（2026-08-02 阶段三走查，A5 可见性）：抽取有**三种结局**，
+   * 「追加路径 + 一页都没建成」是第三种——报告确实写了盘，用户却只看到一句
+   * 「跳过 N 页」：没有页号、没有尺寸、没有原因、没有报告路径。
+   * 桌面端同理，那条失败记录不带 reportPath，磁盘上的报告在界面里完全不可达。
+   */
+  it("追加路径下零建立：报告落盘，且路径与逐页原因进错误详情", async () => {
+    const parent = await workspace("pdf-extract-empty-append");
+    const deckPath = join(parent, "deck");
+    await extractPdfToDeck({
+      pdfPath: fixturePath("mixed-aspect.pdf"),
+      deckPath,
+    });
+
+    const error = await extractPdfToDeck({
+      pdfPath: fixturePath("no-wide.pdf"),
+      deckPath,
+    }).catch((caught: unknown) => caught);
+
+    const failure = extractionFailureDetails(error);
+    expect(failure).not.toBeNull();
+    // 报告确实在磁盘上，而不是只在错误对象里
+    expect(failure?.reportPath).not.toBeNull();
+    expect(await exists(failure?.reportPath ?? "")).toBe(true);
+    expect(failure?.report.created).toHaveLength(0);
+    expect(failure?.report.skipped.length).toBeGreaterThan(0);
+    // 逐页尺寸与中文原因齐备——这正是那句「跳过 N 页」丢掉的东西
+    for (const page of failure?.report.skipped ?? []) {
+      expect(page.widthPt).not.toBeNull();
+      expect(page.reason.message.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("新建路径下零建立：报告仍进错误详情，但磁盘上没有（deck 整个丢弃）", async () => {
+    const parent = await workspace("pdf-extract-empty-fresh");
+    const deckPath = join(parent, "deck");
+
+    const failure = extractionFailureDetails(
+      await extractPdfToDeck({
+        pdfPath: fixturePath("no-wide.pdf"),
+        deckPath,
+      }).catch((caught: unknown) => caught),
+    );
+
+    expect(failure?.reportPath).toBeNull();
+    expect(failure?.report.skipped.length).toBeGreaterThan(0);
     expect(await exists(deckPath)).toBe(false);
   });
 

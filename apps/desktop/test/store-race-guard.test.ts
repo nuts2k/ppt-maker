@@ -52,6 +52,7 @@ function slide(slideId: string, pageLabel = slideId): SlideDetail {
     stageStatus: "completed",
     removed: false,
     sourceKind: "imported",
+    hasExtractableText: null,
     sourceAcceptance: "auto",
     specEntryId: null,
     regenerableSpecEntryId: null,

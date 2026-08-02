@@ -150,17 +150,24 @@ export async function runSlideRunFrom(
           }
         }
       } else if (stage === "validate-review") {
-        const { report } = await runSlideValidateReview({
+        const { report, previousRulesVersion } = await runSlideValidateReview({
           workspacePath: options.workspacePath,
         });
         executed.push(stage);
         if (report.status !== "passed") {
+          // 规则升级导致的失败要说清楚是规则变了：2026-07-25 之前建的 deck 会撞上
+          // v2 新增的 LAYOUT_TEXT_MUST_BE_MASKED，失败信息本身很响亮，但读起来
+          // 像是「你把文件改坏了」，而实际上这份文档产出时那条规则还不存在。
+          const ruleShift =
+            previousRulesVersion === null
+              ? ""
+              : `；该文档上一次按规则 ${previousRulesVersion} 校验，现为 ${report.rulesVersion}，本次失败可能来自新增规则`;
           return {
             executed,
             stoppedAt: "validate-review",
             gate: "validation-failed",
             nextCommand: `ppt-maker slide validate-review ${options.workspacePath}`,
-            message: `复核校验未通过（错误 ${report.summary.errors}），请修复 text-blocks.json 后重试`,
+            message: `复核校验未通过（错误 ${report.summary.errors}），请修复 text-blocks.json 后重试${ruleShift}`,
           };
         }
       } else if (stage === "mask") {
@@ -183,8 +190,21 @@ export async function runSlideRunFrom(
         await runSlidePptx({ workspacePath: options.workspacePath });
         executed.push(stage);
       } else if (stage === "report") {
-        await runSlideReport({ workspacePath: options.workspacePath });
-        executed.push(stage);
+        // 与 assist-review / clean / accept-pptx 同形的 completed 守卫。
+        //
+        // 编排层的跳过判据由《跨层契约》〈阶段落库与强制重跑〉写死为
+        // `status !== "completed"`，而 report 此前是唯一漏掉它、且函数内部也**没有**
+        // 指纹复用的阶段：一个跑完的 deck 每 run 一次就重写一遍 report.json（新
+        // generatedAt）并追加一条 attempt，11 页的目录 shasum 全变（2026-08-02 走查
+        // 实证，attempts 里已累积 9 条 report）。后果不止是噪声——「已完成页零变化」
+        // 这条不变量被打穿，且「report 有新 attempt」不再能说明这一轮真做了事。
+        //
+        // 显式的 `slide report` 命令不受影响：它直接调 runSlideReport，仍然递增
+        // attempt。「重跑一次报告」与「编排跑到这一步」是两条路径，只有后者要幂等。
+        if (stageState(workspace.manifest, "report")?.status !== "completed") {
+          await runSlideReport({ workspacePath: options.workspacePath });
+          executed.push(stage);
+        }
       } else if (stage === "clean") {
         if (stageState(workspace.manifest, "clean")?.status !== "completed") {
           if (options.confirmUpload === true) {

@@ -202,3 +202,85 @@ describe("deck status 指名卡住的阶段", () => {
     expect(result.summary.total).toBe(1);
   });
 });
+
+describe("deck status 的人读输出显示来源", () => {
+  /*
+   * 缺陷回归（2026-08-02 阶段三走查，父任务 A2 直接命中）：11 页混合来源的 deck 上，
+   * `formatDeckStatus` 从不读 `slide.sourceKind`，人读输出一个字的来源都没有——
+   * 数据层与桌面端都是好的，断在展示层。
+   *
+   * 产品口径：默认给分布汇总（`deck status` 的风格是「只列需要你管的」，N 行常态
+   * 信息会淹掉异常项），逐页明细走 `--verbose`。
+   */
+  const HASH = "a".repeat(64);
+
+  async function mixedSourceDeck(): Promise<string> {
+    const deckPath = await createDeck(3);
+    await replaceSlideSource({
+      workspacePath: join(deckPath, "slides/page-02"),
+      imagePath: jpgFixture(),
+      source: {
+        kind: "extracted",
+        documentName: "sample.pdf",
+        documentSha256: HASH,
+        pageNumber: 3,
+        hasExtractableText: true,
+        rendererId: "macos-pdfkit",
+        rendererVersion: "1+test",
+        renderDpi: 154,
+      },
+    });
+    await replaceSlideSource({
+      workspacePath: join(deckPath, "slides/page-03"),
+      imagePath: jpgFixture(),
+      source: {
+        kind: "generated",
+        specEntryId: "entry-003",
+        specEntrySha256: HASH,
+        providerId: "openai-image",
+        model: "gpt-image-2",
+        promptVersion: "m5-generate-v1",
+        promptSha256: HASH,
+        parameters: {},
+      },
+    });
+    return deckPath;
+  }
+
+  it("默认输出给出来源分布，只列出现过的档", async () => {
+    const deckPath = await mixedSourceDeck();
+    const text = formatDeckStatus(await deckStatus(deckPath));
+
+    expect(text).toContain("来源: 导入 1 / 抽取 1 / 生成 1");
+    // 逐页明细不进默认输出
+    expect(text).not.toContain("逐页:");
+  });
+
+  it("单一来源的 deck 不列出计数为 0 的档", async () => {
+    const deckPath = await createDeck(2);
+    expect(formatDeckStatus(await deckStatus(deckPath))).toContain(
+      "来源: 导入 2",
+    );
+    expect(formatDeckStatus(await deckStatus(deckPath))).not.toContain("抽取");
+  });
+
+  it("--verbose 逐页列出来源，抽取页附带文本层探测结果", async () => {
+    const deckPath = await mixedSourceDeck();
+    const result = await deckStatus(deckPath);
+    const text = formatDeckStatus(result, { verbose: true });
+
+    expect(text).toContain("逐页:");
+    expect(text).toContain("page-01  导入");
+    expect(text).toContain("page-02  抽取（含可提取文本层）");
+    expect(text).toContain("page-03  生成");
+    // 非抽取页不编造一个文本层结论
+    expect(text).not.toContain("page-01  导入（");
+  });
+
+  it("hasExtractableText 只在抽取页有值，其余为 null", async () => {
+    const result = await deckStatus(await mixedSourceDeck());
+    expect(slideOf(result, "page-01")?.hasExtractableText).toBeNull();
+    expect(slideOf(result, "page-02")?.hasExtractableText).toBe(true);
+    expect(slideOf(result, "page-03")?.hasExtractableText).toBeNull();
+  });
+});

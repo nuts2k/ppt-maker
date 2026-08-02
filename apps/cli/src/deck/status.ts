@@ -1,11 +1,14 @@
 import { basename } from "node:path";
 import {
+  extractableTextLabel,
   findBlockingStage,
   resolveSourceAcceptanceMode,
   SLIDE_STAGE_ORDER,
   type SlideSourceKind,
+  SlideSourceKindSchema,
   type SlideStage,
   SOURCE_ACCEPTANCE_TEXT,
+  SOURCE_KIND_LABELS,
   type SourceAcceptanceMode,
   type SpecDriftStatus,
   type WorkspaceStageState,
@@ -70,6 +73,14 @@ export interface DeckSlideStatus {
   readonly removed: boolean;
   /** 页面来源。移除的页不加载工作区，故为 null */
   readonly sourceKind: SlideSourceKind | null;
+  /**
+   * 该页 PDF 原页是否含可提取文本层（D1）；非 `extracted` 页与移除页为 null。
+   *
+   * 页级权威来源就是这里读的 `manifest.source`——抽取报告只是抽取当时的观测值，
+   * 且它是「看完就关」的会话级产物（桌面端一度只能从它看到这句话，CLI 建的 deck
+   * 在界面上则完全无从看起）。A5 要求的是每页可见，故随 deck 总览一路带到两端。
+   */
+  readonly hasExtractableText: boolean | null;
   /**
    * 源图确认**是怎么通过的**（父任务 A10）。移除的页不加载工作区，故为 null。
    *
@@ -187,6 +198,7 @@ export async function deckStatus(deckPath: string): Promise<DeckStatusResult> {
         started: false,
         removed: true,
         sourceKind: null,
+        hasExtractableText: null,
         sourceAcceptance: null,
         specEntryId: null,
         regenerableSpecEntryId: null,
@@ -224,6 +236,8 @@ export async function deckStatus(deckPath: string): Promise<DeckStatusResult> {
       started: progress.started,
       removed: false,
       sourceKind: source.kind,
+      hasExtractableText:
+        source.kind === "extracted" ? source.hasExtractableText : null,
       sourceAcceptance: resolveSourceAcceptanceMode(workspace.manifest),
       specEntryId,
       regenerableSpecEntryId: await resolveRegenerableSpecEntryId(
@@ -275,7 +289,15 @@ export async function deckStatus(deckPath: string): Promise<DeckStatusResult> {
   };
 }
 
-export function formatDeckStatus(result: DeckStatusResult): string {
+export interface FormatDeckStatusOptions {
+  /** 逐页列出来源与阶段（默认只给分布汇总，见 `formatSourceDistribution`） */
+  readonly verbose?: boolean;
+}
+
+export function formatDeckStatus(
+  result: DeckStatusResult,
+  options: FormatDeckStatusOptions = {},
+): string {
   const header =
     result.summary.removed > 0
       ? `${result.name} (${result.summary.total} 页，${result.summary.removed} 已移除)`
@@ -331,9 +353,73 @@ export function formatDeckStatus(result: DeckStatusResult): string {
     lines.push(`  规格失联: ${missing.join(", ")}（规格里已无对应条目）`);
   }
 
+  lines.push(...formatSourceDistribution(result.slides));
   lines.push(...formatSourceAcceptance(result.slides));
+  if (options.verbose === true) {
+    lines.push(...formatSlideRows(result.slides));
+  }
 
   return lines.join("\n");
+}
+
+/**
+ * 来源分布一行 —— 父任务 A2「`deck status` 能看出来源」在人读输出上的落点。
+ *
+ * 为什么是**汇总**而不是默认逐页：`deck status` 现有风格是「只列需要你管的」
+ * （完成计数 + 进行中 / 失败 / 漂移的点名）。来源是常态信息，每一页都有一个，把 N 行
+ * 常态信息塞进默认输出会把真正的异常项淹掉——与桌面端「来源不上色」是同一条判断
+ * （`renderer/lib/source-view.ts` 的规则 1）。逐页明细走 `--verbose`、`--json`
+ * 与桌面端总览。
+ *
+ * 文案取 core 的 `SOURCE_KIND_LABELS`，与桌面端同一张表；顺序取 schema 的枚举顺序，
+ * 不按计数排序——同一个 deck 两次运行的输出不该因为一次换源就换行序。
+ * 计数为 0 的档不列：混合来源是少数，多数 deck 只有一档，`抽取 0 / 生成 0` 是噪声。
+ */
+function formatSourceDistribution(
+  slides: readonly DeckSlideStatus[],
+): readonly string[] {
+  const counts = new Map<SlideSourceKind, number>();
+  for (const slide of slides) {
+    if (slide.removed || slide.sourceKind === null) continue;
+    counts.set(slide.sourceKind, (counts.get(slide.sourceKind) ?? 0) + 1);
+  }
+  if (counts.size === 0) {
+    return [];
+  }
+  const parts = SlideSourceKindSchema.options
+    .filter((kind) => counts.has(kind))
+    .map((kind) => `${SOURCE_KIND_LABELS[kind]} ${counts.get(kind) ?? 0}`);
+  return [`  来源: ${parts.join(" / ")}`];
+}
+
+/**
+ * `--verbose` 的逐页明细：页名、来源（抽取页附带文本层探测结果）、当前阶段与状态。
+ *
+ * 已移除页不加载工作区（没有来源可报），只写「已移除」，不编一个来源出来。
+ * 文本层那句话取 core 的 `extractableTextLabel`，与抽取报告、桌面端页面详情同一措辞。
+ */
+function formatSlideRows(
+  slides: readonly DeckSlideStatus[],
+): readonly string[] {
+  if (slides.length === 0) {
+    return [];
+  }
+  const rows = slides.map((slide) => {
+    const page = basename(slide.workspacePath);
+    if (slide.removed) {
+      return `  ${page}  已移除`;
+    }
+    const kind =
+      slide.sourceKind === null
+        ? "来源未知"
+        : SOURCE_KIND_LABELS[slide.sourceKind];
+    const text =
+      slide.hasExtractableText === null
+        ? ""
+        : `（${extractableTextLabel(slide.hasExtractableText)}）`;
+    return `  ${page}  ${kind}${text}  ${slide.currentStage} (${slide.stageStatus})`;
+  });
+  return ["  逐页:", ...rows];
 }
 
 /**

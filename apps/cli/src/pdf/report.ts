@@ -1,4 +1,7 @@
-import type { PdfExtractionReport } from "@ppt-maker/core";
+import {
+  extractableTextLabel,
+  type PdfExtractionReport,
+} from "@ppt-maker/core";
 import { writeJsonAtomic } from "../slide/workspace.js";
 
 /**
@@ -52,9 +55,9 @@ export function formatExtractionReport(report: PdfExtractionReport): string {
   ];
   for (const page of report.created) {
     lines.push(
-      `  建立 第 ${page.pageNumber} 页 → ${page.workspacePath}（${page.widthPt} × ${page.heightPt} pt，${page.renderDpi} DPI，${
-        page.hasExtractableText ? "含可提取文本层" : "无可提取文本层"
-      }）`,
+      `  建立 第 ${page.pageNumber} 页 → ${page.workspacePath}（${page.widthPt} × ${page.heightPt} pt，${page.renderDpi} DPI，${extractableTextLabel(
+        page.hasExtractableText,
+      )}）`,
     );
   }
   for (const page of report.skipped) {

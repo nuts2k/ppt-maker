@@ -5,6 +5,7 @@ import { basename, dirname, join, resolve } from "node:path";
 import {
   type ExtractedSource,
   FoundationError,
+  PdfExtractionReportSchema,
   validateWideAspectRatio,
 } from "@ppt-maker/core";
 import {
@@ -52,6 +53,35 @@ export interface ExtractPdfToDeckResult {
   readonly deckCreated: boolean;
   readonly reportPath: string;
   readonly report: PdfExtractionReport;
+}
+
+export interface ExtractionFailureDetails {
+  /** 报告落盘的绝对路径；新建 deck 一页没建成时整个丢弃，此时为 null */
+  readonly reportPath: string | null;
+  readonly report: PdfExtractionReport;
+}
+
+/**
+ * 从「一页都没建成」的失败里取回抽取报告与它的落盘路径；不是这类失败则为 null。
+ *
+ * CLI 的终端打印与桌面端的活动日志都走这一个读取点：`details` 的形状是内部约定，
+ * 两侧各写一次 `as { report?: … }` 就是同一份契约的两个私有副本。
+ */
+export function extractionFailureDetails(
+  error: unknown,
+): ExtractionFailureDetails | null {
+  if (!(error instanceof FoundationError) || error.details === undefined) {
+    return null;
+  }
+  const parsed = PdfExtractionReportSchema.safeParse(error.details["report"]);
+  if (!parsed.success) {
+    return null;
+  }
+  const reportPath = error.details["reportPath"];
+  return {
+    reportPath: typeof reportPath === "string" ? reportPath : null,
+    report: parsed.data,
+  };
 }
 
 async function pathExists(path: string): Promise<boolean> {
@@ -304,20 +334,33 @@ export async function extractPdfToDeck(
     if (created.length === 0) {
       // 整份为空才失败。新建路径下临时 deck 连同报告一起丢弃——不留半成品；
       // 追加路径下 deck 本来就存在，报告照常落盘，用户需要看到每页为什么被跳过。
+      let writtenReportPath: string | null = null;
       if (temporaryDeck === null) {
-        await writeExtractionReport(
-          resolveDeckPath(deckPath, reportRelativePath),
-          report,
-        );
+        writtenReportPath = resolveDeckPath(deckPath, reportRelativePath);
+        await writeExtractionReport(writtenReportPath, report);
       }
       const allAspectRatio =
         skipped.length > 0 &&
         skipped.every((page) => page.reason.code === "aspect_ratio_mismatch");
+      /*
+       * 整份报告与它的落盘路径一并进 details。
+       *
+       * 抽取有**三种结局**（全建立 / 部分跳过 / 一页没建成），而报告此前只在前两种
+       * 被打印——第三种下报告确实写了盘，用户却只看到一句「跳过 N 页」：没有页号、
+       * 没有尺寸、没有原因、没有路径（2026-08-02 走查实证）。桌面端同理，活动日志
+       * 那条失败记录不带 `reportPath`，磁盘上那份报告在界面里完全不可达。
+       *
+       * 报告只有页号、尺寸与中文原因，无图片内容与秘密，放进 details 不违反
+       * 「details 只装可序列化诊断数据」。新建 deck 一页没建成时整个丢弃，
+       * 此时 `reportPath` 为 null——报告仍在 details 里，磁盘上没有。
+       */
       throw new FoundationError(
         allAspectRatio ? "INVALID_ASPECT_RATIO" : "INVALID_INPUT",
         `PDF 中没有可用于建立页面的 16:9 页：${documentName}（跳过 ${skipped.length} 页）`,
         {
           pdfPath,
+          reportPath: writtenReportPath,
+          report,
           skipped: skipped.map((page) => ({
             pageNumber: page.pageNumber,
             code: page.reason.code,

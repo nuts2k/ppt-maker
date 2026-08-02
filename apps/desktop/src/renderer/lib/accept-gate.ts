@@ -144,9 +144,14 @@ export function awaitingSourceConfirm(
 /**
  * 该页的源图审片视图是否可达 —— **入口可见性口径**，已确认页仍然可达（U10）。
  *
- * 「能重出图的页」之外还收「当前正欠一次确认」：非生成页被人工失效掉 `accept-source`
- * 之后同样停在这道门上，界面得给它一个能处理的地方，否则那页只能从 CLI 救。
- * 这一支也正是恒等式成立的原因（见文件上方表格）。
+ * 「能重出图的页」之外还收「当前正欠一次确认」：生成页被人工失效掉 `accept-source`
+ * 之后停在这道门上（哪怕它的规格条目已经不在了），界面得给它一个能处理的地方，
+ * 否则那页只能从 CLI 救。这一支也正是恒等式成立的原因（见文件上方表格）。
+ *
+ * 非生成页不会走到这一支：`invalidateSlideStage` 在失效波及 `accept-source` 时按来源
+ * 重新判定，`imported` / `extracted` 当场自动重新放行（CLI `slide/invalidate.ts`）。
+ * 此前它们会停在一道**谁都解不开**的门上——`runAcceptSource` 对非生成页直接拒绝，
+ * 而界面偏偏摆出「确认源图」，按下去必然报错。
  */
 export function sourceReviewReachable(
   slide: Pick<SlideDetail, "stages" | "regenerableSpecEntryId">,

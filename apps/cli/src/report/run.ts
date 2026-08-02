@@ -216,6 +216,9 @@ export async function runSlideReport(
     if (record !== null && record.error === null) {
       providerCalls.push({
         stage: record.stage,
+        // 锚点取承载它的资产的 attemptId：`ProviderCallRecord` 自身的 id 是
+        // `provider-<attemptId>` 这种约定拼法，靠字符串裁剪反推不如直接读资产。
+        attemptId: asset.attemptId,
         model: record.model,
         requestId: record.requestId,
         durationMs: record.durationMs,

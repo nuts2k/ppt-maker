@@ -88,6 +88,15 @@ export const SlideReportSchema = z.object({
   providerCalls: z.array(
     z.object({
       stage: z.string().min(1),
+      /**
+       * 承载这次调用的 attempt。
+       *
+       * 少了它，跑过两次生成的页在报告里就是两条 `stage: "init"`：model 相同、
+       * `requestId` 常为 null（第三方代理不回传 `x-request-id`），只有 durationMs
+       * 能勉强区分，回答不了「哪一条对应当前这张图」。这里刻意收全部历史调用
+       * （成本要算全量），所以必须带锚点才能与 `source.attemptId` 对上。
+       */
+      attemptId: z.string().min(1),
       model: z.string().min(1),
       requestId: z.string().min(1).nullable(),
       durationMs: z.number().int().nonnegative().nullable(),

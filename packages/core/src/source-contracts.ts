@@ -17,6 +17,18 @@ export const SlideSourceKindSchema = z.enum([
   "generated",
 ]);
 
+/**
+ * 矢量文本层探测结果的中文措辞（D1）—— 抽取报告、`deck status --verbose` 与桌面端
+ * 页面详情共用一份。
+ *
+ * 与 `SOURCE_KIND_LABELS` 同一条理由落在 core：这句话原本只长在桌面端的抽取报告
+ * 面板里，而抽取报告是「看完就关」的会话级产物；A5 要的是**页级**可见性，页级的
+ * 权威来源是每页 `manifest.source.hasExtractableText`，展示它的地方不止一处。
+ */
+export function extractableTextLabel(hasExtractableText: boolean): string {
+  return hasExtractableText ? "含可提取文本层" : "无可提取文本层";
+}
+
 export const ImportedSourceSchema = z.object({
   kind: z.literal("imported"),
   /** 仅溯源用，不参与任何校验或路径解析 */
@@ -72,6 +84,20 @@ export const SlideSourceSchema = z.discriminatedUnion("kind", [
 ]);
 
 export type SlideSourceKind = z.infer<typeof SlideSourceKindSchema>;
+
+/**
+ * 三档来源的中文短词 —— CLI 的 `deck status` 与桌面端界面共用一张表。
+ *
+ * 与 `SOURCE_ACCEPTANCE_TEXT` 同一条理由落在 core：同一件事在两端展示，措辞不该各写
+ * 一份。此前它只在桌面端 `renderer/lib/source-view.ts`，于是 CLI 的人读输出干脆
+ * 一个字的来源都没有（2026-08-02 阶段三走查，父任务 A2 直接命中）；真要补时又面临
+ * 「照抄一份还是跨包引用」的选择——把表下沉到 core 让这个选择不再存在。
+ */
+export const SOURCE_KIND_LABELS: Readonly<Record<SlideSourceKind, string>> = {
+  imported: "导入",
+  extracted: "抽取",
+  generated: "生成",
+};
 export type ImportedSource = z.infer<typeof ImportedSourceSchema>;
 export type ExtractedSource = z.infer<typeof ExtractedSourceSchema>;
 export type GeneratedSource = z.infer<typeof GeneratedSourceSchema>;

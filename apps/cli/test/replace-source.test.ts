@@ -519,6 +519,62 @@ describe("换源与源图验收记录", () => {
     expect(result.archivedSourceAcceptance).toBe(false);
     await assertNoDanglingAssets(workspacePath);
   });
+
+  /*
+   * 缺陷回归（2026-08-02 阶段三走查，触发条件是 generated 页的常规循环：
+   * 确认 → 重新生成 → 再确认）：归档把资产 id 改成 `<id>-archived-<attempt>`，
+   * 但既有 attempt 的 assetIds 被原样透传，旧 id 随后被下一次 accept-source
+   * 以同一个固定 id 重新占用——顺着「第一次确认」这次 attempt 追到的是**第二次
+   * 确认**的文件。当前无消费方读 assetIds，所以没有可见症状，但它是一条与事实
+   * 相反的落盘记录。
+   */
+  it("归档改名后 attempt 的 assetIds 仍指向它当时那份资产", async () => {
+    const workspacePath = await createAcceptedGeneratedSlide();
+    const before = await loadSlideWorkspace(workspacePath);
+    const firstGateAttemptId = before.manifest.stages.find(
+      (state) => state.stage === "accept-source",
+    )?.lastSuccessfulAttemptId;
+    expect(firstGateAttemptId).toBe("accept-source-001");
+
+    const replaced = await replaceSlideSource({
+      workspacePath,
+      imagePath: jpgFixture(),
+      source: GENERATED,
+    });
+    // 第二次确认按固定 id 重新写入 asset-source-acceptance，正是它顶掉旧引用
+    await runAcceptSource({ workspacePath, acceptedBy: "tester" });
+
+    const { manifest } = await loadSlideWorkspace(workspacePath);
+    const byId = new Map(manifest.assets.map((asset) => [asset.id, asset]));
+
+    // 不变量：任一 attempt 的 assetIds 都能找到资产，且那份资产就是它自己产的
+    for (const attempt of manifest.attempts) {
+      for (const assetId of attempt.assetIds) {
+        const asset = byId.get(assetId);
+        expect(
+          asset,
+          `attempt ${attempt.id} 引用了不存在的资产 ${assetId}`,
+        ).toBeDefined();
+        expect(
+          asset?.attemptId,
+          `attempt ${attempt.id} 的 assetIds 指向了 ${asset?.attemptId} 的产物`,
+        ).toBe(attempt.id);
+      }
+    }
+
+    // 具体到这一条：第一次确认追到的是归档件，不是第二次那份
+    const archivedId = `asset-source-acceptance-archived-${replaced.attemptId}`;
+    const firstGate = manifest.attempts.find(
+      (attempt) => attempt.id === firstGateAttemptId,
+    );
+    expect(firstGate?.assetIds).toEqual([archivedId]);
+    expect(byId.get(archivedId)?.path).toBe(
+      `stages/source/archived/${replaced.attemptId}/accepted.json`,
+    );
+    // 第二次确认拿到的是固定当前路径那份
+    expect(byId.get("asset-source-acceptance")?.path).toBe(ACCEPTED_PATH);
+    await assertNoDanglingAssets(workspacePath);
+  });
 });
 
 describe("换源携带新参考文案（R9）", () => {

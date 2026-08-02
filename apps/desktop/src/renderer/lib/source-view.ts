@@ -16,18 +16,21 @@
  */
 
 import {
+  extractableTextLabel,
   type SlideSourceKind,
   SOURCE_ACCEPTANCE_TEXT,
+  SOURCE_KIND_LABELS,
   type SourceAcceptanceMode,
   type SpecDriftStatus,
 } from "@ppt-maker/core";
 
-/** 三档来源的中文短词。移除页没有来源（CLI 不加载其工作区），不在此表内 */
-export const SOURCE_KIND_LABELS: Readonly<Record<SlideSourceKind, string>> = {
-  imported: "导入",
-  extracted: "抽取",
-  generated: "生成",
-};
+/**
+ * 三档来源的中文短词。移除页没有来源（CLI 不加载其工作区），不在此表内。
+ *
+ * 表本身已下沉到 core（`source-contracts.ts`），与 CLI 的 `deck status` 共用一份；
+ * 这里只做转出，界面侧的既有导入点不必改。
+ */
+export { SOURCE_KIND_LABELS };
 
 /**
  * 卡片缩略图角上的来源徽标文字；null 表示不显示徽标。
@@ -58,17 +61,35 @@ export function sourceAcceptanceText(
 }
 
 /**
- * 「来源 · 源图确认性质」一行；两样都没有时为 null（已移除页）。
+ * 抽取页的文本层探测结果文案；null 表示不适用（非抽取页、已移除页）。
+ *
+ * 措辞取 core 的 `extractableTextLabel`，与抽取报告面板、CLI `deck status --verbose`
+ * 同一句话。**这是 A5「页级可见」的落点**：报告面板读的是抽取当时的观测值且看完就关，
+ * 这里读的是每页 `manifest.source`，重抽后也不会失真。
+ */
+export function extractableTextText(
+  hasExtractableText: boolean | null,
+): string | null {
+  return hasExtractableText === null
+    ? null
+    : extractableTextLabel(hasExtractableText);
+}
+
+/**
+ * 「来源 · 源图确认性质 · 文本层」一行；都没有时为 null（已移除页）。
  *
  * 单页工具栏与审片视图页脚都用它，避免两处各拼一次分隔符与顺序。
+ * `hasExtractableText` 可缺省：卡片以外的调用点不必都传，缺省即不显示该段。
  */
 export function sourceSummaryText(slide: {
   readonly sourceKind: SlideSourceKind | null;
   readonly sourceAcceptance: SourceAcceptanceMode | null;
+  readonly hasExtractableText?: boolean | null;
 }): string | null {
   const parts = [
     sourceBadgeLabel(slide.sourceKind),
     sourceAcceptanceText(slide.sourceAcceptance),
+    extractableTextText(slide.hasExtractableText ?? null),
   ].filter((part): part is string => part !== null);
   return parts.length === 0 ? null : parts.join(" · ");
 }

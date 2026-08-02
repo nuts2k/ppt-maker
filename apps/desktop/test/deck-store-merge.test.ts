@@ -22,6 +22,7 @@ function slide(
     stageStatus: "completed",
     removed: false,
     sourceKind: "imported",
+    hasExtractableText: null,
     sourceAcceptance: "auto",
     specEntryId: null,
     regenerableSpecEntryId: null,

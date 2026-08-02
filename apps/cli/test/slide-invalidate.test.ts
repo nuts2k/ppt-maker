@@ -3,9 +3,17 @@ import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isStageReusable, type SlideStage } from "@ppt-maker/core";
+import {
+  AUTO_SOURCE_TRUST_PROVIDER,
+  isStageReusable,
+  resolveSourceAcceptanceMode,
+  type SlideSourceDraft,
+  type SlideStage,
+} from "@ppt-maker/core";
 import { describe, expect, it } from "vitest";
+import { runAcceptSource } from "../src/slide/accept-source.js";
 import { invalidateSlideStage } from "../src/slide/invalidate.js";
+import { runSlideRunFrom } from "../src/slide/run-from.js";
 import {
   createSlideWorkspace,
   loadSlideWorkspace,
@@ -136,5 +144,152 @@ describe("invalidateSlideStage", () => {
     await expect(
       invalidateSlideStage({ workspacePath, stage: "clean", reason: "  " }),
     ).rejects.toThrow(/失效原因/);
+  });
+});
+
+/*
+ * 缺陷回归（2026-08-02 实测）：失效波及 `accept-source` 时，非生成页会停在一道
+ * **谁都解不开**的门上——`runAcceptSource` 对非生成页直接拒绝（那条拒绝是对的，
+ * 否则凭空产生假的人工痕迹），而 `run --from` 停在这道门上给出的下一条命令恰恰是它，
+ * 桌面端工具栏也据 `awaitingSourceConfirm` 摆出「确认源图」，按下去必然报错。
+ *
+ * 修法不是堵按钮：`imported` / `extracted` 的源图确认是**来源规则的结论**而非一次
+ * 人工动作，失效后正确行为是按来源自动重新放行——`replaceSlideSource` 第 5 步早就
+ * 这么做了，缺的只是让另一条失效路径也走这一步。
+ */
+describe("失效波及 accept-source 时按来源重判", () => {
+  const HASH = "a".repeat(64);
+  const GENERATED: SlideSourceDraft = {
+    kind: "generated",
+    specEntryId: "entry-001",
+    specEntrySha256: HASH,
+    providerId: "openai-image",
+    model: "gpt-image-2",
+    promptVersion: "m5-generate-v1",
+    promptSha256: HASH,
+    parameters: {},
+  };
+
+  async function createWithSource(
+    source: SlideSourceDraft | undefined,
+    completed: readonly SlideStage[],
+  ): Promise<string> {
+    const parent = await mkdtemp(join(tmpdir(), "ppt-maker-invalidate-gate-"));
+    const workspacePath = join(parent, "slide");
+    await createSlideWorkspace({
+      imagePath: fixturePath(),
+      workspacePath,
+      ...(source === undefined ? {} : { source }),
+    });
+    const workspace = await loadSlideWorkspace(workspacePath);
+    await writeWorkspaceManifest(workspace.path, {
+      ...workspace.manifest,
+      stages: workspace.manifest.stages.map((state) =>
+        completed.includes(state.stage)
+          ? {
+              ...state,
+              status: "completed" as const,
+              latestAttemptId: `${state.stage}-001`,
+              lastSuccessfulAttemptId: `${state.stage}-001`,
+              completedInputFingerprint: fakeFingerprint(state.stage),
+            }
+          : state,
+      ),
+    });
+    return workspacePath;
+  }
+
+  it("导入页自动重新放行，下游仍然 stale", async () => {
+    const workspacePath = await createWithSource(undefined, [
+      "ocr",
+      "review",
+      "mask",
+    ]);
+
+    const result = await invalidateSlideStage({
+      workspacePath,
+      stage: "accept-source",
+      reason: "人工要求从该阶段重跑",
+    });
+
+    // 闸门回到 completed —— 「从该阶段重跑」想要的是下游重做，不是卡在门口
+    expect(await statusOf(workspacePath, "accept-source")).toBe("completed");
+    expect(await statusOf(workspacePath, "ocr")).toBe("stale");
+    expect(await statusOf(workspacePath, "mask")).toBe("stale");
+    expect(result.invalidated).not.toContain("accept-source");
+    expect(result.invalidated).toContain("ocr");
+  });
+
+  it("自动重放行只追加一条 auto-source-trust attempt，不写 accepted.json", async () => {
+    const workspacePath = await createWithSource(undefined, ["ocr"]);
+    await invalidateSlideStage({
+      workspacePath,
+      stage: "accept-source",
+      reason: "人工要求从该阶段重跑",
+    });
+
+    const { manifest } = await loadSlideWorkspace(workspacePath);
+    const attempts = manifest.attempts.filter(
+      (attempt) => attempt.stage === "accept-source",
+    );
+    expect(attempts.map((attempt) => attempt.id)).toEqual([
+      "accept-source-001",
+      "accept-source-002",
+    ]);
+    // 事实只记在 attempt 的 provider 上；写一条 acceptedBy 指向系统的记录就是伪造人工痕迹
+    expect(attempts.map((attempt) => attempt.provider)).toEqual([
+      AUTO_SOURCE_TRUST_PROVIDER,
+      AUTO_SOURCE_TRUST_PROVIDER,
+    ]);
+    expect(
+      manifest.assets.find((asset) => asset.role === "source_acceptance"),
+    ).toBeUndefined();
+    expect(resolveSourceAcceptanceMode(manifest)).toBe("auto");
+  });
+
+  it("重放行后 CLI 不再把用户指向一条必然失败的命令", async () => {
+    const workspacePath = await createWithSource(undefined, []);
+    await invalidateSlideStage({
+      workspacePath,
+      stage: "accept-source",
+      reason: "人工要求从该阶段重跑",
+    });
+
+    // 此前这里返回 gate: "source" 并让用户去跑 slide accept-source，而那条命令必抛错
+    const result = await runSlideRunFrom("ocr", { workspacePath });
+    expect(result.gate).not.toBe("source");
+    await expect(runAcceptSource({ workspacePath })).rejects.toThrow(
+      "无需人工确认",
+    );
+  });
+
+  it("生成页不受影响：仍然停在门上等人确认", async () => {
+    const workspacePath = await createWithSource(GENERATED, ["ocr"]);
+    await runAcceptSource({ workspacePath, acceptedBy: "tester" });
+    expect(await statusOf(workspacePath, "accept-source")).toBe("completed");
+
+    const result = await invalidateSlideStage({
+      workspacePath,
+      stage: "accept-source",
+      reason: "人工要求重新审图",
+    });
+
+    expect(result.invalidated).toContain("accept-source");
+    expect(await statusOf(workspacePath, "accept-source")).toBe("stale");
+    // 而且这条门是解得开的：人工确认对生成页本来就成立
+    await runAcceptSource({ workspacePath, acceptedBy: "tester" });
+    expect(await statusOf(workspacePath, "accept-source")).toBe("completed");
+  });
+
+  it("init 自身未完成时不重放行：源图本身就在存疑状态", async () => {
+    const workspacePath = await createWithSource(undefined, ["ocr"]);
+    await invalidateSlideStage({
+      workspacePath,
+      stage: "init",
+      reason: "人工要求从头重来",
+    });
+
+    expect(await statusOf(workspacePath, "init")).toBe("stale");
+    expect(await statusOf(workspacePath, "accept-source")).toBe("stale");
   });
 });

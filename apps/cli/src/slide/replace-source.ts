@@ -102,6 +102,16 @@ interface ArchivedArtifacts {
   readonly assets: WorkspaceAsset[];
   /** 实际发生了归档的 role，用于回报调用方；产物本来就不存在时不计入 */
   readonly archivedRoles: ReadonlySet<WorkspaceAsset["role"]>;
+  /**
+   * 归档时被改名的资产：旧 id → 新 id。
+   *
+   * 既有 attempt 的 `assetIds` 必须跟着改指，否则那次 attempt 记的旧 id 会被**下一代**
+   * 产物以同一个固定 id 重新占用（`accept-source` 固定写 `asset-source-acceptance`），
+   * 于是「第一次确认」这次 attempt 顺着 assetIds 追到的是第二次确认的文件——
+   * 一条与事实相反的落盘记录（2026-08-02 阶段三走查在 generated 页的
+   * 「确认 → 重新生成 → 再确认」循环上实证）。
+   */
+  readonly renamedAssetIds: ReadonlyMap<string, string>;
   /** 把已搬走的文件搬回原处。后续步骤失败时调用，避免 manifest 与磁盘分叉 */
   readonly rollback: () => Promise<void>;
 }
@@ -135,6 +145,7 @@ async function archiveArtifacts(
   /** 原路径 → 归档路径，同时充当「这个文件已经搬过了」的判据 */
   const archivedPaths = new Map<string, string>();
   const archivedRoles = new Set<WorkspaceAsset["role"]>();
+  const renamedAssetIds = new Map<string, string>();
   const moved: { readonly from: string; readonly to: string }[] = [];
   const next: WorkspaceAsset[] = [];
 
@@ -169,20 +180,20 @@ async function archiveArtifacts(
       }
       archivedRoles.add(asset.role);
 
-      next.push({
-        ...asset,
-        id: target.renameId
-          ? `${asset.id}-archived-${initAttemptId}`
-          : asset.id,
-        path: archivedPath,
-      });
+      const archivedId = target.renameId
+        ? `${asset.id}-archived-${initAttemptId}`
+        : asset.id;
+      if (archivedId !== asset.id) {
+        renamedAssetIds.set(asset.id, archivedId);
+      }
+      next.push({ ...asset, id: archivedId, path: archivedPath });
     }
   } catch (error) {
     await rollback();
     throw error;
   }
 
-  return { assets: next, archivedRoles, rollback };
+  return { assets: next, archivedRoles, renamedAssetIds, rollback };
 }
 
 /**
@@ -387,7 +398,21 @@ export async function replaceSlideSource(
           : []),
       ],
       stages,
-      attempts: [...workspace.manifest.attempts, initAttempt, ...gate.attempts],
+      // 归档改名后既有 attempt 的 assetIds 一并改指，见 `renamedAssetIds` 的说明
+      attempts: [
+        ...workspace.manifest.attempts.map((attempt) =>
+          attempt.assetIds.some((id) => archived.renamedAssetIds.has(id))
+            ? {
+                ...attempt,
+                assetIds: attempt.assetIds.map(
+                  (id) => archived.renamedAssetIds.get(id) ?? id,
+                ),
+              }
+            : attempt,
+        ),
+        initAttempt,
+        ...gate.attempts,
+      ],
     });
   } catch (error) {
     // config 先写、manifest 后写：manifest 失败时 config 已指向新图，这里一并写回旧值，
