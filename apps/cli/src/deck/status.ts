@@ -4,6 +4,7 @@ import {
   SLIDE_STAGE_ORDER,
   type SlideSourceKind,
   type SlideStage,
+  type SpecDriftStatus,
   type WorkspaceStageState,
 } from "@ppt-maker/core";
 import { specViewFingerprint } from "../providers/page-generation.js";
@@ -75,7 +76,7 @@ export interface DeckSlideStatus {
    *
    * **纯派生、不落盘、不改变任何阶段状态**：改回原样自动消失，不需要状态复位逻辑。
    */
-  readonly specDrift: "in-sync" | "drifted" | "missing" | null;
+  readonly specDrift: SpecDriftStatus | null;
   /**
    * **当前**这一代生成产物的溯源指针（父任务 A7）；非生成页为 null。
    *

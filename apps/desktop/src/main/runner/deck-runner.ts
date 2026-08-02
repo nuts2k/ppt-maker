@@ -35,6 +35,14 @@ export class DeckRunner {
   /** 惰性取窗口：macOS 下窗口可被关闭后重建，不能持有固定引用 */
   private readonly getWindow: () => BrowserWindow | null;
   private readonly activityLog: ActivityLog;
+  /**
+   * 建页任务是否在跑（互斥的反向一半，design §4.2）。
+   *
+   * 注入而非持有 `SourceTaskRunner`：两者互相引用会绕成一个环。默认恒 false，
+   * 只有 main 的接线处会给出真实判据——**测试里默认无互斥**是刻意的，
+   * 否则每个既有用例都要凭空造一个建页执行器。
+   */
+  private readonly isSourceTaskRunning: () => boolean;
 
   private status: RunnerStatus = "idle";
   private queue: QueueItem[] = [];
@@ -50,9 +58,14 @@ export class DeckRunner {
   };
   private processedCount = 0;
 
-  constructor(getWindow: () => BrowserWindow | null, activityLog: ActivityLog) {
+  constructor(
+    getWindow: () => BrowserWindow | null,
+    activityLog: ActivityLog,
+    isSourceTaskRunning: () => boolean = () => false,
+  ) {
     this.getWindow = getWindow;
     this.activityLog = activityLog;
+    this.isSourceTaskRunning = isSourceTaskRunning;
   }
 
   isRunning(): boolean {
@@ -63,6 +76,16 @@ export class DeckRunner {
     deckPath: string,
     options: DeckRunStartOptions = {},
   ): Promise<DeckRunStartResult> {
+    // 互斥先于一切：建页任务与流水线都写 deck manifest 与 slide manifest，
+    // 并发写必然损坏数据。挡在加载工作区之前，免得为一次注定被拒的启动读盘。
+    if (this.isSourceTaskRunning()) {
+      return {
+        accepted: false,
+        queued: 0,
+        message: "建页任务正在执行，请等它结束后再运行（两者会同时写 deck）",
+      };
+    }
+
     const deck = await loadDeckWorkspace(deckPath);
 
     if (this.status !== "idle" && this.deckPath !== deck.path) {

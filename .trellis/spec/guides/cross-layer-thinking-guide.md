@@ -100,6 +100,22 @@ create one owner for:
 
 Rendering code may format fields, but it must not redefine the payload contract.
 
+### Mistake 5: 类型交界文件把「只有一边编译得动」的模块引了进来
+
+`apps/desktop/src/main/ipc/channels.ts` 是 renderer 与 main 的**类型交界**：两个
+tsconfig 都要解析它。而 `tsconfig.web.json` 的 `paths` 里没有 `@cli/*`——它只存在于
+`tsconfig.node.json`。于是在 `channels.ts` 里写一句 `import type { X } from "@cli/…"`
+在 main 项目里**看什么都正常**（编辑器不报、`tsc -p tsconfig.node.json` 也过），
+只有跑 renderer 那侧的 typecheck 才会炸，而写代码的人多半不在那侧。
+
+规则：**跨层共享的类型一律走 `@ppt-maker/core`**。CLI 里的类型要给桌面端用，就先
+移进 core（M5 ④ 的 `PdfExtractionReport` / `SpecDriftStatus` 就是这么办的），
+不要在交界文件里开一个只有单边能解析的口子。
+
+这条约束必须**落成静态断言**而不是注释：`test/channels-imports.test.ts` 扫
+`channels.ts` 的 import 语句，出现 `@cli/*` 即红，并配一条扫 `src/shared/` 的反向锁
+（同样两边共享的目录，同样的口子）。注释拦不住下一个人——他看到的一切都正常。
+
 ---
 
 ## Checklist for Cross-Layer Features

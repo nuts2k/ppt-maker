@@ -278,8 +278,9 @@ M3/M4 时代的既有工作区无需迁移即可打开、继续处理并严格�
 
 Trellis 父任务：`07-31-page-sources-and-content-generation`
 
-计划子任务（在父任务下创建，实际目录名带日期前缀）：
-`page-source-contract`、`pdf-page-extraction`、`spec-driven-generation`、`desktop-source-entry`
+子任务（实际目录名）：
+`07-31-page-source-contract`（已归档）、`08-01-pdf-page-extraction`（已归档）、
+`08-01-spec-driven-generation`（已归档）、`08-01-desktop-source-entry`（已完成，待归档）
 
 ### M6 内容策划工作台
 

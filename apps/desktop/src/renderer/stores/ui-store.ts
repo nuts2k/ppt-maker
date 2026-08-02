@@ -1,10 +1,14 @@
 import { create } from "zustand";
 
 /**
- * 视图路由：只有控制台与单页复核两态。
+ * 视图路由：控制台、单页复核、源图审片三态。
  * V1 的 "welcome" 已取消——未打开 deck 时由 ConsolePage 的空态承担（design.md 3.3）。
+ *
+ * `source-review` 是 M5 ④ 新增的独立审片视图（E2）：判断一张生成图好不好，
+ * 卡片缩略图那点尺寸根本不够，必须看大图。它是**第三个视图**而不是单页复核里
+ * 的一档——停在源图确认的页还没跑 OCR，复核页后半屏全是空面板。
  */
-type AppView = "console" | "slide";
+type AppView = "console" | "slide" | "source-review";
 
 /**
  * 控制台卡片筛选口径。
@@ -15,6 +19,16 @@ type AppView = "console" | "slide";
  * 会话级，不写磁盘：不产生新的持久化状态，也就不可能与耐久层分歧。
  */
 type ConsoleFilter = "all" | "todo";
+
+/**
+ * 来源选择模态的目标档：`new` 新建 deck、`append` 追加到当前 deck。
+ *
+ * 存**目标**而不是一个 `open: boolean`，是因为两个入口在同一时刻可能给出不同的
+ * 目标：控制台的「添加页面」永远是追加，顶栏下拉的「新建 Deck…」在 deck 已打开
+ * 时仍然是新建。只存布尔的话，目标就只能由「当前有没有 deck」反推，顶栏那条路
+ * 会被反推成「追加」。
+ */
+type SourcePickerTarget = "new" | "append";
 
 interface UIState {
   currentView: AppView;
@@ -42,19 +56,39 @@ interface UIState {
    * 默认筛选一起消失（见 .trellis/spec/frontend/state-management.md「一个判据兼职两件事」）。
    */
   consoleFilter: ConsoleFilter;
+  /**
+   * 来源选择模态的当前目标；null 表示未打开。
+   *
+   * 放在 ui-store 而不是 ConsolePage 的局部 state：触发它的两个入口分处两棵子树
+   * （控制台的「添加页面」与顶栏下拉），局部 state 够不到顶栏。
+   */
+  sourcePicker: SourcePickerTarget | null;
 
   setView(view: AppView): void;
   selectSlide(slideId: string | null): void;
   selectBlock(blockId: string | null): void;
   /** 选中该页并切到单页复核视图（队列/卡片点击直达） */
   openSlide(slideId: string): void;
+  /**
+   * 切到源图审片视图（E2）。
+   *
+   * `slideId` 可省略：不给时由视图自己取待确认序列的第一项，用于「逐张确认」
+   * 这类「从头开始过一遍」的入口；给了则直接定位到那一页（卡片直达、生成完成
+   * 面板的「去确认」）。
+   *
+   * 这是本视图对外的唯一入口 action —— 生成完成面板等本文件之外的调用方一律
+   * 调它，不要各自 `setView("source-review")` 再补一次 `selectSlide`。
+   */
+  openSourceReview(slideId?: string): void;
   /** 返回控制台，保留当前选中页以便再次进入 */
   backToConsole(): void;
   toggleQueuePanel(open?: boolean): void;
   toggleActivityPanel(open?: boolean): void;
   toggleStageRail(open?: boolean): void;
   setConsoleFilter(filter: ConsoleFilter): void;
-  /** 视图态整体归零（切换工作区），含三个面板的展开态与筛选档位 */
+  openSourcePicker(target: SourcePickerTarget): void;
+  closeSourcePicker(): void;
+  /** 视图态整体归零（切换工作区），含三个面板的展开态、筛选档位与来源选择模态 */
   reset(): void;
 }
 
@@ -66,6 +100,7 @@ const INITIAL_STATE = {
   activityPanelOpen: false,
   stageRailOpen: false,
   consoleFilter: "todo",
+  sourcePicker: null,
 } as const;
 
 export const useUIStore = create<UIState>((set) => ({
@@ -91,6 +126,18 @@ export const useUIStore = create<UIState>((set) => ({
     });
   },
 
+  openSourceReview(slideId) {
+    set(
+      slideId === undefined
+        ? { currentView: "source-review", selectedBlockId: null }
+        : {
+            currentView: "source-review",
+            selectedSlideId: slideId,
+            selectedBlockId: null,
+          },
+    );
+  },
+
   backToConsole() {
     set({ currentView: "console", selectedBlockId: null });
   },
@@ -111,9 +158,17 @@ export const useUIStore = create<UIState>((set) => ({
     set({ consoleFilter: filter });
   },
 
+  openSourcePicker(target) {
+    set({ sourcePicker: target });
+  },
+
+  closeSourcePicker() {
+    set({ sourcePicker: null });
+  },
+
   reset() {
     set({ ...INITIAL_STATE });
   },
 }));
 
-export type { AppView, ConsoleFilter, UIState };
+export type { AppView, ConsoleFilter, SourcePickerTarget, UIState };

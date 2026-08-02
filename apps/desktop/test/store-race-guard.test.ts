@@ -51,6 +51,9 @@ function slide(slideId: string, pageLabel = slideId): SlideDetail {
     currentStage: "ocr",
     stageStatus: "completed",
     removed: false,
+    sourceKind: "imported",
+    specEntryId: null,
+    specDrift: null,
     absWorkspacePath: `/decks/old/slides/${slideId}`,
     pageLabel,
     stages: [{ stage: "ocr", status: "completed" }],
@@ -342,6 +345,49 @@ describe("activity-store.load 的最后一次请求 wins", () => {
     const inFlight = useActivityStore.getState().load("/decks/old");
     // 新 deck 的 load 由 ConsolePage 的 effect 发出，这里模拟它还没轮到
     useActivityStore.getState().reset();
+    pending.resolve([activityRecord("旧 deck 的日志")]);
+    await inFlight;
+
+    expect(useActivityStore.getState().records).toEqual([]);
+  });
+
+  /*
+   * 真实时序（走查实测）：`openDeck` 落好新 deckPath → ConsolePage 的 effect 已经
+   * 发出 `load(新)` → 切换编排才执行 `resetOtherStores()`。effect 什么时候被 React
+   * 冲刷不由切换代码决定，所以「先清零再发请求」这个顺序摆不平。
+   *
+   * 清零若按请求序号一刀切作废，会连坐掉这次已经属于新 deck 的请求，而之后没有
+   * 任何东西会再发一次——表现是切完 deck 日志抽屉恒为「暂无记录」，磁盘上记录
+   * 好好的，且不报任何错。
+   */
+  it("清零发生在新 deck 的请求之后时，该请求仍要落地", async () => {
+    const pending = deferred<ActivityRecord[]>();
+    stubApi({
+      activity: {
+        list: (deckPath: string) =>
+          deckPath === "/decks/new"
+            ? pending.promise
+            : Promise.resolve([activityRecord("旧 deck 的日志")]),
+      },
+    });
+
+    const inFlight = useActivityStore.getState().load("/decks/new");
+    // 切换编排随后清零，并告知「现在这个 deck 是 /decks/new」
+    useActivityStore.getState().reset("/decks/new");
+    pending.resolve([activityRecord("新 deck 的日志")]);
+    await inFlight;
+
+    expect(
+      useActivityStore.getState().records.map((item) => item.detail),
+    ).toEqual(["新 deck 的日志"]);
+  });
+
+  it("清零告知的是另一个 deck 时，在途请求照旧作废", async () => {
+    const pending = deferred<ActivityRecord[]>();
+    stubApi({ activity: { list: () => pending.promise } });
+
+    const inFlight = useActivityStore.getState().load("/decks/old");
+    useActivityStore.getState().reset("/decks/new");
     pending.resolve([activityRecord("旧 deck 的日志")]);
     await inFlight;
 

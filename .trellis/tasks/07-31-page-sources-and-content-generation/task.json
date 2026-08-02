@@ -21,7 +21,8 @@
   "children": [
     "07-31-page-source-contract",
     "08-01-spec-driven-generation",
-    "08-01-pdf-page-extraction"
+    "08-01-pdf-page-extraction",
+    "08-01-desktop-source-entry"
   ],
   "parent": "07-20-ppt-maker-mvp-roadmap",
   "relatedFiles": [],

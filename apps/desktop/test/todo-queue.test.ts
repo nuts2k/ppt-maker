@@ -27,6 +27,10 @@ interface SlideFixture {
   readonly lastError?: SlideLastError;
   /** 待人工复核的版式文字块数，默认 0 */
   readonly pendingTextReview?: number;
+  /** 页面来源，默认 imported */
+  readonly sourceKind?: SlideDetail["sourceKind"];
+  /** 规格漂移，默认 null（不适用） */
+  readonly specDrift?: SlideDetail["specDrift"];
 }
 
 function makeSlide(fixture: SlideFixture): SlideDetail {
@@ -46,6 +50,9 @@ function makeSlide(fixture: SlideFixture): SlideDetail {
     currentStage: fixture.currentStage ?? "report",
     stageStatus: fixture.stageStatus ?? "completed",
     removed: fixture.removed ?? false,
+    sourceKind: fixture.sourceKind ?? "imported",
+    specEntryId: fixture.sourceKind === "generated" ? "entry-001" : null,
+    specDrift: fixture.specDrift ?? null,
     stages,
     lastError: fixture.lastError ?? null,
     stageDurations: {},

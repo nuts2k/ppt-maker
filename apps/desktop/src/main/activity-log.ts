@@ -83,5 +83,8 @@ export function buildActivityRecord(
     result: input.result,
     durationMs: input.durationMs,
     detail: input.detail,
+    // 条件展开：`exactOptionalPropertyTypes` 下写 `reportPath: undefined` 不合法，
+    // 而无脑写进去也会让每条普通记录的 jsonl 多出一个 null 字段
+    ...(input.reportPath === undefined ? {} : { reportPath: input.reportPath }),
   };
 }

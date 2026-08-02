@@ -21,16 +21,29 @@ interface ActivityState {
 
   load(deckPath: string, limit?: number): Promise<void>;
   append(record: ActivityRecord): void;
-  reset(): void;
+  /**
+   * 清空日志。
+   *
+   * `nextDeckPath` 是「清完之后当前是哪个 deck」：为它发出的在途请求**不作废**，
+   * 其余一律作废。切换工作区时调用方必须把新 deck 的路径传进来（见下方注释），
+   * 离开 deck 回空态时传 null（默认）。
+   */
+  reset(nextDeckPath?: string | null): void;
 }
 
 /**
- * 请求序号：本 store 不持有 deckPath，无从比对身份，改用「最后一次请求 wins」。
- * 切换工作区后旧 deck 的列表请求会带着过期序号返回，直接丢弃——否则迟到的响应
- * 会把上一个 deck 的日志贴到新 deck 的抽屉里，且毫无提示。
- * 不 import deck-store 取 deckPath 比对，是不想为一句守卫把日志层耦合到 deck 层。
+ * 在途请求的身份：**序号管顺序，路径管归属**，两者缺一不可。
+ *
+ * 只有序号时，`reset()` 想作废「上一个 deck 的在途请求」就只能整体 +1，于是会连坐
+ * 掉已经为**新** deck 发出的那一个——切换工作区的真实时序正是
+ * `openDeck 落 deckPath → ConsolePage effect 发 load(新) → resetOtherStores()`，
+ * 顺序无法靠调用方摆平（effect 什么时候被 React 冲刷不由切换代码决定）。
+ * 表现是切完 deck 日志抽屉恒为「暂无记录」，而磁盘上记录好好的，且没有任何报错。
+ *
+ * 因此改为：响应落地前既要是最后一次请求，也要属于当前这个 deck。
  */
 let listSeq = 0;
+let currentPath: string | null = null;
 
 export const useActivityStore = create<ActivityState>((set) => ({
   records: [],
@@ -39,14 +52,17 @@ export const useActivityStore = create<ActivityState>((set) => ({
 
   async load(deckPath, limit) {
     const seq = ++listSeq;
+    currentPath = deckPath;
     set({ loading: true, error: null });
     try {
       const records = await window.api.activity.list(deckPath, limit);
-      if (seq !== listSeq) return;
+      if (seq !== listSeq || currentPath !== deckPath) return;
       set({ records, loading: false });
     } catch (err) {
       // 迟到的失败同样不写：错误属于用户已经离开的那个 deck
-      if (seq === listSeq) set({ loading: false, error: toMessage(err) });
+      if (seq === listSeq && currentPath === deckPath) {
+        set({ loading: false, error: toMessage(err) });
+      }
       throw err;
     }
   },
@@ -55,10 +71,11 @@ export const useActivityStore = create<ActivityState>((set) => ({
     set((state) => ({ records: [record, ...state.records] }));
   },
 
-  reset() {
-    // 一并作废在途请求：切换工作区后新 deck 的 load 由 ConsolePage 的 effect 发出，
-    // 中间这段空档里旧 deck 的响应若落地，日志抽屉会闪一下上一个 deck 的记录
-    listSeq += 1;
+  reset(nextDeckPath = null) {
+    // 作废「不属于 nextDeckPath」的在途请求：旧 deck 的响应若落地，日志抽屉会闪
+    // 一下上一个 deck 的记录；但已经为新 deck 发出的那一个必须放行，否则它被丢掉
+    // 之后没有任何东西会再发一次，抽屉就永远空着。
+    currentPath = nextDeckPath;
     set({ records: [], loading: false, error: null });
   },
 }));

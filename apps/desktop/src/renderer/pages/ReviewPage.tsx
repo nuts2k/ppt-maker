@@ -11,7 +11,11 @@ import {
 } from "@/components/slide/SlideToolbar";
 import { StageRail } from "@/components/slide/StageRail";
 import { Button, IconButton } from "@/components/ui";
-import { awaitingSourceConfirm, deriveFinalGate } from "@/lib/accept-gate";
+import {
+  awaitingSourceConfirm,
+  deriveFinalGate,
+  sourceReviewReachable,
+} from "@/lib/accept-gate";
 import type { ReviewEntryIntent } from "@/lib/review-filter";
 import { countUnreviewed } from "@/lib/review-status";
 import { adjacentSlides } from "@/lib/slide-nav";
@@ -493,6 +497,7 @@ export function ReviewPage(): React.JSX.Element {
         dirty={dirty}
         unreviewedCount={unreviewedCount}
         awaitingSourceConfirm={needsSourceConfirm}
+        sourceReviewReachable={sourceReviewReachable(slide)}
         submitting={submitting}
         pageBusy={pageBusy}
         nextTodo={

@@ -191,6 +191,29 @@ describe("DeckRunner 端到端", () => {
     expect(runner.isRunning()).toBe(false);
   });
 
+  /*
+   * 双向互斥的反向一半（design §4.2 / RK-C）：两者都写 deck manifest 与 slide
+   * manifest，并发写必然损坏数据。界面上的禁用只是提示，真正的防线是这里的拒绝。
+   * 互斥判据挡在加载工作区之前，所以这条用例不需要真跑流水线。
+   */
+  it("建页任务在跑时拒绝启动流水线", async () => {
+    const { deckPath, activityDir } = await createFixtureDeck();
+    const { events, getWindow } = createEventCollector();
+    const runner = new DeckRunner(
+      getWindow,
+      new ActivityLog(activityDir),
+      () => true,
+    );
+
+    const started = await runner.start(deckPath, {});
+
+    expect(started.accepted).toBe(false);
+    expect(started.queued).toBe(0);
+    expect(started.message, "拒绝必须说明原因，不能静默").toContain("建页任务");
+    expect(runner.isRunning()).toBe(false);
+    expect(events, "被拒绝的启动不该发出任何执行事件").toEqual([]);
+  });
+
   it("对不存在的 deck 拒绝启动", async () => {
     const { activityDir } = await createFixtureDeck();
     const { getWindow } = createEventCollector();

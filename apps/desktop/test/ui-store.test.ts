@@ -59,11 +59,90 @@ describe("useUIStore.reset", () => {
     expect(useUIStore.getState().selectedSlideId).toBe("slide-9");
   });
 
+  /**
+   * 第三个视图（源图审片）必须一并被归零覆盖：切换工作区靠的就是这一次 reset，
+   * 漏掉它会在新 deck 里停在上一个 deck 的审片视图上（`switchWorkspace` 只调
+   * `useUIStore.reset()`，不逐字段清）。
+   */
+  it("从审片视图归零同样回控制台", () => {
+    useUIStore.getState().openSourceReview("slide-5");
+    expect(useUIStore.getState().currentView).toBe("source-review");
+
+    useUIStore.getState().reset();
+
+    expect(useUIStore.getState().currentView).toBe("console");
+    expect(useUIStore.getState().selectedSlideId).toBeNull();
+  });
+
+  /**
+   * 来源选择模态的开关也在 ui-store（顶栏与控制台两个入口共用），因此同样要被
+   * reset 覆盖：切换工作区时若还开着，模态里的目标 deck 就是上一个工作区的。
+   */
+  it("来源选择模态归零关闭", () => {
+    useUIStore.getState().openSourcePicker("append");
+    expect(useUIStore.getState().sourcePicker).toBe("append");
+
+    useUIStore.getState().reset();
+
+    expect(useUIStore.getState().sourcePicker).toBeNull();
+  });
+
+  it("模态目标存的是入口给的档，不由当前是否有 deck 反推", () => {
+    useUIStore.getState().openSourcePicker("new");
+    expect(useUIStore.getState().sourcePicker).toBe("new");
+
+    useUIStore.getState().closeSourcePicker();
+    expect(useUIStore.getState().sourcePicker).toBeNull();
+  });
+
   it("归零后仍可正常选页（action 未被覆盖）", () => {
     useUIStore.getState().reset();
     useUIStore.getState().openSlide("slide-1");
     expect(useUIStore.getState().currentView).toBe("slide");
     expect(useUIStore.getState().selectedSlideId).toBe("slide-1");
+  });
+});
+
+/**
+ * 源图审片视图的入口 action（design.md §5.4）。
+ *
+ * 三个入口共用它：待办队列组标题的「逐张确认」（不带页，从第一个待确认开始）、
+ * 生成完成面板的「去确认」与卡片直达（带页）。各自 `setView` 再补一次
+ * `selectSlide` 迟早会漏掉一处。
+ */
+describe("useUIStore.openSourceReview", () => {
+  it("不带页：只切视图，选中页保持不动（由视图落到第一个待确认）", () => {
+    useUIStore.getState().selectSlide("slide-2");
+
+    useUIStore.getState().openSourceReview();
+
+    expect(useUIStore.getState().currentView).toBe("source-review");
+    expect(useUIStore.getState().selectedSlideId).toBe("slide-2");
+  });
+
+  it("带页：切视图并定位到该页", () => {
+    useUIStore.getState().openSourceReview("slide-7");
+
+    expect(useUIStore.getState().currentView).toBe("source-review");
+    expect(useUIStore.getState().selectedSlideId).toBe("slide-7");
+  });
+
+  it("进出审片视图不残留选中块", () => {
+    useUIStore.getState().openSlide("slide-1");
+    useUIStore.getState().selectBlock("block-3");
+
+    useUIStore.getState().openSourceReview("slide-1");
+
+    expect(useUIStore.getState().selectedBlockId).toBeNull();
+  });
+
+  it("返回控制台后可再次进入（视图态非单向）", () => {
+    useUIStore.getState().openSourceReview("slide-4");
+    useUIStore.getState().backToConsole();
+    expect(useUIStore.getState().currentView).toBe("console");
+
+    useUIStore.getState().openSourceReview("slide-4");
+    expect(useUIStore.getState().currentView).toBe("source-review");
   });
 });
 

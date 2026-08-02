@@ -34,6 +34,25 @@ export function workspacePathForImages(
   return `${parentDir}/${name}-${isoDate}`;
 }
 
+/**
+ * 同一条落点规则用在**文件**来源上（PDF 抽取、内容规格生成的新建档）：
+ * 落在该文件同级，目录名取去掉扩展名的文件名。
+ *
+ * 与 `workspacePathForImages` 分成两个函数而不是给它加一个开关：目录名里的点是
+ * 名字的一部分（`~/decks/v1.2` 不该被截成 `v1`），文件名里的点是扩展名分隔符，
+ * 两者不能用同一段代码去猜。首字符的点（`.hidden`）按名字处理，不当扩展名。
+ */
+export function workspacePathForFile(
+  filePath: string,
+  isoDate: string,
+): string {
+  const parentDir = filePath.split("/").slice(0, -1).join("/");
+  const fileName = filePath.split("/").pop() ?? "deck";
+  const dot = fileName.lastIndexOf(".");
+  const base = dot > 0 ? fileName.slice(0, dot) : fileName;
+  return `${parentDir}/${base}-${isoDate}`;
+}
+
 export function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }

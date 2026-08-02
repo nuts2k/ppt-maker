@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  Images,
   ImageUp,
   Play,
   ScanEye,
@@ -18,6 +19,8 @@ import {
 import type { SlideNavigation } from "@/lib/slide-nav";
 import { elapsedSince } from "@/lib/stage-view";
 import { useRunStore } from "@/stores/run-store";
+import { useSourceTaskStore } from "@/stores/source-task-store";
+import { useUIStore } from "@/stores/ui-store";
 
 /**
  * 单页复核工具栏（design.md 3.3 SlideToolbar）。
@@ -78,6 +81,18 @@ interface SlideToolbarProps {
    */
   readonly awaitingSourceConfirm: boolean;
   /**
+   * 该页的源图审片视图是否可达（判据取 `lib/accept-gate` 的 `sourceReviewReachable`，
+   * 工具栏不自己看来源）。
+   *
+   * 与 `awaitingSourceConfirm` 是**两件事**，同 `hasFinalGate` 与「还没验收」的关系：
+   * 控制台卡片只把**待确认**的页直达审片视图，于是一旦某个 deck 的生成页全部确认完，
+   * 待办组消失、卡片不再直达、生成完成面板也早已关掉——审片视图连同它上面的
+   * 「重新生成」在界面上再无任何入口（走查实测，与 2026-07-30 R2「重做底图随确认页
+   * 一起消失」是同型错误）。已确认的页点卡片该进复核页（那才是它接下来的活），
+   * 所以入口补在这里。
+   */
+  readonly sourceReviewReachable: boolean;
+  /**
    * 人工验收正在写盘（源图确认与最终确认共用这一个在途标记，两者互斥出现）。
    *
    * 有它才能把「确认源图」压成 loading 态——否则重复点击会在 manifest 里追加出
@@ -113,6 +128,7 @@ export function SlideToolbar({
   dirty,
   unreviewedCount,
   awaitingSourceConfirm,
+  sourceReviewReachable,
   submitting,
   pageBusy,
   nextTodo,
@@ -130,6 +146,14 @@ export function SlideToolbar({
   const currentStage = useRunStore((s) => s.currentStage);
   const stageStartedAt = useRunStore((s) => s.stageStartedAt);
   useRunStore((s) => s.tick);
+
+  /*
+   * 建页任务（导入 / 抽取 / 生成 / 重新生成）与流水线**双向互斥**：两者都写
+   * deck manifest 与 slide manifest，并发写必然损坏数据（design §4.2）。
+   * main 侧会拒绝，但界面必须先把入口压掉并写明理由——按下去才被拒绝，
+   * 用户只会以为「点了没反应」。
+   */
+  const sourceTaskRunning = useSourceTaskStore((s) => s.running);
 
   const showProgress = pageBusy && currentSlideId === slideId;
   const elapsed = showProgress
@@ -270,12 +294,33 @@ export function SlideToolbar({
             variant="secondary"
             size="sm"
             onClick={onAcceptSource}
-            disabled={pageBusy || submitting}
+            disabled={pageBusy || submitting || sourceTaskRunning}
             loading={submitting}
-            title="确认这一页的源图可用；确认后下游阶段才会执行"
+            title={
+              sourceTaskRunning
+                ? "建页任务执行中，暂不可改动页面"
+                : "确认这一页的源图可用；确认后下游阶段才会执行"
+            }
           >
             {!submitting && <ScanEye aria-hidden="true" className="size-3.5" />}
             确认源图
+          </Button>
+        )}
+
+        {/*
+          源图审片入口：只在**已确认**时出现——还欠确认的页由控制台卡片直达，
+          此刻工具栏上已经有「确认源图」，再挂一个进同一个视图的按钮只是噪音。
+          ghost 权重：它是回看与重出图的通道，不是这一页当下该做的事。
+        */}
+        {sourceReviewReachable && !awaitingSourceConfirm && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => useUIStore.getState().openSourceReview(slideId)}
+            title="回到源图审片：看大图、按规格重新出图或换源"
+          >
+            <Images aria-hidden="true" className="size-3.5" />
+            源图审片
           </Button>
         )}
 
@@ -288,8 +333,12 @@ export function SlideToolbar({
           variant="ghost"
           size="sm"
           onClick={onReplaceSource}
-          disabled={pageBusy}
-          title="替换这一页的源图；该页下游会重新执行，其它页不受影响"
+          disabled={pageBusy || sourceTaskRunning}
+          title={
+            sourceTaskRunning
+              ? "建页任务执行中，暂不可改动页面"
+              : "替换这一页的源图；该页下游会重新执行，其它页不受影响"
+          }
         >
           <ImageUp aria-hidden="true" className="size-3.5" />
           换源
@@ -310,9 +359,13 @@ export function SlideToolbar({
           variant="primary"
           size="sm"
           onClick={onRunSlide}
-          disabled={pageBusy}
+          disabled={pageBusy || sourceTaskRunning}
           loading={showProgress}
-          title="从第一个未完成阶段继续执行此页"
+          title={
+            sourceTaskRunning
+              ? "建页任务执行中，暂不可执行流水线"
+              : "从第一个未完成阶段继续执行此页"
+          }
         >
           {!showProgress && <Play aria-hidden="true" className="size-3.5" />}
           运行此页

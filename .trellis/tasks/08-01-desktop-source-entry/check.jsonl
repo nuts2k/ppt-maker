@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "④ 全是前端静默失败的高危区：只读展示是一句隐含断言、修好「没反应」会让误触第一次产生真实后果（批量重新生成是付费操作）、界面说成功但产物不对"}
+{"file": ".trellis/spec/guides/verification-coverage-thinking-guide.md", "reason": "子任务① 的教训来源：仅凭单元测试通过不足以判定验收，界面类改动必须有真机走查证据；U1–U13 多数需要在真实 deck 上走一遍"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "检查口径：断言须变异验证、规则测在纯函数产物上、放行类修复要配反向用例、走查脚本自己归零状态"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "全仓质量口径（Node 24 / TypeScript / Biome / Vitest），以及 apps/cli 的 testTimeout 已设 30s 不得改回默认值的判据"}

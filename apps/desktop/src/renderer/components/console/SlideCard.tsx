@@ -1,6 +1,8 @@
 import { stageLabel } from "@shared/stages";
 import { useEffect, useMemo, useState } from "react";
 import { StatusChip } from "@/components/ui";
+import { awaitingSourceConfirm } from "@/lib/accept-gate";
+import { sourceBadgeLabel, specDriftText } from "@/lib/source-view";
 import {
   blockingStageView,
   completedStageCount,
@@ -132,10 +134,19 @@ export function SlideCard({
           }，需重跑`
       : null;
 
-  // 优先级：真出错 > 待办原因 > 进度描述。待办原因用校对红——它就是「待我处理」
+  /*
+   * 规格漂移（R6）：**只是标注**。它排在 `todoReason` 之后、进度描述之前——
+   * 比「待我处理」弱（没人要求你现在做什么），比常态强（图确实与规格对不上了）。
+   * 它不进待办队列、不改任何阶段状态、不影响 `cardStatus`，改回原样自动消失。
+   */
+  const driftText = specDriftText(slide.specDrift);
+  const sourceLabel = sourceBadgeLabel(slide.sourceKind);
+
+  // 优先级：真出错 > 待办原因 > 规格漂移 > 进度描述。待办原因用校对红——它就是「待我处理」
   const detail =
     errorText ??
     todoReason ??
+    driftText ??
     buildDetailText({
       isRunningThisSlide,
       runningStageLabel:
@@ -162,10 +173,25 @@ export function SlideCard({
         : "text-state-failed"
       : todoReason !== undefined
         ? "text-proof"
-        : "text-ink-secondary";
+        : driftText !== null
+          ? // stale 的语义正是「上游已变更」，与漂移的定义精确对应
+            "text-state-stale"
+          : "text-ink-secondary";
 
+  /*
+   * 停在源图确认的页点卡片进**审片视图**，不进复核页：那页连 OCR 都还没跑，
+   * 复核页的 480px 列表与标注画布全是空的，用户还得自己找回控制台再绕一圈。
+   *
+   * 判据取 `accept-gate` 的同一个待办口径（可达且未确认），不在这里就地写
+   * `sourceKind === "generated"`——那样它就成了第二份 filter。
+   */
   function handleOpen(): void {
-    useUIStore.getState().openSlide(slide.slideId);
+    const ui = useUIStore.getState();
+    if (awaitingSourceConfirm(slide)) {
+      ui.openSourceReview(slide.slideId);
+      return;
+    }
+    ui.openSlide(slide.slideId);
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>): void {
@@ -218,10 +244,25 @@ export function SlideCard({
           </span>
         )}
 
-        {slide.removed && (
+        {/*
+          左上角：已移除 > 来源，两者互斥。移除页 `sourceKind` 本就是 null
+          （CLI 不加载已移除页的工作区），这里的顺序只是把这件事写明白。
+
+          来源**不上色**：一叠 20–50 页里每一页都有来源，它是常态信息。
+          给常态上色等于把最强的视觉手段给了最不需要注意的信息，
+          「有颜色 = 要你管」这条扫读规则就作废了。垫一层 canvas 底是因为
+          它压在缩略图上，直接铺中性字读不出来。
+        */}
+        {slide.removed ? (
           <span className="absolute left-1 top-1 rounded-xs bg-ink px-1 py-0.5 text-2xs font-semibold text-on-ink">
             已移除
           </span>
+        ) : (
+          sourceLabel !== null && (
+            <span className="absolute left-1 top-1 rounded-xs bg-canvas px-1 py-0.5 text-xs text-ink-muted">
+              {sourceLabel}
+            </span>
+          )
         )}
       </div>
 

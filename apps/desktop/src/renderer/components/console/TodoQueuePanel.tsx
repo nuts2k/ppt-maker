@@ -10,7 +10,7 @@ import {
   TriangleAlert,
 } from "lucide-react";
 import { useMemo } from "react";
-import { IconButton } from "@/components/ui";
+import { Button, IconButton } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useDeckStore } from "@/stores/deck-store";
 import { useRunStore } from "@/stores/run-store";
@@ -163,6 +163,25 @@ function QueueGroup({ group }: { group: TodoQueueGroup }): React.JSX.Element {
         </h3>
         <span className={COUNT_BADGE}>{group.items.length}</span>
       </div>
+
+      {/*
+        源图确认是唯一适合「一口气过一遍」的待办：每页只需看一眼大图然后回车。
+        入口做成整行按钮而非标题右侧的小图标——240px 的栏宽里再塞一个图标按钮，
+        标题就只剩两三个字的位置了。放在组标题之下、列表之上，仍属于组的抬头。
+      */}
+      {group.group === "confirm-source" && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="w-full"
+          onClick={() => useUIStore.getState().openSourceReview()}
+          title="逐张看大图确认；回车接受并自动跳下一张"
+        >
+          <ScanEye aria-hidden="true" className="size-3.5" />
+          逐张确认
+        </Button>
+      )}
+
       <ul className="flex flex-col">
         {group.items.map((item) => (
           <li key={item.slideId}>
@@ -175,8 +194,17 @@ function QueueGroup({ group }: { group: TodoQueueGroup }): React.JSX.Element {
 }
 
 function QueueItem({ item }: { item: TodoItem }): React.JSX.Element {
+  /*
+   * 「待确认源图」这一组点进审片视图而不是复核页，与卡片点击同一条路由规则：
+   * 停在这道门上的页还没跑 OCR，复核页后半屏全是空面板。
+   */
   function handleClick(): void {
-    useUIStore.getState().openSlide(item.slideId);
+    const ui = useUIStore.getState();
+    if (item.group === "confirm-source") {
+      ui.openSourceReview(item.slideId);
+      return;
+    }
+    ui.openSlide(item.slideId);
   }
 
   return (

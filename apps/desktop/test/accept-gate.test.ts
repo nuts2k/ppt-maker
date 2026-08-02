@@ -8,7 +8,11 @@ import {
   awaitingSourceConfirm,
   deriveFinalGate,
   finalAccepted,
+  generatedSource,
   pptxReady,
+  sourceAccepted,
+  sourceReviewReachable,
+  sourceStageKnown,
   stageStatusOf,
 } from "../src/renderer/lib/accept-gate.js";
 import type { SessionRunResult } from "../src/renderer/stores/run-types.js";
@@ -17,13 +21,14 @@ import { RUN_STAGE_SEQUENCE, type RunStage } from "../src/shared/stages.js";
 /** 与 todo-queue 测试同一 fixture 口径：列出的阶段为 completed，其余 pending */
 function makeSlide(
   completed: readonly RunStage[],
-): Pick<SlideDetail, "stages"> {
+  sourceKind: SlideDetail["sourceKind"] = "imported",
+): Pick<SlideDetail, "stages" | "sourceKind"> {
   const done = new Set<string>(completed);
   const stages: SlideStageDetail[] = RUN_STAGE_SEQUENCE.map((stage) => ({
     stage,
     status: done.has(stage) ? "completed" : "pending",
   }));
-  return { stages };
+  return { stages, sourceKind };
 }
 
 function session(
@@ -89,6 +94,74 @@ describe("awaitingSourceConfirm（耐久层判据）", () => {
       })),
     };
     expect(awaitingSourceConfirm(slide)).toBe(true);
+  });
+});
+
+/*
+ * 可达 ≠ 待办（RK-E）。沿用 `awaitingSourceConfirm` 当审片视图的入口判据，会让
+ * 用户确认完这一页就再也进不去，而「重新生成」「换源」恰恰长在那个视图里——
+ * 与 M4 那次「验收后最终确认页整个消失、重做底图入口随之没了」是同型错误。
+ */
+describe("sourceReviewReachable / sourceAccepted（审片可达与已确认）", () => {
+  it("已确认的生成页仍然可达（U10）", () => {
+    const slide = makeSlide(["accept-source"], "generated");
+    expect(sourceAccepted(slide)).toBe(true);
+    expect(awaitingSourceConfirm(slide)).toBe(false);
+    expect(sourceReviewReachable(slide), "已确认页必须还进得去").toBe(true);
+  });
+
+  it("未确认的生成页可达", () => {
+    expect(sourceReviewReachable(makeSlide([], "generated"))).toBe(true);
+  });
+
+  it("自动放行的导入 / 抽取页不可达（没有源图可审）", () => {
+    expect(
+      sourceReviewReachable(makeSlide(["accept-source"], "imported")),
+    ).toBe(false);
+    expect(
+      sourceReviewReachable(makeSlide(RUN_STAGE_SEQUENCE, "extracted")),
+    ).toBe(false);
+  });
+
+  /** 非生成页被人工失效掉 accept-source 后同样停在这道门，界面得给它去处 */
+  it("非生成页正欠一次确认时可达", () => {
+    expect(sourceReviewReachable(makeSlide([], "imported"))).toBe(true);
+  });
+
+  it("阶段状态未知（已移除 / 读不出的页）一律不可达", () => {
+    const unknown = { stages: [], sourceKind: "generated" } as const;
+    expect(sourceStageKnown(unknown)).toBe(false);
+    expect(sourceReviewReachable(unknown)).toBe(false);
+    expect(awaitingSourceConfirm(unknown)).toBe(false);
+  });
+
+  it("generatedSource 只看来源，不看阶段", () => {
+    expect(generatedSource({ sourceKind: "generated" })).toBe(true);
+    expect(generatedSource({ sourceKind: "imported" })).toBe(false);
+    expect(generatedSource({ sourceKind: null })).toBe(false);
+  });
+
+  /**
+   * 合成关系上锁：两个口径必须由同一组原子合成，任何一方不得就地再写一份 filter。
+   * 遍历「阶段组合 × 三种来源」，恒等式一处不成立就红。
+   */
+  it("待办口径恒等于「可达且未确认」", () => {
+    const combos: readonly (readonly RunStage[])[] = [
+      [],
+      ["accept-source"],
+      ["accept-source", "ocr"],
+      ["ocr", "review"],
+      RUN_STAGE_SEQUENCE,
+    ];
+    for (const completed of combos) {
+      for (const kind of ["imported", "extracted", "generated"] as const) {
+        const slide = makeSlide(completed, kind);
+        expect(
+          awaitingSourceConfirm(slide),
+          `${kind} / ${completed.join(",")}`,
+        ).toBe(sourceReviewReachable(slide) && !sourceAccepted(slide));
+      }
+    }
   });
 });
 

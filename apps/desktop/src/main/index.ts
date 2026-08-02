@@ -7,6 +7,7 @@ import { registerDeckHandlers } from "./ipc/deck.js";
 import { registerSlideHandlers } from "./ipc/slide.js";
 import { registerSystemHandlers } from "./ipc/system.js";
 import { DeckRunner } from "./runner/deck-runner.js";
+import { SourceTaskRunner } from "./runner/source-task-runner.js";
 
 // Electron cwd 是 apps/desktop/，CLI 函数需要项目根目录
 const projectRoot = resolve(app.getAppPath(), "../..");
@@ -45,13 +46,24 @@ app.whenReady().then(() => {
   );
   // IPC 与 runner 只注册一次：macOS 下窗口关闭后 activate 会重建窗口，
   // 若在 createWindow 内注册会触发 ipcMain.handle 重复注册报错。
-  const runner = new DeckRunner(
-    () => BrowserWindow.getAllWindows()[0] ?? null,
-    activityLog,
+  const getWindow = (): BrowserWindow | null =>
+    BrowserWindow.getAllWindows()[0] ?? null;
+
+  /*
+   * 流水线与建页任务**双向互斥**：两者都写 deck manifest 与 slide manifest。
+   * 互相引用会绕成一个环，因此各自只拿对方的「在不在跑」这一个闭包。
+   * `sourceTasks` 在闭包体内才被读到，此时它已经赋值完毕。
+   */
+  let sourceTasks: SourceTaskRunner;
+  const runner = new DeckRunner(getWindow, activityLog, () =>
+    sourceTasks.isRunning(),
+  );
+  sourceTasks = new SourceTaskRunner(getWindow, activityLog, () =>
+    runner.isRunning(),
   );
 
   registerSystemHandlers();
-  registerDeckHandlers(runner, activityLog);
+  registerDeckHandlers(runner, sourceTasks, activityLog);
   registerSlideHandlers(activityLog);
   registerActivityHandlers(activityLog);
 

@@ -9,6 +9,9 @@ import { useRunStore } from "@/stores/run-store";
  *
  * 只应挂载一次：run-store 是 `deck:run-progress` 的唯一订阅方，重复挂载会导致
  * 同一事件被重复计入活动日志。分发规则见 `stores/run-bridge.ts`（已单测）。
+ *
+ * 建页任务的 `deck:source-task-progress` **不在这里**，它由 `App.tsx` 直接挂——
+ * 同样只挂一次。两处都挂会让同一个进度事件被处理两遍。
  */
 export function useRunBridge(): void {
   useEffect(() => {

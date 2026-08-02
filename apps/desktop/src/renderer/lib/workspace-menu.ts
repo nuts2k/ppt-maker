@@ -14,7 +14,7 @@
 
 import type { DoctorNotice } from "./doctor-view.js";
 
-/** 下拉两项：打开已有工作区 / 从图片目录创建 */
+/** 下拉两项：打开已有工作区 / 新建 Deck */
 export type WorkspaceAction = "open" | "create";
 
 export const RUNNING_DISABLED_HINT = "执行中不可切换，请先停止";
@@ -29,7 +29,13 @@ export interface WorkspaceMenuItemView {
 
 const ITEM_LABELS: Record<WorkspaceAction, string> = {
   open: "打开其他工作区…",
-  create: "从图片目录创建…",
+  /*
+   * 不写「从图片目录创建…」。M5 ④ 之后新建 deck 有三种来源，这一项若仍直接开
+   * 目录框，deck 打开状态下就只剩「图片目录」一条新建路径——想从 PDF 新建的人
+   * 无路可走，而这正是父任务点名禁止的「三次零散增补」。它现在只负责**打开来源
+   * 选择模态**，三档来源由那一个组件统一承担。
+   */
+  create: "新建 Deck…",
 };
 
 /**
@@ -93,24 +99,28 @@ export interface WorkspaceActionDeps {
   /** 原生目录选择框；用户取消时返回 null */
   readonly selectDirectory: () => Promise<string | null>;
   readonly switchWorkspace: (path: string) => Promise<void>;
-  readonly createWorkspaceFromImages: (imagesDir: string) => Promise<void>;
+  /** 打开来源选择模态（新建档）。选目录/选文件由模态内部按来源各自负责 */
+  readonly openSourcePicker: () => void;
 }
 
 /**
- * 真正执行切换：先选目录，再交给 workspace-switch。
+ * 真正执行动作。
  *
- * 校验、清零与失败回退都在 `switchWorkspace` / `createWorkspaceFromImages` 内部，
- * 这里只负责「用户取消目录框就什么都不做」。
+ * - `open`：选目录 → `switchWorkspace`，校验、清零与失败回退都在它内部，
+ *   这里只负责「用户取消目录框就什么都不做」。
+ * - `create`：**不开目录框**，只打开来源选择模态。三档来源要的东西各不相同
+ *   （目录 / PDF 文件 / 规格文件或构思文本），在这里先要一个目录等于把
+ *   「图片目录」这一档偷偷升成默认，另外两档就永远进不来。
  */
 export async function runWorkspaceAction(
   action: WorkspaceAction,
   deps: WorkspaceActionDeps,
 ): Promise<void> {
-  const dir = await deps.selectDirectory();
-  if (dir === null || dir === "") return;
-  if (action === "open") {
-    await deps.switchWorkspace(dir);
+  if (action === "create") {
+    deps.openSourcePicker();
     return;
   }
-  await deps.createWorkspaceFromImages(dir);
+  const dir = await deps.selectDirectory();
+  if (dir === null || dir === "") return;
+  await deps.switchWorkspace(dir);
 }

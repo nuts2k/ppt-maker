@@ -18,12 +18,12 @@ import {
 function deps(dir: string | null): WorkspaceActionDeps & {
   selectDirectory: ReturnType<typeof vi.fn>;
   switchWorkspace: ReturnType<typeof vi.fn>;
-  createWorkspaceFromImages: ReturnType<typeof vi.fn>;
+  openSourcePicker: ReturnType<typeof vi.fn>;
 } {
   return {
     selectDirectory: vi.fn(async () => dir),
     switchWorkspace: vi.fn(async () => undefined),
-    createWorkspaceFromImages: vi.fn(async () => undefined),
+    openSourcePicker: vi.fn(() => undefined),
   };
 }
 
@@ -81,15 +81,19 @@ describe("runWorkspaceAction", () => {
     const d = deps("/decks/other");
     await runWorkspaceAction("open", d);
     expect(d.switchWorkspace).toHaveBeenCalledWith("/decks/other");
-    expect(d.createWorkspaceFromImages).not.toHaveBeenCalled();
+    expect(d.openSourcePicker).not.toHaveBeenCalled();
   });
 
-  it("create 选定目录后调用 createWorkspaceFromImages", async () => {
+  /*
+   * 这条锁的是父任务的硬约束「不做三次零散增补」：顶栏的新建入口若自己开目录框，
+   * deck 打开状态下就只剩「图片目录」一条新建路径，PDF 与内容规格两档无路可走。
+   * 走查里正是这条先漏了（顶栏当时仍写着「从图片目录创建…」）。
+   */
+  it("create 只打开来源选择模态，不开目录框", async () => {
     const d = deps("/photos/deck-src");
     await runWorkspaceAction("create", d);
-    expect(d.createWorkspaceFromImages).toHaveBeenCalledWith(
-      "/photos/deck-src",
-    );
+    expect(d.openSourcePicker).toHaveBeenCalledTimes(1);
+    expect(d.selectDirectory).not.toHaveBeenCalled();
     expect(d.switchWorkspace).not.toHaveBeenCalled();
   });
 
@@ -97,7 +101,7 @@ describe("runWorkspaceAction", () => {
     const d = deps(null);
     await runWorkspaceAction("open", d);
     expect(d.switchWorkspace).not.toHaveBeenCalled();
-    expect(d.createWorkspaceFromImages).not.toHaveBeenCalled();
+    expect(d.openSourcePicker).not.toHaveBeenCalled();
   });
 });
 
@@ -106,6 +110,18 @@ describe("runWorkspaceAction", () => {
  * `runWorkspaceAction`。这里复现完整路径，锁住「dirty 时点了不能直接切」。
  */
 describe("点击到执行的完整路径", () => {
+  it("dirty 时点「新建 Deck…」也先出确认条，不打开模态", async () => {
+    const d = deps("/decks/other");
+    const intent = workspaceMenuIntent("create", {
+      running: false,
+      dirty: true,
+    });
+    if (intent.kind === "proceed") await runWorkspaceAction(intent.action, d);
+
+    expect(intent.kind).toBe("confirm");
+    expect(d.openSourcePicker).not.toHaveBeenCalled();
+  });
+
   it("有未保存改动时只出确认条，不开目录框也不切换", async () => {
     const d = deps("/decks/other");
     const intent = workspaceMenuIntent("open", { running: false, dirty: true });

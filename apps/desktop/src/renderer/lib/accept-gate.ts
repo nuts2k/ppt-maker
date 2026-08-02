@@ -65,30 +65,90 @@ export function stageStatusOf(
   return slide.stages.find((detail) => detail.stage === stage)?.status;
 }
 
+/*
+ * ## 源图这一侧的三个原子判据与两个复合口径（2026-08-01 拆分，RK-E）
+ *
+ * 与上面 pptx 那一侧同形：`awaitingSourceConfirm` 原本一个人干两件事——既当待办
+ * 队列的成员判据，又要当审片视图的入口判据。一旦沿用，用户确认完这一页，视图入口
+ * 立刻消失，而「重新生成」「换源」恰恰长在那个视图里，就是 M4 那次「验收后最终
+ * 确认页整个消失、重做底图入口随之没了」的同型错误。
+ *
+ * | 判据 | 口径 | 用途 |
+ * |---|---|---|
+ * | `sourceReviewReachable` | 生成页，或当前正欠一次确认 | 审片视图可达：卡片是否直达此视图 |
+ * | `awaitingSourceConfirm` | 阶段状态已知且未确认 | 待办队列成员，已确认页不得重列为待办 |
+ *
+ * 两者都由 `sourceStageKnown` / `sourceAccepted` / `generatedSource` 合成，且满足
+ * 恒等式 `awaitingSourceConfirm === sourceReviewReachable && !sourceAccepted`
+ * （由 test/accept-gate.test.ts 遍历阶段组合上锁）。消费方不得就地再写一份 filter。
+ */
+
 /**
- * 该页仍欠一次源图确认（纯耐久层判据）。
+ * `accept-source` 的阶段状态已知。
+ *
+ * 阶段整个缺失是**状态未知**（已移除的页、manifest 读不出来的页在 `deck.ts` 里
+ * 拿到的都是 `stages: []`），不是「欠一次确认」——对一个连工作区都加载不了的页
+ * 说「去确认源图」是假信息，那页真正的问题写在 `lastError` 里。
+ */
+export function sourceStageKnown(slide: Pick<SlideDetail, "stages">): boolean {
+  return stageStatusOf(slide, "accept-source") !== undefined;
+}
+
+/**
+ * 源图确认已写入（纯耐久层判据）。
+ *
+ * 判据取「completed」而非「非 pending」：显式失效（阶段轨道上点这个节点重跑）
+ * 会把它置为 `stale`，那同样是一次欠着的人工确认。
+ */
+export function sourceAccepted(slide: Pick<SlideDetail, "stages">): boolean {
+  return stageStatusOf(slide, "accept-source") === "completed";
+}
+
+/**
+ * 这一页的源图是生成出来的。
+ *
+ * 只在「可达」这一侧参与判定：生成图即便已确认，用户仍可能想回去看大图、
+ * 换一张或重掷一次。`imported` / `extracted` 的源图是用户自己给的，没有
+ * 「让模型再出一张」这回事，审片视图对它们无内容可呈现。
+ */
+export function generatedSource(
+  slide: Pick<SlideDetail, "sourceKind">,
+): boolean {
+  return slide.sourceKind === "generated";
+}
+
+/**
+ * 该页仍欠一次源图确认 —— **待办队列口径**，已确认页不在其中（纯耐久层判据）。
  *
  * `accept-source` 对 `imported` / `extracted` 在建立工作区或换源时就被自动放行为
- * `completed`（不写 accepted.json，事实记在 attempt 上），因此这条判据只会在
+ * `completed`（不写 accepted.json，事实记在 attempt 上），因此这条判据实际上只会在
  * `generated` 页上成立——消费方不必也不得自己去看 `source.kind`。
  *
  * **必须取耐久层，不能取会话层的 `gate === "source"`**：run 停在源图确认时会话层
  * 确实带着这个 gate，但它只活在本次进程里。2026-08-01 真机走查实测——刷新之后
  * 这一页从待办队列与「待处理」筛选里一起消失，只剩活动日志里一行默认折叠的记录，
  * 界面上再无任何线索说明它为什么不往下走。
- *
- * 判据写成「非 completed」而不是「pending」：显式失效（阶段轨道上点这个节点重跑）
- * 会把它置为 `stale`，那同样是一次欠着的人工确认。
- *
- * 阶段整个缺失是**状态未知**（已移除的页、manifest 读不出来的页在 `deck.ts` 里
- * 拿到的都是 `stages: []`），不是「欠一次确认」——对一个连工作区都加载不了的页
- * 说「去确认源图」是假信息，那页真正的问题写在 `lastError` 里。
  */
 export function awaitingSourceConfirm(
   slide: Pick<SlideDetail, "stages">,
 ): boolean {
-  const status = stageStatusOf(slide, "accept-source");
-  return status !== undefined && status !== "completed";
+  return sourceStageKnown(slide) && !sourceAccepted(slide);
+}
+
+/**
+ * 该页的源图审片视图是否可达 —— **入口可见性口径**，已确认页仍然可达（U10）。
+ *
+ * 「生成页」之外还收「当前正欠一次确认」：非生成页被人工失效掉 `accept-source`
+ * 之后同样停在这道门上，界面得给它一个能处理的地方，否则那页只能从 CLI 救。
+ * 这一支也正是恒等式成立的原因（见文件上方表格）。
+ */
+export function sourceReviewReachable(
+  slide: Pick<SlideDetail, "stages" | "sourceKind">,
+): boolean {
+  return (
+    sourceStageKnown(slide) &&
+    (generatedSource(slide) || !sourceAccepted(slide))
+  );
 }
 
 /** PPTX 已产出：最终确认页有内容可看，与是否已验收无关（纯耐久层判据） */

@@ -1,7 +1,12 @@
-import { basename, resolve } from "node:path";
+import { randomUUID } from "node:crypto";
+import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, join, resolve } from "node:path";
 import { addSlideToDeck } from "@cli/deck/add-slide.js";
+import { readContentSpecFile } from "@cli/deck/content-spec.js";
 import { exportDeckPptx } from "@cli/deck/export.js";
 import { removeSlideFromDeck } from "@cli/deck/remove-slide.js";
+import { runDeckSpecDraft } from "@cli/deck/spec-draft.js";
 import { deckStatus } from "@cli/deck/status.js";
 import {
   createDeckWorkspace,
@@ -9,10 +14,13 @@ import {
   resolveDeckPath,
 } from "@cli/deck/workspace.js";
 import { loadSlideWorkspace } from "@cli/slide/workspace.js";
+import type { ContentSpec, PdfExtractionReport } from "@ppt-maker/core";
+import { PdfExtractionReportSchema } from "@ppt-maker/core";
 import { ipcMain } from "electron";
 import { type ActivityLog, buildActivityRecord } from "../activity-log.js";
 import { resolveDeckId } from "../deck-context.js";
 import type { DeckRunner } from "../runner/deck-runner.js";
+import type { SourceTaskRunner } from "../runner/source-task-runner.js";
 import {
   computeStageDurations,
   deriveStageDetails,
@@ -27,6 +35,9 @@ import type {
   DeckStatusDetailedResult,
   DeckStatusResult,
   SlideDetail,
+  SourceTaskRequest,
+  SourceTaskResult,
+  SpecDraftResult,
 } from "./channels.js";
 
 async function buildDeckStatus(deckPath: string): Promise<DeckStatusResult> {
@@ -114,6 +125,7 @@ async function buildDeckStatusDetailed(
 
 export function registerDeckHandlers(
   runner: DeckRunner,
+  sourceTasks: SourceTaskRunner,
   activityLog: ActivityLog,
 ): void {
   async function log(
@@ -258,6 +270,71 @@ export function registerDeckHandlers(
         result.pageLabel,
       );
       return { pageLabel: result.pageLabel, slideId: result.slideId };
+    },
+  );
+
+  ipcMain.handle(
+    "deck:source-task-start",
+    async (
+      _event,
+      deckPath: string,
+      request: SourceTaskRequest,
+    ): Promise<SourceTaskResult> => {
+      // 活动日志由 SourceTaskRunner 自己写（它才知道最终落点与报告路径）
+      return sourceTasks.start(resolve(deckPath), request);
+    },
+  );
+
+  /**
+   * 规格初稿：一次调用、无对话。
+   *
+   * 构思文本从 renderer 来的是一段字符串，而 CLI `runDeckSpecDraft` 收的是文件路径。
+   * 在这里落成临时文件而不是给 CLI 加一个「也可以传字符串」的重载——那会让同一件事
+   * 有两个入口，而临时文件本来就是 main 该管的边界事务。
+   *
+   * 初稿输出同样落在临时目录，**不进 deck**：用户还没决定要不要出图，
+   * 此时覆盖既有 deck 的 `content-spec.json` 等于替他做了决定。
+   */
+  ipcMain.handle(
+    "deck:spec-draft",
+    async (_event, text: string): Promise<SpecDraftResult> => {
+      const dir = await mkdtemp(join(tmpdir(), "ppt-maker-spec-"));
+      const fromPath = join(dir, "brief.txt");
+      await writeFile(fromPath, text, "utf8");
+      const result = await runDeckSpecDraft({
+        fromPath,
+        outputPath: join(dir, `content-spec-${randomUUID().slice(0, 8)}.json`),
+        // 付费门槛在界面侧（按钮明示「将调用模型生成初稿」），到这一步已确认
+        confirmApi: true,
+      });
+      return { specPath: result.outputPath, spec: result.spec };
+    },
+  );
+
+  /**
+   * 读一份外部内容规格文件，供付费确认框给出条目数（U13）。
+   *
+   * 复用 CLI 的 `readContentSpecFile`（内含 `ContentSpecSchema` 校验），不在 main
+   * 侧另写一遍读取与校验——同一个文件两处各读一份，迟早对同一份坏文件给出两种说法。
+   */
+  ipcMain.handle(
+    "deck:read-content-spec",
+    async (_event, specPath: string): Promise<ContentSpec> => {
+      return readContentSpecFile(resolve(specPath));
+    },
+  );
+
+  /**
+   * 读回一份已落盘的抽取报告。
+   *
+   * 过 schema 而不是裸 `JSON.parse as T`：这份文件在磁盘上，用户可以改、可以是
+   * 上一个版本写的。不校验就等于让一个坏文件在渲染时才炸，而且炸在离原因很远的地方。
+   */
+  ipcMain.handle(
+    "deck:read-extraction-report",
+    async (_event, reportPath: string): Promise<PdfExtractionReport> => {
+      const raw = await readFile(resolve(reportPath), "utf8");
+      return PdfExtractionReportSchema.parse(JSON.parse(raw));
     },
   );
 

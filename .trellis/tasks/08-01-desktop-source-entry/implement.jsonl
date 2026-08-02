@@ -1,0 +1,5 @@
+{"file": "DESIGN.md", "reason": "项目 CLAUDE.md 的硬约束：所有前端视觉设计必须遵从。④ 是纯界面任务，来源徽标不得上色、primary 全屏唯一、六态齐全、计数用等宽数字等条款直接决定实现对错"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "六条均由真实缺陷验证，④ 至少踩到三条：新建 deck 使 deckPath 成为可变维度（切换维度激活既有竞态）、审片视图的可达/待办判据（一个判据兼职两件事）、接受后的刷新齐备性（快照与事件混用）"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "〈多代资产与「当前产物」选取契约〉——桌面端读 content_spec / generation_prompt / reference_text 必然面对多代资产，子任务① 的四个必现缺陷里有三个源于裸 role 查找"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "阶段一把 SpecDriftStatus 与 PdfExtractionReport 从 CLI 挪进 core，是 core/CLI/桌面端三层同时受影响的改动"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "禁止项与测试要求：只换 ARIA role 不兑现键盘承诺、为摘属性给通用组件加开关、断言须变异验证、静态断言用 rg —— 审片视图的键盘可达与 channels.ts 的 import 静态断言都落在这些条款上"}

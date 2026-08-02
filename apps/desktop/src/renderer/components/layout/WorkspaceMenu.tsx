@@ -7,18 +7,19 @@ import {
   workspaceMenuIntent,
   workspaceMenuItems,
 } from "@/lib/workspace-menu";
-import {
-  createWorkspaceFromImages,
-  switchWorkspace,
-} from "@/lib/workspace-switch";
+import { switchWorkspace } from "@/lib/workspace-switch";
 import { useRunStore } from "@/stores/run-store";
 import { useSlideStore } from "@/stores/slide-store";
+import { useUIStore } from "@/stores/ui-store";
 
 /**
  * 顶栏当前工作区块 + 切换下拉（PRD R1）。
  *
  * 打开与创建的入口原本只在欢迎空态里，一旦打开 deck 就再也找不到，换 deck 只能重启进程。
  * 这里把顶栏的名称/路径块本身变成入口——它已经是「当前工作区」的唯一指示物。
+ *
+ * 「新建 Deck…」只负责打开来源选择模态（M5 ④）：新建的来源有三档，这里直接开
+ * 图片目录框会让另外两档在 deck 打开状态下彻底无路可走。
  *
  * 下拉形态抄 DoctorChip：绝对定位面板 + 点外关闭，不另起一套浮层机制。
  */
@@ -41,7 +42,8 @@ export async function executeWorkspaceAction(
     await runWorkspaceAction(action, {
       selectDirectory: () => window.api.system.selectDirectory(),
       switchWorkspace,
-      createWorkspaceFromImages,
+      // 新建走来源选择模态（三档来源统一入口），不在这里开图片目录框
+      openSourcePicker: () => useUIStore.getState().openSourcePicker("new"),
     });
   } catch {
     // 忽略：错误已写入 deck-store 并由现有错误条呈现（与 DeckEmptyState 同一约定）

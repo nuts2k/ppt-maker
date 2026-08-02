@@ -1,4 +1,8 @@
-import type { TextReviewDocument } from "@ppt-maker/core";
+import type {
+  ContentSpec,
+  PdfExtractionReport,
+  TextReviewDocument,
+} from "@ppt-maker/core";
 import { contextBridge, ipcRenderer } from "electron";
 import type {
   AcceptFinalResult,
@@ -16,6 +20,10 @@ import type {
   IpcApi,
   ReplaceSourceResult,
   SaveReviewResult,
+  SourceTaskProgress,
+  SourceTaskRequest,
+  SourceTaskResult,
+  SpecDraftResult,
 } from "../main/ipc/channels.js";
 import type { RunStage } from "../shared/stages.js";
 
@@ -52,6 +60,17 @@ const api: IpcApi = {
       ipcRenderer.invoke("deck:add-slide", deckPath, imagePath),
     removeSlide: (deckPath: string, pageLabel: string): Promise<void> =>
       ipcRenderer.invoke("deck:remove-slide", deckPath, pageLabel),
+    sourceTaskStart: (
+      deckPath: string,
+      request: SourceTaskRequest,
+    ): Promise<SourceTaskResult> =>
+      ipcRenderer.invoke("deck:source-task-start", deckPath, request),
+    specDraft: (text: string): Promise<SpecDraftResult> =>
+      ipcRenderer.invoke("deck:spec-draft", text),
+    readContentSpec: (specPath: string): Promise<ContentSpec> =>
+      ipcRenderer.invoke("deck:read-content-spec", specPath),
+    readExtractionReport: (reportPath: string): Promise<PdfExtractionReport> =>
+      ipcRenderer.invoke("deck:read-extraction-report", reportPath),
   },
   slide: {
     loadReview: (workspacePath: string): Promise<TextReviewDocument | null> =>
@@ -115,8 +134,18 @@ const api: IpcApi = {
       filters?: Array<{ name: string; extensions: string[] }>,
     ): Promise<string | null> =>
       ipcRenderer.invoke("system:select-file", filters),
+    selectFiles: (
+      filters?: Array<{ name: string; extensions: string[] }>,
+    ): Promise<readonly string[]> =>
+      ipcRenderer.invoke("system:select-files", filters),
     saveFileDialog: (defaultName: string): Promise<string | null> =>
       ipcRenderer.invoke("system:save-file-dialog", defaultName),
+    confirm: (options: {
+      title: string;
+      message: string;
+      detail?: string;
+      confirmLabel: string;
+    }): Promise<boolean> => ipcRenderer.invoke("system:confirm", options),
   },
   onDeckRunProgress: (
     callback: (event: DeckRunEvent) => void,
@@ -130,6 +159,20 @@ const api: IpcApi = {
     ipcRenderer.on("deck:run-progress", handler);
     return () => {
       ipcRenderer.removeListener("deck:run-progress", handler);
+    };
+  },
+  onSourceTaskProgress: (
+    callback: (event: SourceTaskProgress) => void,
+  ): (() => void) => {
+    const handler = (
+      _e: Electron.IpcRendererEvent,
+      event: SourceTaskProgress,
+    ): void => {
+      callback(event);
+    };
+    ipcRenderer.on("deck:source-task-progress", handler);
+    return () => {
+      ipcRenderer.removeListener("deck:source-task-progress", handler);
     };
   },
 };

@@ -193,6 +193,21 @@ export function formatSpecEntryId(index: number): string {
 }
 
 /**
+ * 生成页的规格漂移状态（**纯派生、不落盘**）。
+ *
+ * - `"in-sync"`：当前规格视图指纹与生成时的快照一致
+ * - `"drifted"`：规格改过、图没跟上
+ * - `"missing"`：规格里已无对应条目（失联）
+ *
+ * 放在 core 而不是留在 `apps/cli/src/deck/status.ts` 的内联字面量联合：它是
+ * CLI 判定侧、桌面端呈现侧的三方共识枚举，而桌面端的类型交界
+ * （`main/ipc/channels.ts`）引不到 `@cli/*`，复制一份必然漂移。
+ *
+ * **计算逻辑留在 CLI**（`deckStatus` 比对 `specViewFingerprint`），core 只持有枚举。
+ */
+export type SpecDriftStatus = "in-sync" | "drifted" | "missing";
+
+/**
  * 把模型初稿补齐为合法规格：分配顺序条目 id、`revisionNotes` 置空、盖时间戳。
  *
  * 模型的分页**不具约束力**——输出是文件、可任意编辑（E5）。

@@ -1,11 +1,12 @@
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useMemo } from "react";
-import { IconButton } from "@/components/ui";
+import { Button, IconButton } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { describeActivity, groupByDate } from "@/stores/activity-format";
 import { useActivityStore } from "@/stores/activity-store";
 import { useUIStore } from "@/stores/ui-store";
 import type { ActivityRecord } from "../../../main/ipc/channels.js";
+import { openExtractionReport } from "./ExtractionReportPanel";
 
 interface ActivityPanelProps {
   className?: string;
@@ -121,17 +122,23 @@ export function ActivityPanel({
   );
 }
 
-/** 单行：结果色竖条 + 时间 + 中文描述 */
+/** 单行：结果色竖条 + 时间 + 中文描述（带报告的记录再挂一个回溯入口） */
 function ActivityRow({
   record,
 }: {
   record: ActivityRecord;
 }): React.JSX.Element {
+  // 先取出来再判空：直接在 JSX 里判 `record.reportPath !== undefined`，
+  // 闭包里 TS 收窄不到，只能退化成断言。
+  const { reportPath } = record;
   return (
-    <div className="flex items-stretch gap-3 py-0.5">
+    <div className="flex items-center gap-3 py-0.5">
       <span
         aria-hidden="true"
-        className={cn("w-0.5 shrink-0 rounded-xs", RESULT_BAR[record.result])}
+        className={cn(
+          "w-0.5 shrink-0 self-stretch rounded-xs",
+          RESULT_BAR[record.result],
+        )}
       />
       <span className="w-20 shrink-0 text-sm tabular-nums text-ink-muted">
         {formatTime(record.at)}
@@ -139,6 +146,20 @@ function ActivityRow({
       <span className="min-w-0 flex-1 text-sm text-ink-secondary">
         {describeActivity(record)}
       </span>
+      {/*
+        抽取报告的回溯入口（E4）。做成按钮而不是文字链接：DESIGN.md 明确禁止把动作
+        做成文字链接，同一个动作在任何页面都该长得一样。
+        报告文件本就落在 <deck>/extractions/，这里只是把同一份重新读回来。
+      */}
+      {reportPath !== undefined && (
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={() => openExtractionReport(reportPath)}
+        >
+          查看报告
+        </Button>
+      )}
     </div>
   );
 }

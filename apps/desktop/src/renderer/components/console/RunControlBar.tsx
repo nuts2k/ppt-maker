@@ -5,6 +5,7 @@ import { elapsedSince } from "@/lib/stage-view";
 import { cn } from "@/lib/utils";
 import { useDeckStore } from "@/stores/deck-store";
 import { useRunStore } from "@/stores/run-store";
+import { useSourceTaskStore } from "@/stores/source-task-store";
 
 /**
  * 批量执行控制条。
@@ -20,6 +21,10 @@ import { useRunStore } from "@/stores/run-store";
 interface RunControlBarProps {
   readonly className?: string;
 }
+
+/** 与 main 侧 `DeckRunner.start` 拒绝时的说法保持一致，免得同一条规则两种说法 */
+const MUTEX_REASON =
+  "建页任务正在执行，请等它结束后再运行（两者会同时写 deck）";
 
 export function RunControlBar({
   className,
@@ -40,10 +45,21 @@ export function RunControlBar({
 
   const deckPath = useDeckStore((s) => s.deckPath);
   const summary = useDeckStore((s) => s.summary);
+  /*
+   * 建页任务与流水线**双向互斥**：两者都写 deck manifest 与 slide manifest。
+   * 真正的防线在 main 的两个执行器里（`DeckRunner.start` 会拒绝），这里禁用只是
+   * 让用户不必先点一次才知道现在不行。禁用态不接受指针事件、title 弹不出来，
+   * 所以理由还得在下方摘要区写成可见文字。
+   */
+  const sourceTaskRunning = useSourceTaskStore((s) => s.running);
 
   const running = status !== "idle";
   // 活动页 = 未被软删除的页；无页可跑时主按钮无意义
-  const canStart = !running && deckPath !== null && (summary?.active ?? 0) > 0;
+  const canStart =
+    !running &&
+    !sourceTaskRunning &&
+    deckPath !== null &&
+    (summary?.active ?? 0) > 0;
   const percent = total > 0 ? Math.min(100, (doneCount / total) * 100) : 0;
 
   function handleRunAll(): void {
@@ -95,7 +111,12 @@ export function RunControlBar({
               <span className="truncate text-sm tabular-nums text-ink-secondary">
                 {buildSummaryText(summary)}
               </span>
-              {lastSummary !== null && (
+              {sourceTaskRunning && (
+                <span className="truncate text-2xs text-ink-muted">
+                  {MUTEX_REASON}
+                </span>
+              )}
+              {!sourceTaskRunning && lastSummary !== null && (
                 <span className="truncate text-2xs tabular-nums text-ink-muted">
                   {`本轮执行：完成 ${lastSummary.completed} · 待人工 ${lastSummary.gated} · 失败 ${lastSummary.failed}`}
                 </span>
@@ -105,7 +126,12 @@ export function RunControlBar({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Button variant="primary" onClick={handleRunAll} disabled={!canStart}>
+          <Button
+            variant="primary"
+            onClick={handleRunAll}
+            disabled={!canStart}
+            title={sourceTaskRunning ? MUTEX_REASON : undefined}
+          >
             <Play aria-hidden="true" className="size-3.5" />
             处理全部
           </Button>
