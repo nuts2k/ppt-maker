@@ -20,7 +20,7 @@ import {
   stepIndex,
 } from "@/lib/source-review-nav";
 import { startSourceTask } from "@/lib/source-task";
-import { SOURCE_KIND_LABELS } from "@/lib/source-view";
+import { SOURCE_KIND_LABELS, sourceAcceptanceText } from "@/lib/source-view";
 import { cn } from "@/lib/utils";
 import { useDeckStore } from "@/stores/deck-store";
 import { useRunStore } from "@/stores/run-store";
@@ -255,7 +255,7 @@ export function SourceReviewPage(): React.JSX.Element {
 
   const handleRegenerate = useCallback(() => {
     if (current === null || deckPath === null || busy) return;
-    const { slideId, pageLabel } = current;
+    const { slideId, pageLabel, sourceKind } = current;
     const trimmed = note.trim();
     setArmed(false);
     void (async () => {
@@ -280,10 +280,15 @@ export function SourceReviewPage(): React.JSX.Element {
         await syncAfterMutation(slideId);
         setNotice({
           ok: true,
-          message:
+          message: [
             trimmed === ""
               ? "已按现有规格重新生成，请确认新图"
               : "已带调整说明重新生成，说明已写回规格条目",
+            // 换回生成来源是这次点击的副作用，不说出来用户只能自己去卡片徽标上发现
+            sourceKind === "generated" ? null : "这一页的来源已换回「生成」",
+          ]
+            .filter((part) => part !== null)
+            .join("；"),
         });
       } catch (error) {
         setNotice({
@@ -417,7 +422,16 @@ export function SourceReviewPage(): React.JSX.Element {
 
   const sourceLabel =
     current.sourceKind === null ? null : SOURCE_KIND_LABELS[current.sourceKind];
-  const canRegenerate = current.sourceKind === "generated";
+  /*
+   * 「重新生成」按**能不能确定规格条目**开放，不按当前来源是不是 `generated`。
+   *
+   * 一页从 `generated` 换源成 `imported` 之后，规格条目仍能从它自己的生成快照里
+   * 确定（判据在 CLI 的 `resolveRegenerableSpecEntryId`，界面只读结论）。按来源判
+   * 会让这一页再也回不到生成来源——A11 明确要求双向。这里重新出图即换源，
+   * 来源随之变回 `generated`，源图确认也随之重新欠上一次。
+   */
+  const canRegenerate = current.regenerableSpecEntryId !== null;
+  const acceptanceText = sourceAcceptanceText(current.sourceAcceptance);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -501,9 +515,15 @@ export function SourceReviewPage(): React.JSX.Element {
           >
             {current.pageLabel}
           </span>
+          {/*
+            来源 · 源图确认性质 · 规格条目。
+            确认性质是 A10 在界面上的落点：`imported` 页与已人工确认的 `generated` 页
+            此前在界面上长得一模一样，看不出哪一张真有人过目。措辞取 core 的同一张表。
+          */}
           <span className="shrink-0 text-2xs text-ink-muted">
             {[
               sourceLabel,
+              acceptanceText,
               current.specEntryId === null
                 ? null
                 : `规格条目 ${current.specEntryId}`,
@@ -562,7 +582,11 @@ export function SourceReviewPage(): React.JSX.Element {
                   busyReason ??
                   (armed
                     ? "再点一次即调用图像生成（按次付费）"
-                    : "按规格重新出一张图；可先写一句调整说明")
+                    : current.sourceKind === "generated"
+                      ? `按规格条目 ${current.regenerableSpecEntryId} 重新出一张图；可先写一句调整说明`
+                      : // 当前不是生成来源：这一次点击顺带把来源换回 generated，
+                        // 说清楚比让用户事后从卡片徽标发现要好
+                        `按规格条目 ${current.regenerableSpecEntryId} 重新出图，这一页的来源会换回「生成」`)
                 }
               >
                 <RefreshCw aria-hidden="true" className="size-3.5" />

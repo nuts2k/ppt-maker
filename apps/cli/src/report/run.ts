@@ -11,10 +11,12 @@ import {
   PptxCheckReportSchema,
   type ProviderCallRecord,
   ProviderCallRecordSchema,
+  resolveSourceAcceptanceMode,
   SCHEMA_VERSION,
   type SlideReport,
   SlideReportSchema,
   type SlideWorkspaceManifest,
+  SOURCE_ACCEPTANCE_TEXT,
   TextReviewDocumentSchema,
   type WorkspaceAsset,
   type WorkspaceStageAttempt,
@@ -152,6 +154,23 @@ export async function runSlideReport(
   );
 
   /*
+   * 源图确认的性质（A10 第三处消费端）。
+   *
+   * 判据由 core 的 `resolveSourceAcceptanceMode` 单点给出，与 `deck status`、桌面端
+   * 完全同源。签字信息只在 `manual` 档才去读那份 `ArtifactAcceptance`——按 attemptId
+   * 取当前那份，换源归档掉的旧记录不会冒充成当前的。
+   */
+  const sourceAcceptanceMode = resolveSourceAcceptanceMode(manifest);
+  const sourceAcceptance =
+    sourceAcceptanceMode === "manual"
+      ? await readJsonAsset<ArtifactAcceptance>(
+          workspace.path,
+          currentSuccessAsset(manifest, "accept-source", "source_acceptance"),
+          (value) => ArtifactAcceptanceSchema.parse(value),
+        )
+      : null;
+
+  /*
    * 本阶段的落库状态。
    *
    * 此前这里只写 assets、完全没碰 stages/attempts，report 于是永远停在 pending：
@@ -268,6 +287,13 @@ export async function runSlideReport(
       objectIntegratedSymbol: objectSymbol,
       uncertain,
     },
+    source: {
+      kind: manifest.source.kind,
+      acceptance: sourceAcceptanceMode,
+      // 自动放行与待确认一律 null：给系统署个名就是伪造人工痕迹
+      acceptedBy: sourceAcceptance?.acceptedBy ?? null,
+      acceptedAt: sourceAcceptance?.acceptedAt ?? null,
+    },
     mask:
       maskRecord === null
         ? null
@@ -381,6 +407,13 @@ export function formatSlideReport(report: SlideReport): string {
   );
   lines.push(
     `分类：版式 ${report.classification.layoutText}，对象内符号 ${report.classification.objectIntegratedSymbol}，不确定 ${report.classification.uncertain}`,
+  );
+  lines.push(
+    `来源：${report.source.kind} · 源图${SOURCE_ACCEPTANCE_TEXT[report.source.acceptance]}${
+      report.source.acceptedBy === null
+        ? ""
+        : `（${report.source.acceptedBy} 于 ${report.source.acceptedAt}）`
+    }`,
   );
   lines.push(
     report.mask === null

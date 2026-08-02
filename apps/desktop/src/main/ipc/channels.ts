@@ -13,6 +13,7 @@ import type {
   PdfExtractionReport,
   PptxCheckReport,
   SlideSourceKind,
+  SourceAcceptanceMode,
   SpecDriftStatus,
   TextReviewDocument,
 } from "@ppt-maker/core";
@@ -33,8 +34,23 @@ export interface DeckStatusSlide {
    * `blockingStageView`，接进来会变成同一件事的第二个判据来源。
    */
   readonly sourceKind: SlideSourceKind | null;
+  /**
+   * 源图确认**是怎么通过的**：人工确认 / 按来源自动放行 / 待确认（父任务 A10）。
+   *
+   * 判据在 core（`resolveSourceAcceptanceMode`），经 CLI `deckStatus` 带过来。
+   * 界面不得按 `sourceKind` 自己反推——被人工失效后重新确认的非生成页同样是人工确认。
+   */
+  readonly sourceAcceptance: SourceAcceptanceMode | null;
   /** 生成页对应的规格条目；非生成页为 null */
   readonly specEntryId: string | null;
+  /**
+   * 这一页能不能「按内容规格重新生成」，以及用哪条规格；不能则为 null。
+   *
+   * 与 `specEntryId` 分开两个字段：一页从 `generated` 换源成 `imported` 后
+   * `specEntryId` 为 null，但历史生成快照还在，仍然换得回去（A11 正向）。
+   * 合成一个字段会让「换回生成来源」在界面上重新消失。
+   */
+  readonly regenerableSpecEntryId: string | null;
   /** 规格漂移（只读派生）：只标注，不进待办队列、不影响任何阶段状态 */
   readonly specDrift: SpecDriftStatus | null;
 }

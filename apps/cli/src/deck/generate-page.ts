@@ -4,7 +4,7 @@
 // 「图产出之后交给谁」——前者交给 `createSlideWorkspace`，后者交给 `replaceSlideSource`。
 // 图怎么生成、提示词怎么拼、溯源落哪三份资产，两条路径必须完全一致。
 import { createHash } from "node:crypto";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
@@ -309,4 +309,65 @@ export function currentGenerationAsset(
   return manifest.assets.find(
     (asset) => asset.role === role && asset.attemptId === attemptId,
   );
+}
+
+/**
+ * 这一页**能不能**按内容规格重新生成，以及要用哪个规格条目。
+ *
+ * 换源是「与新图来自哪种来源无关」的统一路径（design §4.2），但 `deck regenerate`
+ * 曾把入口锁死在 `source.kind === "generated"` 上。后果是一页从 `generated` 换成
+ * `imported` 之后**再也回不到 `generated`**，父任务 A11 的正向永远走不通
+ * （2026-08-02 阶段三走查实证）。
+ *
+ * 判据顺序，**全部取磁盘事实，不猜**：
+ *
+ * 1. 当前来源就是 `generated` → 用它自己的 `specEntryId`。
+ * 2. 否则回看历史：`stages/init/<attemptId>/content-spec.json` 是每次生成留下的
+ *    **不可变快照**（design §6.1），从最近一次 init attempt 往回找第一份读得出来的，
+ *    取其 `entry.specEntryId`。这不是推测——那份文件就是「这一页上次按哪条规格出的图」。
+ * 3. 一份都没有（从来没生成过的纯导入页）→ `null`。此时要换成生成来源必须由用户
+ *    显式指定条目（`deck regenerate --spec-entry <id>`），因为「这一页该对应哪条规格」
+ *    是内容决策，工具无从推断。
+ *
+ * 按 `attempts` 数组倒序而非资产数组顺序：attempts 是追加写入的，顺序即时间序；
+ * 资产数组经过换源归档的重排后不再保证时间序。
+ */
+export async function resolveRegenerableSpecEntryId(
+  workspacePath: string,
+  manifest: {
+    readonly source: { readonly kind: string; readonly specEntryId?: string };
+    readonly assets: readonly WorkspaceAsset[];
+    readonly attempts: readonly {
+      readonly id: string;
+      readonly stage: string;
+    }[];
+  },
+): Promise<string | null> {
+  if (manifest.source.kind === "generated") {
+    return manifest.source.specEntryId ?? null;
+  }
+
+  for (const attempt of [...manifest.attempts].reverse()) {
+    if (attempt.stage !== "init") continue;
+    const asset = manifest.assets.find(
+      (candidate) =>
+        candidate.role === "content_spec" && candidate.attemptId === attempt.id,
+    );
+    if (asset === undefined) continue;
+
+    const filePath = resolveWorkspacePath(workspacePath, asset.path);
+    try {
+      const view = ContentSpecViewSchema.parse(
+        JSON.parse(await readFile(filePath, "utf8")),
+      );
+      return view.entry.specEntryId;
+    } catch (error) {
+      // 快照读不出来不该让 `deck status` 整个失败，但也不静默吞掉——
+      // 一份损坏的历史快照正是「这页为什么突然不能重新生成」的答案。
+      process.stderr.write(
+        `[warn] 无法读取生成快照 ${asset.path}：${error instanceof Error ? error.message : String(error)}\n`,
+      );
+    }
+  }
+  return null;
 }

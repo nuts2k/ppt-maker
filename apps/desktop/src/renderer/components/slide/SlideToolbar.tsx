@@ -57,6 +57,15 @@ interface SlideToolbarProps {
   readonly navigation: SlideNavigation;
   readonly viewMode: SlideViewMode;
   /**
+   * 「来源 · 源图确认性质」一行，null 表示无从判断（已移除页）。
+   *
+   * 由调用方用 `lib/source-view` 的同一张文案表拼好传进来，工具栏不自己看
+   * `sourceKind` / `sourceAcceptance`——这两件事在审片视图页脚也展示一次，
+   * 措辞必须同源。A10 要求「报告能区分人工确认与按来源自动放行」，这是它在
+   * 单页详情上的落点：不进审片视图也能一眼看到这一页的源图是谁放行的。
+   */
+  readonly sourceSummary: string | null;
+  /**
    * 该页的最终确认页是否可达（PPTX 已产出）；决定「最终确认」档是否出现。
    *
    * 不等于「还没验收」：已验收页同样要能进去重做底图，否则那个按钮随确认页一起
@@ -124,6 +133,7 @@ export function SlideToolbar({
   pageLabel,
   navigation,
   viewMode,
+  sourceSummary,
   hasFinalGate,
   dirty,
   unreviewedCount,
@@ -186,6 +196,18 @@ export function SlideToolbar({
         {navigation.total > 0 && (
           <span className="shrink-0 text-sm tabular-nums text-ink-secondary">
             第 {navigation.index}/{navigation.total} 页
+          </span>
+        )}
+        {/*
+          来源与源图确认性质：常态信息，走 2xs 中性，不上色也不做徽标——
+          一叠里每页都有，给它上色就会挤占「有颜色 = 要你管」的额度。
+        */}
+        {sourceSummary !== null && (
+          <span
+            className="shrink-0 text-2xs text-ink-muted"
+            title="页面来源 · 源图确认是人工签的字还是按来源自动放行"
+          >
+            {sourceSummary}
           </span>
         )}
       </div>

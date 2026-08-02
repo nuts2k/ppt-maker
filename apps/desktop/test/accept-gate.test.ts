@@ -8,8 +8,8 @@ import {
   awaitingSourceConfirm,
   deriveFinalGate,
   finalAccepted,
-  generatedSource,
   pptxReady,
+  regenerableSource,
   sourceAccepted,
   sourceReviewReachable,
   sourceStageKnown,
@@ -18,17 +18,25 @@ import {
 import type { SessionRunResult } from "../src/renderer/stores/run-types.js";
 import { RUN_STAGE_SEQUENCE, type RunStage } from "../src/shared/stages.js";
 
-/** 与 todo-queue 测试同一 fixture 口径：列出的阶段为 completed，其余 pending */
+/**
+ * 与 todo-queue 测试同一 fixture 口径：列出的阶段为 completed，其余 pending。
+ *
+ * `regenerableSpecEntryId` 默认按来源给（生成页必然有一条），但**可以显式覆盖**——
+ * 「换源成 imported 之后仍能换回生成」正是这两者分离的那一格，不留这个口子就测不到。
+ */
 function makeSlide(
   completed: readonly RunStage[],
   sourceKind: SlideDetail["sourceKind"] = "imported",
-): Pick<SlideDetail, "stages" | "sourceKind"> {
+  regenerableSpecEntryId: string | null = sourceKind === "generated"
+    ? "spec-01"
+    : null,
+): Pick<SlideDetail, "stages" | "sourceKind" | "regenerableSpecEntryId"> {
   const done = new Set<string>(completed);
   const stages: SlideStageDetail[] = RUN_STAGE_SEQUENCE.map((stage) => ({
     stage,
     status: done.has(stage) ? "completed" : "pending",
   }));
-  return { stages, sourceKind };
+  return { stages, sourceKind, regenerableSpecEntryId };
 }
 
 function session(
@@ -129,16 +137,31 @@ describe("sourceReviewReachable / sourceAccepted（审片可达与已确认）",
   });
 
   it("阶段状态未知（已移除 / 读不出的页）一律不可达", () => {
-    const unknown = { stages: [], sourceKind: "generated" } as const;
+    const unknown = {
+      stages: [],
+      sourceKind: "generated",
+      regenerableSpecEntryId: "spec-01",
+    } as const;
     expect(sourceStageKnown(unknown)).toBe(false);
     expect(sourceReviewReachable(unknown)).toBe(false);
     expect(awaitingSourceConfirm(unknown)).toBe(false);
   });
 
-  it("generatedSource 只看来源，不看阶段", () => {
-    expect(generatedSource({ sourceKind: "generated" })).toBe(true);
-    expect(generatedSource({ sourceKind: "imported" })).toBe(false);
-    expect(generatedSource({ sourceKind: null })).toBe(false);
+  it("regenerableSource 只看有没有规格条目，不看当前来源", () => {
+    expect(regenerableSource({ regenerableSpecEntryId: "spec-01" })).toBe(true);
+    expect(regenerableSource({ regenerableSpecEntryId: null })).toBe(false);
+  });
+
+  /*
+   * A11 正向的界面侧一半：一页从 `generated` 换成 `imported` 之后自动放行，
+   * 若按当前来源判可达性，它就再也进不去审片视图——而「重新生成」正长在那里，
+   * 于是这一页永远回不到生成来源。判据必须落在「有没有规格条目可用」上。
+   */
+  it("换源成 imported 但历史上生成过的页仍可达（能换回生成来源）", () => {
+    const slide = makeSlide(["accept-source"], "imported", "spec-01");
+    expect(sourceAccepted(slide), "换成导入后自动放行").toBe(true);
+    expect(awaitingSourceConfirm(slide), "自动放行不该再列为待办").toBe(false);
+    expect(sourceReviewReachable(slide), "但重出图的入口必须还在").toBe(true);
   });
 
   /**
@@ -155,11 +178,14 @@ describe("sourceReviewReachable / sourceAccepted（审片可达与已确认）",
     ];
     for (const completed of combos) {
       for (const kind of ["imported", "extracted", "generated"] as const) {
-        const slide = makeSlide(completed, kind);
-        expect(
-          awaitingSourceConfirm(slide),
-          `${kind} / ${completed.join(",")}`,
-        ).toBe(sourceReviewReachable(slide) && !sourceAccepted(slide));
+        // 两档规格条目都要跑：换过源的页正是「来源不是 generated 但有条目」那一格
+        for (const entry of [null, "spec-01"]) {
+          const slide = makeSlide(completed, kind, entry);
+          expect(
+            awaitingSourceConfirm(slide),
+            `${kind} / ${entry ?? "无条目"} / ${completed.join(",")}`,
+          ).toBe(sourceReviewReachable(slide) && !sourceAccepted(slide));
+        }
       }
     }
   });

@@ -2,7 +2,11 @@ import { stageLabel } from "@shared/stages";
 import { useEffect, useMemo, useState } from "react";
 import { StatusChip } from "@/components/ui";
 import { awaitingSourceConfirm } from "@/lib/accept-gate";
-import { sourceBadgeLabel, specDriftText } from "@/lib/source-view";
+import {
+  sourceBadgeLabel,
+  sourceSummaryText,
+  specDriftText,
+} from "@/lib/source-view";
 import {
   blockingStageView,
   completedStageCount,
@@ -141,6 +145,7 @@ export function SlideCard({
    */
   const driftText = specDriftText(slide.specDrift);
   const sourceLabel = sourceBadgeLabel(slide.sourceKind);
+  const sourceSummary = sourceSummaryText(slide);
 
   // 优先级：真出错 > 待办原因 > 规格漂移 > 进度描述。待办原因用校对红——它就是「待我处理」
   const detail =
@@ -259,7 +264,15 @@ export function SlideCard({
           </span>
         ) : (
           sourceLabel !== null && (
-            <span className="absolute left-1 top-1 rounded-xs bg-canvas px-1 py-0.5 text-xs text-ink-muted">
+            /*
+              徽标只写来源那一个词（网格里 20–50 张，多一个词就撑破角位），
+              「人工确认 / 按来源自动放行」进 title：总览这一层要的是能查证，
+              逐页的正面陈述由单页工具栏承担（A10）。
+            */
+            <span
+              title={sourceSummary ?? sourceLabel}
+              className="absolute left-1 top-1 rounded-xs bg-canvas px-1 py-0.5 text-xs text-ink-muted"
+            >
               {sourceLabel}
             </span>
           )

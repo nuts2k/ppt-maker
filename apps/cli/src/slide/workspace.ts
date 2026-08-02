@@ -11,6 +11,7 @@ import {
 } from "node:fs/promises";
 import { basename, dirname, join, relative, resolve } from "node:path";
 import {
+  AUTO_SOURCE_TRUST_PROVIDER,
   createInitialStageStates,
   FoundationError,
   materializeSource,
@@ -40,8 +41,6 @@ export interface CreateSlideWorkspaceOptions {
   readonly source?: SlideSourceDraft;
 }
 
-export const AUTO_SOURCE_TRUST_PROVIDER = "auto-source-trust";
-
 /**
  * 按来源决定源图确认闸门的初始状态（D6）。
  *
@@ -49,6 +48,9 @@ export const AUTO_SOURCE_TRUST_PROVIDER = "auto-source-trust";
  * 不建验收资产——`ArtifactAcceptance` 只在真有人确认时产生。写一条 acceptedBy 指向系统的
  * 记录，等于让报告声称「这页源图有人确认过」而事实没有，正是 M4 列为头号风险的
  * 「记录与事实相反」。状态可以是 completed，但不能伪造人工痕迹。
+ *
+ * 这条 attempt 上的 `AUTO_SOURCE_TRUST_PROVIDER` 是消费端区分「人工确认 / 自动放行」的
+ * 正面标记，判据由 core 的 `resolveSourceAcceptanceMode` 单点给出。
  */
 export function buildSourceGate(
   source: SlideSource,

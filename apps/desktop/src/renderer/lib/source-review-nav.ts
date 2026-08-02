@@ -35,7 +35,11 @@ export interface SourceReviewEntry {
   readonly pageLabel: string;
   readonly absWorkspacePath: string;
   readonly sourceKind: SlideDetail["sourceKind"];
+  /** 源图确认是人工签的字还是按来源自动放行（A10）；动作区据此在页脚如实标注 */
+  readonly sourceAcceptance: SlideDetail["sourceAcceptance"];
   readonly specEntryId: string | null;
+  /** 能按规格重出图时是那条规格条目，否则 null；动作区据此决定「重新生成」出不出现 */
+  readonly regenerableSpecEntryId: string | null;
   /** 已确认（`accept-source` 已写入）；缩略图带据此打勾，动作区据此收起「接受」 */
   readonly accepted: boolean;
 }
@@ -71,7 +75,9 @@ export function selectSourceReviewSlides(
       pageLabel: slide.pageLabel,
       absWorkspacePath: slide.absWorkspacePath,
       sourceKind: slide.sourceKind,
+      sourceAcceptance: slide.sourceAcceptance,
       specEntryId: slide.specEntryId,
+      regenerableSpecEntryId: slide.regenerableSpecEntryId,
       accepted: sourceAccepted(slide),
     });
   }

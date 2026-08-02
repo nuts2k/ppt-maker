@@ -3,6 +3,7 @@ import {
   type ContentSpec,
   type ContentSpecEntry,
   FoundationError,
+  type SlideSourceKind,
   type SlideStage,
 } from "@ppt-maker/core";
 import type { OpenAiImageGenerator } from "../providers/openai-image.js";
@@ -13,6 +14,7 @@ import {
   attachGenerationAssets,
   buildGeneratedSourceDraft,
   generatePageMaterial,
+  resolveRegenerableSpecEntryId,
   type UploadNotice,
 } from "./generate-page.js";
 import {
@@ -27,6 +29,13 @@ export interface DeckRegenerateOptions {
   readonly page: string;
   /** 调整说明，**机械追加**进该条目 `revisionNotes`；不给则按现有规格重出一次 */
   readonly note?: string;
+  /**
+   * 显式指定要用哪个规格条目。
+   *
+   * 只在**推断不出来**时才必须给（从来没生成过的纯导入页要换成生成来源）。给了就以它
+   * 为准——「这一页该对应哪条规格」是内容决策，用户说了算，工具不得反过来覆盖。
+   */
+  readonly specEntryId?: string;
   readonly confirmUpload: boolean;
   readonly generate?: OpenAiImageGenerator;
   readonly onBeforeUpload?: (notice: UploadNotice) => void;
@@ -41,6 +50,8 @@ export interface DeckRegenerateResult {
   readonly revisionNotes: readonly string[];
   readonly invalidated: readonly SlideStage[];
   readonly requiresAcceptance: boolean;
+  /** 重生成**之前**该页的来源。不是 `generated` 即意味着这次顺带换回了生成来源 */
+  readonly previousSourceKind: SlideSourceKind;
 }
 
 /**
@@ -68,8 +79,15 @@ function appendRevisionNote(
   if (entry === undefined) {
     throw new FoundationError(
       "INVALID_INPUT",
-      `内容规格中找不到条目：${specEntryId}（该页已失联，请先在规格里补回该条目）`,
-      { specEntryId },
+      `内容规格中找不到条目：${specEntryId}（该页已失联，请先在规格里补回该条目，` +
+        `或用 --spec-entry 指定一个现有条目）。当前可用条目：${
+          spec.entries.map((candidate) => candidate.specEntryId).join(", ") ||
+          "（空）"
+        }`,
+      {
+        specEntryId,
+        available: spec.entries.map((candidate) => candidate.specEntryId),
+      },
     );
   }
   return {
@@ -113,14 +131,7 @@ export async function runDeckRegenerate(
     slideEntry.workspacePath,
   );
   const workspace = await loadSlideWorkspace(slideWorkspacePath);
-  if (workspace.manifest.source.kind !== "generated") {
-    throw new FoundationError(
-      "INVALID_INPUT",
-      `只有生成来源的页可以重新生成，该页来源是：${workspace.manifest.source.kind}`,
-      { page: options.page, kind: workspace.manifest.source.kind },
-    );
-  }
-  const specEntryId = workspace.manifest.source.specEntryId;
+  const previousSourceKind = workspace.manifest.source.kind;
 
   const spec = await loadDeckContentSpec(deck.path);
   if (spec === null) {
@@ -128,6 +139,37 @@ export async function runDeckRegenerate(
       "INVALID_INPUT",
       "deck 内没有内容规格，无法重新生成；请先运行 deck generate --spec",
       { deckPath: deck.path },
+    );
+  }
+
+  /*
+   * 前置校验**不再要求当前来源是 `generated`**。
+   *
+   * 换源是与新图来源无关的统一路径（design §4.2〈换源后的重新判定〉：「换源统一走
+   * 一条路径，而这条路径按新来源决定是否需要重新确认，不需要为『重新生成』单开分支」）。
+   * 旧的 `kind === "generated"` 门禁与这句话相悖，实际后果是一页换成 `imported` 之后
+   * 再也回不到 `generated`，A11 的正向永远走不通。
+   *
+   * 换掉门禁的不是「放宽」，而是换一个**真正的**前提：能不能无歧义地确定规格条目。
+   */
+  const specEntryId =
+    options.specEntryId ??
+    (await resolveRegenerableSpecEntryId(
+      slideWorkspacePath,
+      workspace.manifest,
+    ));
+  if (specEntryId === null) {
+    throw new FoundationError(
+      "INVALID_INPUT",
+      `无法确定该页要用哪个规格条目（当前来源 ${previousSourceKind}，且没有任何一次生成快照）；` +
+        `请用 --spec-entry 显式指定。当前规格可用条目：${
+          spec.entries.map((entry) => entry.specEntryId).join(", ") || "（空）"
+        }`,
+      {
+        page: options.page,
+        kind: previousSourceKind,
+        available: spec.entries.map((entry) => entry.specEntryId),
+      },
     );
   }
 
@@ -181,6 +223,7 @@ export async function runDeckRegenerate(
       revisionNotes: updated.entry.revisionNotes,
       invalidated: replaced.invalidated,
       requiresAcceptance: replaced.requiresAcceptance,
+      previousSourceKind,
     };
   } finally {
     await material.cleanup();
@@ -192,6 +235,9 @@ export function formatDeckRegenerateResult(
 ): string {
   const lines = [
     `已重新生成 ${result.pageLabel}（${result.specEntryId}，${result.attemptId}）`,
+    ...(result.previousSourceKind === "generated"
+      ? []
+      : [`来源已由 ${result.previousSourceKind} 换回 generated`]),
     `失效阶段：${result.invalidated.join(", ") || "无"}`,
     result.revisionNotes.length === 0
       ? "调整说明：无"

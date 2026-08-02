@@ -19,6 +19,7 @@ import {
 import type { ReviewEntryIntent } from "@/lib/review-filter";
 import { countUnreviewed } from "@/lib/review-status";
 import { adjacentSlides } from "@/lib/slide-nav";
+import { sourceSummaryText } from "@/lib/source-view";
 import { cn } from "@/lib/utils";
 import { FinalConfirmPage } from "@/pages/FinalConfirmPage";
 import { useDeckStore } from "@/stores/deck-store";
@@ -493,6 +494,7 @@ export function ReviewPage(): React.JSX.Element {
         pageLabel={slide.pageLabel}
         navigation={navigation}
         viewMode={viewMode}
+        sourceSummary={sourceSummaryText(slide)}
         hasFinalGate={finalGate !== null}
         dirty={dirty}
         unreviewedCount={unreviewedCount}

@@ -75,10 +75,10 @@ export function stageStatusOf(
  *
  * | 判据 | 口径 | 用途 |
  * |---|---|---|
- * | `sourceReviewReachable` | 生成页，或当前正欠一次确认 | 审片视图可达：卡片是否直达此视图 |
+ * | `sourceReviewReachable` | 能按规格重出图，或当前正欠一次确认 | 审片视图可达：卡片是否直达此视图 |
  * | `awaitingSourceConfirm` | 阶段状态已知且未确认 | 待办队列成员，已确认页不得重列为待办 |
  *
- * 两者都由 `sourceStageKnown` / `sourceAccepted` / `generatedSource` 合成，且满足
+ * 两者都由 `sourceStageKnown` / `sourceAccepted` / `regenerableSource` 合成，且满足
  * 恒等式 `awaitingSourceConfirm === sourceReviewReachable && !sourceAccepted`
  * （由 test/accept-gate.test.ts 遍历阶段组合上锁）。消费方不得就地再写一份 filter。
  */
@@ -105,16 +105,22 @@ export function sourceAccepted(slide: Pick<SlideDetail, "stages">): boolean {
 }
 
 /**
- * 这一页的源图是生成出来的。
+ * 这一页能按内容规格重新出图。
  *
- * 只在「可达」这一侧参与判定：生成图即便已确认，用户仍可能想回去看大图、
- * 换一张或重掷一次。`imported` / `extracted` 的源图是用户自己给的，没有
- * 「让模型再出一张」这回事，审片视图对它们无内容可呈现。
+ * 只在「可达」这一侧参与判定：能重出图的页即便已确认，用户仍可能想回去看大图、
+ * 换一张或重掷一次；从来没跟规格沾过边的导入页没有「让模型再出一张」这回事，
+ * 审片视图对它们无内容可呈现。
+ *
+ * **判据是「有没有规格条目可用」而不是「当前来源是不是 generated」**：一页从
+ * `generated` 换源成 `imported` 之后，它的历史生成快照还在、仍然换得回去，
+ * 按当前来源判会把这条路整个藏起来——那正是 A11 正向走不通的界面侧一半
+ * （CLI 侧是 `deck regenerate` 的门禁，两处同时修）。判据本身由 CLI 的
+ * `resolveRegenerableSpecEntryId` 单点给出，界面只读结论。
  */
-export function generatedSource(
-  slide: Pick<SlideDetail, "sourceKind">,
+export function regenerableSource(
+  slide: Pick<SlideDetail, "regenerableSpecEntryId">,
 ): boolean {
-  return slide.sourceKind === "generated";
+  return slide.regenerableSpecEntryId !== null;
 }
 
 /**
@@ -138,16 +144,16 @@ export function awaitingSourceConfirm(
 /**
  * 该页的源图审片视图是否可达 —— **入口可见性口径**，已确认页仍然可达（U10）。
  *
- * 「生成页」之外还收「当前正欠一次确认」：非生成页被人工失效掉 `accept-source`
+ * 「能重出图的页」之外还收「当前正欠一次确认」：非生成页被人工失效掉 `accept-source`
  * 之后同样停在这道门上，界面得给它一个能处理的地方，否则那页只能从 CLI 救。
  * 这一支也正是恒等式成立的原因（见文件上方表格）。
  */
 export function sourceReviewReachable(
-  slide: Pick<SlideDetail, "stages" | "sourceKind">,
+  slide: Pick<SlideDetail, "stages" | "regenerableSpecEntryId">,
 ): boolean {
   return (
     sourceStageKnown(slide) &&
-    (generatedSource(slide) || !sourceAccepted(slide))
+    (regenerableSource(slide) || !sourceAccepted(slide))
   );
 }
 

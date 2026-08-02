@@ -1,16 +1,22 @@
 import { basename } from "node:path";
 import {
   findBlockingStage,
+  resolveSourceAcceptanceMode,
   SLIDE_STAGE_ORDER,
   type SlideSourceKind,
   type SlideStage,
+  SOURCE_ACCEPTANCE_TEXT,
+  type SourceAcceptanceMode,
   type SpecDriftStatus,
   type WorkspaceStageState,
 } from "@ppt-maker/core";
 import { specViewFingerprint } from "../providers/page-generation.js";
 import { loadSlideWorkspace } from "../slide/workspace.js";
 import { loadDeckContentSpec } from "./content-spec.js";
-import { currentGenerationAsset } from "./generate-page.js";
+import {
+  currentGenerationAsset,
+  resolveRegenerableSpecEntryId,
+} from "./generate-page.js";
 import { loadDeckWorkspace, resolveDeckPath } from "./workspace.js";
 
 const ACCEPT_PPTX_INDEX = SLIDE_STAGE_ORDER.indexOf("accept-pptx");
@@ -64,8 +70,28 @@ export interface DeckSlideStatus {
   readonly removed: boolean;
   /** 页面来源。移除的页不加载工作区，故为 null */
   readonly sourceKind: SlideSourceKind | null;
+  /**
+   * 源图确认**是怎么通过的**（父任务 A10）。移除的页不加载工作区，故为 null。
+   *
+   * 判据由 core 的 `resolveSourceAcceptanceMode` 单点给出，取磁盘事实
+   * （attempt 的 provider + 有无 `ArtifactAcceptance`），**不按 `sourceKind` 反推**——
+   * 生成页在确认之前同样是 `generated`，反推会把「一眼没看过」报成「人工确认」。
+   *
+   * 这一条正是 A10 后半「报告能区分人工确认与按来源自动放行」的落点：此前磁盘层
+   * 区分得很干净，但没有任何消费端把它读出来，报告里看不出差别。
+   */
+  readonly sourceAcceptance: SourceAcceptanceMode | null;
   /** 生成页对应的规格条目；非生成页为 null */
   readonly specEntryId: string | null;
+  /**
+   * 这一页可用于「按内容规格重新生成」的规格条目；不可重新生成时为 null。
+   *
+   * 与 `specEntryId` 是**两件事**：后者回答「当前这张图是按哪条规格出的」（非生成页
+   * 必然为 null），前者回答「这一页能不能重新出图、用哪条规格」——一页从 `generated`
+   * 换源成 `imported` 之后 `specEntryId` 为 null，但它的历史快照还在，仍然回得去。
+   * 合成一个字段会让「换回生成来源」这条路重新消失（A11 正向）。
+   */
+  readonly regenerableSpecEntryId: string | null;
   /**
    * 规格漂移状态（R6，只读派生）。
    *
@@ -161,16 +187,17 @@ export async function deckStatus(deckPath: string): Promise<DeckStatusResult> {
         started: false,
         removed: true,
         sourceKind: null,
+        sourceAcceptance: null,
         specEntryId: null,
+        regenerableSpecEntryId: null,
         specDrift: null,
         generation: null,
       });
       continue;
     }
 
-    const workspace = await loadSlideWorkspace(
-      resolveDeckPath(deck.path, entry.workspacePath),
-    );
+    const slideWorkspacePath = resolveDeckPath(deck.path, entry.workspacePath);
+    const workspace = await loadSlideWorkspace(slideWorkspacePath);
     const progress = computeProgress(workspace.manifest.stages);
     const source = workspace.manifest.source;
     // 只对 generated 页判漂移：imported / extracted 页没有 specEntryId，
@@ -197,7 +224,12 @@ export async function deckStatus(deckPath: string): Promise<DeckStatusResult> {
       started: progress.started,
       removed: false,
       sourceKind: source.kind,
+      sourceAcceptance: resolveSourceAcceptanceMode(workspace.manifest),
       specEntryId,
+      regenerableSpecEntryId: await resolveRegenerableSpecEntryId(
+        slideWorkspacePath,
+        workspace.manifest,
+      ),
       specDrift,
       generation:
         source.kind === "generated"
@@ -299,5 +331,45 @@ export function formatDeckStatus(result: DeckStatusResult): string {
     lines.push(`  规格失联: ${missing.join(", ")}（规格里已无对应条目）`);
   }
 
+  lines.push(...formatSourceAcceptance(result.slides));
+
   return lines.join("\n");
+}
+
+/**
+ * 源图确认一行 —— A10 后半要求「报告能区分人工确认与按来源自动放行」的人读落点。
+ *
+ * 计数与待确认页分两行：前者是这一叠的构成（扫一眼就知道有几页真的有人签过字），
+ * 后者是**要你管**的那部分，必须逐页点名，否则用户只知道「有 3 页待确认」却不知道
+ * 是哪三页。已移除页不计入——它们的工作区压根不加载。
+ */
+function formatSourceAcceptance(
+  slides: readonly DeckSlideStatus[],
+): readonly string[] {
+  const counts: Record<SourceAcceptanceMode, number> = {
+    manual: 0,
+    auto: 0,
+    pending: 0,
+  };
+  const pendingPages: string[] = [];
+  for (const slide of slides) {
+    if (slide.removed || slide.sourceAcceptance === null) continue;
+    counts[slide.sourceAcceptance] += 1;
+    if (slide.sourceAcceptance === "pending") {
+      pendingPages.push(basename(slide.workspacePath));
+    }
+  }
+  if (counts.manual + counts.auto + counts.pending === 0) {
+    return [];
+  }
+
+  const lines = [
+    `  源图确认: ${SOURCE_ACCEPTANCE_TEXT.manual} ${counts.manual}，${SOURCE_ACCEPTANCE_TEXT.auto} ${counts.auto}，${SOURCE_ACCEPTANCE_TEXT.pending} ${counts.pending}`,
+  ];
+  if (pendingPages.length > 0) {
+    lines.push(
+      `  待确认源图: ${pendingPages.join(", ")}（ppt-maker slide accept-source <workspace>）`,
+    );
+  }
+  return lines;
 }

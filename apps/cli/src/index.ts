@@ -637,20 +637,34 @@ deck
   .requiredOption("--page <label>", "页面标识（如 page-04）或 slideId")
   .option("--note <text>", "调整说明，机械追加进该条目 revisionNotes")
   .option(
+    "--spec-entry <id>",
+    "显式指定规格条目；仅在无法从该页历史推断时必须（如从未生成过的导入页换成生成来源）",
+  )
+  .option(
     "--confirm-upload",
     "确认把内容规格提示词发送到 OpenAI 重新生成页面图",
   )
-  .description("按调整说明重新生成某页并换源；该页下游失效，其它页不受影响")
+  .description(
+    "按调整说明重新生成某页并换源；非生成来源的页同样可用（换回生成来源），该页下游失效，其它页不受影响",
+  )
   .action(
     async (
       deckPath: string,
-      options: { page: string; note?: string; confirmUpload?: boolean },
+      options: {
+        page: string;
+        note?: string;
+        specEntry?: string;
+        confirmUpload?: boolean;
+      },
     ) => {
       const result = await runDeckRegenerate({
         deckPath: resolve(deckPath),
         page: options.page,
         confirmUpload: options.confirmUpload === true,
         ...(options.note === undefined ? {} : { note: options.note }),
+        ...(options.specEntry === undefined
+          ? {}
+          : { specEntryId: options.specEntry }),
         onBeforeUpload: (notice) => {
           process.stderr.write(
             `即将发送到 ${OPENAI_IMAGE_MODEL}：${notice.specEntryId} 提示词 ${notice.promptBytes} 字节 (${notice.promptSha256})\n`,

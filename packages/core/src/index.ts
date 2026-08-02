@@ -12,6 +12,7 @@ export * from "./pptx-contracts.js";
 export * from "./pptx-text-style.js";
 export * from "./provider.js";
 export * from "./report-contracts.js";
+export * from "./source-acceptance.js";
 export * from "./source-contracts.js";
 export * from "./stage-graph.js";
 export * from "./text-assist-contracts.js";

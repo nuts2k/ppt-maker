@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type {
   ContentSpec,
   DoctorReport,
@@ -10,10 +11,14 @@ import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { runAcceptClean } from "../src/clean/accept.js";
 import { runSlideClean } from "../src/clean/run.js";
+import { addSlideToDeck } from "../src/deck/add-slide.js";
 import { loadDeckContentSpec } from "../src/deck/content-spec.js";
 import { runDeckGenerate } from "../src/deck/generate.js";
 import { currentGenerationAsset } from "../src/deck/generate-page.js";
-import { runDeckRegenerate } from "../src/deck/regenerate.js";
+import {
+  formatDeckRegenerateResult,
+  runDeckRegenerate,
+} from "../src/deck/regenerate.js";
 import { deckStatus } from "../src/deck/status.js";
 import { runSlideMask } from "../src/mask/run.js";
 import { runAcceptPptx } from "../src/pptx/accept.js";
@@ -21,6 +26,7 @@ import { runSlidePptx } from "../src/pptx/run.js";
 import type { OpenAiImageEditor } from "../src/providers/openai-image.js";
 import { runAcceptSource } from "../src/slide/accept-source.js";
 import { runSlideOcr } from "../src/slide/ocr.js";
+import { replaceSlideSource } from "../src/slide/replace-source.js";
 import { runSlideReview } from "../src/slide/review.js";
 import { runSlideValidateReview } from "../src/slide/validate-review.js";
 import {
@@ -37,6 +43,13 @@ import {
 } from "./deck-generate-fixtures.js";
 
 const FONT = "Microsoft YaHei";
+
+/** 换源用的「自己的图」：与生成图不同来源，尺寸同为 16:9 */
+function pngFixture(): string {
+  return fileURLToPath(
+    new URL("../../../fixtures/foundation/mixed-text.png", import.meta.url),
+  );
+}
 
 function fontReadyReport(): DoctorReport {
   return {
@@ -436,4 +449,135 @@ describe("规格漂移只读（C8）", () => {
       "missing",
     ]);
   });
+});
+
+/**
+ * A11 正向：`imported` → `generated`。
+ *
+ * 反向（generated → imported）早就通了，正向此前**根本没有路**——`deck regenerate`
+ * 要求 `source.kind === "generated"`，`deck replace-source` 只收图片文件，于是一页
+ * 一旦换成导入就再也回不去（2026-08-02 阶段三走查实测报
+ * 「只有生成来源的页可以重新生成，该页来源是：imported」并以退出码 1 结束）。
+ *
+ * 这与 design §4.5〈换源后的重新判定〉直接相悖：「换源统一走一条路径，而这条路径
+ * 按新来源决定是否需要重新确认，不需要为『重新生成』单开分支」。
+ */
+describe("换源为生成来源（A11 正向）", () => {
+  it("换成导入图的页能换回生成来源，并重新回到待确认", async () => {
+    const { deckPath, buffer } = await setupGeneratedDeck();
+    const workspacePath = join(deckPath, "slides/page-01");
+
+    await runAcceptSource({ workspacePath, acceptedBy: "test" });
+    await replaceSlideSource({ workspacePath, imagePath: pngFixture() });
+
+    // **前置断言**：确实处在缺陷现场——当前来源已是 imported、已自动放行
+    const imported = await loadSlideWorkspace(workspacePath);
+    expect(imported.manifest.source.kind).toBe("imported");
+    const importedStatus = await deckStatus(deckPath);
+    expect(importedStatus.slides[0]?.sourceKind).toBe("imported");
+    expect(importedStatus.slides[0]?.sourceAcceptance).toBe("auto");
+    // 当前来源不是生成，故 specEntryId 为 null；但历史快照还在，仍换得回去
+    expect(importedStatus.slides[0]?.specEntryId).toBeNull();
+    expect(importedStatus.slides[0]?.regenerableSpecEntryId).toBe("entry-001");
+
+    const otherBefore = JSON.stringify(
+      (await loadSlideWorkspace(join(deckPath, "slides/page-02"))).manifest,
+    );
+
+    const result = await runDeckRegenerate({
+      deckPath,
+      page: "page-01",
+      note: "换回生成来源",
+      confirmUpload: true,
+      generate: fakeGenerator(buffer, "req_back_to_generated"),
+    });
+    expect(result.previousSourceKind).toBe("imported");
+    expect(result.specEntryId).toBe("entry-001");
+    expect(result.requiresAcceptance, "生成图必须重新确认").toBe(true);
+    expect(formatDeckRegenerateResult(result)).toContain(
+      "来源已由 imported 换回 generated",
+    );
+
+    const after = await loadSlideWorkspace(workspacePath);
+    expect(after.manifest.source.kind).toBe("generated");
+    // init 刚刚成功，绝不能被标 stale；源图确认回到「欠一次」
+    expect(
+      after.manifest.stages.find((state) => state.stage === "init")?.status,
+    ).toBe("completed");
+    expect(
+      after.manifest.stages.find((state) => state.stage === "accept-source")
+        ?.status,
+      "换回生成来源必须重新欠一次人工确认",
+    ).not.toBe("completed");
+    expect((await deckStatus(deckPath)).slides[0]?.sourceAcceptance).toBe(
+      "pending",
+    );
+    // 说明照常写回规格条目
+    expect(
+      (await loadDeckContentSpec(deckPath))?.entries[0]?.revisionNotes,
+    ).toEqual(["换回生成来源"]);
+
+    // 失效只作用于本页
+    expect(
+      JSON.stringify(
+        (await loadSlideWorkspace(join(deckPath, "slides/page-02"))).manifest,
+      ),
+    ).toBe(otherBefore);
+  }, 60_000);
+
+  it("从未生成过的导入页必须显式给 --spec-entry，错误里列出可用条目", async () => {
+    const { deckPath, buffer } = await setupGeneratedDeck();
+    // 往同一个 deck 里追加一页纯导入（从没跟规格沾过边）
+    const added = await addSlideToDeck({ deckPath, imagePath: pngFixture() });
+    expect(added.pageLabel).toBe("page-03");
+
+    const status = await deckStatus(deckPath);
+    expect(
+      status.slides[2]?.regenerableSpecEntryId,
+      "没有任何生成快照的页不该被推断出条目",
+    ).toBeNull();
+
+    await expect(
+      runDeckRegenerate({
+        deckPath,
+        page: "page-03",
+        confirmUpload: true,
+        generate: fakeGenerator(buffer, "req_no_entry"),
+      }),
+      // 关键是**不能猜**：没有依据时报错并告诉用户有哪些条目可选
+    ).rejects.toThrow(/--spec-entry.*entry-001, entry-002/su);
+
+    const result = await runDeckRegenerate({
+      deckPath,
+      page: "page-03",
+      specEntryId: "entry-002",
+      confirmUpload: true,
+      generate: fakeGenerator(buffer, "req_explicit_entry"),
+    });
+    expect(result.specEntryId).toBe("entry-002");
+    expect(result.previousSourceKind).toBe("imported");
+    expect(result.requiresAcceptance).toBe(true);
+
+    const workspace = await loadSlideWorkspace(
+      join(deckPath, "slides/page-03"),
+    );
+    expect(workspace.manifest.source.kind).toBe("generated");
+    expect(
+      workspace.manifest.source.kind === "generated" &&
+        workspace.manifest.source.specEntryId,
+    ).toBe("entry-002");
+  }, 60_000);
+
+  it("显式给了规格里不存在的条目时报错并列出可用条目", async () => {
+    const { deckPath, buffer } = await setupGeneratedDeck();
+    await expect(
+      runDeckRegenerate({
+        deckPath,
+        page: "page-01",
+        specEntryId: "entry-999",
+        confirmUpload: true,
+        generate: fakeGenerator(buffer, "req_bad_entry"),
+      }),
+    ).rejects.toThrow(/entry-999.*entry-001, entry-002/su);
+  }, 60_000);
 });

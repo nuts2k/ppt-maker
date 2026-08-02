@@ -30,6 +30,11 @@ interface SlideFixture {
   readonly completed?: readonly RunStage[];
   readonly removed?: boolean;
   readonly stageStatus?: string;
+  /**
+   * 可重出图的规格条目。缺省按来源推（生成页有、其余没有），
+   * 显式给值是为了造出「换源成 imported 但历史上生成过」这一格。
+   */
+  readonly regenerableSpecEntryId?: string | null;
 }
 
 function makeSlide(fixture: SlideFixture): SlideDetail {
@@ -49,8 +54,19 @@ function makeSlide(fixture: SlideFixture): SlideDetail {
     stageStatus: fixture.stageStatus ?? "completed",
     removed: fixture.removed ?? false,
     sourceKind,
+    sourceAcceptance: done.has("accept-source")
+      ? sourceKind === "generated"
+        ? "manual"
+        : "auto"
+      : "pending",
     specEntryId:
       sourceKind === "generated" ? `entry-${fixture.pageLabel}` : null,
+    regenerableSpecEntryId:
+      fixture.regenerableSpecEntryId !== undefined
+        ? fixture.regenerableSpecEntryId
+        : sourceKind === "generated"
+          ? `entry-${fixture.pageLabel}`
+          : null,
     specDrift: null,
     stages,
     lastError: null,
