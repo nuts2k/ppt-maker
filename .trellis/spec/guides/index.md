@@ -24,7 +24,7 @@ These guides help you **ask the right questions before coding**.
 | [Code Reuse Thinking Guide](./code-reuse-thinking-guide.md) | Identify patterns and reduce duplication | When you notice repeated patterns |
 | [Cross-Layer Thinking Guide](./cross-layer-thinking-guide.md) | Think through data flow across layers | Features spanning multiple layers |
 | [静默失败诊断指南](./silent-failure-thinking-guide.md) | 定位「点了没反应」与「界面说成功但产物不对」两类问题的真实失败点 | 用户报告点击无反馈、卡住、跑没跑不清楚，或界面状态与磁盘产物对不上时 |
-| [验收覆盖思考指南](./verification-coverage-thinking-guide.md) | 检查验收的覆盖形状——你止步于哪里，缺陷就藏在哪之后 | 写验收标准、设计 fixture、判断某条标准能否勾掉时 |
+| [验收覆盖思考指南](./verification-coverage-thinking-guide.md) | 检查验收的覆盖形状——你止步于哪里，缺陷就藏在哪之后；含多代理并行走查的组织方式 | 写验收标准、设计 fixture、判断某条标准能否勾掉、组织一轮集成验收时 |
 
 ---
 

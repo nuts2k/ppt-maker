@@ -306,6 +306,23 @@ export async function invalidateSlideStage(options: {
 
 因此**只要状态还是 `completed`，任何形式的「重跑」都会被静默跳过**——执行器一路滑到下一个人工闸门原地返回，日志上表现为 run 在毫秒内 `run-start → page-done` 且**没有任何 `stage-start`**。
 
+**「各阶段守卫」是每个分支的义务，不是某几个分支的特权**（M5 阶段三走查验证，2026-08-02）。上面那条 `run-from.ts` 守卫写的是「各阶段」，但实现里长期只挂在 `assist-review` / `clean` / `accept-pptx` 三个分支上。其余分支分两类：
+
+| 分支 | 漏挂守卫的实际后果 |
+|---|---|
+| `ocr` / `review` / `mask` / `pptx` | 函数内部有 `isStageReusable` 兜底，产物字节不变、attempt 不增，**代价只是空跑** |
+| **`report`** | **内部没有任何复用**，每次重写 `report.json`（新 `generatedAt`）并追加一条 attempt |
+
+于是一份 11 页全 completed 的 deck，每跑一次 `deck run` 就有 11 页的目录指纹全变（`manifest.json` + `report.json` + `validation.json` 三个文件），实测 `report` attempt 已累积 9 条而其它阶段各 1 条。危害有三层，一层比一层深：
+
+1. attempts 无界增长；
+2. **打穿「已完成页零变化」这个不变量**——所有靠 `snap.sh` 比对目录 shasum 的判据（换源隔离、追加不影响既有页、规格漂移不污染其它页）都会被它污染成假阳性；
+3. 「report 有新 attempt」不再能说明这一轮真做了事，与《静默失败诊断指南》的判据直接冲突。
+
+**内部有 `isStageReusable` 不能替代编排层守卫**：前者保的是产物字节，后者保的是「这一轮到底跑没跑」。两者缺一，`report` 这种没有指纹复用的阶段就会漏网。
+
+**瞬态阶段（`validate-review`）的处理另有一条**：它不落 `stages` 状态，所以没有 `completed` 可判。要止住它每次重写 `checkedAt`，判据应取**内容**（`documentSha256` + `rulesVersion` + 当前 review attempt 三者一致就复用既有报告），**绝不能为它伪造一个持久状态**——那等于在 manifest 里凭空造一个阶段。
+
 **两条失效路径，语义不同，不可互相替代**：
 
 | 路径 | 触发者 | 判据 | 实现 |
@@ -334,6 +351,8 @@ export async function invalidateSlideStage(options: {
 - **断言必须落在 manifest 状态上，不能只断言函数返回值**。`slide-run-report.test.ts` 原有 5 个用例全部只检查 `report` 内容，无一碰 `manifest.stages`，这正是缺陷 6 能存活到端到端走查的原因。
 - 失效后 `isStageReusable` 必须为 `false`（指纹不变，仅凭状态变化就要拒绝复用）；上游不被牵连；`pending` 不被改写成 `stale`；`reason` 为空报错。
 - 重跑递增 attempt 编号而非覆盖。
+- **幂等回归必须断言磁盘字节，不能断言「阶段还是 completed」**。后者在缺陷存在时也成立——`report` 重写完仍是 completed。正确的断言点是：全 completed 的工作区跑一遍编排后，`manifest.json` / `report.json` / `validation.json` 三个文件的内容逐字节不变。写完先**故意去掉守卫确认用例变红**，否则你不知道它测的是不是自己。
+- 注意区分两条 `report` 路径：**显式调用** `slide report` 命令递增 attempt 是对的（既有用例锁着这条，别改坏）；**编排层**对已完成 report 的无条件重跑才是缺陷。同一个阶段，两种入口，语义不同。
 
 ### 7. Wrong vs Correct
 
@@ -760,4 +779,108 @@ export const ContentSpecSchema = z.object({
   schemaVersion: z.literal(CONTENT_SPEC_VERSION),
   ...
 });
+```
+
+## 场景：来源规则派生状态——重判点与消费端（M5 阶段三集成走查验证，2026-08-02）
+
+### 1. Scope / Trigger
+
+- 触发条件：新增或修改任何**由规则单点推导、而非由人操作产生**的状态；给这类状态新增写入路径；或在报告 / 界面上呈现「这个状态是怎么来的」。
+- 本项目的实例是 `accept-source`：它的初始值由 `requiresSourceAcceptance(source)` 单点决定——`generated` 为 `pending`，`imported` / `extracted` 直接 `completed`。**来源决定的是「源图是否已被信任」这一个布尔量，不是「走哪条链路」**（design.md §4.5）。
+- 已由真实走查验证的两个缺陷，同源、方向相反：
+  - **写入侧漏判**：`invalidateSlideStage` 把非生成页的 `accept-source` 打成 `stale` 后没有重新判定，该页成为**死路**；
+  - **读出侧零消费**：磁盘上「人工确认 vs 自动放行」区分得干干净净，但没有任何报告或界面读得到，A10「报告能区分」因此不成立。
+
+### 2. Signatures
+
+```ts
+// packages/core/src/source-contracts.ts —— 唯一判据，别在别处复刻
+export function requiresSourceAcceptance(source: SlideSource): boolean;
+
+// packages/core/src/source-acceptance.ts —— 判据的读出侧，三个消费端共用
+export type SourceAcceptanceKind = "manual" | "auto" | "pending";
+export function classifySourceAcceptance(manifest: SlideWorkspaceManifest): SourceAcceptanceKind;
+
+// apps/cli/src/slide/workspace.ts
+export const AUTO_SOURCE_TRUST_PROVIDER = "auto-source-trust";
+```
+
+### 3. Contracts
+
+**规则派生的状态，在每一条会改动它的路径上都必须重新判定。** 目前有两条：
+
+| 路径 | 实现 | 重判方式 |
+|---|---|---|
+| 换源 | `replaceSlideSource` 第 5 步 | 先失效 `accept-source`，再按**新来源**用 `buildSourceGate` 重判 |
+| 显式失效 | `invalidateSlideStage` | 失效算完后，若闸门非 `completed` 且该页来源无需人工确认，用**同一个** `buildSourceGate` 重新放行；**下游保持 `stale`** |
+
+第二条长期缺失。后果不只是「界面摆了个按下去必然失败的按钮」——`run --from` 给出的下一条命令 `ppt-maker slide accept-source` **就是那条会被 `runAcceptSource` 按来源拒绝的命令**，CLI 与界面双双死路，除手改 manifest 无出路。
+
+**修在失效点，不要去堵按钮。** `runAcceptSource` 拒绝非生成页是对的——放开它就会写出一条 `acceptedBy` 指向某人的记录，正是 design.md §4.5 明令禁止的伪造人工痕迹；界面读的 `awaitingSourceConfirm` 也是忠实的。**错的是那个状态本身不该存在**。凡是「界面给出了一个必然失败的入口」，先怀疑状态机让页面进入了一个不该存在的状态，而不是急着让入口消失。
+
+**自动放行与人工确认必须同时满足三条**：
+
+| | 人工确认 | 按来源自动放行 |
+|---|---|---|
+| `stages[accept-source].status` | `completed` | `completed` |
+| attempt 的 `provider` | 真实操作者（如 `developer`） | `auto-source-trust` |
+| attempt 的 `assetIds` | `["asset-source-acceptance"]` | `[]` |
+| 磁盘 `stages/source/accepted.json` | **存在** | **不存在** |
+
+**落盘区分了，不等于报告能区分。** `AUTO_SOURCE_TRUST_PROVIDER` 曾在全仓只有产生端、零消费端——`deck status`（结构化与人读）、桌面端 IPC 与界面、`slide report` 的 `report.json` 三处都读不到它，于是「人工确认 vs 自动放行」只能靠**缺席**反推（「人工接受段里没有源图，所以大概是自动的」）。**一个只写不读的标记，等于没写。** 凡是为了「将来能区分」而落盘的字段，落盘的同时就要指出它的消费端在哪；指不出来，这个字段就还没做完。
+
+**判据取磁盘事实，不要用来源类型反推。** 有一格是要害：`normalizeSlideManifest` 给旧 manifest 补出来的 `accept-source` 沿用 `init` 的 attempt（`provider` 是 `ppt-maker-cli`）。若把判据写成「provider 不是 `auto-source-trust` 就算人工确认」，**M3/M4 时代的每一页都会凭空长出人工痕迹**——零迁移的旧工作区反而成了受害最重的那个。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 行为 |
+|---|---|
+| 非生成页调用 `runAcceptSource` | `INVALID_STAGE_STATE`「来源 X 的源图无需人工确认，已在建立工作区时自动放行」——**保持拒绝，别放开** |
+| 非生成页的 `accept-source` 被显式失效 | 不报错；失效算完后自动重放行，追加 `auto-source-trust` attempt，**不写** `accepted.json`，下游保持 `stale` |
+| 生成页的 `accept-source` 被显式失效 | 保持 `stale`，`runAcceptSource` 仍可用，再次确认写 `accept-source-002` |
+| 显式失效 `init` | **不重放行**——此时源图本身存疑，放行会与 `assertStageDependenciesCompleted` 打架；且 `init` 不在 `RUN_SEQUENCE` 里，无重跑路径 |
+
+### 5. Good / Base / Bad Cases
+
+- Good：`extracted` 页 10/10 全完成 → 失效 `accept-source` → `invalidated` 列出下游 9 个**不含** `accept-source`；闸门回 `completed`、`blockingStage` 由 `accept-source` 变为 `ocr`；新增 attempt 为 `auto-source-trust` 且 `assetIds` 为 `[]`。
+- Base：旧格式 manifest（无 `source`、无 `accept-source`）归一化后判为 `auto`，**且读操作不改写磁盘一个字节**。
+- Bad：把 `accept-source` 打成 `stale` 就收工 → 该页 CLI 与界面双双死路；或为了「让按钮能用」放开 `runAcceptSource` → 凭空产生假的人工验收记录。
+
+### 6. Tests Required
+
+- **`manual` ⟺ 磁盘存在 `stages/source/accepted.json`**，逐页对表，一处不符即缺陷复发。这是唯一不会被来源类型反推蒙混过去的断言。
+- 归一化出来的闸门必须判为 `auto`——用一份真实的旧 manifest（无 `source` 字段）上锁，不要用手造的。
+- 非生成页失效后：闸门回 `completed`、下游全 `stale`、`invalidated` 不含闸门本身、磁盘无 `accepted.json`。
+- 生成页失效后行为不变（这条是防止修复越界的负面用例）。
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+// 写入侧：失效完就收工，规则派生的状态被留在一个规则不承认的值上
+const invalidated = invalidateStageAndDownstream(stages, stage, reason);
+return { invalidated };
+
+// 读出侧：标记只写不读，报告靠「缺席」反推
+attempts.push({ stage: "accept-source", provider: AUTO_SOURCE_TRUST_PROVIDER, assetIds: [] });
+// …全仓再无一处读 AUTO_SOURCE_TRUST_PROVIDER
+
+// 判据侧：拿来源类型反推，旧工作区每页凭空长出人工痕迹
+const isManual = source.kind === "generated";
+```
+
+#### Correct
+
+```ts
+// 写入侧：失效算完后按来源重判，与换源路径复用同一个 buildSourceGate
+const invalidated = invalidateStageAndDownstream(stages, stage, reason);
+const gate = buildSourceGate(manifest.source);   // 下游保持 stale，只重放行闸门本身
+return { invalidated: invalidated.filter((s) => s !== "accept-source") };
+
+// 读出侧：判据下沉到 core，三个消费端（status / report / IPC）共用一份
+export function classifySourceAcceptance(m: SlideWorkspaceManifest): SourceAcceptanceKind;
+
+// 判据侧：取磁盘事实——attempt 的 provider + 有无 ArtifactAcceptance
+const isManual = acceptanceAssetExists && attempt.provider !== AUTO_SOURCE_TRUST_PROVIDER;
 ```
