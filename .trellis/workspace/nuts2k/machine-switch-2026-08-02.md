@@ -75,6 +75,10 @@ CodeGraph 索引（`.codegraph/`）也被 gitignore，要用的话在仓库根�
 
 `~/.claude/projects/-Users-kelin-Work-ppt-maker/memory/` 是本机的，新机器上是空的。
 （目录名按仓库路径生成，本机仓库在 `~/Work/ppt-maker`；早先写成 `Workspace` 是笔误。）
+
+> **2026-08-03 订正**：上面这句「是笔误」只对写它的那台机器成立。目录名按仓库路径生成，
+> **随机器变**——2026-08-03 这台的仓库实测在 `~/Workspace/ppt-maker`，记忆目录相应是
+> `-Users-kelin-Workspace-ppt-maker`。新机器上一律以 `pwd` 为准，别硬编码任何一种写法。
 三条要点抄在这里，免得重新踩：
 
 1. **core 必须先 build**，`packages/core/dist` 不入库，跳过它 typecheck 会连环报错；
