@@ -734,7 +734,13 @@ ContentSpecSchema.shape.schemaVersion       // packages/core/src/content-spec-co
 
 `SlideSource` 刻意不带版本号与本条不矛盾：它随宿主的 `schemaVersion` 一起被校验，宿主升版时它自然跟着走。独立文件没有这个宿主。
 
-**现状与已知张力（M5 遗留）**：`ContentSpec.schemaVersion` 实现取的是 `z.literal(SCHEMA_VERSION)`，即与宿主同源。后果是**宿主因自身原因升 `SCHEMA_VERSION` 时，全部既有 `content-spec.json` 会一并校验失败**——而它们的内容一个字节都没变。内容规格已冻结为 M5↔M6 的跨里程碑契约，M6 扩展它之前应先决定是否解绑。
+**现状与已知张力（M5 遗留，M6 已定处置）**：`ContentSpec.schemaVersion` 实现取的是 `z.literal(SCHEMA_VERSION)`，即与宿主同源。后果是**宿主因自身原因升 `SCHEMA_VERSION` 时，全部既有 `content-spec.json` 会一并校验失败**——而它们的内容一个字节都没变。
+
+**「独立演进」是意图，不是现状**：本节 §7 的 Correct 写法是目标形态，`content-spec.json` 今天并没有落到那里。任何读到「M6 极可能扩展它，需要自己的版本轴」这类表述的人，不要据此认为解绑已经完成——`SCHEMA_VERSION` 是全仓共用常量（`packages/core/src/constants.ts`），manifest / stage-graph / workspace / pptx / clean / content-spec 全写成 `z.literal(SCHEMA_VERSION)`，升到 2 就是一次**全仓迁移**，与 M3/M4 已对使用者作出的零迁移承诺直接冲突。
+
+**M6 的处置（2026-08-02，决策 D2）**：不解绑、不升版本、不扩本契约。`style` 因此维持 `description: string` 不拆结构化子字段——拆了就得升版本或加可选字段，前者触发全仓迁移，后者要在指纹里做条件包含、破坏「显式列字段」纪律。M6 新增的旁路文件（`<deck>/planning/` 下的变更日志与会话记录）**自带局部 `v: 1`，不挂全仓版本轴**：它们是旁路数据，坏行跳过即可，不需要全局版本世代。
+
+真正解绑（另起 `CONTENT_SPEC_VERSION`）是一次独立评估，触发条件是「确实要改内容规格的形状」，M6 没有触发它。
 
 ### 4. Validation & Error Matrix
 
@@ -763,7 +769,8 @@ ContentSpecSchema.shape.schemaVersion       // packages/core/src/content-spec-co
 #### Wrong
 
 ```ts
-// 独立可寻址、且要被 M6 扩展的契约文件，版本绑死在宿主上
+// 独立可寻址的契约文件，版本绑死在宿主上
+// —— 这**就是今天 content-spec.json 的实现**，不是假想例
 export const ContentSpecSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),   // 宿主升版 → 既有规格文件全部失效
   ...
@@ -883,4 +890,114 @@ export function classifySourceAcceptance(m: SlideWorkspaceManifest): SourceAccep
 
 // 判据侧：取磁盘事实——attempt 的 provider + 有无 ArtifactAcceptance
 const isManual = acceptanceAssetExists && attempt.provider !== AUTO_SOURCE_TRUST_PROVIDER;
+```
+
+---
+
+## 场景：模型可提案、不可直接落盘（M6 D5 对 M5 D7 的放宽，2026-08-02）
+
+> **状态：M6 规划期决策，实现尚未落地。** 本节先行收录的唯一原因是：M5 父任务
+> `prd.md:44` 的 D7 原文写着「**不引入模型改写**」，不写这条，后来者会照原文判定 M6 违规。
+> 实现落地后回来补 §2 的真实符号与 §6 的用例结果。
+
+### 1. Scope / Trigger
+
+让模型输出**会落到磁盘契约文件里**的结构化内容时适用。
+
+本项目实例是 M6 的对话式改稿：用户说「第三页文字太多」，模型返回**替换后的完整规格条目**，
+落盘目标是 `<deck>/content-spec.json` —— 一份被 M5 生成链路原样消费的跨里程碑契约。
+
+不适用于纯展示型的模型输出（只给用户看、不进任何契约文件）。
+
+### 2. Signatures
+
+```ts
+// M5 D7 原文（.trellis/tasks/archive/2026-08/07-31-page-sources-and-content-generation/prd.md:44）
+// 「调整主路径是『重生成时附带一句说明』并回写规格条目，不引入模型改写」
+
+// M6 D5 放宽后的口径
+//   模型可提案，不可直接落盘。
+```
+
+### 3. Contracts
+
+**放宽后仍然成立的三条**（D7 保护的实质，一条都不能松）：
+
+1. **规格不被静默改写**——任何变更都由用户的确认动作触发；
+2. **`specEntryId` / `specId` / 时间戳始终由代码分配**，模型不得编造，模型给出的一律丢弃重分配；
+3. **规格改动只产生只读漂移标注**，不自动失效任何阶段（M5 A13 不变）。
+
+**不再成立的一条**：「不引入模型改写」这句字面表述本身。
+
+**提案到落盘之间的三道闸**，一道都不能省：
+
+| 闸 | 内容 |
+|---|---|
+| ① 逐字段 diff | 界面展示改前改后，不是「模型说改好了」 |
+| ② 用户显式确认 | 确认前**不写**契约文件 |
+| ③ 代码写盘 | 分配 / 保留 id 与时间戳，再走**统一写入入口** |
+
+**提案 ≠ 变更**：被否决的提案照样写会话记录（过程留痕），但契约文件只反映被接受的结果。
+这两处落点不同是刻意的——把「模型说过什么」和「磁盘上是什么」分开，才能事后区分
+「模型提错了但被拦下」与「模型提错了并且落盘了」。
+
+**确认前必须预告影响面**：用既有指纹口径预先算出提案落盘后的新指纹，与各页已记录的
+指纹比对，在确认对话框里写明「确认后 N 页变为已过时」。这是选择「输出全量条目」
+而非「输出 patch」的直接收益——patch 语义算不出落盘后的指纹，只能落完再看。
+
+**写入路径必须唯一**：契约文件的任何写入走单一入口，禁止调用方直接调底层写函数。
+变更日志靠写入路径捎带落盘，留第二条路径日志就会漏记，而漏记的表现是「历史里没有这次改动」
+——一种事后无法察觉、也无法补救的静默损坏。
+
+### 4. Validation & Error Matrix
+
+| 条件 | 要求 |
+|---|---|
+| 模型面 schema | **一律无约束**（不带 `min` / `refine`）。Structured Outputs 的 JSON Schema 不接受它们，带约束直接喂 `zodTextFormat` 会被 API 拒绝（既有教训见 `content-spec-contracts.ts` 的 `zodTextFormat` 注释） |
+| 落盘前 | 必经完整契约 schema 的 `parse` 补齐全部约束——约束一条不少，只是校验位置从模型侧挪到写入侧 |
+| 模型 refusal / 解析为空 | `safeParse` 失败即放弃本轮，**不得**把自由文本当作契约内容 |
+| 模型返回了 id | 丢弃重分配，不信任 |
+| 会触发付费生成的确认 | 文案写明调用次数与不可撤销 |
+| 模型调用的 `requestId` | 网关不回传 `x-request-id` 时**如实记 `null`**，不伪造、不用其它 id 填充 |
+| 旁路日志写失败 | 只记 stderr，**不上抛**、不回滚已完成的契约写入（照搬 `activity-log.ts` 的纪律） |
+
+### 5. Good / Base / Bad Cases
+
+- **Good**：模型提出改三条条目 → 界面逐字段 diff 并预告「确认后 3 页变为已过时」→
+  用户取消其中一条 → 剩两条经统一入口落盘并记一条变更记录
+- **Base**：模型本轮只回答问题、不提改动 → 只写会话记录，契约文件零改动
+- **Bad**：模型返回的条目直接 `parse` 成功就写盘，用户事后从漂移标注里才发现被改了什么
+
+### 6. Tests Required
+
+- 提案被否决后，契约文件字节不变、会话记录里能查到这条被否决的提案
+- 模型返回自造 id 时，落盘后的 id 是代码分配的那个
+- 模型 refusal / 输出无法解析时，契约文件不被触碰
+- 删除全部旁路文件后，主链路（生成 / 复核 / 导出）行为不变
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+// 模型输出解析成功就落盘，用户只在事后看到结果
+const proposal = SpecProposalSchema.parse(await callModel(userText));
+await writeDeckContentSpec(deckDir, proposal);   // 静默改写 + 绕过统一入口 + 漏记日志
+```
+
+#### Correct
+
+```ts
+// 模型只产出提案；提案先留痕，确认后才由代码写盘
+const parsed = SpecProposalSchema.safeParse(await callModel(userText));
+if (!parsed.success) return { kind: "rejected" };      // 不把自由文本当契约
+await appendPlanningMessage(deckDir, { role: "assistant", proposal: parsed.data });
+
+const preview = previewOutdatedPages(currentSpec, parsed.data);   // 确认前预告影响面
+if (!(await confirmWithUser(preview))) return { kind: "declined" };
+
+await applySpecChange(deckDir, {                       // 唯一写入入口，捎带记日志
+  next: materialize(parsed.data, { ids: allocateIds() }),   // id 由代码分配
+  origin: "proposal",
+});
 ```

@@ -8,8 +8,17 @@ import { SCHEMA_VERSION } from "./constants.js";
  * CLI 不该是唯一持有者。
  *
  * **带 `schemaVersion`**，这与 `SlideSource` 刻意不带并不矛盾：`SlideSource` 是
- * manifest 的一个属性、随宿主的版本走，而 `content-spec.json` 是独立可寻址文件，
- * M6 极可能扩展它，需要自己的版本轴。
+ * manifest 的一个属性、随宿主的版本走，而 `content-spec.json` 是独立可寻址文件。
+ *
+ * 但要注意：这里的 `schemaVersion` 取的是 `z.literal(SCHEMA_VERSION)`，即**与宿主同源，
+ * 并非独立版本轴**。`SCHEMA_VERSION`（`./constants.js`）是全仓共用常量，manifest /
+ * stage-graph / workspace / pptx / clean / content-spec 全写成 `z.literal(SCHEMA_VERSION)`，
+ * 把它升到 2 会让所有既有工作区的所有 manifest 因字面量比对读不进来 —— 一次全仓迁移，
+ * 与 M3/M4 的零迁移承诺冲突。**「独立演进」是意图，不是现状。**
+ *
+ * 因此 M6 明确不升版本、不扩本契约（决策 D2）：`planning/` 下的旁路文件自带局部 `v: 1`，
+ * 不挂全仓版本轴。要真正解绑须另起 `CONTENT_SPEC_VERSION`，那是一次独立评估，
+ * 判据与迁移代价见 `.trellis/spec/backend/contracts.md`〈独立可寻址契约文件的版本轴〉。
  */
 
 /**

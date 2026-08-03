@@ -18,7 +18,11 @@
   "commit": null,
   "pr_url": null,
   "subtasks": [],
-  "children": [],
+  "children": [
+    "08-02-spec-edit-and-history",
+    "08-02-planning-view",
+    "08-02-planning-conversation"
+  ],
   "parent": "07-20-ppt-maker-mvp-roadmap",
   "relatedFiles": [],
   "notes": "",
