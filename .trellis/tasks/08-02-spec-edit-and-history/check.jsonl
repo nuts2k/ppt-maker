@@ -1,1 +1,8 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/08-02-spec-edit-and-history/prd.md", "reason": "验收清单 A①-1 ~ A①-9 与 S1–S8 的逐条核对基准"}
+{"file": ".trellis/tasks/08-02-content-planning-workbench/prd.md", "reason": "父任务硬验收 A4（未勾选页字节不变）、A5（planning 可删）、A6（旧格式零改写）、A7（契约一字不改）、A9（测试基线）"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "核对新增契约是否与既有跨层契约冲突，尤其版本轴与来源规则派生状态"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "核对新增错误码命名、抛出位置与 CLI 退出码是否合规"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "format:check / typecheck / test / build 四件套与 Vitest 用例组织"}
+{"file": ".trellis/spec/guides/verification-coverage-thinking-guide.md", "reason": "A①-2 的证明方式必须是可复现的字节比对，不是人工目检；核对覆盖是否真的证明了断言"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "重点核对：历史写失败是否吞得干净又记得住、只读路径是否零副作用、批量是否只动选中页"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "core / CLI / desktop 三层的引用方向与数据流一致性，防止 core 混入 Node 依赖"}

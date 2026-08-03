@@ -13,7 +13,11 @@ export type FoundationErrorCode =
   | "UPLOAD_CONFIRMATION_REQUIRED"
   | "API_CONFIRMATION_REQUIRED"
   | "MISSING_DEPENDENCY"
-  | "UNSUPPORTED_ENVIRONMENT";
+  | "UNSUPPORTED_ENVIRONMENT"
+  // M6 子任务①：规格编辑与变更日志（design §9）
+  | "SPEC_HISTORY_RECORD_NOT_FOUND"
+  | "SPEC_SELECTION_EMPTY"
+  | "SPEC_PAGE_NOT_FOUND";
 
 export class FoundationError extends Error {
   readonly code: FoundationErrorCode;

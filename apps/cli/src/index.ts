@@ -1,20 +1,37 @@
 #!/usr/bin/env node
 import "dotenv/config";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
+import { FoundationError } from "@ppt-maker/core";
 import { Command } from "commander";
 import { runAcceptClean } from "./clean/accept.js";
 import { runSlideClean } from "./clean/run.js";
 import { addSlideToDeck } from "./deck/add-slide.js";
+import { readContentSpecFile } from "./deck/content-spec.js";
 import { exportDeckPptx } from "./deck/export.js";
 import { formatDeckGenerateResult, runDeckGenerate } from "./deck/generate.js";
+import type { UploadNotice } from "./deck/generate-page.js";
+import { listSpecChangeRecords } from "./deck/planning-store.js";
 import {
   formatDeckRegenerateResult,
   runDeckRegenerate,
 } from "./deck/regenerate.js";
+import {
+  formatDeckRegenerateBatchResult,
+  runDeckRegenerateBatch,
+} from "./deck/regenerate-batch.js";
 import { removeSlideFromDeck } from "./deck/remove-slide.js";
 import { replaceDeckSlideSource } from "./deck/replace-source.js";
 import { formatDeckRunResult, runDeckPipeline } from "./deck/run.js";
 import { runDeckSpecDraft } from "./deck/spec-draft.js";
+import {
+  applySpecChange,
+  formatSpecChangePreview,
+  formatSpecChangeResult,
+  formatSpecHistory,
+  formatSpecHistoryWarning,
+  previewSpecChange,
+  rollbackSpecChange,
+} from "./deck/spec-edit.js";
 import { deckStatus, formatDeckStatus } from "./deck/status.js";
 import { createDeckWorkspace } from "./deck/workspace.js";
 import {
@@ -661,44 +678,111 @@ deck
 deck
   .command("regenerate")
   .argument("<deck>", "deck 工作区")
-  .requiredOption("--page <label>", "页面标识（如 page-04）或 slideId")
-  .option("--note <text>", "调整说明，机械追加进该条目 revisionNotes")
+  .option("--page <label>", "单页：页面标识（如 page-04）或 slideId")
+  .option("--pages <labels...>", "批量：多个页面标识，一次确认覆盖全部")
+  .option("--all-drifted", "批量：当前全部已过时（规格改了图没跟上）的页")
+  .option(
+    "--note <text>",
+    "调整说明，机械追加进该条目 revisionNotes；批量时逐页追加同一句",
+  )
   .option(
     "--spec-entry <id>",
-    "显式指定规格条目；仅在无法从该页历史推断时必须（如从未生成过的导入页换成生成来源）",
+    "显式指定规格条目；仅与 --page 合法，且只在无法从该页历史推断时必须（如从未生成过的导入页换成生成来源）",
   )
   .option(
     "--confirm-upload",
     "确认把内容规格提示词发送到 OpenAI 重新生成页面图",
   )
   .description(
-    "按调整说明重新生成某页并换源；非生成来源的页同样可用（换回生成来源），该页下游失效，其它页不受影响",
+    "按调整说明重新生成一页或多页并换源；非生成来源的页同样可用（换回生成来源），选中页下游失效，其它页不受影响",
   )
   .action(
     async (
       deckPath: string,
       options: {
-        page: string;
+        page?: string;
+        pages?: string[];
+        allDrifted?: boolean;
         note?: string;
         specEntry?: string;
         confirmUpload?: boolean;
       },
     ) => {
-      const result = await runDeckRegenerate({
+      // 三选一且必选：三个开关都描述「跑哪些页」，同时给两个必然有一个被悄悄忽略，
+      // 而「以为选了 5 页、实际只跑 1 页」正是批量最不能出的错。
+      const modes = [
+        options.page === undefined ? null : "--page",
+        options.pages === undefined ? null : "--pages",
+        options.allDrifted === true ? "--all-drifted" : null,
+      ].filter((mode): mode is string => mode !== null);
+      if (modes.length !== 1) {
+        throw new FoundationError(
+          "INVALID_INPUT",
+          `必须且只能指定 --page / --pages / --all-drifted 之一（当前${
+            modes.length === 0 ? "一个都没给" : `给了：${modes.join(", ")}`
+          }）`,
+        );
+      }
+      if (options.specEntry !== undefined && options.page === undefined) {
+        throw new FoundationError(
+          "INVALID_INPUT",
+          "--spec-entry 只能与 --page 同用：批量选中的页各有各的条目，一个 id 套不到多页上",
+        );
+      }
+
+      const onBeforeUpload = (notice: UploadNotice): void => {
+        process.stderr.write(
+          `即将发送到 ${OPENAI_IMAGE_MODEL}：${notice.specEntryId} 提示词 ${notice.promptBytes} 字节 (${notice.promptSha256})\n`,
+        );
+      };
+
+      if (options.page !== undefined) {
+        const result = await runDeckRegenerate({
+          deckPath: resolve(deckPath),
+          page: options.page,
+          confirmUpload: options.confirmUpload === true,
+          ...(options.note === undefined ? {} : { note: options.note }),
+          ...(options.specEntry === undefined
+            ? {}
+            : { specEntryId: options.specEntry }),
+          onBeforeUpload,
+        });
+        process.stdout.write(`${formatDeckRegenerateResult(result)}\n`);
+        return;
+      }
+
+      const result = await runDeckRegenerateBatch({
         deckPath: resolve(deckPath),
-        page: options.page,
+        selection:
+          options.pages === undefined
+            ? { kind: "all-drifted" }
+            : { kind: "labels", labels: options.pages },
         confirmUpload: options.confirmUpload === true,
         ...(options.note === undefined ? {} : { note: options.note }),
-        ...(options.specEntry === undefined
-          ? {}
-          : { specEntryId: options.specEntry }),
-        onBeforeUpload: (notice) => {
+        onBeforeUpload,
+        onProgress: (event) => {
+          if (event.phase === "start") {
+            process.stderr.write(
+              `[${event.index}/${event.total}] 重生成 ${event.pageLabel}…\n`,
+            );
+            return;
+          }
+          if (event.phase === "done") {
+            process.stderr.write(
+              `[${event.index}/${event.total}] ${event.pageLabel} ← ${event.specEntryId}\n`,
+            );
+            return;
+          }
           process.stderr.write(
-            `即将发送到 ${OPENAI_IMAGE_MODEL}：${notice.specEntryId} 提示词 ${notice.promptBytes} 字节 (${notice.promptSha256})\n`,
+            `[${event.index}/${event.total}] ${event.pageLabel} 失败：${event.message}\n`,
           );
         },
       });
-      process.stdout.write(`${formatDeckRegenerateResult(result)}\n`);
+      process.stdout.write(`${formatDeckRegenerateBatchResult(result)}\n`);
+      // 与 `deck generate` 同一口径：一页都没成才算失败
+      if (result.failed.length > 0 && result.regenerated.length === 0) {
+        process.exitCode = 1;
+      }
     },
   );
 
@@ -721,6 +805,83 @@ deck
       process.stdout.write(`${result.outputPath}\n`);
     },
   );
+
+deck
+  .command("spec-apply")
+  .argument("<deck>", "deck 工作区")
+  .requiredOption("--file <path>", "内容规格 JSON；整份替换 deck 内的权威规格")
+  .option("--summary <text>", "变更摘要，写进变更历史")
+  .option("--dry-run", "只预告影响面，不写入任何文件")
+  .description("以整份规格替换 deck 内的权威规格，并记入变更历史")
+  .action(
+    async (
+      deckPath: string,
+      options: { file: string; summary?: string; dryRun?: boolean },
+    ) => {
+      const nextSpec = await readContentSpecFile(resolve(options.file));
+      if (options.dryRun === true) {
+        const preview = await previewSpecChange(resolve(deckPath), nextSpec);
+        process.stdout.write(`${formatSpecChangePreview(preview)}\n`);
+        return;
+      }
+      const result = await applySpecChange({
+        deckPath: resolve(deckPath),
+        nextSpec,
+        origin: "manual",
+        summary: options.summary ?? `导入规格文件：${basename(options.file)}`,
+      });
+      process.stdout.write(`${formatSpecChangeResult(result)}\n`);
+      // 规格已落盘、日志没落盘时必须出声：这次改动查不到，也回滚不了
+      const warning = formatSpecHistoryWarning(result);
+      if (warning !== null) {
+        process.stderr.write(`${warning}\n`);
+      }
+    },
+  );
+
+deck
+  .command("spec-history")
+  .argument("<deck>", "deck 工作区")
+  .option("--limit <n>", "最多列出条数", "20")
+  .option("--json", "输出结构化 JSON")
+  .description("倒序列出内容规格的变更历史（历史只增不减）")
+  .action(
+    async (deckPath: string, options: { limit: string; json?: boolean }) => {
+      const limit = Number.parseInt(options.limit, 10);
+      if (!Number.isInteger(limit) || limit <= 0) {
+        throw new FoundationError(
+          "INVALID_INPUT",
+          `--limit 必须是正整数：${options.limit}`,
+        );
+      }
+      const records = await listSpecChangeRecords(resolve(deckPath), { limit });
+      process.stdout.write(
+        `${formatSpecHistory(records, { json: options.json === true })}\n`,
+      );
+    },
+  );
+
+deck
+  .command("spec-rollback")
+  .argument("<deck>", "deck 工作区")
+  .requiredOption(
+    "--record <recordId>",
+    "变更记录 id，规格恢复到该记录之前的状态",
+  )
+  .description(
+    "回滚规格到某条变更记录之前的状态；回滚自身也记一条，历史不被抹除",
+  )
+  .action(async (deckPath: string, options: { record: string }) => {
+    const result = await rollbackSpecChange({
+      deckPath: resolve(deckPath),
+      recordId: options.record,
+    });
+    process.stdout.write(`${formatSpecChangeResult(result)}\n`);
+    const warning = formatSpecHistoryWarning(result);
+    if (warning !== null) {
+      process.stderr.write(`${warning}\n`);
+    }
+  });
 
 probe
   .command("pptx")

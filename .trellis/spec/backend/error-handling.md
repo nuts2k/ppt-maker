@@ -28,6 +28,9 @@ throw new FoundationError(
 | `UPLOAD_CONFIRMATION_REQUIRED` | 云端阶段缺少显式 `--confirm-upload` 门禁 |
 | `MISSING_DEPENDENCY` | 字体、原生二进制等必要依赖缺失 |
 | `UNSUPPORTED_ENVIRONMENT` | 当前平台不受支持 |
+| `SPEC_HISTORY_RECORD_NOT_FOUND` | 回滚指定的变更记录在 `planning/spec-history.jsonl` 中不存在（含 `planning/` 已被删除的情形） |
+| `SPEC_SELECTION_EMPTY` | 批量重生成按「已过时」选页时一页都选不出 |
+| `SPEC_PAGE_NOT_FOUND` | 批量重生成的 `--pages` 里有定位不到的页标签；**整体拒绝**，不部分执行 |
 
 错误 `details` 必须只包含可序列化诊断数据，不包含大图片、秘密或完整二进制输出。
 
@@ -43,6 +46,11 @@ throw new FoundationError(
 - `slide init` 不得替换已有目录，即使目标目录为空；POSIX `rename` 可以替换空目录，因此重命名前必须再次检查目标不存在。
 - 阶段失败写入新的 attempt 记录，不覆盖先前成功资产；派生产物使用独立 attempt 路径。
 - `slide analyze` 在读取 API Key 或创建 attempt 前先检查上传确认；缺少确认时不得访问网络。
+- 旁路日志（`planning/spec-history.jsonl`）的写失败**不得**上抛，只记 stderr；但写入函数必须
+  **如实返回成败**（`Promise<boolean>`），由调用方决定怎么告知用户。吞掉异常是纪律，
+  藏住结果不是——调用方拿不到信号就只能恒报成功，那条「历史没记上」的告警就永远不会出现。
+- 批量重生成的选页失败（`SPEC_SELECTION_EMPTY` / `SPEC_PAGE_NOT_FOUND`）在**上传确认之后、
+  联网之前**抛出；单页执行失败不终止其余页，退出码沿用「一页都没成才算失败」。
 
 ## 常见错误
 

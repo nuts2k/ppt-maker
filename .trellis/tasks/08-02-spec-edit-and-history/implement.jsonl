@@ -1,1 +1,8 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/08-02-content-planning-workbench/design.md", "reason": "父任务四条跨子任务契约：写入入口与日志时机（§2、§3）、记录形状（§3.2）、提案形状（§4）、D7 放宽口径（§6）、批量复用换源语义（§7）。本任务只实现不重定义"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "跨层契约：独立契约文件的版本轴、来源规则派生状态的重判点、〈模型可提案不可直接落盘〉。planning/ 下新文件用局部 v:1 的依据"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "稳定错误码、工作区完整性与 CLI 退出行为。新增 SPEC_HISTORY_RECORD_NOT_FOUND / SPEC_SELECTION_EMPTY / SPEC_PAGE_NOT_FOUND 须遵此命名与退出码惯例"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "Node 24 / TypeScript / Biome / Vitest 约定，决定测试文件位置与检查命令"}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "core 包与 CLI 的边界：core 零 Node 依赖，决定 planning-contracts.ts 只能放纯函数"}
+{"file": ".trellis/spec/backend/logging-guidelines.md", "reason": "stdout 给结果、stderr 给过程的输出纪律，批量重生成进度汇报与历史写失败只记 stderr 都受此约束"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "本任务最大风险就是静默损坏：漏记日志、批量误动未选页、旧 deck 被悄悄改写"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "批量重生成必须复用单页语义与 replace-source 的 referenceText 通道，不得另起写入路径"}

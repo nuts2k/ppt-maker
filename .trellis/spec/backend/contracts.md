@@ -896,9 +896,11 @@ const isManual = acceptanceAssetExists && attempt.provider !== AUTO_SOURCE_TRUST
 
 ## 场景：模型可提案、不可直接落盘（M6 D5 对 M5 D7 的放宽，2026-08-02）
 
-> **状态：M6 规划期决策，实现尚未落地。** 本节先行收录的唯一原因是：M5 父任务
+> **状态：底座已落地（M6 子任务①，2026-08-03），模型面尚未接入。** 三道闸中的 ③（代码写盘、
+> 统一入口、id 由代码分配）已由 `applySpecChange` 实现并测试覆盖，「确认前预告影响面」也已由
+> `previewSpecChange` 提供；① 逐字段 diff 展示与 ② 用户确认属界面，由子任务②③ 落地。
+> 具体契约见下一节〈规格写入唯一入口与变更日志〉。本节先行收录的原因不变：M5 父任务
 > `prd.md:44` 的 D7 原文写着「**不引入模型改写**」，不写这条，后来者会照原文判定 M6 违规。
-> 实现落地后回来补 §2 的真实符号与 §6 的用例结果。
 
 ### 1. Scope / Trigger
 
@@ -1000,4 +1002,118 @@ await applySpecChange(deckDir, {                       // 唯一写入入口，�
   next: materialize(parsed.data, { ids: allocateIds() }),   // id 由代码分配
   origin: "proposal",
 });
+```
+
+---
+
+## 场景：规格写入唯一入口与变更日志（M6 子任务①，2026-08-03 由真实 deck 走查验证）
+
+### 1. Scope / Trigger
+
+修改 `<deck>/content-spec.json` 时适用——无论改动来自人工编辑、CLI 命令、模型提案还是回滚。
+
+也适用于任何「契约文件 + 旁路变更日志」的组合：日志靠写入路径**捎带**落盘时，
+写入路径的唯一性就是日志完整性的**全部**保障。
+
+### 2. Signatures
+
+```ts
+// apps/cli/src/deck/spec-edit.ts —— 唯一写入入口
+applySpecChange(options: {
+  deckPath: string; nextSpec: ContentSpec; origin: "manual" | "proposal" | "rollback";
+  summary: string; conversationRef?: string | null; rollbackOf?: string | null;
+}): Promise<{ spec; record; historyWritten: boolean; drifted: readonly DriftedPage[] }>;
+
+previewSpecChange(deckPath, nextSpec): Promise<{ diff; willDrift; willMiss }>;   // 不写盘
+rollbackSpecChange({ deckPath, recordId }): Promise<ApplySpecChangeResult>;
+
+// apps/cli/src/deck/planning-store.ts
+appendSpecChangeRecord(deckPath, record): Promise<boolean>;   // 绝不抛，如实返回成败
+listSpecChangeRecords(deckPath, { limit? }): Promise<SpecChangeRecord[]>;
+
+// packages/core/src/planning-contracts.ts —— 纯函数，零 node: 依赖（渲染进程要 import）
+diffContentSpec(before, after): ContentSpecDiff;
+applyRollbackToSpec(current, target): ContentSpec;
+```
+
+### 3. Contracts
+
+**写入入口的五步不可拆、不可换序**：校验 → 算新旧指纹 → 更新 `updatedAt` → 原子写 → 追加日志。
+
+- **第 5 步失败不回滚前四步**，只记 stderr 并置 `historyWritten: false`。日志是旁路，
+  不允许它反过来阻断规格保存；但**必须如实回报**，否则调用方只能恒报成功。
+- **`specId` / `createdAt` 强制沿用磁盘现值**，入参里的同名字段一律忽略——外部规格文件与
+  模型都改不动它们（D7 保护条 2）。
+- **`style` 变更波及全 deck**：`style` 进指纹投影，改它意味着所有条目的指纹都变，
+  `fingerprints` 必须覆盖全部条目。`diffContentSpec` 只置 `styleChanged`、不塞全条目，
+  这一支由写入入口显式处理。
+
+**旁路纪律**：`planning/` 整个目录可删，删后只失去回看与回滚能力。
+`deck run` / `generate` / `status` / `export` **不得读** `planning/`；
+**只读路径不得创建**它——旧格式 deck 打开工作台必须零字节改写。
+
+**日志追加式，回滚是一次新的前进**：回滚 = 把目标记录的前值重新写入 + **追加**一条
+`origin: "rollback"` 的新记录。历史只增不减，不提供删除历史的能力。
+
+**版本轴**：`planning/` 下的文件自带局部 `v: 1`，**不挂全仓 `SCHEMA_VERSION`**
+（理由见〈独立可寻址契约文件的版本轴〉：`SCHEMA_VERSION` 各处写死 `z.literal`，
+旁路文件挂上去等于把自己绑进一次全仓迁移）。读取时坏行跳过，`JSON.parse` 与
+`safeParse` 双层保护，单行损坏不丢整个文件。
+
+**判据唯一来源**：过时判定一律走 `reconcileDeckSpec` / `specViewFingerprint`。
+禁止第二处指纹比对实现——两处各写一份必然漂移，而漂移是静默的：
+界面说「没改」而页面被标成过时，或反之，没有任何东西会报错。
+
+**批量重生成复用单页语义**：逐页走单页执行体，尤其是 `replace-source.ts` 的 `referenceText`
+通道（改了规格文字的页要写**新的** `reference_text` 资产并把新 sha 计入指纹）。
+与单页的差别只有三处：一次确认覆盖 N 页、进度按页汇报、单页失败不终止其余页。
+选页要么全中要么整体拒绝，不做「部分匹配就开跑」——确认框按 N 页给用户看，实跑 N-1 页是静默不一致。
+
+### 4. Validation & Error Matrix
+
+| 情形 | 行为 |
+|---|---|
+| 新规格不合 `ContentSpecSchema` | 抛 `INVALID_INPUT`，不写盘、不记日志 |
+| 日志写失败（目录被占等） | 规格照常落盘，`historyWritten: false`，stderr 告警，**不抛** |
+| 回滚目标 recordId 不存在 | `SPEC_HISTORY_RECORD_NOT_FOUND`，deck 零改动 |
+| `planning/` 被删后回滚 | 同上——能力可用性随目录消失，deck 加载不受影响 |
+| `--all-drifted` 选不出页 | `SPEC_SELECTION_EMPTY` |
+| `--pages` 含未知标签 | `SPEC_PAGE_NOT_FOUND`，**整体拒绝** |
+
+### 5. Good / Base / Bad Cases
+
+- Good：改一条条目 → 规格落盘 + 历史 +1 + 该页判为新增过时；回滚 → 规格回前值 + 历史再 +1。
+- Base：首次导入（`previous === null`）→ 全部条目记为新增，`fingerprints.before` 全为 `null`。
+- Bad：已处于过时的页再改一次 → **不重复计入**「新增过时」（说的是「变为」，不是「处于」）。
+
+### 6. Tests Required
+
+- 回滚三步顺序（先删该次新增 → 按 index 升序插回 → 未触及条目保留）、回滚再回滚。
+- 日志写失败时规格仍落盘且不抛；`historyWritten` 为 `false`。
+- `previewSpecChange` 跑完 deck 目录**递归内容哈希逐字节相等**（零副作用要断言，不能只靠没触发）。
+- 批量重生成后**未选中页的页目录递归内容哈希逐字节相等**——断言整张「相对路径 → sha256」
+  映射相等，不是挑几个文件比；并补一条「被选中页确实变了」，否则「什么都没做」也能让它绿。
+- 上述哈希类断言必须做**变异验证**：临时把选页改成「选全部」，确认它真的变红。
+
+### 7. Wrong vs Correct
+
+#### Wrong
+
+```ts
+// 旁路日志吞掉异常又不回报，调用方只能恒报成功
+async function appendRecord(...): Promise<void> {
+  try { await appendFile(path, line); } catch (e) { console.error(e); }   // 成败信息就此丢失
+}
+const record = await appendRecord(...);
+return { historyWritten: true };        // 永远为真，「历史没记上」的告警永远不出现
+```
+
+#### Correct
+
+```ts
+async function appendRecord(...): Promise<boolean> {
+  try { await appendFile(path, line); return true; }
+  catch (e) { console.error("[spec-history] 写入失败", e); return false; }   // 不抛，但如实回报
+}
+const historyWritten = await appendRecord(...);   // 规格已落盘，这里为 false 也不回滚
 ```

@@ -400,3 +400,64 @@ V1 桌面工作台被判定用户体验不合格（无批量执行、无进度/�
 
 [PENDING] 规划完成待启动 —— 下一步执行 `implement.md` 阶段一（ROADMAP 对齐五项），
 提交后再创建子任务 ①。
+
+---
+
+## 2026-08-03 · M6 子任务① 规格编辑与变更日志底座（完工）
+
+父任务 `08-02-content-planning-workbench` 已 start；子任务① 从 Phase 1 走到提交。
+七个实现/复核 agent 并行，主线程只做裁定与验证。
+
+### 交付
+
+- `packages/core/src/planning-contracts.ts` — 记录形状 + `diffContentSpec` / `applyRollbackToSpec`（纯函数、零 `node:` 依赖，渲染进程可 import）
+- `apps/cli/src/deck/planning-store.ts` — `planning/spec-history.jsonl` 追加写与读取
+- `apps/cli/src/deck/spec-edit.ts` — `applySpecChange`（唯一写入入口）/ `previewSpecChange` / `rollbackSpecChange` + 四个格式化函数
+- `apps/cli/src/deck/regenerate-batch.ts` — 批量重生成，逐页复用单页执行体
+- CLI 新增 `deck spec-apply` / `spec-history` / `spec-rollback`；`deck regenerate` 增 `--pages` / `--all-drifted`
+- 收编 `generate.ts` 与 `regenerate.ts` 两处直写；`writeDeckContentSpec` 生产调用点归零到入口一处
+- 测试 **774 → 854**（core 141 / desktop 474 / cli 239）
+
+### 关键判断
+
+- **吞掉异常是纪律，藏住结果不是**。旁路日志写失败不许上抛（否则日志故障变成规格保存故障），
+  但写入函数必须如实返回成败。原设计写成 `Promise<void>`，导致 `historyWritten` 只能恒 true，
+  那条硬验收用例是**假绿**。改成 `Promise<boolean>` 后语义才闭合。
+- **信号产生了却没人读，等于没产生**。复核期抓到三处同型缺陷：`historyWritten` 在
+  generate/regenerate 路径上只写不读、`missing` 在 `--dry-run` 里预告了却在落盘结果里蒸发、
+  `listSpecChangeRecords` 把 `EACCES`/`EISDIR` 伪装成「无记录」。
+- **单点用例结构性看不见组合缺陷**。`applyRollbackToSpec` 的 index 升序排序是载荷性的，
+  但 10 条既有回滚用例全是单点场景（删一条 / 改一条 / 纯重排），去掉排序竟然全绿。
+  反例要「删多条 + 剩下的换位」才构造得出（`[A,B,C,D] → [D,C]`）。
+- **判据只允许有一个来源**。`diffContentSpec` 的「改了」判据复用 `specViewFingerprintValues`，
+  与过时判据同源；过时判定一律走 `reconcileDeckSpec`。两处各写一份必然漂移，而漂移是静默的。
+- **零页 deck 本来就是安全的**。S6 原写成「修边界」，调研后降级为「验证 + 补回归」——
+  `deck run` / `status` 全是空循环 + 长度判断，无下标直取无除法，没查出缺陷，只留测试锁定。
+
+### 验证方式上的收获
+
+**变异验证比"我检查过了"有说服力得多**，本轮用了三次都抓到东西：
+把批量选页改成"选全部"（A①-2 断言真的红）、拆掉 jsonl 串行队列（暴露"行数正好 20"
+根本不构成串行证据，改断言严格顺序）、去掉回滚排序（暴露上面那个空洞）。
+凡是"零副作用""字节不变"这类断言，都要先让它红一次再信它。
+
+### 真实工作区走查（A①-1/2/3/4/7）
+
+- 旧格式 deck `~/test/ppttest-2026-07-25`：68 个文件递归哈希四次比对全等，未产生 `planning/`
+- `rm -rf planning/` 后 `deck status` 输出与删除前 `diff` 为空；`export` 正常；再写一次目录重建
+- 混合来源 deck：`imported`/`extracted` 页没有 `specEntryId`，任何规格扰动都进不了 `--all-drifted`
+- 花钱那步只跑 1 页：`reference_text` 换新 sha、`specEntrySha256` 更新、`accept-source` 转
+  `stale` 并把旧验收归档、A①-2 在真实 deck 上复验（改动只落在 page-04 与 deck 级三文件）
+- `requestId` 三代全为 `null` 且同记录内 usage/耗时真实——网关不回传，不是空壳，未伪造
+
+### 遗留与交接
+
+- `applySpecChange` 每次调用都做全 deck 对账。子任务② 不得做击键级保存；且任一页 manifest
+  损坏会让**改任何一条规格文字**都存不下去而界面无从解释——已写入 ② 的 `prd.md` 作硬约束。
+- 不带 `--note` 的 `deck regenerate` 仍会记一条「受影响 0 条」的记录（记的是重生成事件本身）。
+  界面要不要区分零变更记录，留给 ②。
+- `status.ts:224` 有 M5 遗留的第二处指纹比对，本轮未碰。若将来要收敛，是它。
+
+### Status
+
+[DONE] 子任务① 完工并提交。下一步：子任务② `08-02-planning-view` 走 Phase 1。

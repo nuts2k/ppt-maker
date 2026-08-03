@@ -56,10 +56,31 @@
       （`collectGeneratedPages` 只认 `generated` 是 M5 A2 的既有保证，不得破坏）
 - [ ] 测试基线不低于 774，新增能力有对应用例（父任务 A9）
 
+## 子任务① 已落地，两条交接约束（2026-08-03 补）
+
+① 已完工。接入时**这两条必须在 Phase 1 就设计掉**，不能留到实现期发现：
+
+- **不要做击键级保存**。`applySpecChange` 每次调用都会同步做一遍全 deck 对账
+  （`loadDeckWorkspace` + `collectGeneratedPages`），11 页 deck 上一次保存要读 22 个 JSON。
+  逐字段编辑器若「改完即存」，代价随页数线性放大。做防抖，或把保存与失焦/显式动作绑定。
+- **一页坏，全盘存不下**：正因为保存路径挂着全 deck 对账，任一页 slide manifest 损坏都会让
+  **改任何一条规格文字**的保存失败，而界面上没有任何东西能解释这个失败来自另一页。
+  要么在 IPC 层把这类失败翻译成人能懂的话（指名是哪一页坏了），要么本任务给
+  `applySpecChange` 加一个跳过对账的开关——那时才有真实调用方，不算投机 API。
+
+① 提供的可直接用的东西：`applySpecChange`（唯一写入口，返回 `historyWritten` / `drifted` /
+`missing`）、`previewSpecChange`（**不写盘**的过时预告，确认框的 N 就取它）、
+`rollbackSpecChange`、`listSpecChangeRecords`（读历史）、
+core 侧纯函数 `diffContentSpec`（逐字段 diff 展示直接用它，渲染进程可 import）、
+`applyRollbackToSpec`。CLI 侧还有 `formatSpecHistory` / `formatSpecChangeResult` 可作文案参考。
+
+**`historyWritten` 为 `false` 时界面必须出声**——规格已保存但这次改动没进历史，
+既回看不到也回滚不了。静默吞掉等于让用户以为有后悔药。
+
 ## 依赖
 
-**子任务① `08-02-spec-edit-and-history`**。本任务的编辑器字段直接对着 ① 的写入入口，
-① 未落地前不要自造临时写盘路径。
+**子任务① `08-02-spec-edit-and-history`**（已完工）。本任务的编辑器字段直接对着 ① 的写入入口，
+不要自造临时写盘路径。
 
 ## Notes
 

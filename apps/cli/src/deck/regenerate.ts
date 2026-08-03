@@ -9,7 +9,7 @@ import {
 import type { OpenAiImageGenerator } from "../providers/openai-image.js";
 import { replaceSlideSource } from "../slide/replace-source.js";
 import { loadSlideWorkspace } from "../slide/workspace.js";
-import { loadDeckContentSpec, writeDeckContentSpec } from "./content-spec.js";
+import { loadDeckContentSpec } from "./content-spec.js";
 import {
   attachGenerationAssets,
   buildGeneratedSourceDraft,
@@ -17,13 +17,20 @@ import {
   resolveRegenerableSpecEntryId,
   type UploadNotice,
 } from "./generate-page.js";
+import { applySpecChange, warnSpecHistoryFailure } from "./spec-edit.js";
 import {
   loadDeckWorkspace,
   resolveDeckPath,
   writeDeckManifest,
 } from "./workspace.js";
 
-export interface DeckRegenerateOptions {
+/**
+ * 单页重生成的执行入参——**不含 `confirmUpload`**。
+ *
+ * 上传确认是命令面的门禁，不是单页执行体的职责：批量路径一次确认覆盖 N 页
+ * （父任务 design §7），确认留在这一层会变成「每页各问一次」。
+ */
+export interface RegenerateOnePageOptions {
   readonly deckPath: string;
   /** 页标签（page-04）或 slideId */
   readonly page: string;
@@ -36,9 +43,12 @@ export interface DeckRegenerateOptions {
    * 为准——「这一页该对应哪条规格」是内容决策，用户说了算，工具不得反过来覆盖。
    */
   readonly specEntryId?: string;
-  readonly confirmUpload: boolean;
   readonly generate?: OpenAiImageGenerator;
   readonly onBeforeUpload?: (notice: UploadNotice) => void;
+}
+
+export interface DeckRegenerateOptions extends RegenerateOnePageOptions {
+  readonly confirmUpload: boolean;
 }
 
 export interface DeckRegenerateResult {
@@ -100,16 +110,37 @@ function appendRevisionNote(
   };
 }
 
-export async function runDeckRegenerate(
-  options: DeckRegenerateOptions,
-): Promise<DeckRegenerateResult> {
-  if (!options.confirmUpload) {
-    throw new FoundationError(
-      "UPLOAD_CONFIRMATION_REQUIRED",
-      "重新生成会把内容规格提示词发送到 OpenAI，必须显式传入 --confirm-upload",
-    );
+/**
+ * 变更记录的一句话描述。
+ *
+ * 没给 `--note` 时**不谎称追加了说明**：那一轮规格内容一个字都没改，
+ * 写成「追加说明：（空）」会在历史里留下与事实相反的记录。
+ * 有说明时只取首行并截断——记录是给人扫一眼用的，全文在规格文件里。
+ */
+function describeRevision(note: string | undefined): string {
+  const firstLine = note?.trim().split("\n")[0]?.trim() ?? "";
+  if (firstLine.length === 0) {
+    return "重生成：按现有规格重出该页";
   }
+  return `重生成追加说明：${
+    firstLine.length > 60 ? `${firstLine.slice(0, 60)}…` : firstLine
+  }`;
+}
 
+/**
+ * 单页重生成的完整执行体——**批量路径的唯一入口**（父任务 design §7）。
+ *
+ * 批量不得另拼 `replaceSlideSource` 调用：那样会绕开这里的 `referencePath` 通道，
+ * 该页会留着上一版 `reference_text`，OCR 复核拿旧文字当真值比对
+ * （`slide/replace-source.ts:73` 注释已写明后果）。逐页复用本函数，通道自然在。
+ *
+ * 每次调用都重新 `loadDeckWorkspace` / `loadDeckContentSpec`：上一页刚写过 deck
+ * manifest 与规格文件，用旧对象接着算会把前一页的写入覆盖掉（与 `generateOnePage`
+ * 每页重载同理）。
+ */
+export async function regenerateOnePage(
+  options: RegenerateOnePageOptions,
+): Promise<DeckRegenerateResult> {
   const deck = await loadDeckWorkspace(options.deckPath);
   const slideEntry = deck.manifest.slides.find(
     (slide) =>
@@ -175,7 +206,18 @@ export async function runDeckRegenerate(
 
   const now = new Date().toISOString();
   const updated = appendRevisionNote(spec, specEntryId, options.note, now);
-  await writeDeckContentSpec(deck.path, updated.spec);
+  // **时序不变：先写规格、再出图**（理由见 `appendRevisionNote` 注释——即使随后
+  // 生成失败，用户写下的意图也已落盘）。改的只是写入方式：走统一入口，这次追加
+  // 因此同样进变更历史（M6 子任务① design §4.1）。
+  const applied = await applySpecChange({
+    deckPath: deck.path,
+    nextSpec: updated.spec,
+    origin: "manual",
+    summary: describeRevision(options.note),
+  });
+  // 日志写失败不阻断重生成（旁路纪律），但必须出声——批量跑 N 页时尤其如此：
+  // 悄悄丢掉的是「这 N 次改动分别改了什么」。
+  warnSpecHistoryFailure(applied);
 
   const material = await generatePageMaterial({
     style: updated.spec.style,
@@ -228,6 +270,18 @@ export async function runDeckRegenerate(
   } finally {
     await material.cleanup();
   }
+}
+
+export async function runDeckRegenerate(
+  options: DeckRegenerateOptions,
+): Promise<DeckRegenerateResult> {
+  if (!options.confirmUpload) {
+    throw new FoundationError(
+      "UPLOAD_CONFIRMATION_REQUIRED",
+      "重新生成会把内容规格提示词发送到 OpenAI，必须显式传入 --confirm-upload",
+    );
+  }
+  return regenerateOnePage(options);
 }
 
 export function formatDeckRegenerateResult(

@@ -64,6 +64,13 @@ export async function loadDeckContentSpec(
   return parseSpec(JSON.parse(content), path);
 }
 
+/**
+ * **唯一合法调用方是 `spec-edit.ts` 的 `applySpecChange`**（M6 子任务① design §4）。
+ *
+ * 变更日志靠写入路径**捎带**落盘。任何新的直接调用都会绕过日志，而漏记的表现是
+ * 「历史里没有这次改动」——一种事后无法察觉、也无法补救的静默损坏：规格确实变了，
+ * 回看与回滚却都找不到它。要改规格请调 `applySpecChange`，不要在这里开第二条路。
+ */
 export async function writeDeckContentSpec(
   deckPath: string,
   spec: ContentSpec,

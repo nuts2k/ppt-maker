@@ -8,6 +8,7 @@ export * from "./geometry.js";
 export * from "./manifest-normalize.js";
 export * from "./mask-contracts.js";
 export * from "./pdf-extraction-contracts.js";
+export * from "./planning-contracts.js";
 export * from "./pptx-contracts.js";
 export * from "./pptx-text-style.js";
 export * from "./provider.js";

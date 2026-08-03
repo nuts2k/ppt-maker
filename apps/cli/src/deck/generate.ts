@@ -1,6 +1,6 @@
 // `deck generate`：内容规格驱动逐页生成（M5 子任务③ design §3.1）。
 import { rm, stat } from "node:fs/promises";
-import { resolve } from "node:path";
+import { basename, resolve } from "node:path";
 import {
   type ContentSpec,
   type ContentSpecEntry,
@@ -16,7 +16,6 @@ import {
   readContentSpecFile,
   reconcileDeckSpec,
   type SpecReconciliation,
-  writeDeckContentSpec,
 } from "./content-spec.js";
 import {
   attachGenerationAssets,
@@ -24,6 +23,7 @@ import {
   generatePageMaterial,
   type UploadNotice,
 } from "./generate-page.js";
+import { applySpecChange, warnSpecHistoryFailure } from "./spec-edit.js";
 import {
   createEmptyDeckWorkspace,
   type LoadedDeckWorkspace,
@@ -179,7 +179,12 @@ export async function runDeckGenerate(
   const external =
     options.specPath === undefined
       ? null
-      : await readContentSpecFile(options.specPath);
+      : {
+          spec: await readContentSpecFile(options.specPath),
+          // 变更记录的 summary 要能说清「这份规格从哪来」，只留文件名即可：
+          // 绝对路径进日志既冗长，也把用户目录结构写进了 deck。
+          fileName: basename(options.specPath),
+        };
 
   // deck 不存在则创建、存在则按页序追加末尾（与子任务② 的 `deck extract` 同构）。
   // 混合来源的 deck（父任务 A2）正是靠按页序依次调用不同来源的命令实现，
@@ -193,7 +198,7 @@ export async function runDeckGenerate(
       });
 
   const existing = await loadDeckContentSpec(deck.path);
-  const spec = external ?? existing;
+  let spec = external?.spec ?? existing;
   if (spec === null) {
     // 这一步只可能在既有 deck 上失败（新建的 deck 必然带着 --spec 的规格进来），
     // 因此不会留下半成品目录。
@@ -204,8 +209,25 @@ export async function runDeckGenerate(
     );
   }
   if (external !== null) {
-    // 复制进 deck 成为权威副本；此后 deck 内那份才是漂移判定的基准
-    await writeDeckContentSpec(deck.path, external);
+    // 复制进 deck 成为权威副本；此后 deck 内那份才是漂移判定的基准。
+    //
+    // 走统一写入入口而非直调 `writeDeckContentSpec`：变更日志靠写入路径捎带落盘，
+    // 留第二条写入路径日志就会漏记（M6 子任务① design §4.1）。**首次导入也记一条**
+    // ——deck 内此前没有规格时 `applySpecChange` 取到的 previous 为 null，走的正是
+    // 「全部条目都是新增」那一支，不需要给 origin 枚举加值（prd C3）。
+    //
+    // 落盘后的规格以入口返回的为准：`specId` / `createdAt` 被强制沿用磁盘现值（C4），
+    // 外部文件改不动它们。指纹口径不含这三个字段，因此对账结果与直写时一致。
+    const applied = await applySpecChange({
+      deckPath: deck.path,
+      nextSpec: external.spec,
+      origin: "manual",
+      summary: `deck generate 导入外部规格：${external.fileName}`,
+    });
+    // 日志写失败不阻断导入（旁路纪律），但必须出声：不说的话这次导入就永远查不到、
+    // 也回滚不了，而屏幕上一切正常。
+    warnSpecHistoryFailure(applied);
+    spec = applied.spec;
   }
 
   const pages = await collectGeneratedPages(deck);
