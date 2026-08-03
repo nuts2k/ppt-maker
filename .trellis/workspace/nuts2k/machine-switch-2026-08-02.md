@@ -57,7 +57,8 @@ pnpm install
 pnpm build                                   # 含 build:vision + build:pdf，缺一不可
 
 node apps/cli/dist/index.js doctor           # 先过这关再动别的
-pnpm -r test                                 # 基线 774：core 111 / desktop 474 / cli 189
+pnpm -r test                                 # 基线 854：core 141 / desktop 474 / cli 239
+                                             #（2026-08-03 M6 子任务① 后更新，原 774）
 ```
 
 `doctor` 会检查 Node / pnpm / Swift / PowerPoint for Mac / Microsoft YaHei 字体。
@@ -72,7 +73,8 @@ CodeGraph 索引（`.codegraph/`）也被 gitignore，要用的话在仓库根�
 
 ## 三、AI 会话的记忆不跟着仓库走
 
-`~/.claude/projects/-Users-kelin-Workspace-ppt-maker/memory/` 是本机的，新机器上是空的。
+`~/.claude/projects/-Users-kelin-Work-ppt-maker/memory/` 是本机的，新机器上是空的。
+（目录名按仓库路径生成，本机仓库在 `~/Work/ppt-maker`；早先写成 `Workspace` 是笔误。）
 三条要点抄在这里，免得重新踩：
 
 1. **core 必须先 build**，`packages/core/dist` 不入库，跳过它 typecheck 会连环报错；
