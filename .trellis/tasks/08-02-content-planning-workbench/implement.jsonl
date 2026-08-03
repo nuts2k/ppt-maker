@@ -1,0 +1,4 @@
+{"file": ".trellis/spec/backend/contracts.md", "reason": "父任务阶段一要把 D5 对 D7 的放宽写进规范，需先对齐既有契约书写口径"}
+{"file": ".trellis/spec/backend/directory-structure.md", "reason": "design §3.1 在 deck 内新增 planning/ 目录，落点须符合既有目录约定"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "规格写入路径横跨 core / CLI / 桌面端三层，父任务须把跨层数据流讲清楚再下放子任务"}
+{"file": "ROADMAP.md", "reason": "阶段一 1.1/1.2 直接改这份文件：M6 状态、D1-D9 决策回写、订正「content-spec 有独立版本轴」的错误表述"}
