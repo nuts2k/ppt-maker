@@ -1,1 +1,8 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/08-02-content-planning-workbench/prd.md", "reason": "父任务硬验收：A1（从零到 --strict PPTX）、A3（含 revisionNotes 删除）、A4（未勾选页字节不变）、A5（历史可回看可回滚）、A6（旧格式零改写）、A7（契约一字不改）、A8（付费门槛写明次数与不可撤销）、A9（测试基线）"}
+{"file": ".trellis/tasks/08-02-content-planning-workbench/design.md", "reason": "核对本任务是否越界改了跨子任务契约，尤其写入入口唯一性与记录形状；以及批量是否真的复用了 replace-source 的 referenceText 通道"}
+{"file": "DESIGN.md", "reason": "逐组件核对六态、primary 唯一性、状态色映射表、空态不占版面、等宽数字、圆角与间距刻度、prefers-reduced-motion 逐组件降级"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "核对禁止项与测试要求是否被满足：静态断言用 rg 而非 grep --include、放行类修复须配反向用例、走查脚本自己归零前置状态"}
+{"file": ".trellis/spec/guides/verification-coverage-thinking-guide.md", "reason": "核对断言是否真的证明了它声称的事：「未勾选页字节不变」与 isDirty 必须有变异验证记录，不接受「我检查过了」"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "重点核对：historyWritten=false 是否真的出声、只读路径（打开旧格式 deck）是否零副作用、批量是否只动勾选页、坏页错误是否指名了哪一页"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "核对三层数据流一致性：renderer 是否混入了 node: 依赖、是否出现了绕过 applySpecChange 的第二条写盘路径"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "核对 IPC 新增 handler 的失败路径是否符合既有错误码与抛出纪律"}

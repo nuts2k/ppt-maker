@@ -1,1 +1,9 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file": ".trellis/tasks/08-02-content-planning-workbench/design.md", "reason": "父任务四条跨子任务契约：写入入口唯一性（§2）、变更日志记录形状（§3.2）、回滚语义「追加而非抹除」（§3.3）、批量必须复用换源的 referenceText 通道（§7）。本任务只接入不重定义"}
+{"file": "DESIGN.md", "reason": "CLAUDE.md 规定所有前端界面必须遵从：校样台色板（有颜色=要你管）、六态硬性要求、全屏唯一一个 primary、空态不得占用固定版面、状态色只来自唯一映射表、tabular-nums、禁止毛玻璃与文字链接式动作"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "禁止项与测试要求：Tab 改列表导航时不得无条件 preventDefault、不得只换 ARIA role、渲染层规则测在纯函数产物上（本仓无 DOM 测试库）、断言必须变异验证、biome-ignore 紧邻报错行"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "六条真实缺陷验证过的教训，本任务直接踩其中三条：快照与事件混用、会话层盖住耐久层、一个判据兼职两件事（脏标记与过时清单不得共用同一判据）"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "跨层契约与〈规格写入唯一入口与变更日志〉七段式一节；main 侧新增 IPC 必须落在既有契约口径内，不得成为第二条写入路径"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "稳定错误码与边界纪律；IPC 层把坏页错误翻译成人话时不得吞掉原始错误码，也不得伪造新错误码"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "本任务最大风险全是静默类：historyWritten=false 被吞、未保存草稿在切视图时丢失、批量误动未勾选页、打开旧格式 deck 时被悄悄改写"}
+{"file": ".trellis/spec/guides/code-reuse-thinking-guide.md", "reason": "批量重生成接进既有 SourceTaskRunner 而非另开通道、坏页探测复用 buildDeckStatusDetailed、付费确认复用 system.confirm——三处都是「不写第二份」的判断"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "core / CLI / desktop 三层引用方向：renderer 只能 import core 纯函数，CLI 模块一律经 main 的 @cli 别名，禁止 renderer 直接碰 node: 依赖"}
