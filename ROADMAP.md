@@ -304,6 +304,45 @@ M5 是**执行侧**：规格 → 图 → slide。M6 是**策划侧**：构思 �
 不需要为 M6 改动生成侧的任何契约。这条边界是 M5 规划阶段 D3 的核心结论：
 策划是对话式、发散、反复推翻的，与转换引擎的确定性阶段图气质完全不同，混在一个里程碑里会两头都做不好。
 
+#### 出图依据的组成与可调性
+
+M6 的策划界面到底能改哪些东西，取决于「一张图是按什么出的」的实际组成。
+`buildPageGenerationPrompt`（`apps/cli/src/providers/page-generation.ts:34`）按固定顺序拼五层，
+其中只有中间三层在内容规格契约里：
+
+| 层 | 内容 | 存在哪 | 进指纹 | 可调归属 |
+|---|---|---|---|---|
+| ① 引导语 | `Design a 16:9 widescreen presentation slide in Chinese.` | 代码常量 | 否 | 无规划 |
+| ② deck 风格 | `Overall deck style: {style.description}` | `content-spec.json` 根 | 是 | M6 |
+| ③ 条目 | `pageType` / `textGroups` / `visualIntent` | 规格条目 | 是 | M6 |
+| ④ 调整说明 | `revisionNotes`，按时间顺序编号全部拼入 | 规格条目 | 是 | M6 |
+| ⑤ 铁律 | `Render every listed text exactly as written, in Microsoft YaHei…` | 代码常量 | 否 | 无规划 |
+
+不进提示词的调用参数（`OPENAI_IMAGE_MODEL` / `CLEAN_PLATE_SIZE` / `CLEAN_PLATE_QUALITY`）同样是代码常量。
+拼接顺序即优先级：④ 排在 ③ 之后、⑤ 之前，靠「后出现的指令权重更高」生效（E4）。
+
+三个决定界面形态的结构事实：
+
+1. **`style` 是一整段散文**——`ContentSpecStyleSchema` 只有 `description: string`，配色、字体、
+   版式、图形语言全挤在一个自由文本里。因此做不出分项控件，风格界面只能是「编辑一大段描述」。
+   是否拆成结构化子字段属于 M6 规划的待决策项，越晚改代价越大。
+2. **`textGroups` 有双重身份**——既进提示词，又经 `flattenSpecEntryTexts` 展平为该页
+   `reference_text`，即下游 OCR 复核的文字真值基准。改页面文字同时改的是整条流水线的比对基准，
+   界面上不能设计得像改提示词那样轻。
+3. **改 `style` 的爆炸半径是 deck 级**——它拼进每一页，改它意味着所有已生成图都过时，
+   指纹覆盖 `style` 正是为此。界面上「改风格」是破坏性的整册操作，与改单页内容不是一个量级。
+
+现状：桌面端唯一能改规格的地方是源图确认页重新生成时的说明框，且只能追加 `revisionNotes`
+——看不见已累积的条目，也无法删除（契约注释写明清理靠直接编辑规格文件）。其余全靠手改 JSON。
+
+**开放 ①⑤ 或调用参数时必须同时决定它们进不进指纹**，否则改了不报漂移、历史图静默过时。
+`specViewFingerprintValues` 显式列字段的纪律只覆盖规格内的字段，代码常量在纪律之外。
+
+**执行侧回看依据不属于 M6**：源图确认页今天只显示「规格条目 entry-004」一行，按 attempt 冻结的
+快照（`slides/<page>/stages/init/<attemptId>/` 下的 `content-spec.json` 与 `prompt.txt`）在界面上
+无入口。M6 的工作面是 deck 级规格文件，与之不是同一份数据——page-04 的漂移标注正是因为两者
+已经不一致。这个缺口目前无里程碑归属。
+
 主要交付物：
 
 - 输入通道：构思一句话、背景材料、本地文件（既有 PPT / 文档 / 笔记）。
