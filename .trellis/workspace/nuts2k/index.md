@@ -40,6 +40,14 @@
 
 ---
 
+## 换机器接续
+
+- [machine-switch-2026-08-02.md](./machine-switch-2026-08-02.md) — 不在 git 里的三样
+  （`.env` 两个键、Swift 原生二进制、`~/test/` 真实 deck）、新机器落地步骤与 774 测试基线，
+  以及 M5 留给 M6 的三条观察。换机器时先读它。
+
+---
+
 ## Notes
 
 - Sessions are appended to journal files
