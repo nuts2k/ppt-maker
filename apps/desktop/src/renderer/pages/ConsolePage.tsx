@@ -24,7 +24,7 @@ import { type ConsoleFilter, useUIStore } from "@/stores/ui-store";
  * 1. deck 切换时拉取活动日志（面板组件本身不发 IPC，避免折叠/展开触发重复请求）；
  * 2. **筛选**：「待处理」的成员判定直接复用待办队列的 `deriveTodoQueue`，
  *    不另写一套判据——控制台筛选与右侧队列问的是同一个问题，必须同源；
- * 3. 页面级次要操作（添加页面 / 刷新）——执行相关操作一律归 RunControlBar，
+ * 3. 页面级次要操作（添加页面 / 刷新 / 改规格）——执行相关操作一律归 RunControlBar，
  *    导出归 TopNav，此处只放不影响流水线状态的工具动作。
  *
  * 本页同时持有**来源选择模态**与**建页任务条**：新建 deck 期间 `deckPath` 仍是
@@ -47,6 +47,7 @@ export function ConsolePage(): React.JSX.Element {
   const sessionResults = useRunStore((s) => s.sessionResults);
   const filter = useUIStore((s) => s.consoleFilter);
   const setFilter = useUIStore((s) => s.setConsoleFilter);
+  const openPlanning = useUIStore((s) => s.openPlanning);
   // 建页任务在跑时禁用「添加页面」——真正的互斥防线在 main 的两个执行器里，
   // 这里的禁用只是让用户不必先点一次才知道现在不行
   const sourceTaskRunning = useSourceTaskStore((s) => s.running);
@@ -141,6 +142,19 @@ export function ConsolePage(): React.JSX.Element {
               >
                 <RefreshCw aria-hidden="true" className="size-3.5" />
                 刷新
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={openPlanning}
+                disabled={loading || sourceTaskRunning}
+                title={
+                  sourceTaskRunning
+                    ? "建页任务正在执行，请等它结束后再修改规格"
+                    : undefined
+                }
+              >
+                改规格
               </Button>
               <Button
                 size="sm"

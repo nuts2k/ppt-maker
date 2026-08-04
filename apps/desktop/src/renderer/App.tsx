@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { AppShell } from "@/components/layout/AppShell";
 import { useRunBridge } from "@/hooks/useRunBridge";
 import { ConsolePage } from "@/pages/ConsolePage";
+import { PlanningPage } from "@/pages/PlanningPage";
 import { ReviewPage } from "@/pages/ReviewPage";
 import { SourceReviewPage } from "@/pages/SourceReviewPage";
 import { useSourceTaskStore } from "@/stores/source-task-store";
@@ -37,6 +38,8 @@ export function App(): React.JSX.Element {
         // 审片视图**不绑 key**：换页要保留序列、说明草稿与滚动位置，
         // 逐张过一遍时每换一张就重挂载一次会让缩略图带全部重新加载
         <SourceReviewPage />
+      ) : currentView === "planning" ? (
+        <PlanningPage />
       ) : (
         <ConsolePage />
       )}

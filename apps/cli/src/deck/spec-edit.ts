@@ -9,12 +9,15 @@
 // core 只放类型与纯函数（`diffContentSpec` / `applyRollbackToSpec`），文件与哈希留在这里。
 import { randomUUID } from "node:crypto";
 import {
+  type ApplySpecChangeResult,
   applyRollbackToSpec,
   type ContentSpec,
   type ContentSpecDiff,
   ContentSpecSchema,
+  type DriftedPage,
   diffContentSpec,
   FoundationError,
+  type PreviewSpecChangeResult,
   SPEC_CHANGE_RECORD_V,
   type SpecChangeFingerprint,
   type SpecChangeOrigin,
@@ -35,14 +38,11 @@ import {
 } from "./planning-store.js";
 import { loadDeckWorkspace } from "./workspace.js";
 
-/** 一页因规格变更而改变过时状态；`before` / `after` 是该页规格视图在两侧的指纹 */
-export interface DriftedPage {
-  readonly slideId: string;
-  readonly pageLabel: string;
-  readonly specEntryId: string;
-  readonly before: string | null;
-  readonly after: string | null;
-}
+export type {
+  ApplySpecChangeResult,
+  DriftedPage,
+  PreviewSpecChangeResult,
+} from "@ppt-maker/core";
 
 export interface ApplySpecChangeOptions {
   readonly deckPath: string;
@@ -56,32 +56,6 @@ export interface ApplySpecChangeOptions {
   readonly now?: () => string;
   /** 测试注入 */
   readonly newRecordId?: () => string;
-}
-
-export interface ApplySpecChangeResult {
-  /** 落盘后的规格 */
-  readonly spec: ContentSpec;
-  readonly record: SpecChangeRecord;
-  /** 第 6 步（追加变更记录）是否成功；失败不影响前五步 */
-  readonly historyWritten: boolean;
-  /** 本次变更导致**新增**过时的页 */
-  readonly drifted: readonly DriftedPage[];
-  /**
-   * 本次变更导致**新增**失联（条目被删）的页。
-   *
-   * 与 `previewSpecChange` 的 `willMiss` 同源同口径。两处都要有，否则会出现
-   * 「`--dry-run` 预告了 1 页失联，落盘后的输出只字不提」——用户据以做决定的那个数字
-   * 在结果里蒸发了，而失联页在 `deck status` 里才重新出现。
-   */
-  readonly missing: readonly DriftedPage[];
-}
-
-export interface PreviewSpecChangeResult {
-  readonly diff: ContentSpecDiff;
-  /** 落盘后将**新增**变为已过时的页 */
-  readonly willDrift: readonly DriftedPage[];
-  /** 条目被删 → 页面失联（`deck status` 的 `missing`） */
-  readonly willMiss: readonly DriftedPage[];
 }
 
 /**

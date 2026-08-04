@@ -1,5 +1,6 @@
 import { useActivityStore } from "@/stores/activity-store";
 import { useDeckStore } from "@/stores/deck-store";
+import { usePlanningStore } from "@/stores/planning-store";
 import { useRunStore } from "@/stores/run-store";
 import { useSlideStore } from "@/stores/slide-store";
 import { useSourceTaskStore } from "@/stores/source-task-store";
@@ -42,6 +43,7 @@ const deps: WorkspaceSwitchDeps = {
      * 上一个 deck 那句「PDF 中没有可用于建立页面的 16:9 页」还挂在新 deck 顶上。
      */
     useSourceTaskStore.getState().reset();
+    usePlanningStore.getState().reset();
     useUIStore.getState().reset();
   },
 };
@@ -59,6 +61,27 @@ export async function createWorkspaceFromImages(
   imagesDir: string,
 ): Promise<void> {
   await runSwitch({ kind: "create", imagesDir });
+}
+
+/** 新建零页 deck 并进入策划视图。 */
+export async function createEmptyPlanningWorkspace(
+  parentDir: string,
+  name: string,
+): Promise<void> {
+  try {
+    const deckPath = await useDeckStore.getState().createEmpty(parentDir, name);
+    // 创建请求期间已切换工作区时，deck-store 会返回 null；后续清零、读规格、切视图
+    // 都属于那次已作废的请求，必须整体丢弃。
+    if (deckPath === null || useDeckStore.getState().deckPath !== deckPath) {
+      return;
+    }
+    deps.resetOtherStores();
+    await usePlanningStore.getState().load(deckPath, true);
+    if (useDeckStore.getState().deckPath !== deckPath) return;
+    useUIStore.getState().openPlanning();
+  } catch {
+    // 错误由 deck-store 承载，创建失败时保留当前工作区
+  }
 }
 
 async function runSwitch(target: WorkspaceTarget): Promise<void> {

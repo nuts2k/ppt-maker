@@ -3,6 +3,8 @@ import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { switchWorkspace } from "@/lib/workspace-switch";
 import { useDeckStore } from "@/stores/deck-store";
+import { useSourceTaskStore } from "@/stores/source-task-store";
+import { useUIStore } from "@/stores/ui-store";
 
 interface DeckEmptyStateProps {
   /** 打开来源选择模态。模态与建页任务进度都归 ConsolePage 持有 */
@@ -13,11 +15,12 @@ interface DeckEmptyStateProps {
 /**
  * 未打开 Deck 时的欢迎/入口态。
  *
- * 纯白 canvas + 一对动作 + 大留白，不加任何装饰背景——层级靠留白与字号建立。
+ * 纯白 canvas + 三条入口 + 大留白，不加任何装饰背景——层级靠留白与字号建立。
  *
  * 「新建 Deck」是这里唯一的主行动，它进的是**统一的来源选择界面**（三种来源一个
- * 入口），而不是直接弹一个图片目录选择器：三种来源分三个并列按钮正是父任务点名
- * 不要的形态。「打开已有 Deck」降为与之成对的次要动作。
+ * 入口），而不是直接弹一个图片目录选择器：三种来源拆成三个并列按钮正是父任务点名
+ * 不要的形态。「打开已有 Deck」降为与之成对的次要动作；「从内容策划开始」进入
+ * 独立的规格工作台。
  */
 export function DeckEmptyState({
   onCreate,
@@ -25,6 +28,9 @@ export function DeckEmptyState({
 }: DeckEmptyStateProps): React.JSX.Element {
   const loading = useDeckStore((s) => s.loading);
   const error = useDeckStore((s) => s.error);
+  const sourceTaskRunning = useSourceTaskStore((s) => s.running);
+  const disabled = loading || sourceTaskRunning;
+  const openPlanningForNewDeck = useUIStore((s) => s.openPlanningForNewDeck);
 
   // 打开的编排（含切换后的状态清零）与顶栏入口共用 `lib/workspace-switch`，
   // 两处不再各写一份；错误仍由 deck-store 承载并在下方错误条呈现
@@ -53,17 +59,24 @@ export function DeckEmptyState({
       </div>
 
       <div className="flex items-center gap-3">
-        <Button variant="primary" onClick={onCreate} disabled={loading}>
+        <Button variant="primary" onClick={onCreate} disabled={disabled}>
           <Plus aria-hidden="true" className="size-3.5" />
           新建 Deck
         </Button>
         <Button
           variant="secondary"
           onClick={() => void handleOpen()}
-          disabled={loading}
+          disabled={disabled}
         >
           <FolderOpen aria-hidden="true" className="size-3.5" />
           打开已有 Deck
+        </Button>
+        <Button
+          variant="ghost"
+          onClick={openPlanningForNewDeck}
+          disabled={disabled}
+        >
+          从内容策划开始
         </Button>
       </div>
 

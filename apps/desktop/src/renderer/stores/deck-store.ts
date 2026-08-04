@@ -26,6 +26,11 @@ interface DeckState {
     workspacePath: string,
     name?: string,
   ): Promise<void>;
+  /**
+   * 新建零页 Deck。返回实际创建的路径；请求期间工作区已切换时返回 null，
+   * 调用方必须丢弃这次结果，避免迟到的响应覆盖当前工作区。
+   */
+  createEmpty(parentDir: string, name: string): Promise<string | null>;
   refreshStatus(): Promise<void>;
   refreshSlide(slideId: string): Promise<void>;
   addSlide(imagePath: string): Promise<void>;
@@ -73,6 +78,26 @@ export const useDeckStore = create<DeckState>((set, get) => ({
       set({ ...applyDetailedResult(detailed), loading: false });
     } catch (err) {
       set({ loading: false, error: toMessage(err) });
+      throw err;
+    }
+  },
+
+  async createEmpty(parentDir, name) {
+    const startedDeckPath = get().deckPath;
+    set({ loading: true, error: null });
+    try {
+      const created = await window.api.deck.createEmpty(parentDir, name);
+      // 新建请求在途期间可能已经切换到另一个 Deck；旧结果不得写回。
+      if (get().deckPath !== startedDeckPath) return null;
+      const detailed = await window.api.deck.statusDetailed(created.deckPath);
+      if (get().deckPath !== startedDeckPath) return null;
+      set({ ...applyDetailedResult(detailed), loading: false });
+      return created.deckPath;
+    } catch (err) {
+      // 迟到的失败也不应把错误贴到用户已经切换到的工作区。
+      if (get().deckPath === startedDeckPath) {
+        set({ loading: false, error: toMessage(err) });
+      }
       throw err;
     }
   },

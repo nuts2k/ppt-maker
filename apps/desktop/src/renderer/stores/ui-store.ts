@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { usePlanningStore } from "./planning-store.js";
 
 /**
  * 视图路由：控制台、单页复核、源图审片三态。
@@ -8,7 +9,7 @@ import { create } from "zustand";
  * 卡片缩略图那点尺寸根本不够，必须看大图。它是**第三个视图**而不是单页复核里
  * 的一档——停在源图确认的页还没跑 OCR，复核页后半屏全是空面板。
  */
-type AppView = "console" | "slide" | "source-review";
+type AppView = "console" | "slide" | "source-review" | "planning";
 
 /**
  * 控制台卡片筛选口径。
@@ -80,6 +81,10 @@ interface UIState {
    * 调它，不要各自 `setView("source-review")` 再补一次 `selectSlide`。
    */
   openSourceReview(slideId?: string): void;
+  /** 打开当前 deck 的规格工作台。 */
+  openPlanning(): void;
+  /** 从零新建策划；PlanningPage 负责建空 deck 后保持在本视图。 */
+  openPlanningForNewDeck(): void;
   /** 返回控制台，保留当前选中页以便再次进入 */
   backToConsole(): void;
   toggleQueuePanel(open?: boolean): void;
@@ -136,6 +141,15 @@ export const useUIStore = create<UIState>((set) => ({
             selectedBlockId: null,
           },
     );
+  },
+
+  openPlanning() {
+    set({ currentView: "planning", selectedBlockId: null });
+  },
+
+  openPlanningForNewDeck() {
+    usePlanningStore.getState().prepareNewDeck();
+    set({ currentView: "planning", selectedBlockId: null });
   },
 
   backToConsole() {

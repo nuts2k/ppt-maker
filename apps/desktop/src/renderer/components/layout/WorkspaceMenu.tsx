@@ -8,8 +8,11 @@ import {
   workspaceMenuItems,
 } from "@/lib/workspace-menu";
 import { switchWorkspace } from "@/lib/workspace-switch";
+import { useDeckStore } from "@/stores/deck-store";
+import { selectPlanningDirty, usePlanningStore } from "@/stores/planning-store";
 import { useRunStore } from "@/stores/run-store";
 import { useSlideStore } from "@/stores/slide-store";
+import { useSourceTaskStore } from "@/stores/source-task-store";
 import { useUIStore } from "@/stores/ui-store";
 
 /**
@@ -27,7 +30,7 @@ import { useUIStore } from "@/stores/ui-store";
 interface WorkspaceMenuProps {
   readonly name: string | null;
   readonly deckPath: string;
-  /** 有未保存复核改动时上抛，由 TopNav 在导航条下方渲染确认条 */
+  /** 有未保存复核改动或规格草稿时上抛，由 TopNav 渲染确认条 */
   readonly onRequestConfirm: (action: WorkspaceAction) => void;
 }
 
@@ -43,7 +46,11 @@ export async function executeWorkspaceAction(
       selectDirectory: () => window.api.system.selectDirectory(),
       switchWorkspace,
       // 新建走来源选择模态（三档来源统一入口），不在这里开图片目录框
-      openSourcePicker: () => useUIStore.getState().openSourcePicker("new"),
+      openSourcePicker: () => {
+        useUIStore.getState().backToConsole();
+        useUIStore.getState().openSourcePicker("new");
+      },
+      openPlanning: () => useUIStore.getState().openPlanningForNewDeck(),
     });
   } catch {
     // 忽略：错误已写入 deck-store 并由现有错误条呈现（与 DeckEmptyState 同一约定）
@@ -55,8 +62,13 @@ export function WorkspaceMenu({
   deckPath,
   onRequestConfirm,
 }: WorkspaceMenuProps): React.JSX.Element {
-  const running = useRunStore((s) => s.status) !== "idle";
-  const dirty = useSlideStore((s) => s.dirty);
+  const pipelineRunning = useRunStore((s) => s.status) !== "idle";
+  const sourceTaskRunning = useSourceTaskStore((s) => s.running);
+  const deckLoading = useDeckStore((s) => s.loading);
+  const running = pipelineRunning || sourceTaskRunning || deckLoading;
+  const reviewDirty = useSlideStore((s) => s.dirty);
+  const planningDirty = usePlanningStore(selectPlanningDirty);
+  const dirty = reviewDirty || planningDirty;
 
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);

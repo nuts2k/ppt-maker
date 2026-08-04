@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   RUNNING_DISABLED_HINT,
   runWorkspaceAction,
+  UNSAVED_SWITCH_NOTICE,
   type WorkspaceActionDeps,
   workspaceMenuIntent,
   workspaceMenuItems,
@@ -19,26 +20,33 @@ function deps(dir: string | null): WorkspaceActionDeps & {
   selectDirectory: ReturnType<typeof vi.fn>;
   switchWorkspace: ReturnType<typeof vi.fn>;
   openSourcePicker: ReturnType<typeof vi.fn>;
+  openPlanning: ReturnType<typeof vi.fn>;
 } {
   return {
     selectDirectory: vi.fn(async () => dir),
     switchWorkspace: vi.fn(async () => undefined),
     openSourcePicker: vi.fn(() => undefined),
+    openPlanning: vi.fn(() => undefined),
   };
 }
 
 describe("workspaceMenuItems", () => {
-  it("空闲时两项均可用", () => {
+  it("空闲时三项均可用", () => {
     const items = workspaceMenuItems(false);
-    expect(items.map((item) => item.action)).toEqual(["open", "create"]);
+    expect(items.map((item) => item.action)).toEqual([
+      "open",
+      "create",
+      "planning",
+    ]);
     expect(items.every((item) => !item.disabled)).toBe(true);
     expect(items.every((item) => item.disabledReason === null)).toBe(true);
   });
 
-  it("执行中两项均禁用并给出同一条原因", () => {
+  it("执行中三项均禁用并给出同一条原因", () => {
     const items = workspaceMenuItems(true);
     expect(items.every((item) => item.disabled)).toBe(true);
     expect(items.map((item) => item.disabledReason)).toEqual([
+      RUNNING_DISABLED_HINT,
       RUNNING_DISABLED_HINT,
       RUNNING_DISABLED_HINT,
     ]);
@@ -76,12 +84,28 @@ describe("workspaceMenuIntent", () => {
   });
 });
 
+describe("未保存改动确认文案", () => {
+  it("同时说明复核改动与规格草稿都会在切换时丢弃", () => {
+    expect(UNSAVED_SWITCH_NOTICE.title).toContain("规格草稿");
+    expect(UNSAVED_SWITCH_NOTICE.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "unsaved-review" }),
+        expect.objectContaining({
+          id: "unsaved-planning",
+          label: "规格草稿",
+        }),
+      ]),
+    );
+  });
+});
+
 describe("runWorkspaceAction", () => {
   it("open 选定目录后调用 switchWorkspace", async () => {
     const d = deps("/decks/other");
     await runWorkspaceAction("open", d);
     expect(d.switchWorkspace).toHaveBeenCalledWith("/decks/other");
     expect(d.openSourcePicker).not.toHaveBeenCalled();
+    expect(d.openPlanning).not.toHaveBeenCalled();
   });
 
   /*
@@ -93,6 +117,15 @@ describe("runWorkspaceAction", () => {
     const d = deps("/photos/deck-src");
     await runWorkspaceAction("create", d);
     expect(d.openSourcePicker).toHaveBeenCalledTimes(1);
+    expect(d.selectDirectory).not.toHaveBeenCalled();
+    expect(d.switchWorkspace).not.toHaveBeenCalled();
+  });
+
+  it("planning 只进入空 Deck 策划表单", async () => {
+    const d = deps("/photos/deck-src");
+    await runWorkspaceAction("planning", d);
+    expect(d.openPlanning).toHaveBeenCalledTimes(1);
+    expect(d.openSourcePicker).not.toHaveBeenCalled();
     expect(d.selectDirectory).not.toHaveBeenCalled();
     expect(d.switchWorkspace).not.toHaveBeenCalled();
   });

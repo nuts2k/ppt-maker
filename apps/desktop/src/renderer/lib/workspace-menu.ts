@@ -14,8 +14,8 @@
 
 import type { DoctorNotice } from "./doctor-view.js";
 
-/** 下拉两项：打开已有工作区 / 新建 Deck */
-export type WorkspaceAction = "open" | "create";
+/** 下拉三项：打开已有工作区 / 从来源新建 Deck / 从内容策划新建 */
+export type WorkspaceAction = "open" | "create" | "planning";
 
 export const RUNNING_DISABLED_HINT = "执行中不可切换，请先停止";
 
@@ -36,6 +36,7 @@ const ITEM_LABELS: Record<WorkspaceAction, string> = {
    * 选择模态**，三档来源由那一个组件统一承担。
    */
   create: "新建 Deck…",
+  planning: "从内容策划开始…",
 };
 
 /**
@@ -44,7 +45,7 @@ const ITEM_LABELS: Record<WorkspaceAction, string> = {
 export function workspaceMenuItems(
   running: boolean,
 ): readonly WorkspaceMenuItemView[] {
-  const actions: readonly WorkspaceAction[] = ["open", "create"];
+  const actions: readonly WorkspaceAction[] = ["open", "create", "planning"];
   return actions.map((action) => ({
     action,
     label: ITEM_LABELS[action],
@@ -64,7 +65,7 @@ export type WorkspaceMenuIntent =
 export interface WorkspaceMenuContext {
   /** run-store 的 `status !== "idle"` */
   readonly running: boolean;
-  /** slide-store 的 `dirty`：单页复核有未保存草稿 */
+  /** 单页复核或规格工作台有未保存草稿 */
   readonly dirty: boolean;
 }
 
@@ -79,18 +80,25 @@ export function workspaceMenuIntent(
 
 /**
  * 未保存改动的确认条内容。沿用 DoctorNoticeBar 的形状（与导出前警告同一条形式），
- * 不做自动保存：`saveReview()` 会连带作废下游阶段，而切 deck 的当口看不到「哪些阶段被作废」。
+ * 同时覆盖复核改动与规格草稿。不做自动保存：`saveReview()` 会连带作废下游阶段，
+ * 而切 deck 的当口看不到「哪些阶段被作废」。
  */
 export const UNSAVED_SWITCH_NOTICE: DoctorNotice = {
   level: "warn",
-  title: "当前页有未保存的复核改动，切换将丢弃",
-  hint: "取消后可回到单页复核按 ⌘S 保存，再来切换工作区。",
+  title: "当前页或规格草稿有未保存改动，切换将丢弃",
+  hint: "取消后可回到当前视图保存，再来切换工作区。",
   items: [
     {
       id: "unsaved-review",
       label: "未保存改动",
       status: "warn",
       message: "切换工作区会重新加载全部页面，当前页草稿不会保留。",
+    },
+    {
+      id: "unsaved-planning",
+      label: "规格草稿",
+      status: "warn",
+      message: "切换工作区会丢弃尚未保存的规格草稿。",
     },
   ],
 };
@@ -101,6 +109,8 @@ export interface WorkspaceActionDeps {
   readonly switchWorkspace: (path: string) => Promise<void>;
   /** 打开来源选择模态（新建档）。选目录/选文件由模态内部按来源各自负责 */
   readonly openSourcePicker: () => void;
+  /** 进入建空 Deck 的策划表单。 */
+  readonly openPlanning: () => void;
 }
 
 /**
@@ -118,6 +128,10 @@ export async function runWorkspaceAction(
 ): Promise<void> {
   if (action === "create") {
     deps.openSourcePicker();
+    return;
+  }
+  if (action === "planning") {
+    deps.openPlanning();
     return;
   }
   const dir = await deps.selectDirectory();

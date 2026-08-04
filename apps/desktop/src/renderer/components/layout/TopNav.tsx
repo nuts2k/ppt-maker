@@ -13,6 +13,7 @@ import {
 } from "@/lib/workspace-menu";
 import { useDeckStore } from "@/stores/deck-store";
 import { useRunStore } from "@/stores/run-store";
+import { useSourceTaskStore } from "@/stores/source-task-store";
 import type { DoctorReport } from "../../../main/ipc/channels.js";
 import { DoctorChip } from "./DoctorChip";
 import { DoctorNoticeBar } from "./DoctorNoticeBar";
@@ -27,6 +28,7 @@ export function TopNav(): React.JSX.Element {
   const deckPath = useDeckStore((s) => s.deckPath);
   const name = useDeckStore((s) => s.name);
   const runStatus = useRunStore((s) => s.status);
+  const sourceTaskRunning = useSourceTaskStore((s) => s.running);
 
   const [report, setReport] = useState<DoctorReport | null>(null);
   // doctor 调用失败不应阻断界面，仅降级为「环境未知」
@@ -60,7 +62,7 @@ export function TopNav(): React.JSX.Element {
   }, []);
 
   const running = runStatus !== "idle";
-  const exportDisabled = !deckPath || exporting || running;
+  const exportDisabled = !deckPath || exporting || running || sourceTaskRunning;
 
   async function runExport(): Promise<void> {
     if (!deckPath) return;
@@ -167,7 +169,13 @@ export function TopNav(): React.JSX.Element {
             onClick={handleExportClick}
             disabled={exportDisabled}
             loading={exporting}
-            title={running ? "执行中不可导出" : undefined}
+            title={
+              running
+                ? "流水线执行中不可导出"
+                : sourceTaskRunning
+                  ? "建页任务执行中不可导出"
+                  : undefined
+            }
           >
             {!exporting && <Upload aria-hidden="true" className="size-3.5" />}
             {exporting ? "导出中…" : "导出 PPTX"}

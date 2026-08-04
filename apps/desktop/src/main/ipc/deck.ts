@@ -3,18 +3,29 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { addSlideToDeck } from "@cli/deck/add-slide.js";
-import { readContentSpecFile } from "@cli/deck/content-spec.js";
+import {
+  loadDeckContentSpec,
+  readContentSpecFile,
+} from "@cli/deck/content-spec.js";
 import { exportDeckPptx } from "@cli/deck/export.js";
+import { listSpecChangeRecords } from "@cli/deck/planning-store.js";
 import { removeSlideFromDeck } from "@cli/deck/remove-slide.js";
 import { runDeckSpecDraft } from "@cli/deck/spec-draft.js";
+import { applySpecChange, rollbackSpecChange } from "@cli/deck/spec-edit.js";
 import { deckStatus } from "@cli/deck/status.js";
 import {
   createDeckWorkspace,
+  createEmptyDeckWorkspace,
   loadDeckWorkspace,
   resolveDeckPath,
 } from "@cli/deck/workspace.js";
 import { loadSlideWorkspace } from "@cli/slide/workspace.js";
-import type { ContentSpec, PdfExtractionReport } from "@ppt-maker/core";
+import type {
+  ApplySpecChangeResult,
+  ContentSpec,
+  PdfExtractionReport,
+  SpecChangeRecord,
+} from "@ppt-maker/core";
 import { PdfExtractionReportSchema } from "@ppt-maker/core";
 import { ipcMain } from "electron";
 import { type ActivityLog, buildActivityRecord } from "../activity-log.js";
@@ -123,11 +134,42 @@ async function buildDeckStatusDetailed(
   };
 }
 
+/**
+ * `buildDeckStatusDetailed` 通常能给出坏页上下文；但它前置的 CLI `deckStatus` 本身也会
+ * 在坏 manifest 处抛出。这里只在保存已经失败后做最小诊断，不进入正常保存路径。
+ */
+async function findUnreadableSlideLabels(deckPath: string): Promise<string[]> {
+  const deck = await loadDeckWorkspace(resolve(deckPath));
+  const labels = await Promise.all(
+    deck.manifest.slides.map(async (slide): Promise<string | null> => {
+      if (slide.removedAt !== null) return null;
+      try {
+        await loadSlideWorkspace(
+          resolveDeckPath(deck.path, slide.workspacePath),
+        );
+        return null;
+      } catch {
+        return basename(slide.workspacePath);
+      }
+    }),
+  );
+  return labels.filter((label): label is string => label !== null);
+}
+
 export function registerDeckHandlers(
   runner: DeckRunner,
   sourceTasks: SourceTaskRunner,
   activityLog: ActivityLog,
 ): void {
+  function assertSpecEditingAvailable(): void {
+    if (runner.isRunning()) {
+      throw new Error("流水线正在执行，请停止后再修改规格");
+    }
+    if (sourceTasks.isRunning()) {
+      throw new Error("建页任务正在执行，请等它结束后再修改规格");
+    }
+  }
+
   async function log(
     deckPath: string,
     kind: string,
@@ -185,6 +227,39 @@ export function registerDeckHandlers(
   );
 
   ipcMain.handle(
+    "deck:create-empty",
+    async (
+      _event,
+      parentDir: string,
+      name: string,
+    ): Promise<DeckStatusResult> => {
+      if (runner.isRunning() || sourceTasks.isRunning()) {
+        throw new Error("执行任务正在进行，结束后才能新建空 Deck");
+      }
+      const normalizedName = name.trim();
+      if (
+        normalizedName === "" ||
+        normalizedName === "." ||
+        normalizedName === ".." ||
+        basename(normalizedName) !== normalizedName
+      ) {
+        throw new Error("Deck 名称不能为空，也不能包含路径分隔符");
+      }
+      const result = await createEmptyDeckWorkspace({
+        workspacePath: join(resolve(parentDir), normalizedName),
+        name: normalizedName,
+      });
+      await log(
+        result.path,
+        "deck-create-empty",
+        "info",
+        `创建空 deck：${result.path}`,
+      );
+      return buildDeckStatus(result.path);
+    },
+  );
+
+  ipcMain.handle(
     "deck:status",
     async (_event, path: string): Promise<DeckStatusResult> => {
       return buildDeckStatus(path);
@@ -221,6 +296,9 @@ export function registerDeckHandlers(
       outputPath: string,
       strict?: boolean,
     ): Promise<DeckExportResult> => {
+      if (sourceTasks.isRunning()) {
+        throw new Error("建页任务正在执行，请等它结束后再导出");
+      }
       try {
         const result = await exportDeckPptx({
           deckPath: resolve(deckPath),
@@ -321,6 +399,78 @@ export function registerDeckHandlers(
     "deck:read-content-spec",
     async (_event, specPath: string): Promise<ContentSpec> => {
       return readContentSpecFile(resolve(specPath));
+    },
+  );
+
+  ipcMain.handle(
+    "deck:read-deck-spec",
+    async (_event, deckPath: string): Promise<ContentSpec | null> => {
+      return loadDeckContentSpec(resolve(deckPath));
+    },
+  );
+
+  ipcMain.handle(
+    "deck:apply-spec-change",
+    async (
+      _event,
+      deckPath: string,
+      nextSpec: ContentSpec,
+      summary: string,
+    ): Promise<ApplySpecChangeResult> => {
+      assertSpecEditingAvailable();
+      const normalizedSummary = summary.trim();
+      if (normalizedSummary === "") {
+        throw new Error("规格变更摘要不能为空");
+      }
+      try {
+        return await applySpecChange({
+          deckPath: resolve(deckPath),
+          nextSpec,
+          origin: "manual",
+          summary: normalizedSummary,
+        });
+      } catch (error) {
+        let broken: string[] = [];
+        try {
+          const detailed = await buildDeckStatusDetailed(deckPath);
+          broken = detailed.slides
+            .filter(
+              (slide) => slide.lastError?.code === "WORKSPACE_LOAD_FAILED",
+            )
+            .map((slide) => slide.pageLabel);
+        } catch {
+          try {
+            broken = await findUnreadableSlideLabels(deckPath);
+          } catch {
+            // 诊断失败时保留最初的领域错误，不用次级错误遮住根因
+          }
+        }
+        if (broken.length > 0) {
+          throw new Error(
+            `保存失败：${broken.join("、")} 的页面数据损坏，修好后才能改规格`,
+          );
+        }
+        throw error;
+      }
+    },
+  );
+
+  ipcMain.handle(
+    "deck:list-spec-history",
+    async (_event, deckPath: string): Promise<SpecChangeRecord[]> => {
+      return listSpecChangeRecords(resolve(deckPath));
+    },
+  );
+
+  ipcMain.handle(
+    "deck:rollback-spec-change",
+    async (
+      _event,
+      deckPath: string,
+      recordId: string,
+    ): Promise<ApplySpecChangeResult> => {
+      assertSpecEditingAvailable();
+      return rollbackSpecChange({ deckPath: resolve(deckPath), recordId });
     },
   );
 

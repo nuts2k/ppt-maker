@@ -1,18 +1,20 @@
 /**
  * 切换工作区的编排测试（PRD R2 R3 / AC3 AC4 AC5）。
  *
- * deck / run / slide / activity 四个 store 都经 window 或 `@/` 别名，把它们拉进
+ * deck / run / slide / activity / planning 五个 store 都经 window 或 `@/` 别名，把它们拉进
  * test 的类型图会让 tsconfig.node.json 解析失败（同 slide-store-edit.test.ts 的取舍），
  * 因此这里用形状一致的替身，并复刻 deck-store「失败只写 error、不动 deckPath/slides」
  * 的真实语义；ui-store 不碰 window，直接用真实 store。
  */
 
+import type { ContentSpec } from "@ppt-maker/core";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   applyWorkspaceSwitch,
   type WorkspaceSwitchDeps,
   workspacePathForImages,
 } from "../src/renderer/lib/workspace-switch-core.js";
+import { usePlanningStore } from "../src/renderer/stores/planning-store.js";
 import { useUIStore } from "../src/renderer/stores/ui-store.js";
 
 const TODAY = "2026-07-30";
@@ -33,6 +35,17 @@ interface Harness {
   readonly deps: WorkspaceSwitchDeps;
 }
 
+function planningSpec(style: string): ContentSpec {
+  return {
+    schemaVersion: 1,
+    specId: "old-spec",
+    createdAt: "2026-07-30T00:00:00.000Z",
+    updatedAt: "2026-07-30T00:00:00.000Z",
+    style: { description: style },
+    entries: [],
+  };
+}
+
 /** 造一个「已打开旧 deck 且各层都有残留」的现场；`fail` 时打开/创建一律失败 */
 function createHarness(fail = false): Harness {
   const deck = {
@@ -50,6 +63,17 @@ function createHarness(fail = false): Harness {
 
   useUIStore.getState().openSlide("old-1");
   useUIStore.getState().selectBlock("block-9");
+  usePlanningStore.setState({
+    loadedDeckPath: "/decks/old",
+    saved: planningSpec("旧 deck 风格"),
+    draft: planningSpec("旧 deck 未保存草稿"),
+    history: [],
+    loading: false,
+    saving: true,
+    lastResult: null,
+    justCreated: true,
+    error: "旧 deck 的规格错误",
+  });
 
   function applyOpened(path: string): void {
     deck.deckPath = path;
@@ -82,6 +106,7 @@ function createHarness(fail = false): Harness {
       slide.slideId = null;
       slide.dirty = false;
       activity.records = [];
+      usePlanningStore.getState().reset();
       useUIStore.getState().reset();
     },
   };
@@ -94,6 +119,16 @@ function expectClean(h: Harness): void {
   expect(h.slide.slideId).toBeNull();
   expect(h.slide.dirty).toBe(false);
   expect(h.activity.records).toEqual([]);
+  const planning = usePlanningStore.getState();
+  expect(planning.loadedDeckPath).toBeNull();
+  expect(planning.saved).toBeNull();
+  expect(planning.draft).toBeNull();
+  expect(planning.history).toEqual([]);
+  expect(planning.loading).toBe(false);
+  expect(planning.saving).toBe(false);
+  expect(planning.lastResult).toBeNull();
+  expect(planning.justCreated).toBe(false);
+  expect(planning.error).toBeNull();
   expect(useUIStore.getState().selectedSlideId).toBeNull();
 }
 
@@ -102,11 +137,19 @@ function expectUntouched(h: Harness): void {
   expect(h.slide.slideId).toBe("old-1");
   expect(h.slide.dirty).toBe(true);
   expect(h.activity.records).toEqual(["旧 deck 的日志"]);
+  const planning = usePlanningStore.getState();
+  expect(planning.loadedDeckPath).toBe("/decks/old");
+  expect(planning.saved?.style.description).toBe("旧 deck 风格");
+  expect(planning.draft?.style.description).toBe("旧 deck 未保存草稿");
+  expect(planning.saving).toBe(true);
+  expect(planning.justCreated).toBe(true);
+  expect(planning.error).toBe("旧 deck 的规格错误");
   expect(useUIStore.getState().selectedSlideId).toBe("old-1");
 }
 
 beforeEach(() => {
   useUIStore.getState().reset();
+  usePlanningStore.getState().reset();
 });
 
 describe("workspacePathForImages", () => {
@@ -124,7 +167,7 @@ describe("workspacePathForImages", () => {
 });
 
 describe("applyWorkspaceSwitch · 打开已有工作区", () => {
-  it("成功后四个 store 归零、deck 换成新的", async () => {
+  it("成功后五个 store 归零、deck 换成新的", async () => {
     const h = createHarness();
     await applyWorkspaceSwitch(h.deps, { kind: "open", path: "/decks/new" });
 
@@ -149,7 +192,7 @@ describe("applyWorkspaceSwitch · 打开已有工作区", () => {
     expect(useUIStore.getState().selectedBlockId).toBeNull();
   });
 
-  it("打开失败时四个 store 一个都没清，当前 deck 完好，错误已由 deck-store 承载", async () => {
+  it("打开失败时五个 store 一个都没清，当前 deck 完好，错误已由 deck-store 承载", async () => {
     const h = createHarness(true);
 
     await expect(

@@ -1069,6 +1069,12 @@ applyRollbackToSpec(current, target): ContentSpec;
 与单页的差别只有三处：一次确认覆盖 N 页、进度按页汇报、单页失败不终止其余页。
 选页要么全中要么整体拒绝，不做「部分匹配就开跑」——确认框按 N 页给用户看，实跑 N-1 页是静默不一致。
 
+**规格写入与执行任务互斥**：`applySpecChange` / `rollbackSpecChange` 不得与 `DeckRunner` 或
+`SourceTaskRunner` 并发。批量重生成会逐页读取规格、替换源图，部分路径还会追加
+`revisionNotes`；并发保存一份先前加载的草稿会把任务刚写入的内容静默覆盖。renderer 的禁用只负责
+提前说明，main IPC 必须在写盘前再次检查两个 runner 的 `isRunning()`，这才是权威防线。
+同理，建页任务进行中不得创建空 Deck 并切换工作区，也不得导出一个仍在变化的 deck。
+
 ### 4. Validation & Error Matrix
 
 | 情形 | 行为 |
@@ -1079,12 +1085,16 @@ applyRollbackToSpec(current, target): ContentSpec;
 | `planning/` 被删后回滚 | 同上——能力可用性随目录消失，deck 加载不受影响 |
 | `--all-drifted` 选不出页 | `SPEC_SELECTION_EMPTY` |
 | `--pages` 含未知标签 | `SPEC_PAGE_NOT_FOUND`，**整体拒绝** |
+| 流水线或建页任务执行中保存/回滚规格 | main IPC 拒绝，规格与历史零改动 |
+| 建页任务执行中创建空 Deck 或导出 | main IPC 拒绝，不切换工作区、不读取中间态 |
 
 ### 5. Good / Base / Bad Cases
 
 - Good：改一条条目 → 规格落盘 + 历史 +1 + 该页判为新增过时；回滚 → 规格回前值 + 历史再 +1。
 - Base：首次导入（`previous === null`）→ 全部条目记为新增，`fingerprints.before` 全为 `null`。
 - Bad：已处于过时的页再改一次 → **不重复计入**「新增过时」（说的是「变为」，不是「处于」）。
+- Bad：批量重生成尚未结束时保存进入任务前加载的草稿 → 后续页读到新旧混合规格，或任务追加的
+  `revisionNotes` 被旧草稿覆盖。
 
 ### 6. Tests Required
 
@@ -1094,6 +1104,8 @@ applyRollbackToSpec(current, target): ContentSpec;
 - 批量重生成后**未选中页的页目录递归内容哈希逐字节相等**——断言整张「相对路径 → sha256」
   映射相等，不是挑几个文件比；并补一条「被选中页确实变了」，否则「什么都没做」也能让它绿。
 - 上述哈希类断言必须做**变异验证**：临时把选页改成「选全部」，确认它真的变红。
+- IPC 用注入的 runner 状态覆盖两条反向用例：空闲时规格保存照常执行；任一 runner 执行中时
+  保存/回滚在调用 `applySpecChange` 前被拒绝。建页任务执行中创建空 Deck 与导出也须拒绝。
 
 ### 7. Wrong vs Correct
 
@@ -1116,4 +1128,24 @@ async function appendRecord(...): Promise<boolean> {
   catch (e) { console.error("[spec-history] 写入失败", e); return false; }   // 不抛，但如实回报
 }
 const historyWritten = await appendRecord(...);   // 规格已落盘，这里为 false 也不回滚
+```
+
+#### Wrong
+
+```ts
+// renderer 按钮禁用了就直接相信调用方；后台任务可能在逐页消费并改写同一份规格
+ipcMain.handle("deck:apply-spec-change", (_event, deckPath, next, summary) =>
+  applySpecChange({ deckPath, nextSpec: next, origin: "manual", summary }),
+);
+```
+
+#### Correct
+
+```ts
+ipcMain.handle("deck:apply-spec-change", async (_event, deckPath, next, summary) => {
+  if (deckRunner.isRunning() || sourceTaskRunner.isRunning()) {
+    throw new Error("执行任务正在进行，结束后才能修改规格");
+  }
+  return applySpecChange({ deckPath, nextSpec: next, origin: "manual", summary });
+});
 ```

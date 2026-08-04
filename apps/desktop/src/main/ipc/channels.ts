@@ -8,12 +8,14 @@
  * `@ppt-maker/core`。该约束由 `test/channels-imports.test.ts` 静态锁住。
  */
 import type {
+  ApplySpecChangeResult,
   CleanPlateChecks,
   ContentSpec,
   PdfExtractionReport,
   PptxCheckReport,
   SlideSourceKind,
   SourceAcceptanceMode,
+  SpecChangeRecord,
   SpecDriftStatus,
   TextReviewDocument,
 } from "@ppt-maker/core";
@@ -271,7 +273,12 @@ export type DeckRunEvent =
  * 三种建页命令在 CLI 侧形态同构（deck 不存在则创建、存在则追加末尾），这里保持
  * 同一形状：调用方只给目标 deck 路径，不区分「新建」与「追加」。
  */
-export type SourceTaskKind = "import" | "extract" | "generate" | "regenerate";
+export type SourceTaskKind =
+  | "import"
+  | "extract"
+  | "generate"
+  | "regenerate"
+  | "regenerate-batch";
 
 export type SourceTaskRequest =
   | {
@@ -295,6 +302,12 @@ export type SourceTaskRequest =
       readonly kind: "regenerate";
       /** 页标签或 slideId，与 CLI `deck regenerate --page` 同参 */
       readonly page: string;
+      readonly note?: string;
+    }
+  | {
+      readonly kind: "regenerate-batch";
+      /** 用户勾选的确切页标签；原样传给 CLI labels 选择器。 */
+      readonly pageLabels: readonly string[];
       readonly note?: string;
     };
 
@@ -400,6 +413,8 @@ export interface IpcApi {
       workspacePath: string,
       name?: string,
     ): Promise<DeckStatusResult>;
+    /** 新建零页 deck，供策划工作台从零编辑规格。 */
+    createEmpty(parentDir: string, name: string): Promise<DeckStatusResult>;
     status(path: string): Promise<DeckStatusResult>;
     statusDetailed(path: string): Promise<DeckStatusDetailedResult>;
     runStart(
@@ -440,6 +455,19 @@ export interface IpcApi {
      * 会被跳过。往已有 deck 追加时实际次数可能更少，文案须如实写成「最多 N 次」。
      */
     readContentSpec(specPath: string): Promise<ContentSpec>;
+    /** 读取 deck 内的权威规格；不存在时返回 null，且不创建 planning 目录。 */
+    readDeckSpec(deckPath: string): Promise<ContentSpec | null>;
+    /** 人工编辑的唯一写盘入口。 */
+    applySpecChange(
+      deckPath: string,
+      nextSpec: ContentSpec,
+      summary: string,
+    ): Promise<ApplySpecChangeResult>;
+    listSpecHistory(deckPath: string): Promise<readonly SpecChangeRecord[]>;
+    rollbackSpecChange(
+      deckPath: string,
+      recordId: string,
+    ): Promise<ApplySpecChangeResult>;
     /** 读回一份已落盘的抽取报告（活动日志的「查看报告」） */
     readExtractionReport(reportPath: string): Promise<PdfExtractionReport>;
   };

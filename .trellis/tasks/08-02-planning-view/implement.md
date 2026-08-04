@@ -16,27 +16,27 @@ pnpm -r test                           # 基线 854：core 141 / desktop 474 / c
 
 ## L1 纯函数层（无 IPC、无组件）
 
-- [ ] 新建 `renderer/lib/planning-core.ts`，与 `source-picker-core.ts` 同构：
+- [x] 新建 `renderer/lib/planning-core.ts`，与 `source-picker-core.ts` 同构：
       相对 `.js` 导入、不碰 `window`，以便 vitest 直接解析。
-- [ ] `isDirty(saved, draft)`：包 `diffContentSpec`，见 design §4.1。
-- [ ] `classifyOutdatedPages(slides)`：从 `SlideDetail[]` 分出 drifted / missing /
+- [x] `isDirty(saved, draft)`：包 `diffContentSpec`，见 design §4.1。
+- [x] `classifyOutdatedPages(slides)`：从 `SlideDetail[]` 分出 drifted / missing /
       不适用（非 `generated`）三类。
-- [ ] `buildRegenerateBatchConfirm(pageLabels)`：确切页数 + 不可撤销 + 下游影响
+- [x] `buildRegenerateBatchConfirm(pageLabels)`：确切页数 + 不可撤销 + 下游影响
       （OCR 基准更新、逐张重新确认源图），见 design §5.3。
-- [ ] `isEmptyChangeRecord(record)`：`fingerprints` 为空即真，见 design §6。
-- [ ] 用例进 `apps/desktop/test/planning-core.test.ts`。
+- [x] `isEmptyChangeRecord(record)`：`fingerprints` 为空即真，见 design §6。
+- [x] 用例进 `apps/desktop/test/planning-core.test.ts`。
 
 **验证**：`pnpm --filter @ppt-maker/desktop test`。
 每条断言写完后做一次变异验证（改反实现让它红），尤其 `isDirty` 与分类函数。
 
 ## L2 main 侧 IPC
 
-- [ ] `channels.ts` 加五个通道的出入参类型（design §3）。
-- [ ] `deck.ts` 实现 handler；`deck:create-empty` 写活动日志，与 `deck:create` 同形。
-- [ ] `deck:apply-spec-change` 的失败路径补齐坏页上下文（design §7.1），
+- [x] `channels.ts` 加五个通道的出入参类型（design §3）。
+- [x] `deck.ts` 实现 handler；`deck:create-empty` 写活动日志，与 `deck:create` 同形。
+- [x] `deck:apply-spec-change` 的失败路径补齐坏页上下文（design §7.1），
       复用 `buildDeckStatusDetailed`，**不写第二份探测逻辑**。
-- [ ] `preload/index.ts` 逐条转发。
-- [ ] 用例：临时 deck + 故意写坏一页 slide manifest，断言错误消息里点名了那一页。
+- [x] `preload/index.ts` 逐条转发。
+- [x] 用例：临时 deck + 故意写坏一页 slide manifest，断言错误消息里点名了那一页。
 
 **验证**：`pnpm typecheck && pnpm --filter @ppt-maker/desktop test`。
 
@@ -44,11 +44,11 @@ pnpm -r test                           # 基线 854：core 141 / desktop 474 / c
 
 ## L3 批量重生成接进 SourceTaskRunner
 
-- [ ] `SourceTaskKind` 加 `"regenerate-batch"`，`SourceTaskRequest` 加对应分支。
-- [ ] `SourceTaskRunner` 里包 `runDeckRegenerateBatch`，`selection` 恒为
+- [x] `SourceTaskKind` 加 `"regenerate-batch"`，`SourceTaskRequest` 加对应分支。
+- [x] `SourceTaskRunner` 里包 `runDeckRegenerateBatch`，`selection` 恒为
       `{kind: "labels", labels}`（**不用 `all-drifted`**，理由见 design §5.2）。
-- [ ] 进度事件归一到既有 `SourceTaskProgress` 形状，不新增事件类型。
-- [ ] 用例：stub generator 注入，断言
+- [x] 进度事件归一到既有 `SourceTaskProgress` 形状，不新增事件类型。
+- [x] 用例：stub generator 注入，断言
       ① 只跑勾选页；② 未勾选页**字节不变**（递归哈希比对）；③ 单页失败不终止其余页。
 
 **验证**：同上。②③ 两条都必须先变异验证过（把选页改成"选全部"、把失败改成上抛，
@@ -58,25 +58,25 @@ pnpm -r test                           # 基线 854：core 141 / desktop 474 / c
 
 ## L4 视图骨架与路由
 
-- [ ] `ui-store.ts`：`AppView` 加 `"planning"`，加 `openPlanning` /
+- [x] `ui-store.ts`：`AppView` 加 `"planning"`，加 `openPlanning` /
       `openPlanningForNewDeck` 两个 action（对外唯一入口）。
-- [ ] `App.tsx` 加分支，**不绑 key**（design §2.1）。
-- [ ] 新建 `renderer/stores/planning-store.ts`（design §4.1）。
-- [ ] 新建 `renderer/pages/PlanningPage.tsx`：左栏 + 右栏骨架，先只渲染空态。
-- [ ] 两个入口接上：控制台空态 / 顶栏「新建策划」、deck 已打开时的「改规格」。
-- [ ] 新建走原生 `showOpenDialog` 选父目录 + 界面内填 deck 名。
+- [x] `App.tsx` 加分支，**不绑 key**（design §2.1）。
+- [x] 新建 `renderer/stores/planning-store.ts`（design §4.1）。
+- [x] 新建 `renderer/pages/PlanningPage.tsx`：左栏 + 右栏骨架，先只渲染空态。
+- [x] 两个入口接上：控制台空态 / 顶栏「新建策划」、deck 已打开时的「改规格」。
+- [x] 新建走原生 `showOpenDialog` 选父目录 + 界面内填 deck 名。
 
 **验证**：`pnpm typecheck`；跑起桌面端确认视图能进能出。
 
 ## L5 编辑器
 
-- [ ] `style.description` 大文本框 + 常驻爆炸半径说明（design §4.3）。
-- [ ] 条目列表 + 逐字段编辑器：`pageType` / `textGroups`（分组与条目增删改）/
+- [x] `style.description` 大文本框 + 常驻爆炸半径说明（design §4.3）。
+- [x] 条目列表 + 逐字段编辑器：`pageType` / `textGroups`（分组与条目增删改）/
       `visualIntent` / `revisionNotes`（**可删**）。
-- [ ] `textGroups` 区块常驻 OCR 基准说明（design §4.4）。
-- [ ] 条目上移 / 下移按钮，不做拖拽。
-- [ ] 显式「保存」按钮 + 脏标记；离开拦截（切视图、切工作区两处）。
-- [ ] 保存结果条：`drifted` / `missing` 计数如实报告；
+- [x] `textGroups` 区块常驻 OCR 基准说明（design §4.4）。
+- [x] 条目上移 / 下移按钮，不做拖拽。
+- [x] 显式「保存」按钮 + 脏标记；离开拦截（切视图、切工作区两处）。
+- [x] 保存结果条：`drifted` / `missing` 计数如实报告；
       `historyWritten === false` 用**警示样式**出声（design §7.2）。
 
 **逐组件对照 DESIGN.md**：六态（default / hover / focus-visible / active /
@@ -85,27 +85,27 @@ disabled / loading）是硬性要求，少一个算未完成；全屏唯一一�
 
 ## L6 过时页清单与批量重生成
 
-- [ ] 清单取**全量** drifted（`deck:status-detailed` 的 `specDrift`），不取增量。
-- [ ] 默认全选、可逐页取消（D9）。
-- [ ] `missing` 单列、不可勾选，给去控制台删页的指引。
-- [ ] 付费确认走 `window.api.system.confirm` + `buildRegenerateBatchConfirm`。
-- [ ] 发起后关闭清单，进度归控制台的建页任务条（与 SourcePicker 同一形态）。
+- [x] 清单取**全量** drifted（`deck:status-detailed` 的 `specDrift`），不取增量。
+- [x] 默认全选、可逐页取消（D9）。
+- [x] `missing` 单列、不可勾选，给去控制台删页的指引。
+- [x] 付费确认走 `window.api.system.confirm` + `buildRegenerateBatchConfirm`。
+- [x] 发起后关闭清单，进度归控制台的建页任务条（与 SourcePicker 同一形态）。
 
 ## L7 历史面板与回滚
 
-- [ ] 左栏倒序列出记录；展开显示逐条 diff，**直接读记录字段**（design §6）。
-- [ ] 零变更记录用次级样式 + 「无内容变更」标注。
-- [ ] 回滚按钮 + 确认文案写明「回滚是一次新的前进，不抹历史」。
+- [x] 左栏倒序列出记录；展开显示逐条 diff，**直接读记录字段**（design §6）。
+- [x] 零变更记录用次级样式 + 「无内容变更」标注。
+- [x] 回滚按钮 + 确认文案写明「回滚是一次新的前进，不抹历史」。
 
 ## L8 兼容性验证（真实工作区，只读副本）
 
 一律先 `cp -R` 到 scratchpad 再操作，不碰 `~/test/` 原件；操作后用递归哈希验证原件未变。
 
-- [ ] 旧格式：`~/test/ppttest-2026-07-25`（2 页 imported、无 `content-spec.json`）
+- [x] 旧格式：`~/test/ppttest-2026-07-25`（2 页 imported、无 `content-spec.json`）
       打开工作台不报错、**不被改写**（A6）。
-- [ ] 混合来源：`~/test/wt4-append`（11 页，只有 page-11 是 `generated`）
+- [x] 混合来源：`~/test/wt4-append`（11 页，只有 page-11 是 `generated`）
       非 `generated` 页完全不入清单。
-- [ ] 零页 deck：新建一个空 deck，控制台与工作台都如实显示（V5 / R8）。
+- [x] 零页 deck：新建一个空 deck，控制台与工作台都如实显示（V5 / R8）。
 
 ## L9 真机走查（唯一花钱的一步）
 
@@ -132,7 +132,23 @@ disabled / loading）是硬性要求，少一个算未完成；全屏唯一一�
 
 ## 完成条件
 
-- [ ] `pnpm typecheck` / `pnpm format:check` 全过
-- [ ] `pnpm -r test` **不低于 854**，新增能力均有对应用例
+- [x] `pnpm typecheck` / `pnpm format:check` 全过
+- [x] `pnpm -r test` **不低于 854**，新增能力均有对应用例
 - [ ] 本任务 prd 的六条 Acceptance Criteria 逐条有证据（离线用例或走查记录）
-- [ ] 变异验证记录：至少对「未勾选页字节不变」与 `isDirty` 各做过一次
+- [x] 变异验证记录：至少对「未勾选页字节不变」与 `isDirty` 各做过一次
+
+## 实施证据（2026-08-04）
+
+- L1：`planning-core.test.ts` 5 条通过；曾临时反转 `isDirty` 与清单分类实现，断言均转红后恢复。
+- L2：`planning-ipc.test.ts` 覆盖坏页点名、空摘要、Deck 名路径边界与执行互斥。
+- L3：`planning-batch-runner.test.ts` 覆盖勾选子集、未勾选页递归哈希不变、单页失败继续；
+  曾分别临时改成“追加未选页”和“只传第一条标签”，断言均转红后恢复。
+- L4–L7：路由、store、编辑器、全量过时清单、批量确认、历史与回滚均已接入；
+  工作区切换与建页任务执行期间的竞态由 renderer + main 双层守卫。
+- 提交前门禁：core 141 / desktop 497 / cli 239，共 877 条测试通过；typecheck 与 Biome 通过。
+- 新建空 Deck 的并发守卫使用 deferred 覆盖「创建请求在途时切换工作区，迟到结果不得覆盖」及
+  「未切换时照常写入」正对照；顶栏菜单在 Deck 加载期间同步禁用切换入口。
+- L8：在 `/tmp/ppt-maker-planning-l8.vSS2cn` 的真实副本完成；旧格式规格读取与 status 前后递归哈希
+  不变，混合来源仅 1 页 generated 参与规格状态，零页 Deck 的 status 为 0 页。
+- 未执行 L9 的真实图像生成调用，避免在未单独确认付费前产生费用；关窗未保存拦截仍按 design §4.2
+  作为已知缺口。L9 真机付费走查仍待后续完成。

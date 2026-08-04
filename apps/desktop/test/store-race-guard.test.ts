@@ -15,6 +15,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import type {
   ActivityRecord,
   DeckStatusDetailedResult,
+  DeckStatusResult,
   IpcApi,
   SlideDetail,
 } from "../src/main/ipc/channels.js";
@@ -118,6 +119,77 @@ beforeEach(() => {
   useDeckStore.getState().reset();
   useSlideStore.getState().reset();
   useActivityStore.getState().reset();
+});
+
+describe("deck-store.createEmpty 的切换守卫", () => {
+  it("切换工作区后，迟到的创建结果不覆盖当前 deck", async () => {
+    const pendingCreate = deferred<DeckStatusResult>();
+    const newDeck = detailed("/decks/new", [slide("new-1")]);
+    stubApi({
+      deck: {
+        createEmpty: () => pendingCreate.promise,
+        statusDetailed: async () => detailed("/decks/created", []),
+      },
+    });
+    useDeckStore.setState({
+      ...detailed("/decks/old", [slide("old-1")]),
+      loading: false,
+    });
+
+    const creating = useDeckStore.getState().createEmpty("/decks", "created");
+    // createEmpty 已经进入 loading 并等待 IPC；模拟用户此时已打开另一个 deck。
+    useDeckStore.setState({ ...newDeck, loading: false });
+    pendingCreate.resolve({
+      deckPath: "/decks/created",
+      name: "created",
+      deckId: "id-created",
+      slides: [],
+      summary: {
+        total: 0,
+        active: 0,
+        removed: 0,
+        completed: 0,
+        inProgress: 0,
+        notStarted: 0,
+      },
+    });
+
+    await expect(creating).resolves.toBeNull();
+    expect(useDeckStore.getState().deckPath).toBe("/decks/new");
+  });
+
+  it("未切换时正常创建并写入当前 deck（正对照）", async () => {
+    const createdDeck: DeckStatusResult = {
+      deckPath: "/decks/created",
+      name: "created",
+      deckId: "id-created",
+      slides: [],
+      summary: {
+        total: 0,
+        active: 0,
+        removed: 0,
+        completed: 0,
+        inProgress: 0,
+        notStarted: 0,
+      },
+    };
+    stubApi({
+      deck: {
+        createEmpty: async () => createdDeck,
+        statusDetailed: async () => detailed(createdDeck.deckPath, []),
+      },
+    });
+    useDeckStore.setState({
+      ...detailed("/decks/old", [slide("old-1")]),
+      loading: false,
+    });
+
+    await expect(
+      useDeckStore.getState().createEmpty("/decks", "created"),
+    ).resolves.toBe("/decks/created");
+
+    expect(useDeckStore.getState().deckPath).toBe("/decks/created");
+  });
 });
 
 describe("deck-store.refreshStatus 的切换守卫", () => {

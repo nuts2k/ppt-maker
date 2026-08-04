@@ -146,6 +146,32 @@ export interface ContentSpecDiff {
   readonly reordered: boolean;
 }
 
+/** 一页因规格变更而改变过时状态；`before` / `after` 是两侧的规格视图指纹。 */
+export interface DriftedPage {
+  readonly slideId: string;
+  readonly pageLabel: string;
+  readonly specEntryId: string;
+  readonly before: string | null;
+  readonly after: string | null;
+}
+
+/** 规格写入与回滚共用的跨层结果。 */
+export interface ApplySpecChangeResult {
+  readonly spec: ContentSpec;
+  readonly record: SpecChangeRecord;
+  readonly historyWritten: boolean;
+  /** 本次变更导致新增过时的页。 */
+  readonly drifted: readonly DriftedPage[];
+  /** 本次变更导致新增失联的页。 */
+  readonly missing: readonly DriftedPage[];
+}
+
+export interface PreviewSpecChangeResult {
+  readonly diff: ContentSpecDiff;
+  readonly willDrift: readonly DriftedPage[];
+  readonly willMiss: readonly DriftedPage[];
+}
+
 /**
  * 判断两个条目的内容是否相同——口径**复用指纹投影**，不另写一份字段列表。
  *

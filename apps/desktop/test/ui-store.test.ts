@@ -5,9 +5,11 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { usePlanningStore } from "../src/renderer/stores/planning-store.js";
 import { useUIStore } from "../src/renderer/stores/ui-store.js";
 
 beforeEach(() => {
+  usePlanningStore.getState().reset();
   useUIStore.getState().reset();
 });
 
@@ -74,6 +76,16 @@ describe("useUIStore.reset", () => {
     expect(useUIStore.getState().selectedSlideId).toBeNull();
   });
 
+  it("从策划视图归零同样回控制台", () => {
+    useUIStore.getState().openPlanning();
+    expect(useUIStore.getState().currentView).toBe("planning");
+
+    useUIStore.getState().reset();
+
+    expect(useUIStore.getState().currentView).toBe("console");
+    expect(useUIStore.getState().selectedSlideId).toBeNull();
+  });
+
   /**
    * 来源选择模态的开关也在 ui-store（顶栏与控制台两个入口共用），因此同样要被
    * reset 覆盖：切换工作区时若还开着，模态里的目标 deck 就是上一个工作区的。
@@ -100,6 +112,34 @@ describe("useUIStore.reset", () => {
     useUIStore.getState().openSlide("slide-1");
     expect(useUIStore.getState().currentView).toBe("slide");
     expect(useUIStore.getState().selectedSlideId).toBe("slide-1");
+  });
+});
+
+describe("useUIStore planning actions", () => {
+  it("已有 deck 入口切到策划视图并清掉选中块", () => {
+    useUIStore.getState().openSlide("slide-3");
+    useUIStore.getState().selectBlock("block-7");
+
+    useUIStore.getState().openPlanning();
+
+    const state = useUIStore.getState();
+    expect(state.currentView).toBe("planning");
+    expect(state.selectedSlideId).toBe("slide-3");
+    expect(state.selectedBlockId).toBeNull();
+  });
+
+  it("新建策划入口进入同一策划视图并清掉选中块", () => {
+    useUIStore.getState().openSlide("slide-4");
+    useUIStore.getState().selectBlock("block-8");
+
+    useUIStore.getState().openPlanningForNewDeck();
+
+    const state = useUIStore.getState();
+    expect(state.currentView).toBe("planning");
+    expect(state.selectedSlideId).toBe("slide-4");
+    expect(state.selectedBlockId).toBeNull();
+    expect(usePlanningStore.getState().justCreated).toBe(true);
+    expect(usePlanningStore.getState().loadedDeckPath).toBeNull();
   });
 });
 

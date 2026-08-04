@@ -2,10 +2,12 @@ import { basename } from "node:path";
 import { addSlideToDeck } from "@cli/deck/add-slide.js";
 import { runDeckGenerate } from "@cli/deck/generate.js";
 import { runDeckRegenerate } from "@cli/deck/regenerate.js";
+import { runDeckRegenerateBatch } from "@cli/deck/regenerate-batch.js";
 import {
   extractionFailureDetails,
   extractPdfToDeck,
 } from "@cli/pdf/extract.js";
+import type { OpenAiImageGenerator } from "@cli/providers/openai-image.js";
 import type { BrowserWindow } from "electron";
 import { type ActivityLog, buildActivityRecord } from "../activity-log.js";
 import { resolveDeckId } from "../deck-context.js";
@@ -15,6 +17,11 @@ import type {
   SourceTaskRequest,
   SourceTaskResult,
 } from "../ipc/channels.js";
+
+export interface SourceTaskRunnerOptions {
+  /** 测试注入；生产环境省略时使用真实 OpenAI 生成器。 */
+  readonly regenerateBatchGenerate?: OpenAiImageGenerator;
+}
 
 /**
  * 建页任务执行器 —— 把新页面加进 deck 的长任务的唯一入口。
@@ -36,6 +43,7 @@ export class SourceTaskRunner {
   private readonly activityLog: ActivityLog;
   /** 流水线是否在跑。注入而非持有 DeckRunner：两者互相引用会绕成一个环 */
   private readonly isPipelineRunning: () => boolean;
+  private readonly options: SourceTaskRunnerOptions;
 
   private running = false;
   private taskSeq = 0;
@@ -44,10 +52,12 @@ export class SourceTaskRunner {
     getWindow: () => BrowserWindow | null,
     activityLog: ActivityLog,
     isPipelineRunning: () => boolean,
+    options: SourceTaskRunnerOptions = {},
   ) {
     this.getWindow = getWindow;
     this.activityLog = activityLog;
     this.isPipelineRunning = isPipelineRunning;
+    this.options = options;
   }
 
   isRunning(): boolean {
@@ -218,6 +228,39 @@ export class SourceTaskRunner {
           },
         };
       }
+
+      case "regenerate-batch": {
+        const result = await runDeckRegenerateBatch({
+          deckPath,
+          selection: { kind: "labels", labels: request.pageLabels },
+          ...(request.note === undefined ? {} : { note: request.note }),
+          confirmUpload: true,
+          ...(this.options.regenerateBatchGenerate === undefined
+            ? {}
+            : { generate: this.options.regenerateBatchGenerate }),
+          onProgress: (event) => {
+            emit(
+              "item",
+              event.phase === "failed"
+                ? `${event.pageLabel} 生成失败：${event.message ?? ""}`
+                : event.phase === "done"
+                  ? `${event.pageLabel} 已重新生成`
+                  : `正在重新生成 ${event.pageLabel}`,
+              event.index,
+              event.total,
+            );
+          },
+        });
+        return {
+          ...EMPTY_RESULT,
+          accepted: true,
+          message: `重新生成 ${result.regenerated.length} 页，失败 ${result.failed.length} 页，跳过 ${result.skipped.length} 页`,
+          deckPath,
+          created: result.regenerated.length,
+          failed: result.failed.length,
+          skipped: result.skipped.length,
+        };
+      }
     }
   }
 
@@ -292,6 +335,7 @@ const ACTIVITY_KINDS: Readonly<Record<SourceTaskKind, string>> = {
   extract: "deck-extract",
   generate: "deck-generate",
   regenerate: "deck-regenerate",
+  "regenerate-batch": "deck-regenerate-batch",
 };
 
 const EMPTY_RESULT = {
@@ -323,5 +367,7 @@ function describeStart(request: SourceTaskRequest): string {
       return "开始按内容规格生成页面";
     case "regenerate":
       return `开始重新生成 ${request.page}`;
+    case "regenerate-batch":
+      return `准备重新生成 ${request.pageLabels.length} 页`;
   }
 }

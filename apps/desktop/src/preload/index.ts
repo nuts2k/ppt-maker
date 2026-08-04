@@ -1,6 +1,8 @@
 import type {
+  ApplySpecChangeResult,
   ContentSpec,
   PdfExtractionReport,
+  SpecChangeRecord,
   TextReviewDocument,
 } from "@ppt-maker/core";
 import { contextBridge, ipcRenderer } from "electron";
@@ -37,6 +39,8 @@ const api: IpcApi = {
       name?: string,
     ): Promise<DeckStatusResult> =>
       ipcRenderer.invoke("deck:create", imagesDir, workspacePath, name),
+    createEmpty: (parentDir: string, name: string): Promise<DeckStatusResult> =>
+      ipcRenderer.invoke("deck:create-empty", parentDir, name),
     status: (path: string): Promise<DeckStatusResult> =>
       ipcRenderer.invoke("deck:status", path),
     statusDetailed: (path: string): Promise<DeckStatusDetailedResult> =>
@@ -69,6 +73,21 @@ const api: IpcApi = {
       ipcRenderer.invoke("deck:spec-draft", text),
     readContentSpec: (specPath: string): Promise<ContentSpec> =>
       ipcRenderer.invoke("deck:read-content-spec", specPath),
+    readDeckSpec: (deckPath: string): Promise<ContentSpec | null> =>
+      ipcRenderer.invoke("deck:read-deck-spec", deckPath),
+    applySpecChange: (
+      deckPath: string,
+      nextSpec: ContentSpec,
+      summary: string,
+    ): Promise<ApplySpecChangeResult> =>
+      ipcRenderer.invoke("deck:apply-spec-change", deckPath, nextSpec, summary),
+    listSpecHistory: (deckPath: string): Promise<readonly SpecChangeRecord[]> =>
+      ipcRenderer.invoke("deck:list-spec-history", deckPath),
+    rollbackSpecChange: (
+      deckPath: string,
+      recordId: string,
+    ): Promise<ApplySpecChangeResult> =>
+      ipcRenderer.invoke("deck:rollback-spec-change", deckPath, recordId),
     readExtractionReport: (reportPath: string): Promise<PdfExtractionReport> =>
       ipcRenderer.invoke("deck:read-extraction-report", reportPath),
   },
