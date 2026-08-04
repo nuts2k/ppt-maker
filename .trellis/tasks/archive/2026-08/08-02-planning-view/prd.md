@@ -58,16 +58,16 @@
 
 ## Acceptance Criteria
 
-- [ ] 全程不碰 JSON 即可完成 `content-spec.json` 的所有编辑，含 `revisionNotes` 的删除（父任务 A3）
-- [ ] **从零**建空 deck → 手工写规格 → 生成 → 能 `deck run` 到 `--strict` PPTX（E1；父任务 A1 的非对话半条）
-- [ ] 改 `style` 后所有生成页报漂移且清单**列全**；勾选后批量重生成，
+- [x] 全程不碰 JSON 即可完成 `content-spec.json` 的所有编辑，含 `revisionNotes` 的删除（父任务 A3）
+- [x] **从零**建空 deck → 手工写规格 → 生成 → 能 `deck run` 到 `--strict` PPTX（E1；父任务 A1 的非对话半条）
+- [x] 改 `style` 后所有生成页报漂移且清单**列全**；勾选后批量重生成，
       **未勾选的页字节不变**（父任务 A4 硬验收，须变异验证过）
-- [ ] 任何会发起图像生成的动作，事前确认都写明**调用次数与不可撤销**（父任务 A8）
-- [ ] 变更历史可在界面回看、可回滚；`historyWritten === false` 时界面**出声**且指向历史面板（E3）
-- [ ] 旧格式 deck（`~/test/ppttest-2026-07-25`）打开工作台不报错、不被改写（父任务 A6）
-- [ ] 混合来源 deck（`~/test/wt4-append`）里非 `generated` 页完全不参与规格对账
+- [x] 任何会发起图像生成的动作，事前确认都写明**调用次数与不可撤销**（父任务 A8）
+- [x] 变更历史可在界面回看、可回滚；`historyWritten === false` 时界面**出声**且指向历史面板（E3）
+- [x] 旧格式 deck（`~/test/ppttest-2026-07-25`）打开工作台不报错、不被改写（父任务 A6）
+- [x] 混合来源 deck（`~/test/wt4-append`）里非 `generated` 页完全不参与规格对账
       （`collectGeneratedPages` 只认 `generated` 是 M5 A2 的既有保证，不得破坏）
-- [ ] 测试基线不低于 **854**（core 141 / desktop 474 / cli 239），新增能力有对应用例（父任务 A9）
+- [x] 测试基线不低于 **854**（core 141 / desktop 474 / cli 239），新增能力有对应用例（父任务 A9）
 
 > 父任务 prd 的 A9 写的是旧基线 774，子任务① 完工后实测为 854，以此为准。
 

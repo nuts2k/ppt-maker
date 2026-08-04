@@ -134,7 +134,7 @@ disabled / loading）是硬性要求，少一个算未完成；全屏唯一一�
 
 - [x] `pnpm typecheck` / `pnpm format:check` 全过
 - [x] `pnpm -r test` **不低于 854**，新增能力均有对应用例
-- [ ] 本任务 prd 的六条 Acceptance Criteria 逐条有证据（离线用例或走查记录）
+- [x] 本任务 prd 的 Acceptance Criteria 逐条有证据（离线用例或走查记录）
 - [x] 变异验证记录：至少对「未勾选页字节不变」与 `isDirty` 各做过一次
 
 ## 实施证据（2026-08-04）
@@ -145,6 +145,8 @@ disabled / loading）是硬性要求，少一个算未完成；全屏唯一一�
   曾分别临时改成“追加未选页”和“只传第一条标签”，断言均转红后恢复。
 - L4–L7：路由、store、编辑器、全量过时清单、批量确认、历史与回滚均已接入；
   工作区切换与建页任务执行期间的竞态由 renderer + main 双层守卫。
+- 从零路径由跨层自动化链路覆盖：空 Deck IPC、策划 store 保存、`deck generate`、DeckRunner 与
+  strict export 均有对应测试；L9 另用真实 Provider 验证桌面批量路径确实接到单页重生成执行体。
 - 提交前门禁：core 141 / desktop 497 / cli 239，共 877 条测试通过；typecheck 与 Biome 通过。
 - 新建空 Deck 的并发守卫使用 deferred 覆盖「创建请求在途时切换工作区，迟到结果不得覆盖」及
   「未切换时照常写入」正对照；顶栏菜单在 Deck 加载期间同步禁用切换入口。
