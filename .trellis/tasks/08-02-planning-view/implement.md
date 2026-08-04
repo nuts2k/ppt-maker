@@ -109,15 +109,15 @@ disabled / loading）是硬性要求，少一个算未完成；全屏唯一一�
 
 ## L9 真机走查（唯一花钱的一步）
 
-- [ ] 复用归档工具
+- [x] 复用归档工具
       `.trellis/tasks/archive/2026-08/07-31-page-sources-and-content-generation/tools/`
       （`restart.sh` / `cdp.mjs` / `main-cdp.mjs` / `patch-dialog.js` / `snap.sh`）。
       原生对话框必须打桩，理由见 `tools/README.md`。
-- [ ] **开跑前**：`node apps/cli/dist/index.js deck status <副本> --json`
+- [x] **开跑前**：`node apps/cli/dist/index.js deck status <副本> --json`
       确认 drifted 集合。`~/test/wt4-spec-2026-08-02` 基线里 **page-04 本来就是
       drifted**，照搬脚本改另一条会变成 2 页 = 2 倍花费。
-- [ ] 只跑 **1 页**真实重生成，验证 `reference_text` 资产确实更新、新 sha 进指纹。
-- [ ] 开工前 `pkill -9 -f "electron@43.2.0"`，并确认
+- [x] 只跑 **1 页**真实重生成，验证 `reference_text` 资产确实更新、新 sha 进指纹。
+- [x] 开工前 `pkill -9 -f "electron@43.2.0"`，并确认
       `lsof -iTCP:9222 -iTCP:5858` 归同一个 PID（两个实例抢端口会让补丁打在 A、
       界面跑在 B）。
 
@@ -150,5 +150,14 @@ disabled / loading）是硬性要求，少一个算未完成；全屏唯一一�
   「未切换时照常写入」正对照；顶栏菜单在 Deck 加载期间同步禁用切换入口。
 - L8：在 `/tmp/ppt-maker-planning-l8.vSS2cn` 的真实副本完成；旧格式规格读取与 status 前后递归哈希
   不变，混合来源仅 1 页 generated 参与规格状态，零页 Deck 的 status 为 0 页。
-- 未执行 L9 的真实图像生成调用，避免在未单独确认付费前产生费用；关窗未保存拦截仍按 design §4.2
-  作为已知缺口。L9 真机付费走查仍待后续完成。
+- L9：在用户单独确认付费后，于 `/tmp/ppt-maker-planning-l9.FEQI3b/deck` 完成 1 页真实重生成。
+  开跑前只有 `page-04` 为 drifted；原生确认框记录为「调用 1 次图像生成」「按次计费且不可撤销」，
+  并说明 OCR 基准更新与逐张重新确认。任务结果为成功 1、失败 0、跳过 0。
+- L9 落盘证据：`page-04` 回到 in-sync，新增 `inputs/reference-3.txt`，其 SHA-256 为
+  `2eef1f6a922666feb5655fc3fbac238423cdac38ca215265f720d73efd6e1dc0`；页面规格指纹从
+  `99139c4ed6792ae958372121c18e4d55dbdff0296305bf9e78a8a9d0e344552f` 更新为
+  `bee46f6e7b0ee74335f4d52bb093697cf147eb2868f6d6fef62ef3288159f69e`。
+  page-01～03 的目录递归哈希逐字节不变，只有 page-04 改变；`~/test/` 原始 Deck 前后快照不变。
+  归档 `snap.sh` 的 status 解析仍依赖旧字段，本次未改归档脚手架；状态证据直接取当前 CLI JSON，
+  零变化证据复用该脚本相同的逐页递归 shasum 算法。
+- 关窗未保存拦截仍按 design §4.2 作为已知缺口。
