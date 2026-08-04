@@ -898,7 +898,9 @@ const isManual = acceptanceAssetExists && attempt.provider !== AUTO_SOURCE_TRUST
 
 > **状态：跨层实现已落地（M6 子任务①②③，2026-08-04）。** 三道闸均已由 core 契约、
 > CLI 领域服务、Electron IPC 与 renderer 兑现，并由受控 Provider 自动测试和桌面视觉走查覆盖；
-> 真实联网模型调用仍须另行确认成本。
+> 2026-08-04 又完成真实联网验证：两轮提问、初稿、单条目改稿均由 `gpt-5.6-luna` 返回合法
+> Structured Output 与 requestId；最小一页真实生成并走到 strict PPTX。图像网关 requestId 缺失时
+> 按契约保持 `null`。
 > 具体契约见下一节〈规格写入唯一入口与变更日志〉。本节先行收录的原因不变：M5 父任务
 > `prd.md:44` 的 D7 原文写着「**不引入模型改写**」，不写这条，后来者会照原文判定 M6 违规。
 

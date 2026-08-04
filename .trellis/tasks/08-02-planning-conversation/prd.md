@@ -83,24 +83,24 @@ Phase 1 核对发现旧 `PlanningMessage.acceptedAs` 与“提案出现即追加
 
 ## Acceptance Criteria
 
-- [ ] **A1** 从一句构思出发，经至少两轮问答生成初稿、整体接受、建页并走到 `deck run --strict`
+- [x] **A1** 从一句构思出发，经至少两轮问答生成初稿、整体接受、建页并走到 `deck run --strict`
       PPTX；全程不手写 JSON。
-- [ ] **A2** 已有规格可按单条目与全 deck 两档对话式改稿；接受后对应条目变化，M5 如实报漂移，
+- [x] **A2** 已有规格可按单条目与全 deck 两档对话式改稿；接受后对应条目变化，M5 如实报漂移，
       不自动失效任何阶段。
-- [ ] **A3** 初稿与改稿确认前均显示逐字段 diff；确认文案给出确切新增过时 / 失联页数。
-- [ ] **A4** 被拒绝提案前后 `content-spec.json` 字节一致，`session.jsonl` 同时查得到提案和
+- [x] **A3** 初稿与改稿确认前均显示逐字段 diff；确认文案给出确切新增过时 / 失联页数。
+- [x] **A4** 被拒绝提案前后 `content-spec.json` 字节一致，`session.jsonl` 同时查得到提案和
       rejected 决策。
-- [ ] **A5** 接受提案写出 `origin: "proposal"`，`conversationRef` 可回到原消息；模型自造未知 id
+- [x] **A5** 接受提案写出 `origin: "proposal"`，`conversationRef` 可回到原消息；模型自造未知 id
       不进入规格。
-- [ ] **A6** 重开工作台后消息、五维度、材料和唯一 pending / accepted / rejected 状态一致；
+- [x] **A6** 重开工作台后消息、五维度、材料和唯一 pending / accepted / rejected 状态一致；
       切 deck 不串会话，迟到响应不污染新 deck。
-- [ ] **A7** 存在未保存手工草稿或 pending 提案时，对应模型动作被阻止并给出明确下一步。
-- [ ] **A8** 材料导入后每轮自动生效，移除后停止使用；原始文件不被改动；不接受二进制格式。
-- [ ] **A9** 删除 `<deck>/planning/` 后 `status` / `run` / `export` 主链路照常；无 planning 的旧 deck
+- [x] **A7** 存在未保存手工草稿或 pending 提案时，对应模型动作被阻止并给出明确下一步。
+- [x] **A8** 材料导入后每轮自动生效，移除后停止使用；原始文件不被改动；不接受二进制格式。
+- [x] **A9** 删除 `<deck>/planning/` 后 `status` / `run` / `export` 主链路照常；无 planning 的旧 deck
       只读打开零副作用。
-- [ ] **A10** 任何后续图像生成仍在事前确认中写明调用次数与不可撤销；本任务的文本模型调用不得
+- [x] **A10** 任何后续图像生成仍在事前确认中写明调用次数与不可撤销；本任务的文本模型调用不得
       绕过既有 provider 错误与追踪纪律。
-- [ ] **A11** 测试基线不低于当前 **877**，新增 core / CLI / desktop 能力均有对应测试；异步身份
+- [x] **A11** 测试基线不低于当前 **877**，新增 core / CLI / desktop 能力均有对应测试；异步身份
       守卫、拒绝零写盘等关键断言做过变异验证。
 
 ## Out of Scope

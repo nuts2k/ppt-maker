@@ -122,10 +122,10 @@ pnpm format:check
 ## L8 兼容性与端到端自动验收
 
 - [x] 基线从 877 起，只增不减；运行 core / cli / desktop 全量测试。
-- [ ] 复制真实 deck 后验证已有规格改稿；原件递归哈希前后不变。
-- [ ] 临时零页 deck 用受控 provider 跑“多轮 → 初稿 → 接受 → 建页 → 后续链路”，全程不手写 JSON。
+- [x] 复制真实 deck 后验证已有规格改稿；原件递归哈希前后不变。
+- [x] 临时零页 deck 用受控 provider 跑“多轮 → 初稿 → 接受 → 建页 → 后续链路”，全程不手写 JSON。
 - [x] 拒绝提案前后比较 `content-spec.json` 字节；session 能查到 proposal + rejected decision。
-- [ ] 删除 `planning/` 后 `deck status` / `run` / `export` 主链路仍可用；旧 deck 只读打开零改写。
+- [x] 删除 `planning/` 后 `deck status` / `run` / `export` 主链路仍可用；旧 deck 只读打开零改写。
 - [x] 静态确认 `ContentSpecSchema`、指纹、生成 prompt、`SCHEMA_VERSION` 无改动。
 
 验证：
@@ -140,18 +140,18 @@ git diff --check
 
 ## L9 真机模型与付费走查
 
-- [ ] 在 scratchpad 副本上做一次真实策划提问与一次真实改稿，记录 provider / requestId / 模型；
+- [x] 在 scratchpad 副本上做一次真实策划提问与一次真实改稿，记录 provider / requestId / 模型；
       第三方网关 requestId 为 null 时如实保留。
-- [ ] 若要完成父任务 A1 的真实 `--strict` PPTX，先跑 `deck status --json` 确认页集合，再向用户
+- [x] 若要完成父任务 A1 的真实 `--strict` PPTX，先跑 `deck status --json` 确认页集合，再向用户
       明确请求图像生成调用次数与不可撤销；未经确认不执行。
-- [ ] 真实调用只覆盖最小一页路径；未选页、原始 `~/test/` 工作区保持字节不变。
+- [x] 真实调用只覆盖最小一页路径；未选页、原始 `~/test/` 工作区保持字节不变。
 
 ## L10 质量门与交付
 
 - [x] 运行最后一轮全范围 `trellis-check`；所有 WARNING / CRITICAL 回到实际代码验证。
 - [x] 更新 backend contracts 中会话落地状态与新增稳定错误码（若实现确实新增）。
-- [ ] 回写父任务 A1 / A2 / A5 / A9 的实际证据，不提前勾选未走的真机步骤。
-- [ ] `task.py validate` 通过后提交；规划审阅通过前不执行 `task.py start`。
+- [x] 回写父任务 A1 / A2 / A5 / A9 的实际证据，不提前勾选未走的真机步骤。
+- [x] `task.py validate` 通过后提交；规划审阅通过前不执行 `task.py start`。
 
 ## 2026-08-04 最终验证证据
 
@@ -164,4 +164,17 @@ git diff --check
 - 桌面视觉走查：对话 / 历史键盘导航、材料导入移除、零页与已有规格、E1 dirty 守卫、
   单条目 / 全 deck scope、pending diff / 唯一 primary 均通过；使用受控本地记录，未调用真实模型。
 - 独立终审修复：全 deck 选择变化后的 preview 失败会残留旧影响数据；现已在请求开始时清空并补回归测试。
-- 未执行 L9 真机模型与图像生成；按成本门禁保留为待确认项，不伪造为已验证。
+- 真机文本调用：`gpt-5.6-luna` 两轮策划提问、一次完整初稿、一次单条目改稿均成功并有
+  `resp_*` requestId；单条目返回 `styleProposal: null`，接受记录的 `origin="proposal"` 与
+  `conversationRef` 可从磁盘互相追溯。
+- 真机最小一页：一次 `gpt-image-2` 页面图生成；AI 辅助复核后人工修正“行动指向：”；首次
+  clean plate 仍残留标题，按产品“重做底图”路径失效 clean 并再次调用，第二次无文字残留；
+  两次图像调用的第三方网关 requestId 均如实为 `null`。
+- 严格导出：单页报告 `complete`，PPTX 六项自动检查通过，`deck export --strict` 输出 1 页原生
+  PPTX。PowerPoint 已发起打开，但机器锁屏无法取得界面截图；clean Provider 两次都返回
+  1672×941（16:9）而非声明的 2048×1152，自动记录为“尺寸异常”，人工验收未隐瞒该限制。
+- 旁路删除：把完成 deck 的 `planning/` 移出后，`deck status`、`deck run`、
+  `deck export --strict` 均成功。
+- 真实 deck 副本：单条目接受后 page-01 新增漂移，page-02～04 递归字节一致；原始
+  `~/test/wt4-spec-2026-08-02` 聚合哈希前后均为
+  `45371c7ecee3a9ccc61ea2b378d62648d2b45e10`。
