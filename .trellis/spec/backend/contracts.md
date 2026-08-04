@@ -896,9 +896,9 @@ const isManual = acceptanceAssetExists && attempt.provider !== AUTO_SOURCE_TRUST
 
 ## 场景：模型可提案、不可直接落盘（M6 D5 对 M5 D7 的放宽，2026-08-02）
 
-> **状态：底座已落地（M6 子任务①，2026-08-03），模型面尚未接入。** 三道闸中的 ③（代码写盘、
-> 统一入口、id 由代码分配）已由 `applySpecChange` 实现并测试覆盖，「确认前预告影响面」也已由
-> `previewSpecChange` 提供；① 逐字段 diff 展示与 ② 用户确认属界面，由子任务②③ 落地。
+> **状态：跨层实现已落地（M6 子任务①②③，2026-08-04）。** 三道闸均已由 core 契约、
+> CLI 领域服务、Electron IPC 与 renderer 兑现，并由受控 Provider 自动测试和桌面视觉走查覆盖；
+> 真实联网模型调用仍须另行确认成本。
 > 具体契约见下一节〈规格写入唯一入口与变更日志〉。本节先行收录的原因不变：M5 父任务
 > `prd.md:44` 的 D7 原文写着「**不引入模型改写**」，不写这条，后来者会照原文判定 M6 违规。
 
@@ -919,6 +919,25 @@ const isManual = acceptanceAssetExists && attempt.provider !== AUTO_SOURCE_TRUST
 
 // M6 D5 放宽后的口径
 //   模型可提案，不可直接落盘。
+
+// apps/cli/src/deck/planning-conversation.ts
+createPlanningConversationService(overrides?).load(deckPath);
+service.sendMessage(deckPath, text);
+service.draftSpec(deckPath);
+service.proposeChange(deckPath, instruction, { kind: "entry", targetSpecEntryId });
+service.proposeChange(deckPath, instruction, { kind: "deck" });
+service.previewProposal(deckPath, proposalMessageId, selection);
+service.acceptProposal(deckPath, proposalMessageId, selection);
+service.rejectProposal(deckPath, proposalMessageId);
+
+// Electron preload：renderer 只通过 window.api.planning 调用，不接触 node: / @cli/*
+window.api.planning.load(deckPath);
+window.api.planning.sendMessage(deckPath, text);
+window.api.planning.draftSpec(deckPath);
+window.api.planning.proposeChange(deckPath, text, scope);
+window.api.planning.previewProposal(deckPath, proposalMessageId, selection);
+window.api.planning.acceptProposal(deckPath, proposalMessageId, selection);
+window.api.planning.rejectProposal(deckPath, proposalMessageId);
 ```
 
 ### 3. Contracts
@@ -926,7 +945,8 @@ const isManual = acceptanceAssetExists && attempt.provider !== AUTO_SOURCE_TRUST
 **放宽后仍然成立的三条**（D7 保护的实质，一条都不能松）：
 
 1. **规格不被静默改写**——任何变更都由用户的确认动作触发；
-2. **`specEntryId` / `specId` / 时间戳始终由代码分配**，模型不得编造，模型给出的一律丢弃重分配；
+2. **`specId` / 新增条目的 `specEntryId` / 时间戳始终由代码分配**；已有条目的 id 只能作为定位
+   提示且必须命中当前规格，未知非空 id 直接拒绝，不能原样写盘；
 3. **规格改动只产生只读漂移标注**，不自动失效任何阶段（M5 A13 不变）。
 
 **不再成立的一条**：「不引入模型改写」这句字面表述本身。
@@ -943,6 +963,24 @@ const isManual = acceptanceAssetExists && attempt.provider !== AUTO_SOURCE_TRUST
 这两处落点不同是刻意的——把「模型说过什么」和「磁盘上是什么」分开，才能事后区分
 「模型提错了但被拦下」与「模型提错了并且落盘了」。
 
+**会话是追加式联合类型**：`planning/session.jsonl` 每行是 `PlanningMessage` 或
+`PlanningProposalDecision`。模型提案先作为 assistant message 留痕，接受 / 拒绝另追加 decision；
+折叠时同一提案只认第一条有效 decision，并且同时只允许一份 pending。存在 pending 时，领域层
+拒绝继续提问、出初稿或改稿，不能只靠 renderer 禁用按钮。
+
+**写入成功与会话决策失败要分开表达**：接受提案先走 `applySpecChange(origin="proposal",
+conversationRef=proposalMessageId)`，再追加 accepted decision。后者失败时规格不回滚，当前窗口投影为
+accepted 并明确返回 `decisionWritten: false`；重开后以 `spec-history.jsonl` 中匹配的
+`origin + conversationRef` 恢复 accepted。读取只做内存投影，不补写 session；若历史和 decision
+同时缺失则保留 pending，不凭当前规格与候选相等猜测。
+
+**作用域边界**：单条目改稿只能替换或删除目标条目，deck style 与相邻标题只作只读上下文，
+`styleProposal` 必须为 `null`；全 deck 改稿一次原子模型调用，可在确认时取消 style 或个别条目。
+无权威规格的初稿是完整只读提案，只能整体接受。
+
+**材料是 deck 级背景**：只导入 `.md` / `.txt` 副本到 `planning/materials/`，每次模型调用都重读
+全部当前材料；读取失败须指名文件并阻止本轮调用。移除只删 deck 内副本，不修改用户原文件。
+
 **确认前必须预告影响面**：用既有指纹口径预先算出提案落盘后的新指纹，与各页已记录的
 指纹比对，在确认对话框里写明「确认后 N 页变为已过时」。这是选择「输出全量条目」
 而非「输出 patch」的直接收益——patch 语义算不出落盘后的指纹，只能落完再看。
@@ -958,7 +996,13 @@ const isManual = acceptanceAssetExists && attempt.provider !== AUTO_SOURCE_TRUST
 | 模型面 schema | **一律无约束**（不带 `min` / `refine`）。Structured Outputs 的 JSON Schema 不接受它们，带约束直接喂 `zodTextFormat` 会被 API 拒绝（既有教训见 `content-spec-contracts.ts` 的 `zodTextFormat` 注释） |
 | 落盘前 | 必经完整契约 schema 的 `parse` 补齐全部约束——约束一条不少，只是校验位置从模型侧挪到写入侧 |
 | 模型 refusal / 解析为空 | `safeParse` 失败即放弃本轮，**不得**把自由文本当作契约内容 |
-| 模型返回了 id | 丢弃重分配，不信任 |
+| 模型返回已有条目 id | 必须命中当前规格；新增只接受空 id 并由代码分配，未知非空 id 拒绝 |
+| 单条目提案返回非空 `styleProposal`、其它条目或未知 id | `INVALID_PROVIDER_RESPONSE`，本轮不留可接受提案 |
+| 已有 pending 时继续提问 / 出稿 / 改稿 | `INVALID_STAGE_STATE`，会话与规格零改动 |
+| 会话消息追加失败 | 本轮失败，不向 renderer 返回未留痕的提案 |
+| accepted decision 追加失败 | 规格保留，返回 `decisionWritten: false`；当前与重开快照均不得诱导重复接受 |
+| accepted decision 与规格历史同时缺失 | 保留 pending，不根据规格内容猜测接受状态 |
+| 材料扩展名非 `.md` / `.txt` 或路径越界 | `INVALID_INPUT`，不得复制 / 删除目标 |
 | 会触发付费生成的确认 | 文案写明调用次数与不可撤销 |
 | 模型调用的 `requestId` | 网关不回传 `x-request-id` 时**如实记 `null`**，不伪造、不用其它 id 填充 |
 | 旁路日志写失败 | 只记 stderr，**不上抛**、不回滚已完成的契约写入（照搬 `activity-log.ts` 的纪律） |
@@ -968,13 +1012,22 @@ const isManual = acceptanceAssetExists && attempt.provider !== AUTO_SOURCE_TRUST
 - **Good**：模型提出改三条条目 → 界面逐字段 diff 并预告「确认后 3 页变为已过时」→
   用户取消其中一条 → 剩两条经统一入口落盘并记一条变更记录
 - **Base**：模型本轮只回答问题、不提改动 → 只写会话记录，契约文件零改动
+- **Base**：accepted decision 写失败但规格历史存在 → 当前窗口和重开都恢复为 accepted，
+  `acceptedAs` 指向规格历史 `recordId`，load 路径零写盘
 - **Bad**：模型返回的条目直接 `parse` 成功就写盘，用户事后从漂移标注里才发现被改了什么
+- **Bad**：单条目请求把 deck style 当可编辑字段，导致“只改这一页”实际让全 deck 漂移
 
 ### 6. Tests Required
 
 - 提案被否决后，契约文件字节不变、会话记录里能查到这条被否决的提案
 - 模型返回自造 id 时，落盘后的 id 是代码分配的那个
 - 模型 refusal / 输出无法解析时，契约文件不被触碰
+- 会话折叠覆盖五维度恢复、唯一 pending、重复决策取第一条；规格历史恢复 accepted 需同时覆盖
+  “证据存在”和“历史 / decision 同时缺失”两条反向用例
+- 单条目 materialize 必须拒绝非空 `styleProposal`、未知 id 与多个条目；全 deck 必须覆盖新增 id
+  由代码分配和一次原子 Provider 调用
+- renderer store 用 deferred 覆盖切 deck 迟到成功 / 失败均不污染新 deck，并做去掉身份守卫的变异验证
+- IPC 覆盖运行互斥、跨进程 Zod 校验、拒绝零写盘及 `origin / conversationRef` 传递
 - 删除全部旁路文件后，主链路（生成 / 复核 / 导出）行为不变
 
 ### 7. Wrong vs Correct
@@ -991,17 +1044,24 @@ await writeDeckContentSpec(deckDir, proposal);   // 静默改写 + 绕过统一�
 
 ```ts
 // 模型只产出提案；提案先留痕，确认后才由代码写盘
-const parsed = SpecProposalSchema.safeParse(await callModel(userText));
-if (!parsed.success) return { kind: "rejected" };      // 不把自由文本当契约
-await appendPlanningMessage(deckDir, { role: "assistant", proposal: parsed.data });
+const service = createPlanningConversationService();
+const proposed = await service.proposeChange(deckPath, userText, {
+  kind: "entry",
+  targetSpecEntryId,
+}); // Provider 校验、candidate materialize、会话留痕均在返回前完成
 
-const preview = previewOutdatedPages(currentSpec, parsed.data);   // 确认前预告影响面
-if (!(await confirmWithUser(preview))) return { kind: "declined" };
+const preview = await service.previewProposal(
+  deckPath,
+  proposed.preview.proposalMessageId,
+  proposed.preview.selection,
+); // 零写盘地预告 willDrift / willMiss
+if (!(await confirmWithUser(preview))) return;
 
-await applySpecChange(deckDir, {                       // 唯一写入入口，捎带记日志
-  next: materialize(parsed.data, { ids: allocateIds() }),   // id 由代码分配
-  origin: "proposal",
-});
+await service.acceptProposal(
+  deckPath,
+  proposed.preview.proposalMessageId,
+  proposed.preview.selection,
+); // 内部唯一调用 applySpecChange(origin="proposal", conversationRef=messageId)
 ```
 
 ---

@@ -1,1 +1,10 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/backend/index.md","reason":"后端规范索引与最低质量命令；实现前按索引定位 contracts/error/quality 的约束"}
+{"file":".trellis/spec/backend/contracts.md","reason":"〈模型可提案、不可直接落盘〉和〈规格写入唯一入口与变更日志〉；三道闸、预告影响面、id 由代码分配均不可省"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"provider 非可信边界、稳定 FoundationError、旁路日志成败必须出声；会话/材料错误不得静默"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"Zod 跨进程/持久化校验、模型响应不得断言绕过、Node24/TypeScript/Biome/Vitest 与提交前命令"}
+{"file":".trellis/spec/frontend/index.md","reason":"前端规范索引；planning 对话同时触及状态、组件与质量层，按索引加载真实项目约束"}
+{"file":".trellis/spec/frontend/state-management.md","reason":"按 deck 身份守异步响应、耐久层与会话层分离、reset 不误伤新请求；conversation store 直接受这些实证规则约束"}
+{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"分段控件必须兑现键盘语义；渲染规则抽纯函数测试；放行类守卫配正反用例并做变异验证"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"core/CLI/main/preload/renderer 新增多条记录与 IPC，需逐字段追踪生产、传输、消费和运行时校验"}
+{"file":".trellis/spec/guides/code-reuse-thinking-guide.md","reason":"provider client、planning 尾队列、apply/preview 写入路径、确认框和既有页面骨架都必须复用，禁止第二份实现"}
+{"file":"DESIGN.md","reason":"planning 对话、材料和 diff 界面必须遵守校样台色板、唯一 primary、六态、焦点、密度与空态规则"}

@@ -2,15 +2,34 @@ import { describe, expect, it } from "vitest";
 import { SCHEMA_VERSION } from "../src/constants.js";
 import type {
   ContentSpec,
+  ContentSpecDraft,
   ContentSpecEntry,
 } from "../src/content-spec-contracts.js";
 import { ContentSpecSchema } from "../src/content-spec-contracts.js";
+import { FoundationError } from "../src/errors.js";
 import {
   applyRollbackToSpec,
   diffContentSpec,
+  foldPlanningSession,
+  materializeDeckPlanningCandidate,
+  materializeEntryPlanningCandidate,
+  materializeInitialPlanningCandidate,
+  PLANNING_DIMENSION_NAMES,
+  PLANNING_SESSION_RECORD_V,
+  PlanningAcceptProposalRequestSchema,
+  PlanningDimensionsSchema,
+  type PlanningMessage,
+  PlanningMessageSchema,
+  type PlanningProposalDecision,
+  PlanningProposalDecisionSchema,
+  PlanningQuestionOutputSchema,
+  PlanningSessionRecordSchema,
   SPEC_CHANGE_RECORD_V,
   type SpecChangeRecord,
   SpecChangeRecordSchema,
+  type SpecProposal,
+  SpecProposalSchema,
+  StoredPlanningProposalSchema,
 } from "../src/planning-contracts.js";
 
 function entry(id: string, pageType: string, text: string): ContentSpecEntry {
@@ -463,5 +482,482 @@ describe("applyRollbackToSpec", () => {
     const v4 = applyRollbackToSpec(v3, recordB);
     expect(v4.entries).toEqual(v2.entries);
     expect(idsOf(v4)).toEqual(["entry-001", "entry-002"]);
+  });
+});
+
+const RESOLVED_DIMENSIONS = {
+  audience: "resolved",
+  scenario: "resolved",
+  length: "open",
+  structure: "not_applicable",
+  style: "resolved",
+} as const;
+
+function proposal(overrides: Partial<SpecProposal> = {}): SpecProposal {
+  return SpecProposalSchema.parse({
+    reply: "我已整理出改稿提案",
+    styleProposal: null,
+    entryProposals: [],
+    ...overrides,
+  });
+}
+
+function proposalMessage(
+  messageId: string,
+  scope: "initial" | "entry" | "deck" = "deck",
+): PlanningMessage {
+  const stored =
+    scope === "initial"
+      ? {
+          kind: "initial-draft" as const,
+          raw: { source: "test" },
+          candidate: BASE,
+          scope: "initial" as const,
+        }
+      : {
+          kind: "spec-change" as const,
+          raw: { source: "test" },
+          candidate: BASE,
+          scope,
+        };
+  return PlanningMessageSchema.parse({
+    v: PLANNING_SESSION_RECORD_V,
+    kind: "message",
+    messageId,
+    at: "2026-08-03T00:00:00.000Z",
+    role: "assistant",
+    text: "请审阅提案",
+    proposal: stored,
+    dimensions: null,
+    requestId: null,
+    model: "test-model",
+  });
+}
+
+function decision(
+  decisionId: string,
+  proposalMessageId: string,
+  outcome: "accepted" | "rejected",
+): PlanningProposalDecision {
+  return PlanningProposalDecisionSchema.parse({
+    v: PLANNING_SESSION_RECORD_V,
+    kind: "proposal-decision",
+    decisionId,
+    at: "2026-08-03T01:00:00.000Z",
+    proposalMessageId,
+    outcome,
+    acceptedAs: outcome === "accepted" ? `record-${decisionId}` : null,
+  });
+}
+
+describe("策划模型面与持久化 schema", () => {
+  it("五维度名称固定且每项必须有合法状态", () => {
+    expect(PLANNING_DIMENSION_NAMES).toEqual([
+      "audience",
+      "scenario",
+      "length",
+      "structure",
+      "style",
+    ]);
+    expect(
+      PlanningDimensionsSchema.safeParse(RESOLVED_DIMENSIONS).success,
+    ).toBe(true);
+    expect(
+      PlanningDimensionsSchema.safeParse({
+        ...RESOLVED_DIMENSIONS,
+        audience: "unknown",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("模型面允许空字符串，但持久化消息拒绝空正文", () => {
+    expect(
+      PlanningQuestionOutputSchema.safeParse({
+        reply: "",
+        dimensions: RESOLVED_DIMENSIONS,
+        nextQuestion: "",
+        canDraft: false,
+      }).success,
+    ).toBe(true);
+    expect(
+      PlanningMessageSchema.safeParse({
+        v: 1,
+        kind: "message",
+        messageId: "message-1",
+        at: "2026-08-03T00:00:00.000Z",
+        role: "assistant",
+        text: "",
+        proposal: null,
+        dimensions: RESOLVED_DIMENSIONS,
+        requestId: null,
+        model: null,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("持久化模型追踪字段非空，缺失 requestId 必须使用 null", () => {
+    const base = {
+      v: 1,
+      kind: "message",
+      messageId: "message-trace",
+      at: "2026-08-03T00:00:00.000Z",
+      role: "assistant",
+      text: "已收到",
+      proposal: null,
+      dimensions: RESOLVED_DIMENSIONS,
+    };
+    expect(
+      PlanningMessageSchema.safeParse({
+        ...base,
+        requestId: null,
+        model: "test-model",
+      }).success,
+    ).toBe(true);
+    expect(
+      PlanningMessageSchema.safeParse({
+        ...base,
+        requestId: "",
+        model: "test-model",
+      }).success,
+    ).toBe(false);
+    expect(
+      PlanningMessageSchema.safeParse({
+        ...base,
+        requestId: null,
+        model: "",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("用户消息不得冒充模型消息携带维度、提案或追踪字段", () => {
+    expect(
+      PlanningMessageSchema.safeParse({
+        v: 1,
+        kind: "message",
+        messageId: "message-user",
+        at: "2026-08-03T00:00:00.000Z",
+        role: "user",
+        text: "给销售团队做十页发布会",
+        proposal: null,
+        dimensions: RESOLVED_DIMENSIONS,
+        requestId: null,
+        model: null,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("StoredPlanningProposal 强制 kind 与 scope 配对", () => {
+    expect(
+      StoredPlanningProposalSchema.safeParse({
+        kind: "initial-draft",
+        raw: {},
+        candidate: BASE,
+        scope: "entry",
+      }).success,
+    ).toBe(false);
+    expect(
+      StoredPlanningProposalSchema.safeParse({
+        kind: "spec-change",
+        raw: {},
+        candidate: BASE,
+        scope: "deck",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("accepted 必须有 acceptedAs，rejected 必须为 null", () => {
+    const base = {
+      v: 1,
+      kind: "proposal-decision",
+      decisionId: "decision-1",
+      at: "2026-08-03T00:00:00.000Z",
+      proposalMessageId: "proposal-1",
+    };
+    expect(
+      PlanningProposalDecisionSchema.safeParse({
+        ...base,
+        outcome: "accepted",
+        acceptedAs: null,
+      }).success,
+    ).toBe(false);
+    expect(
+      PlanningProposalDecisionSchema.safeParse({
+        ...base,
+        outcome: "rejected",
+        acceptedAs: "record-1",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("会话联合类型拒绝未知 kind，IPC 接受请求要求 entry 目标与 selection", () => {
+    expect(
+      PlanningSessionRecordSchema.safeParse({ kind: "other", v: 1 }).success,
+    ).toBe(false);
+    expect(
+      PlanningAcceptProposalRequestSchema.safeParse({
+        deckPath: "/deck",
+        proposalMessageId: "proposal-1",
+        selection: { includeStyle: true, specEntryIds: ["entry-001"] },
+      }).success,
+    ).toBe(true);
+    expect(
+      PlanningAcceptProposalRequestSchema.safeParse({
+        deckPath: "/deck",
+        proposalMessageId: "proposal-1",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("foldPlanningSession", () => {
+  it("重建最新维度、全部消息、每份提案状态和唯一 pending", () => {
+    const firstDimensions = PlanningMessageSchema.parse({
+      v: 1,
+      kind: "message",
+      messageId: "assistant-1",
+      at: "2026-08-03T00:00:00.000Z",
+      role: "assistant",
+      text: "先确认受众",
+      proposal: null,
+      dimensions: {
+        ...RESOLVED_DIMENSIONS,
+        audience: "open",
+      },
+      requestId: "request-1",
+      model: "test-model",
+    });
+    const latestDimensions = PlanningMessageSchema.parse({
+      ...firstDimensions,
+      messageId: "assistant-2",
+      at: "2026-08-03T00:10:00.000Z",
+      dimensions: RESOLVED_DIMENSIONS,
+    });
+    const accepted = proposalMessage("proposal-accepted");
+    const pending = proposalMessage("proposal-pending", "initial");
+    const snapshot = foldPlanningSession([
+      firstDimensions,
+      accepted,
+      latestDimensions,
+      decision("decision-1", accepted.messageId, "accepted"),
+      pending,
+    ]);
+
+    expect(snapshot.messages).toHaveLength(4);
+    expect(snapshot.dimensions).toEqual(RESOLVED_DIMENSIONS);
+    expect(snapshot.proposals.map((item) => item.status)).toEqual([
+      "accepted",
+      "pending",
+    ]);
+    expect(snapshot.pendingProposal?.message.messageId).toBe(
+      "proposal-pending",
+    );
+  });
+
+  it("重复决策只认文件中的第一条有效记录，未知提案决策忽略", () => {
+    const stored = proposalMessage("proposal-1");
+    const snapshot = foldPlanningSession([
+      decision("unknown", "missing", "accepted"),
+      decision("first", stored.messageId, "rejected"),
+      stored,
+      decision("later", stored.messageId, "accepted"),
+    ]);
+    expect(snapshot.proposals).toHaveLength(1);
+    expect(snapshot.proposals[0]?.status).toBe("rejected");
+    expect(snapshot.proposals[0]?.decision?.decisionId).toBe("first");
+    expect(snapshot.pendingProposal).toBeNull();
+  });
+});
+
+describe("策划候选规格纯函数", () => {
+  const NOW = "2026-08-04T00:00:00.000Z";
+
+  it("初稿身份全由代码分配并在候选中固定", () => {
+    const draft: ContentSpecDraft = {
+      style: { description: "黑白校样风" },
+      entries: [
+        {
+          pageType: "cover",
+          textGroups: [{ label: "标题", items: ["新品发布"] }],
+          visualIntent: "大标题居中",
+        },
+        {
+          pageType: "summary",
+          textGroups: [{ label: "结语", items: ["谢谢"] }],
+          visualIntent: "极简收束",
+        },
+      ],
+    };
+    const candidate = materializeInitialPlanningCandidate(draft, {
+      specId: "spec-by-code",
+      now: NOW,
+      createSpecEntryId: (index) => `generated-${index}`,
+    });
+    expect(candidate.specId).toBe("spec-by-code");
+    expect(idsOf(candidate)).toEqual(["generated-0", "generated-1"]);
+    expect(
+      candidate.entries.every((item) => item.revisionNotes.length === 0),
+    ).toBe(true);
+    expect(candidate.createdAt).toBe(NOW);
+    expect(candidate.updatedAt).toBe(NOW);
+  });
+
+  it("初稿的空必填文字在完整规格校验处转成 provider 错误", () => {
+    expect(() =>
+      materializeInitialPlanningCandidate(
+        {
+          style: { description: "" },
+          entries: [],
+        },
+        {
+          specId: "spec-by-code",
+          now: NOW,
+          createSpecEntryId: () => "entry-by-code",
+        },
+      ),
+    ).toThrowError(FoundationError);
+    try {
+      materializeInitialPlanningCandidate(
+        { style: { description: "" }, entries: [] },
+        {
+          specId: "spec-by-code",
+          now: NOW,
+          createSpecEntryId: () => "entry-by-code",
+        },
+      );
+    } catch (error) {
+      expect(error).toBeInstanceOf(FoundationError);
+      expect((error as FoundationError).code).toBe("INVALID_PROVIDER_RESPONSE");
+    }
+  });
+
+  it("单条目提案只替换目标并保留所有既有身份", () => {
+    const candidate = materializeEntryPlanningCandidate(
+      BASE,
+      proposal({
+        entryProposals: [
+          {
+            specEntryId: "entry-002",
+            remove: false,
+            pageType: "content",
+            textGroups: [{ label: "要点", items: ["更快更稳"] }],
+            visualIntent: "横向对比",
+            revisionNotes: ["压缩文字"],
+          },
+        ],
+      }),
+      { targetSpecEntryId: "entry-002", now: NOW },
+    );
+    expect(idsOf(candidate)).toEqual(idsOf(BASE));
+    expect(entryAt(candidate, 1).textGroups[0]?.items).toEqual(["更快更稳"]);
+    expect(entryAt(candidate, 0)).toEqual(entryAt(BASE, 0));
+    expect(candidate.updatedAt).toBe(NOW);
+  });
+
+  it("单条目提案拒绝 style、空新增 id 与未知 id", () => {
+    const replacement = {
+      specEntryId: "",
+      remove: false,
+      pageType: "content",
+      textGroups: [{ label: "要点", items: ["新内容"] }],
+      visualIntent: "居中",
+      revisionNotes: [],
+    };
+    expect(() =>
+      materializeEntryPlanningCandidate(
+        BASE,
+        proposal({ entryProposals: [replacement] }),
+        { targetSpecEntryId: "entry-002", now: NOW },
+      ),
+    ).toThrowError(/未知或不匹配/);
+    expect(() =>
+      materializeEntryPlanningCandidate(
+        BASE,
+        proposal({
+          styleProposal: "新风格",
+          entryProposals: [{ ...replacement, specEntryId: "entry-002" }],
+        }),
+        { targetSpecEntryId: "entry-002", now: NOW },
+      ),
+    ).toThrowError(/不得修改/);
+  });
+
+  it("全 deck 原子处理替换、删除、新增与 style", () => {
+    const candidate = materializeDeckPlanningCandidate(
+      BASE,
+      proposal({
+        styleProposal: "黑白技术风",
+        entryProposals: [
+          {
+            specEntryId: "entry-001",
+            remove: false,
+            pageType: "cover",
+            textGroups: [{ label: "标题", items: ["发布会 2.0"] }],
+            visualIntent: "居中",
+            revisionNotes: [],
+          },
+          {
+            specEntryId: "entry-002",
+            remove: true,
+            pageType: "",
+            textGroups: [],
+            visualIntent: "",
+            revisionNotes: [],
+          },
+          {
+            specEntryId: "",
+            remove: false,
+            pageType: "content",
+            textGroups: [{ label: "新页", items: ["新增内容"] }],
+            visualIntent: "全宽",
+            revisionNotes: [],
+          },
+        ],
+      }),
+      {
+        now: NOW,
+        createSpecEntryId: (index) => `allocated-${index}`,
+      },
+    );
+    expect(idsOf(candidate)).toEqual(["entry-001", "entry-003", "allocated-0"]);
+    expect(candidate.style.description).toBe("黑白技术风");
+    expect(candidate.specId).toBe(BASE.specId);
+    expect(candidate.createdAt).toBe(BASE.createdAt);
+  });
+
+  it("全 deck 拒绝未知非空 id、重复目标和代码分配的冲突 id", () => {
+    const unknown = {
+      specEntryId: "model-invented",
+      remove: false,
+      pageType: "content",
+      textGroups: [{ label: "要点", items: ["x"] }],
+      visualIntent: "",
+      revisionNotes: [],
+    };
+    expect(() =>
+      materializeDeckPlanningCandidate(
+        BASE,
+        proposal({ entryProposals: [unknown] }),
+        { now: NOW, createSpecEntryId: () => "allocated" },
+      ),
+    ).toThrowError(/不存在的条目 ID/);
+    expect(() =>
+      materializeDeckPlanningCandidate(
+        BASE,
+        proposal({
+          entryProposals: [
+            { ...unknown, specEntryId: "entry-001" },
+            { ...unknown, specEntryId: "entry-001" },
+          ],
+        }),
+        { now: NOW, createSpecEntryId: () => "allocated" },
+      ),
+    ).toThrowError(/重复提案/);
+    expect(() =>
+      materializeDeckPlanningCandidate(
+        BASE,
+        proposal({ entryProposals: [{ ...unknown, specEntryId: "" }] }),
+        { now: NOW, createSpecEntryId: () => "entry-001" },
+      ),
+    ).toThrowError(/合法内容规格/);
   });
 });

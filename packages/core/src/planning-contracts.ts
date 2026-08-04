@@ -1,12 +1,16 @@
 import { z } from "zod";
+import { SCHEMA_VERSION } from "./constants.js";
 import {
   type ContentSpec,
+  type ContentSpecDraft,
   type ContentSpecEntry,
   ContentSpecEntrySchema,
+  ContentSpecSchema,
   type ContentSpecStyle,
   ContentSpecStyleSchema,
   specViewFingerprintValues,
 } from "./content-spec-contracts.js";
+import { FoundationError } from "./errors.js";
 
 /**
  * 内容策划工作台的**旁路数据**契约（M6 子任务①）。
@@ -32,6 +36,193 @@ import {
  * 纪律），丢一行历史不影响任何正确性判断。
  */
 export const SPEC_CHANGE_RECORD_V = 1 as const;
+
+/** 策划会话旁路记录的局部版本号；不挂全仓 `SCHEMA_VERSION`。 */
+export const PLANNING_SESSION_RECORD_V = 1 as const;
+
+export const PLANNING_DIMENSION_NAMES = [
+  "audience",
+  "scenario",
+  "length",
+  "structure",
+  "style",
+] as const;
+export const PlanningDimensionSchema = z.enum(PLANNING_DIMENSION_NAMES);
+export const PlanningDimensionNameSchema = PlanningDimensionSchema;
+export type PlanningDimension = z.infer<typeof PlanningDimensionSchema>;
+export type PlanningDimensionName = PlanningDimension;
+
+export const PlanningDimensionStatusSchema = z.enum([
+  "open",
+  "resolved",
+  "not_applicable",
+]);
+export type PlanningDimensionStatus = z.infer<
+  typeof PlanningDimensionStatusSchema
+>;
+
+/** 五个维度固定存在，避免消费端各自补默认值。 */
+export const PlanningDimensionsSchema = z.object({
+  audience: PlanningDimensionStatusSchema,
+  scenario: PlanningDimensionStatusSchema,
+  length: PlanningDimensionStatusSchema,
+  structure: PlanningDimensionStatusSchema,
+  style: PlanningDimensionStatusSchema,
+});
+export type PlanningDimensions = z.infer<typeof PlanningDimensionsSchema>;
+
+/**
+ * 策划提问的模型输出。模型面只使用 Structured Outputs 支持的基础约束；
+ * 非空文字等持久化要求由 `PlanningMessageSchema` 在写会话前补齐。
+ */
+export const PlanningQuestionOutputSchema = z.object({
+  reply: z.string(),
+  dimensions: PlanningDimensionsSchema,
+  nextQuestion: z.string().nullable(),
+  canDraft: z.boolean(),
+});
+export type PlanningQuestionOutput = z.infer<
+  typeof PlanningQuestionOutputSchema
+>;
+
+/** 改稿模型输出：完整条目提案，不是 patch；本 schema 刻意不带 min/refine。 */
+export const SpecProposalSchema = z.object({
+  reply: z.string(),
+  styleProposal: z.string().nullable(),
+  entryProposals: z.array(
+    z.object({
+      specEntryId: z.string(),
+      remove: z.boolean(),
+      pageType: z.string(),
+      textGroups: z.array(
+        z.object({ label: z.string(), items: z.array(z.string()) }),
+      ),
+      visualIntent: z.string(),
+      revisionNotes: z.array(z.string()),
+    }),
+  ),
+});
+export type SpecProposal = z.infer<typeof SpecProposalSchema>;
+
+export const PlanningProposalScopeSchema = z.enum(["initial", "entry", "deck"]);
+export type PlanningProposalScope = z.infer<typeof PlanningProposalScopeSchema>;
+
+/** 已有规格改稿请求的作用域；entry 分支必须携带目标条目身份。 */
+export const PlanningChangeScopeSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("entry"), targetSpecEntryId: z.string().min(1) }),
+  z.object({ kind: z.literal("deck") }),
+]);
+export type PlanningChangeScope = z.infer<typeof PlanningChangeScopeSchema>;
+
+export const StoredPlanningProposalSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("initial-draft"),
+    raw: z.unknown(),
+    candidate: ContentSpecSchema,
+    scope: z.literal("initial"),
+  }),
+  z.object({
+    kind: z.literal("spec-change"),
+    raw: z.unknown(),
+    candidate: ContentSpecSchema,
+    scope: z.enum(["entry", "deck"]),
+  }),
+]);
+export type StoredPlanningProposal = z.infer<
+  typeof StoredPlanningProposalSchema
+>;
+
+export const PlanningMessageRoleSchema = z.enum(["user", "assistant"]);
+export type PlanningMessageRole = z.infer<typeof PlanningMessageRoleSchema>;
+
+export interface PlanningMessage {
+  readonly v: 1;
+  readonly kind: "message";
+  readonly messageId: string;
+  readonly at: string;
+  readonly role: PlanningMessageRole;
+  readonly text: string;
+  readonly proposal: StoredPlanningProposal | null;
+  readonly dimensions: PlanningDimensions | null;
+  readonly requestId: string | null;
+  readonly model: string | null;
+}
+
+export const PlanningMessageSchema = z
+  .object({
+    v: z.literal(PLANNING_SESSION_RECORD_V),
+    kind: z.literal("message"),
+    messageId: z.string().min(1),
+    at: z.string().datetime(),
+    role: PlanningMessageRoleSchema,
+    text: z.string().min(1),
+    proposal: StoredPlanningProposalSchema.nullable(),
+    dimensions: PlanningDimensionsSchema.nullable(),
+    requestId: z.string().min(1).nullable(),
+    model: z.string().min(1).nullable(),
+  })
+  .superRefine((message, context) => {
+    if (
+      message.role === "user" &&
+      (message.proposal !== null ||
+        message.dimensions !== null ||
+        message.requestId !== null ||
+        message.model !== null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "用户消息不得携带模型输出或模型追踪字段",
+      });
+    }
+  }) satisfies z.ZodType<PlanningMessage>;
+
+export const PlanningProposalOutcomeSchema = z.enum(["accepted", "rejected"]);
+export type PlanningProposalOutcome = z.infer<
+  typeof PlanningProposalOutcomeSchema
+>;
+
+export interface PlanningProposalDecision {
+  readonly v: 1;
+  readonly kind: "proposal-decision";
+  readonly decisionId: string;
+  readonly at: string;
+  readonly proposalMessageId: string;
+  readonly outcome: PlanningProposalOutcome;
+  readonly acceptedAs: string | null;
+}
+
+export const PlanningProposalDecisionSchema = z
+  .object({
+    v: z.literal(PLANNING_SESSION_RECORD_V),
+    kind: z.literal("proposal-decision"),
+    decisionId: z.string().min(1),
+    at: z.string().datetime(),
+    proposalMessageId: z.string().min(1),
+    outcome: PlanningProposalOutcomeSchema,
+    acceptedAs: z.string().nullable(),
+  })
+  .superRefine((decision, context) => {
+    const validAccepted =
+      decision.outcome === "accepted" &&
+      decision.acceptedAs !== null &&
+      decision.acceptedAs.length > 0;
+    const validRejected =
+      decision.outcome === "rejected" && decision.acceptedAs === null;
+    if (!validAccepted && !validRejected) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "accepted 决策必须指向变更记录，rejected 决策不得携带 acceptedAs",
+        path: ["acceptedAs"],
+      });
+    }
+  }) satisfies z.ZodType<PlanningProposalDecision>;
+
+export const PlanningSessionRecordSchema = z.discriminatedUnion("kind", [
+  PlanningMessageSchema,
+  PlanningProposalDecisionSchema,
+]);
+export type PlanningSessionRecord = z.infer<typeof PlanningSessionRecordSchema>;
 
 /**
  * 这次规格变更是**谁**发起的。
@@ -171,6 +362,231 @@ export interface PreviewSpecChangeResult {
   readonly willDrift: readonly DriftedPage[];
   readonly willMiss: readonly DriftedPage[];
 }
+
+export const ContentSpecDiffSchema = z.object({
+  styleChanged: z.boolean(),
+  entriesBefore: z.array(AffectedEntrySchema),
+  entriesAfter: z.array(AffectedEntrySchema),
+  added: z.array(z.string().min(1)),
+  removed: z.array(z.string().min(1)),
+  modified: z.array(z.string().min(1)),
+  reordered: z.boolean(),
+}) satisfies z.ZodType<ContentSpecDiff>;
+
+export const DriftedPageSchema = z.object({
+  slideId: z.string().min(1),
+  pageLabel: z.string().min(1),
+  specEntryId: z.string().min(1),
+  before: z.string().nullable(),
+  after: z.string().nullable(),
+}) satisfies z.ZodType<DriftedPage>;
+
+export const ApplySpecChangeResultSchema = z.object({
+  spec: ContentSpecSchema,
+  record: SpecChangeRecordSchema,
+  historyWritten: z.boolean(),
+  drifted: z.array(DriftedPageSchema),
+  missing: z.array(DriftedPageSchema),
+}) satisfies z.ZodType<ApplySpecChangeResult>;
+
+export const PreviewSpecChangeResultSchema = z.object({
+  diff: ContentSpecDiffSchema,
+  willDrift: z.array(DriftedPageSchema),
+  willMiss: z.array(DriftedPageSchema),
+}) satisfies z.ZodType<PreviewSpecChangeResult>;
+
+export const PlanningProposalStatusSchema = z.enum([
+  "pending",
+  "accepted",
+  "rejected",
+]);
+export type PlanningProposalStatus = z.infer<
+  typeof PlanningProposalStatusSchema
+>;
+
+export interface PlanningProposalState {
+  readonly message: PlanningMessage;
+  readonly proposal: StoredPlanningProposal;
+  readonly status: PlanningProposalStatus;
+  readonly decision: PlanningProposalDecision | null;
+}
+
+export const PlanningProposalStateSchema = z.object({
+  message: PlanningMessageSchema,
+  proposal: StoredPlanningProposalSchema,
+  status: PlanningProposalStatusSchema,
+  decision: PlanningProposalDecisionSchema.nullable(),
+}) satisfies z.ZodType<PlanningProposalState>;
+
+export interface PlanningSessionSnapshot {
+  readonly messages: readonly PlanningMessage[];
+  readonly dimensions: PlanningDimensions | null;
+  readonly proposals: readonly PlanningProposalState[];
+  readonly pendingProposal: PlanningProposalState | null;
+}
+
+export const PlanningSessionSnapshotSchema = z.object({
+  messages: z.array(PlanningMessageSchema),
+  dimensions: PlanningDimensionsSchema.nullable(),
+  proposals: z.array(PlanningProposalStateSchema),
+  pendingProposal: PlanningProposalStateSchema.nullable(),
+}) satisfies z.ZodType<PlanningSessionSnapshot>;
+
+export interface PlanningMaterialEntry {
+  readonly name: string;
+  readonly sizeBytes: number;
+}
+
+export const PlanningMaterialEntrySchema = z.object({
+  name: z.string().min(1),
+  sizeBytes: z.number().int().min(0),
+}) satisfies z.ZodType<PlanningMaterialEntry>;
+
+export interface PlanningConversationSnapshot {
+  readonly session: PlanningSessionSnapshot;
+  readonly spec: ContentSpec | null;
+  readonly materials: readonly PlanningMaterialEntry[];
+}
+
+export const PlanningConversationSnapshotSchema = z.object({
+  session: PlanningSessionSnapshotSchema,
+  spec: ContentSpecSchema.nullable(),
+  materials: z.array(PlanningMaterialEntrySchema),
+}) satisfies z.ZodType<PlanningConversationSnapshot>;
+
+export const PlanningProposalSelectionSchema = z.object({
+  includeStyle: z.boolean(),
+  specEntryIds: z.array(z.string().min(1)),
+});
+export type PlanningProposalSelection = z.infer<
+  typeof PlanningProposalSelectionSchema
+>;
+/** IPC/renderer 可使用的简名，保持同一个 schema 实例而非复制形状。 */
+export const ProposalSelectionSchema = PlanningProposalSelectionSchema;
+export type ProposalSelection = PlanningProposalSelection;
+
+export interface PlanningProposalPreview {
+  readonly proposalMessageId: string;
+  readonly candidate: ContentSpec;
+  readonly diff: ContentSpecDiff;
+  readonly willDrift: readonly DriftedPage[];
+  readonly willMiss: readonly DriftedPage[];
+}
+
+export const PlanningProposalPreviewSchema = z.object({
+  proposalMessageId: z.string().min(1),
+  candidate: ContentSpecSchema,
+  diff: ContentSpecDiffSchema,
+  willDrift: z.array(DriftedPageSchema),
+  willMiss: z.array(DriftedPageSchema),
+}) satisfies z.ZodType<PlanningProposalPreview>;
+
+export interface PlanningProposalResult {
+  readonly snapshot: PlanningConversationSnapshot;
+  readonly preview: PlanningProposalPreview;
+}
+
+export const PlanningProposalResultSchema = z.object({
+  snapshot: PlanningConversationSnapshotSchema,
+  preview: PlanningProposalPreviewSchema,
+}) satisfies z.ZodType<PlanningProposalResult>;
+
+export interface PlanningAcceptProposalResult {
+  readonly snapshot: PlanningConversationSnapshot;
+  readonly applyResult: ApplySpecChangeResult;
+  readonly decisionWritten: boolean;
+}
+
+export const PlanningAcceptProposalResultSchema = z.object({
+  snapshot: PlanningConversationSnapshotSchema,
+  applyResult: ApplySpecChangeResultSchema,
+  decisionWritten: z.boolean(),
+}) satisfies z.ZodType<PlanningAcceptProposalResult>;
+/** 兼容 IPC 对动作在前命名的偏好。 */
+export const PlanningProposalAcceptResultSchema =
+  PlanningAcceptProposalResultSchema;
+export type PlanningProposalAcceptResult = PlanningAcceptProposalResult;
+
+export const PlanningRejectProposalResultSchema = z.object({
+  snapshot: PlanningConversationSnapshotSchema,
+});
+export type PlanningRejectProposalResult = z.infer<
+  typeof PlanningRejectProposalResultSchema
+>;
+
+export const PlanningMaterialsResultSchema = z.object({
+  materials: z.array(PlanningMaterialEntrySchema),
+});
+export type PlanningMaterialsResult = z.infer<
+  typeof PlanningMaterialsResultSchema
+>;
+
+const DeckPathRequestSchema = z.object({ deckPath: z.string().min(1) });
+export const PlanningLoadRequestSchema = DeckPathRequestSchema;
+export const PlanningSendMessageRequestSchema = DeckPathRequestSchema.extend({
+  text: z.string().min(1),
+});
+export const PlanningDraftSpecRequestSchema = DeckPathRequestSchema;
+export const PlanningProposeChangeRequestSchema = DeckPathRequestSchema.extend({
+  text: z.string().min(1),
+  scope: PlanningChangeScopeSchema,
+});
+export const PlanningPreviewProposalRequestSchema =
+  DeckPathRequestSchema.extend({
+    proposalMessageId: z.string().min(1),
+    selection: PlanningProposalSelectionSchema,
+  });
+export const PlanningAcceptProposalRequestSchema =
+  PlanningPreviewProposalRequestSchema;
+export const PlanningRejectProposalRequestSchema = DeckPathRequestSchema.extend(
+  { proposalMessageId: z.string().min(1) },
+);
+export const PlanningListMaterialsRequestSchema = DeckPathRequestSchema;
+export const PlanningImportMaterialRequestSchema = DeckPathRequestSchema.extend(
+  {
+    sourcePath: z.string().min(1),
+  },
+);
+export const PlanningRemoveMaterialRequestSchema = DeckPathRequestSchema.extend(
+  {
+    name: z.string().min(1),
+  },
+);
+
+export type PlanningLoadRequest = z.infer<typeof PlanningLoadRequestSchema>;
+export type PlanningSendMessageRequest = z.infer<
+  typeof PlanningSendMessageRequestSchema
+>;
+export type PlanningDraftSpecRequest = z.infer<
+  typeof PlanningDraftSpecRequestSchema
+>;
+export type PlanningProposeChangeRequest = z.infer<
+  typeof PlanningProposeChangeRequestSchema
+>;
+export type PlanningPreviewProposalRequest = z.infer<
+  typeof PlanningPreviewProposalRequestSchema
+>;
+export type PlanningAcceptProposalRequest = z.infer<
+  typeof PlanningAcceptProposalRequestSchema
+>;
+export type PlanningRejectProposalRequest = z.infer<
+  typeof PlanningRejectProposalRequestSchema
+>;
+export type PlanningListMaterialsRequest = z.infer<
+  typeof PlanningListMaterialsRequestSchema
+>;
+export type PlanningImportMaterialRequest = z.infer<
+  typeof PlanningImportMaterialRequestSchema
+>;
+export type PlanningRemoveMaterialRequest = z.infer<
+  typeof PlanningRemoveMaterialRequestSchema
+>;
+
+export const PlanningLoadResultSchema = PlanningConversationSnapshotSchema;
+export const PlanningSendMessageResultSchema =
+  PlanningConversationSnapshotSchema;
+export const PlanningDraftSpecResultSchema = PlanningProposalResultSchema;
+export const PlanningProposeChangeResultSchema = PlanningProposalResultSchema;
 
 /**
  * 判断两个条目的内容是否相同——口径**复用指纹投影**，不另写一份字段列表。
@@ -329,4 +745,239 @@ export function applyRollbackToSpec(
   }
 
   return { ...current, style: target.styleBefore, entries };
+}
+
+/**
+ * 追加式会话的唯一折叠器。
+ *
+ * 先收集提案消息，再按文件顺序认第一条指向该提案的有效决策；后续重复决策忽略。
+ * 即使损坏文件把决策行放到了消息行之前，也不会因此丢失第一条决策的语义。
+ */
+export function foldPlanningSession(
+  records: readonly PlanningSessionRecord[],
+): PlanningSessionSnapshot {
+  const messages: PlanningMessage[] = [];
+  const proposalMessages = new Map<string, PlanningMessage>();
+  let dimensions: PlanningDimensions | null = null;
+
+  for (const record of records) {
+    if (record.kind !== "message") {
+      continue;
+    }
+    messages.push(record);
+    if (record.dimensions !== null) {
+      dimensions = record.dimensions;
+    }
+    if (record.proposal !== null && !proposalMessages.has(record.messageId)) {
+      proposalMessages.set(record.messageId, record);
+    }
+  }
+
+  const decisions = new Map<string, PlanningProposalDecision>();
+  for (const record of records) {
+    if (
+      record.kind === "proposal-decision" &&
+      proposalMessages.has(record.proposalMessageId) &&
+      !decisions.has(record.proposalMessageId)
+    ) {
+      decisions.set(record.proposalMessageId, record);
+    }
+  }
+
+  const proposals: PlanningProposalState[] = [];
+  for (const message of proposalMessages.values()) {
+    const proposal = message.proposal;
+    if (proposal === null) {
+      continue;
+    }
+    const decision = decisions.get(message.messageId) ?? null;
+    proposals.push({
+      message,
+      proposal,
+      status: decision?.outcome ?? "pending",
+      decision,
+    });
+  }
+
+  return {
+    messages,
+    dimensions,
+    proposals,
+    pendingProposal:
+      proposals.find((proposal) => proposal.status === "pending") ?? null,
+  };
+}
+
+export interface PlanningCandidateOptions {
+  readonly now: string;
+  readonly createSpecEntryId: (index: number) => string;
+}
+
+export interface InitialPlanningCandidateOptions
+  extends PlanningCandidateOptions {
+  readonly specId: string;
+}
+
+function invalidProviderProposal(
+  message: string,
+  details?: Readonly<Record<string, unknown>>,
+): never {
+  throw new FoundationError("INVALID_PROVIDER_RESPONSE", message, details);
+}
+
+function parsePlanningCandidate(value: unknown): ContentSpec {
+  const parsed = ContentSpecSchema.safeParse(value);
+  if (!parsed.success) {
+    return invalidProviderProposal("模型提案无法生成合法内容规格", {
+      issues: parsed.error.issues,
+    });
+  }
+  return parsed.data;
+}
+
+function materializeProposedEntry(
+  proposed: SpecProposal["entryProposals"][number],
+  specEntryId: string,
+): ContentSpecEntry {
+  return {
+    specEntryId,
+    pageType: proposed.pageType,
+    textGroups: proposed.textGroups,
+    visualIntent: proposed.visualIntent,
+    revisionNotes: proposed.revisionNotes,
+  };
+}
+
+/** 初稿在进入会话前一次性分配全部身份，重开后不会生成另一组 id。 */
+export function materializeInitialPlanningCandidate(
+  draft: ContentSpecDraft,
+  options: InitialPlanningCandidateOptions,
+): ContentSpec {
+  return parsePlanningCandidate({
+    schemaVersion: SCHEMA_VERSION,
+    specId: options.specId,
+    createdAt: options.now,
+    updatedAt: options.now,
+    style: draft.style,
+    entries: draft.entries.map((entry, index) => ({
+      specEntryId: options.createSpecEntryId(index),
+      pageType: entry.pageType,
+      textGroups: entry.textGroups,
+      visualIntent: entry.visualIntent,
+      revisionNotes: [],
+    })),
+  });
+}
+
+/** 单条目作用域只能替换或删除目标条目，不能偷偷改 style、增加条目或触及其它 id。 */
+export function materializeEntryPlanningCandidate(
+  current: ContentSpec,
+  proposal: SpecProposal,
+  options: { readonly targetSpecEntryId: string; readonly now: string },
+): ContentSpec {
+  const targetIndex = current.entries.findIndex(
+    (entry) => entry.specEntryId === options.targetSpecEntryId,
+  );
+  if (targetIndex < 0) {
+    return invalidProviderProposal("单条目提案指向当前规格中不存在的条目", {
+      specEntryId: options.targetSpecEntryId,
+    });
+  }
+  if (proposal.styleProposal !== null) {
+    return invalidProviderProposal("单条目提案不得修改 deck 级 style");
+  }
+  if (proposal.entryProposals.length !== 1) {
+    return invalidProviderProposal("单条目提案必须且只能返回一个完整条目", {
+      count: proposal.entryProposals.length,
+    });
+  }
+  const proposed = proposal.entryProposals[0];
+  if (
+    proposed === undefined ||
+    proposed.specEntryId !== options.targetSpecEntryId
+  ) {
+    return invalidProviderProposal("单条目提案返回了未知或不匹配的条目 ID", {
+      expected: options.targetSpecEntryId,
+      received: proposed?.specEntryId ?? null,
+    });
+  }
+
+  const entries = [...current.entries];
+  if (proposed.remove) {
+    entries.splice(targetIndex, 1);
+  } else {
+    entries[targetIndex] = materializeProposedEntry(
+      proposed,
+      options.targetSpecEntryId,
+    );
+  }
+  return parsePlanningCandidate({
+    ...current,
+    updatedAt: options.now,
+    entries,
+  });
+}
+
+/**
+ * 全 deck 提案按当前条目顺序替换/删除，新增条目追加在末尾。
+ * 非空 id 必须属于当前规格；空串才表示新增，并立即由代码分配 id。
+ */
+export function materializeDeckPlanningCandidate(
+  current: ContentSpec,
+  proposal: SpecProposal,
+  options: PlanningCandidateOptions,
+): ContentSpec {
+  const currentIds = new Set(current.entries.map((entry) => entry.specEntryId));
+  const seen = new Set<string>();
+  const existing = new Map<string, SpecProposal["entryProposals"][number]>();
+  const additions: SpecProposal["entryProposals"] = [];
+
+  for (const proposed of proposal.entryProposals) {
+    if (proposed.specEntryId.length === 0) {
+      if (proposed.remove) {
+        return invalidProviderProposal("新增条目不能同时标记为删除");
+      }
+      additions.push(proposed);
+      continue;
+    }
+    if (!currentIds.has(proposed.specEntryId)) {
+      return invalidProviderProposal("模型返回了当前规格中不存在的条目 ID", {
+        specEntryId: proposed.specEntryId,
+      });
+    }
+    if (seen.has(proposed.specEntryId)) {
+      return invalidProviderProposal("模型重复提案同一个条目", {
+        specEntryId: proposed.specEntryId,
+      });
+    }
+    seen.add(proposed.specEntryId);
+    existing.set(proposed.specEntryId, proposed);
+  }
+
+  const entries: ContentSpecEntry[] = [];
+  for (const currentEntry of current.entries) {
+    const proposed = existing.get(currentEntry.specEntryId);
+    if (proposed === undefined) {
+      entries.push(currentEntry);
+    } else if (!proposed.remove) {
+      entries.push(
+        materializeProposedEntry(proposed, currentEntry.specEntryId),
+      );
+    }
+  }
+  additions.forEach((proposed, index) => {
+    entries.push(
+      materializeProposedEntry(proposed, options.createSpecEntryId(index)),
+    );
+  });
+
+  return parsePlanningCandidate({
+    ...current,
+    updatedAt: options.now,
+    style:
+      proposal.styleProposal === null
+        ? current.style
+        : { description: proposal.styleProposal },
+    entries,
+  });
 }

@@ -1,5 +1,6 @@
 import {
   appendFile,
+  chmod,
   mkdir,
   mkdtemp,
   readdir,
@@ -9,13 +10,21 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SpecChangeRecord } from "@ppt-maker/core";
+import type { PlanningSessionRecord, SpecChangeRecord } from "@ppt-maker/core";
 import { describe, expect, it, vi } from "vitest";
 import {
+  appendPlanningSessionRecords,
   appendSpecChangeRecord,
+  buildPlanningMaterialsContext,
   DECK_PLANNING_DIR,
+  DECK_PLANNING_MATERIALS_DIR,
+  DECK_PLANNING_SESSION_PATH,
   DECK_SPEC_HISTORY_PATH,
+  importPlanningMaterial,
+  listPlanningMaterials,
+  listPlanningSessionRecords,
   listSpecChangeRecords,
+  removePlanningMaterial,
 } from "../src/deck/planning-store.js";
 
 async function createDeckDir(): Promise<string> {
@@ -54,6 +63,24 @@ function makeRecord(
     conversationRef: null,
     rollbackOf: null,
     ...overrides,
+  };
+}
+
+function makeMessage(
+  messageId: string,
+  text = `消息 ${messageId}`,
+): PlanningSessionRecord {
+  return {
+    v: 1,
+    kind: "message",
+    messageId,
+    at: "2026-08-04T10:00:00.000Z",
+    role: messageId.startsWith("user") ? "user" : "assistant",
+    text,
+    proposal: null,
+    dimensions: null,
+    requestId: null,
+    model: null,
   };
 }
 
@@ -189,5 +216,191 @@ describe("planning-store", () => {
     expect(
       (await listSpecChangeRecords(deckB)).map((record) => record.recordId),
     ).toEqual(["b-1"]);
+  });
+
+  it("一轮会话以多行按原顺序追加，坏行跳过", async () => {
+    const deckPath = await createDeckDir();
+    await appendPlanningSessionRecords(deckPath, [
+      makeMessage("user-1"),
+      makeMessage("assistant-1"),
+    ]);
+    const sessionPath = join(deckPath, DECK_PLANNING_SESSION_PATH);
+    await appendFile(sessionPath, "{坏 JSON\n", "utf8");
+    await appendFile(sessionPath, `${JSON.stringify({ v: 1 })}\n`, "utf8");
+    await appendPlanningSessionRecords(deckPath, [makeMessage("user-2")]);
+
+    expect(
+      (await listPlanningSessionRecords(deckPath)).map(
+        (record) => record.kind === "message" && record.messageId,
+      ),
+    ).toEqual(["user-1", "assistant-1", "user-2"]);
+
+    const lines = (await readFile(sessionPath, "utf8"))
+      .split("\n")
+      .filter((line) => line.trim() !== "");
+    expect(lines.slice(0, 2).map((line) => JSON.parse(line))).toEqual([
+      makeMessage("user-1"),
+      makeMessage("assistant-1"),
+    ]);
+  });
+
+  it("会话缺失和空批次都返回空，读与空写均不创建 planning/", async () => {
+    const deckPath = await createDeckDir();
+    const before = await readdir(deckPath);
+
+    expect(await listPlanningSessionRecords(deckPath)).toEqual([]);
+    await appendPlanningSessionRecords(deckPath, []);
+
+    expect(await readdir(deckPath)).toEqual(before);
+    expect(before).not.toContain(DECK_PLANNING_DIR);
+  });
+
+  it("同 deck 的并发会话轮次不交错，失败后队列仍可继续", async () => {
+    const deckPath = await createDeckDir();
+    await Promise.all(
+      Array.from({ length: 10 }, (_unused, index) =>
+        appendPlanningSessionRecords(deckPath, [
+          makeMessage(`user-${String(index)}`),
+          makeMessage(`assistant-${String(index)}`),
+        ]),
+      ),
+    );
+    const records = await listPlanningSessionRecords(deckPath);
+    expect(
+      records.map((record) => record.kind === "message" && record.messageId),
+    ).toEqual(
+      Array.from({ length: 10 }, (_unused, index) => [
+        `user-${String(index)}`,
+        `assistant-${String(index)}`,
+      ]).flat(),
+    );
+
+    const blockedDeck = await createDeckDir();
+    await mkdir(join(blockedDeck, DECK_PLANNING_SESSION_PATH), {
+      recursive: true,
+    });
+    const failed = appendPlanningSessionRecords(blockedDeck, [
+      makeMessage("user-fail"),
+    ]);
+    const continued = appendSpecChangeRecord(
+      blockedDeck,
+      makeRecord("after-failure"),
+    );
+    await expect(failed).rejects.toMatchObject({ code: "EISDIR" });
+    await expect(continued).resolves.toBe(true);
+  });
+
+  it("会话文件读不出来时明确抛错，不伪装为空会话", async () => {
+    const deckPath = await createDeckDir();
+    await mkdir(join(deckPath, DECK_PLANNING_SESSION_PATH), {
+      recursive: true,
+    });
+
+    await expect(listPlanningSessionRecords(deckPath)).rejects.toMatchObject({
+      code: "EISDIR",
+    });
+  });
+
+  it("材料缺失为空且不创建目录，不支持的扩展名在写盘前拒绝", async () => {
+    const deckPath = await createDeckDir();
+    const source = join(await createDeckDir(), "notes.json");
+    await writeFile(source, "{}", "utf8");
+
+    expect(await listPlanningMaterials(deckPath)).toEqual([]);
+    expect(await buildPlanningMaterialsContext(deckPath)).toBe("");
+    await expect(
+      importPlanningMaterial(deckPath, source),
+    ).rejects.toMatchObject({
+      code: "INVALID_INPUT",
+    });
+    expect(await readdir(deckPath)).not.toContain(DECK_PLANNING_DIR);
+  });
+
+  it("导入只复制 md/txt，重名使用后缀且清单稳定排序，不改原文件", async () => {
+    const deckPath = await createDeckDir();
+    const sourceA = await createDeckDir();
+    const sourceB = await createDeckDir();
+    const briefA = join(sourceA, "brief.md");
+    const briefB = join(sourceB, "brief.md");
+    const notes = join(sourceA, "Notes.TXT");
+    await writeFile(briefA, "第一份", "utf8");
+    await writeFile(briefB, "第二份更长", "utf8");
+    await writeFile(notes, "备注", "utf8");
+
+    expect(await importPlanningMaterial(deckPath, briefA)).toEqual({
+      name: "brief.md",
+      sizeBytes: Buffer.byteLength("第一份"),
+    });
+    expect(await importPlanningMaterial(deckPath, briefB)).toEqual({
+      name: "brief-2.md",
+      sizeBytes: Buffer.byteLength("第二份更长"),
+    });
+    await importPlanningMaterial(deckPath, notes);
+
+    expect(
+      (await listPlanningMaterials(deckPath)).map((item) => item.name),
+    ).toEqual(["Notes.TXT", "brief-2.md", "brief.md"]);
+    expect(await readFile(briefA, "utf8")).toBe("第一份");
+    expect(await readFile(briefB, "utf8")).toBe("第二份更长");
+  });
+
+  it("并发导入同名材料也不覆盖，移除只删 deck 副本且拒绝越界", async () => {
+    const deckPath = await createDeckDir();
+    const sourceDir = await createDeckDir();
+    const source = join(sourceDir, "shared.txt");
+    await writeFile(source, "长期背景", "utf8");
+
+    const imported = await Promise.all(
+      Array.from({ length: 4 }, () => importPlanningMaterial(deckPath, source)),
+    );
+    expect(imported.map((item) => item.name)).toEqual([
+      "shared.txt",
+      "shared-2.txt",
+      "shared-3.txt",
+      "shared-4.txt",
+    ]);
+
+    const outside = join(deckPath, "outside.txt");
+    await writeFile(outside, "不可删除", "utf8");
+    await expect(
+      removePlanningMaterial(deckPath, "../outside.txt"),
+    ).rejects.toMatchObject({ code: "PATH_OUTSIDE_WORKSPACE" });
+    expect(await readFile(outside, "utf8")).toBe("不可删除");
+    await expect(
+      removePlanningMaterial(deckPath, "missing.txt"),
+    ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+
+    await removePlanningMaterial(deckPath, "shared.txt");
+    expect(await readFile(source, "utf8")).toBe("长期背景");
+    expect(
+      (await listPlanningMaterials(deckPath)).map((item) => item.name),
+    ).not.toContain("shared.txt");
+  });
+
+  it("材料上下文按文件名稳定拼接，每次重读且读取失败指名文件", async () => {
+    const deckPath = await createDeckDir();
+    const sourceDir = await createDeckDir();
+    const sourceB = join(sourceDir, "b.md");
+    const sourceA = join(sourceDir, "a.txt");
+    await writeFile(sourceB, "B 初版", "utf8");
+    await writeFile(sourceA, "A 正文", "utf8");
+    await importPlanningMaterial(deckPath, sourceB);
+    await importPlanningMaterial(deckPath, sourceA);
+
+    expect(await buildPlanningMaterialsContext(deckPath)).toBe(
+      "## 材料：a.txt\n\nA 正文\n\n## 材料：b.md\n\nB 初版",
+    );
+    const copiedB = join(deckPath, DECK_PLANNING_MATERIALS_DIR, "b.md");
+    await writeFile(copiedB, "B 新版", "utf8");
+    expect(await buildPlanningMaterialsContext(deckPath)).toContain("B 新版");
+
+    await chmod(copiedB, 0);
+    await expect(buildPlanningMaterialsContext(deckPath)).rejects.toMatchObject(
+      {
+        code: "INVALID_WORKSPACE",
+        message: "读取策划材料失败：b.md",
+        details: { materialName: "b.md" },
+      },
+    );
   });
 });

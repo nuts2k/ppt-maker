@@ -1,18 +1,31 @@
 import type {
   ContentSpec,
   ContentSpecEntry,
+  PlanningDimensions,
+  PlanningMaterialEntry,
+  PlanningMessage,
+  PlanningProposalPreview,
+  PlanningProposalSelection,
+  PlanningProposalState,
   SpecChangeRecord,
+  StoredPlanningProposal,
 } from "@ppt-maker/core";
 import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  Check,
   ChevronRight,
   Clock3,
+  FileText,
   FolderOpen,
+  MessageSquare,
+  Paperclip,
   Plus,
   RotateCcw,
+  Send,
   Trash2,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -21,8 +34,18 @@ import {
   IconButton,
   Input,
   Panel,
+  SegmentedGroup,
+  SegmentedItem,
   Textarea,
 } from "@/components/ui";
+import {
+  buildDimensionViews,
+  buildProposalConfirm,
+  buildProposalDiffSections,
+  guardPlanningAction,
+  resolvePlanningPrimaryAction,
+  resolveProposalMessageStatus,
+} from "@/lib/planning-conversation-core";
 import {
   buildRegenerateBatchConfirm,
   classifyOutdatedPages,
@@ -31,6 +54,7 @@ import {
 import { startSourceTask } from "@/lib/source-task";
 import { createEmptyPlanningWorkspace } from "@/lib/workspace-switch";
 import { useDeckStore } from "@/stores/deck-store";
+import { usePlanningConversationStore } from "@/stores/planning-conversation-store";
 import { selectPlanningDirty, usePlanningStore } from "@/stores/planning-store";
 import { useRunStore } from "@/stores/run-store";
 import { useSourceTaskStore } from "@/stores/source-task-store";
@@ -59,12 +83,80 @@ export function PlanningPage(): React.JSX.Element {
   const rollback = usePlanningStore((state) => state.rollback);
   const resetPlanning = usePlanningStore((state) => state.reset);
 
+  const conversationDeckPath = usePlanningConversationStore(
+    (state) => state.deckPath,
+  );
+  const conversation = usePlanningConversationStore((state) => state.snapshot);
+  const proposalPreview = usePlanningConversationStore(
+    (state) => state.preview,
+  );
+  const proposalSelection = usePlanningConversationStore(
+    (state) => state.selection,
+  );
+  const conversationScope = usePlanningConversationStore(
+    (state) => state.scope,
+  );
+  const selectedEntryId = usePlanningConversationStore(
+    (state) => state.selectedEntryId,
+  );
+  const conversationOperation = usePlanningConversationStore(
+    (state) => state.operation,
+  );
+  const conversationError = usePlanningConversationStore(
+    (state) => state.error,
+  );
+  const conversationWarning = usePlanningConversationStore(
+    (state) => state.warning,
+  );
+  const lastAcceptResult = usePlanningConversationStore(
+    (state) => state.lastAcceptResult,
+  );
+  const loadConversation = usePlanningConversationStore((state) => state.load);
+  const sendMessage = usePlanningConversationStore(
+    (state) => state.sendMessage,
+  );
+  const draftSpec = usePlanningConversationStore((state) => state.draftSpec);
+  const proposeChange = usePlanningConversationStore(
+    (state) => state.proposeChange,
+  );
+  const setConversationScope = usePlanningConversationStore(
+    (state) => state.setScope,
+  );
+  const selectConversationEntry = usePlanningConversationStore(
+    (state) => state.selectEntry,
+  );
+  const syncSelectedEntry = usePlanningConversationStore(
+    (state) => state.syncSelectedEntry,
+  );
+  const setProposalSelection = usePlanningConversationStore(
+    (state) => state.setProposalSelection,
+  );
+  const acceptProposal = usePlanningConversationStore(
+    (state) => state.acceptProposal,
+  );
+  const rejectProposal = usePlanningConversationStore(
+    (state) => state.rejectProposal,
+  );
+  const importMaterial = usePlanningConversationStore(
+    (state) => state.importMaterial,
+  );
+  const removeMaterial = usePlanningConversationStore(
+    (state) => state.removeMaterial,
+  );
+  const resetConversation = usePlanningConversationStore(
+    (state) => state.reset,
+  );
+
   const backToConsole = useUIStore((state) => state.backToConsole);
   const sourceTaskRunning = useSourceTaskStore((state) => state.running);
   const pipelineRunning = useRunStore((state) => state.status) !== "idle";
   const specWriteBlocked = sourceTaskRunning || pipelineRunning;
   const [summary, setSummary] = useState("");
   const [selectedPages, setSelectedPages] = useState<Set<string>>(new Set());
+  const [sidebarView, setSidebarView] = useState<"conversation" | "history">(
+    "conversation",
+  );
+  const [composerText, setComposerText] = useState("");
 
   useEffect(() => {
     if (
@@ -75,6 +167,28 @@ export function PlanningPage(): React.JSX.Element {
       void load(deckPath);
     }
   }, [deckPath, justCreated, load, loadedDeckPath]);
+
+  useEffect(() => {
+    if (
+      deckPath !== null &&
+      conversationOperation !== "load" &&
+      (conversationDeckPath !== deckPath || conversation === null)
+    ) {
+      void loadConversation(deckPath);
+    }
+  }, [
+    conversation,
+    conversationDeckPath,
+    conversationOperation,
+    deckPath,
+    loadConversation,
+  ]);
+
+  const editable = draft ?? saved;
+
+  useEffect(() => {
+    syncSelectedEntry(editable?.entries ?? []);
+  }, [editable?.entries, syncSelectedEntry]);
 
   const outdated = useMemo(() => classifyOutdatedPages(slides), [slides]);
   const driftedPageLabels = useMemo(
@@ -97,6 +211,7 @@ export function PlanningPage(): React.JSX.Element {
       if (!confirmed) return;
     }
     resetPlanning();
+    resetConversation();
     backToConsole();
   }
 
@@ -105,6 +220,7 @@ export function PlanningPage(): React.JSX.Element {
     const result = await save(summary);
     if (result === null) return;
     setSummary("");
+    if (deckPath !== null) await loadConversation(deckPath);
     await refreshStatus().catch(() => undefined);
   }
 
@@ -142,11 +258,56 @@ export function PlanningPage(): React.JSX.Element {
     backToConsole();
   }
 
+  const pendingProposal = conversation?.session.pendingProposal ?? null;
+  const acceptDecisionWriteFailed =
+    lastAcceptResult !== null && !lastAcceptResult.decisionWritten;
+  const conversationBusy = conversationOperation !== null;
+  const actionGuard = guardPlanningAction({
+    hasSavedSpec: saved !== null,
+    dirty,
+    hasPendingProposal: pendingProposal !== null,
+    busy: conversationBusy,
+  });
+
+  async function handleComposerSubmit(): Promise<void> {
+    if (!actionGuard.allowed || composerText.trim() === "") return;
+    const sent =
+      saved === null
+        ? await sendMessage(composerText)
+        : await proposeChange(composerText);
+    if (sent) setComposerText("");
+  }
+
+  async function handleDraftSpec(): Promise<void> {
+    if (!actionGuard.allowed) return;
+    await draftSpec();
+  }
+
+  async function handleAcceptProposal(): Promise<void> {
+    if (deckPath === null || proposalPreview === null) return;
+    const confirmed = await window.api.system.confirm(
+      buildProposalConfirm(proposalPreview),
+    );
+    if (!confirmed) return;
+    const result = await acceptProposal();
+    if (result === null) return;
+    await Promise.all([load(deckPath), refreshStatus().catch(() => undefined)]);
+  }
+
+  async function handleRejectProposal(): Promise<void> {
+    await rejectProposal();
+  }
+
   if (deckPath === null || (justCreated && loadedDeckPath === null)) {
     return <CreatePlanningDeck onBack={() => void handleBack()} />;
   }
 
-  const editable = draft ?? saved;
+  const primaryAction = resolvePlanningPrimaryAction({
+    hasPendingProposal: pendingProposal !== null,
+    hasSavedSpec: saved !== null,
+    dirty,
+    sidebarView,
+  });
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-canvas">
@@ -179,9 +340,14 @@ export function PlanningPage(): React.JSX.Element {
           disabled={saving || editable === null || specWriteBlocked}
         />
         <Button
-          variant="primary"
+          variant={primaryAction === "save" ? "primary" : "secondary"}
           onClick={() => void handleSave()}
-          disabled={!dirty || editable === null || specWriteBlocked}
+          disabled={
+            !dirty ||
+            editable === null ||
+            specWriteBlocked ||
+            pendingProposal !== null
+          }
           loading={saving}
           title={
             pipelineRunning
@@ -195,9 +361,15 @@ export function PlanningPage(): React.JSX.Element {
         </Button>
       </header>
 
-      {(error !== null || deckError !== null) && (
+      {(error !== null || deckError !== null || conversationError !== null) && (
         <div className="shrink-0 border-b border-hairline bg-state-failed/10 px-6 py-3 text-sm font-medium text-state-failed">
-          {error ?? deckError}
+          {error ?? deckError ?? conversationError}
+        </div>
+      )}
+
+      {conversationWarning !== null && (
+        <div className="shrink-0 border-b border-hairline bg-state-stale/10 px-6 py-3 text-sm font-medium text-state-stale">
+          {conversationWarning}
         </div>
       )}
 
@@ -216,14 +388,54 @@ export function PlanningPage(): React.JSX.Element {
       )}
 
       <div className="flex min-h-0 flex-1">
-        <HistoryPanel
+        <PlanningSidebar
+          view={sidebarView}
+          onViewChange={setSidebarView}
           history={history}
           saving={saving || specWriteBlocked}
           onRollback={(record) => void handleRollback(record)}
+          messages={conversation?.session.messages ?? []}
+          proposals={conversation?.session.proposals ?? []}
+          dimensions={conversation?.session.dimensions ?? null}
+          materials={conversation?.materials ?? []}
+          hasSavedSpec={saved !== null}
+          scope={conversationScope}
+          selectedEntry={
+            editable?.entries.find(
+              (entry) => entry.specEntryId === selectedEntryId,
+            ) ?? null
+          }
+          composerText={composerText}
+          guardReason={actionGuard.reason}
+          busy={conversationBusy}
+          pending={pendingProposal !== null}
+          composerPrimary={primaryAction === "send"}
+          onScopeChange={setConversationScope}
+          onComposerChange={setComposerText}
+          onSubmit={() => void handleComposerSubmit()}
+          onDraft={() => void handleDraftSpec()}
+          onImportMaterial={() => void importMaterial()}
+          onRemoveMaterial={(name) => void removeMaterial(name)}
         />
 
         <main className="min-w-0 flex-1 overflow-y-auto px-6 py-6">
-          {loading ? (
+          {pendingProposal !== null && acceptDecisionWriteFailed ? (
+            <ProposalDecisionWriteFailure />
+          ) : pendingProposal !== null ? (
+            <ProposalReview
+              // pending 与它的 before 必须来自同一份会话快照；两个 store 的加载先后不保证。
+              before={conversation?.spec ?? saved}
+              proposal={pendingProposal.proposal}
+              preview={proposalPreview}
+              selection={proposalSelection}
+              busy={conversationBusy}
+              onSelectionChange={(selection) =>
+                void setProposalSelection(selection)
+              }
+              onAccept={() => void handleAcceptProposal()}
+              onReject={() => void handleRejectProposal()}
+            />
+          ) : loading ? (
             <p className="text-sm text-ink-muted">正在读取规格与历史…</p>
           ) : editable === null ? (
             <EmptySpec
@@ -236,6 +448,8 @@ export function PlanningPage(): React.JSX.Element {
                 spec={editable}
                 onChange={updateDraft}
                 disabled={saving || specWriteBlocked}
+                selectedEntryId={selectedEntryId}
+                onSelectEntry={selectConversationEntry}
               />
               <OutdatedPages
                 drifted={outdated.drifted}
@@ -298,7 +512,8 @@ function CreatePlanningDeck({ onBack }: { readonly onBack: () => void }) {
         <Panel className="w-full max-w-lg p-6" elevation="raised">
           <h1 className="text-xl font-semibold text-ink">从内容策划开始</h1>
           <p className="mt-2 text-sm leading-relaxed text-ink-secondary">
-            先创建一个零页 Deck，再逐页填写风格、页面文字与视觉意图。
+            先创建一个零页
+            Deck，再从一句构思开始，让助手逐步追问并收敛内容规格。
           </p>
 
           <div className="mt-6 flex flex-col gap-5">
@@ -350,7 +565,7 @@ function CreatePlanningDeck({ onBack }: { readonly onBack: () => void }) {
                 disabled={parentDir === null || name.trim() === ""}
                 loading={loading}
               >
-                创建并编辑规格
+                创建并开始策划
               </Button>
             </div>
           </div>
@@ -394,10 +609,14 @@ function SpecEditor({
   spec,
   onChange,
   disabled,
+  selectedEntryId,
+  onSelectEntry,
 }: {
   readonly spec: ContentSpec;
   readonly onChange: (update: (spec: ContentSpec) => ContentSpec) => void;
   readonly disabled: boolean;
+  readonly selectedEntryId: string | null;
+  readonly onSelectEntry: (specEntryId: string) => void;
 }) {
   function updateEntry(
     index: number,
@@ -483,6 +702,8 @@ function SpecEditor({
               index={index}
               total={spec.entries.length}
               disabled={disabled}
+              selected={entry.specEntryId === selectedEntryId}
+              onSelect={() => onSelectEntry(entry.specEntryId)}
               onChange={(update) => updateEntry(index, update)}
               onMove={(delta) => moveEntry(index, delta)}
               onRemove={() =>
@@ -506,6 +727,8 @@ function EntryEditor({
   index,
   total,
   disabled,
+  selected,
+  onSelect,
   onChange,
   onMove,
   onRemove,
@@ -514,6 +737,8 @@ function EntryEditor({
   readonly index: number;
   readonly total: number;
   readonly disabled: boolean;
+  readonly selected: boolean;
+  readonly onSelect: () => void;
   readonly onChange: (
     update: (entry: ContentSpecEntry) => ContentSpecEntry,
   ) => void;
@@ -521,7 +746,12 @@ function EntryEditor({
   readonly onRemove: () => void;
 }) {
   return (
-    <Panel as="article" className="p-5">
+    <Panel
+      as="article"
+      elevation={selected ? "raised" : "flat"}
+      className={selected ? "border-border-strong p-5" : "p-5"}
+      onFocus={onSelect}
+    >
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-2xs font-semibold text-ink-muted">
@@ -529,6 +759,16 @@ function EntryEditor({
           </p>
           <p className="truncate text-xs text-ink-muted">{entry.specEntryId}</p>
         </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          selected={selected}
+          onClick={onSelect}
+          disabled={disabled}
+        >
+          {selected && <Check aria-hidden="true" className="size-3.5" />}
+          {selected ? "当前对话目标" : "设为对话目标"}
+        </Button>
         <IconButton
           label="上移页面"
           size="sm"
@@ -916,6 +1156,598 @@ function OutdatedPages({
   );
 }
 
+function PlanningSidebar({
+  view,
+  onViewChange,
+  history,
+  saving,
+  onRollback,
+  messages,
+  proposals,
+  dimensions,
+  materials,
+  hasSavedSpec,
+  scope,
+  selectedEntry,
+  composerText,
+  guardReason,
+  busy,
+  pending,
+  composerPrimary,
+  onScopeChange,
+  onComposerChange,
+  onSubmit,
+  onDraft,
+  onImportMaterial,
+  onRemoveMaterial,
+}: {
+  readonly view: "conversation" | "history";
+  readonly onViewChange: (view: "conversation" | "history") => void;
+  readonly history: readonly SpecChangeRecord[];
+  readonly saving: boolean;
+  readonly onRollback: (record: SpecChangeRecord) => void;
+  readonly messages: readonly PlanningMessage[];
+  readonly proposals: readonly PlanningProposalState[];
+  readonly dimensions: PlanningDimensions | null;
+  readonly materials: readonly PlanningMaterialEntry[];
+  readonly hasSavedSpec: boolean;
+  readonly scope: "entry" | "deck";
+  readonly selectedEntry: ContentSpecEntry | null;
+  readonly composerText: string;
+  readonly guardReason: string | null;
+  readonly busy: boolean;
+  readonly pending: boolean;
+  readonly composerPrimary: boolean;
+  readonly onScopeChange: (scope: "entry" | "deck") => void;
+  readonly onComposerChange: (text: string) => void;
+  readonly onSubmit: () => void;
+  readonly onDraft: () => void;
+  readonly onImportMaterial: () => void;
+  readonly onRemoveMaterial: (name: string) => void;
+}) {
+  return (
+    <aside className="flex w-96 shrink-0 flex-col border-r border-hairline bg-surface">
+      <div className="shrink-0 border-b border-hairline px-4 py-3">
+        <SegmentedGroup label="左栏内容" className="w-full">
+          <SegmentedItem
+            className="flex-1"
+            selected={view === "conversation"}
+            onClick={() => onViewChange("conversation")}
+          >
+            <MessageSquare aria-hidden="true" className="size-3.5" />
+            对话
+          </SegmentedItem>
+          <SegmentedItem
+            className="flex-1"
+            selected={view === "history"}
+            onClick={() => onViewChange("history")}
+          >
+            <Clock3 aria-hidden="true" className="size-3.5" />
+            历史
+          </SegmentedItem>
+        </SegmentedGroup>
+      </div>
+
+      {view === "history" ? (
+        <HistoryPanel
+          history={history}
+          saving={saving}
+          onRollback={onRollback}
+        />
+      ) : (
+        <ConversationPanel
+          messages={messages}
+          proposals={proposals}
+          dimensions={dimensions}
+          materials={materials}
+          hasSavedSpec={hasSavedSpec}
+          scope={scope}
+          selectedEntry={selectedEntry}
+          composerText={composerText}
+          guardReason={guardReason}
+          busy={busy}
+          pending={pending}
+          composerPrimary={composerPrimary}
+          onScopeChange={onScopeChange}
+          onComposerChange={onComposerChange}
+          onSubmit={onSubmit}
+          onDraft={onDraft}
+          onImportMaterial={onImportMaterial}
+          onRemoveMaterial={onRemoveMaterial}
+        />
+      )}
+    </aside>
+  );
+}
+
+function ConversationPanel({
+  messages,
+  proposals,
+  dimensions,
+  materials,
+  hasSavedSpec,
+  scope,
+  selectedEntry,
+  composerText,
+  guardReason,
+  busy,
+  pending,
+  composerPrimary,
+  onScopeChange,
+  onComposerChange,
+  onSubmit,
+  onDraft,
+  onImportMaterial,
+  onRemoveMaterial,
+}: {
+  readonly messages: readonly PlanningMessage[];
+  readonly proposals: readonly PlanningProposalState[];
+  readonly dimensions: PlanningDimensions | null;
+  readonly materials: readonly PlanningMaterialEntry[];
+  readonly hasSavedSpec: boolean;
+  readonly scope: "entry" | "deck";
+  readonly selectedEntry: ContentSpecEntry | null;
+  readonly composerText: string;
+  readonly guardReason: string | null;
+  readonly busy: boolean;
+  readonly pending: boolean;
+  readonly composerPrimary: boolean;
+  readonly onScopeChange: (scope: "entry" | "deck") => void;
+  readonly onComposerChange: (text: string) => void;
+  readonly onSubmit: () => void;
+  readonly onDraft: () => void;
+  readonly onImportMaterial: () => void;
+  readonly onRemoveMaterial: (name: string) => void;
+}) {
+  const dimensionViews = buildDimensionViews(dimensions);
+  const resolvedCount = dimensionViews.filter(
+    (dimension) => dimension.status !== "open",
+  ).length;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <section aria-labelledby="planning-progress-title">
+          <div className="flex items-center justify-between gap-3">
+            <h2
+              id="planning-progress-title"
+              className="text-sm font-semibold text-ink"
+            >
+              策划收敛
+            </h2>
+            <span className="text-2xs tabular-nums text-ink-muted">
+              {resolvedCount}/5
+            </span>
+          </div>
+          <div className="mt-2 grid grid-cols-5 gap-1">
+            {dimensionViews.map((dimension) => (
+              <div
+                key={dimension.key}
+                className={
+                  dimension.status === "open"
+                    ? "rounded-sm border border-proof bg-proof-wash px-1 py-1.5 text-center"
+                    : "rounded-sm border border-hairline bg-canvas px-1 py-1.5 text-center"
+                }
+                title={`${dimension.label}：${dimension.statusLabel}`}
+              >
+                <span className="block truncate text-2xs font-semibold text-ink">
+                  {dimension.label}
+                </span>
+                <span
+                  className={
+                    dimension.status === "open"
+                      ? "mt-0.5 block truncate text-2xs text-proof"
+                      : "mt-0.5 block truncate text-2xs text-ink-muted"
+                  }
+                >
+                  {dimension.statusLabel}
+                </span>
+              </div>
+            ))}
+          </div>
+          {!hasSavedSpec && (
+            <Button
+              className="mt-3 w-full"
+              variant="secondary"
+              size="sm"
+              onClick={onDraft}
+              disabled={busy || pending}
+              loading={busy}
+            >
+              就按现有信息出初稿
+            </Button>
+          )}
+        </section>
+
+        <section className="mt-5 border-t border-hairline pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <FileText
+                aria-hidden="true"
+                className="size-3.5 text-ink-muted"
+              />
+              <h2 className="text-sm font-semibold text-ink">背景材料</h2>
+              {materials.length > 0 && (
+                <span className="text-2xs tabular-nums text-ink-muted">
+                  {materials.length}
+                </span>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onImportMaterial}
+              disabled={busy}
+            >
+              <Paperclip aria-hidden="true" className="size-3.5" />
+              导入
+            </Button>
+          </div>
+          {materials.length === 0 ? (
+            <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+              可导入 .md / .txt；副本会持续参与这个 Deck 的每轮策划。
+            </p>
+          ) : (
+            <ul className="mt-2 flex flex-col gap-1">
+              {materials.map((material) => (
+                <li
+                  key={material.name}
+                  className="flex items-center gap-2 rounded-sm bg-canvas px-2 py-1.5"
+                >
+                  <span className="min-w-0 flex-1 truncate text-xs text-ink-secondary">
+                    {material.name}
+                  </span>
+                  <span className="shrink-0 text-2xs tabular-nums text-ink-muted">
+                    {formatBytes(material.sizeBytes)}
+                  </span>
+                  <IconButton
+                    label={`移除材料 ${material.name}`}
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => onRemoveMaterial(material.name)}
+                    disabled={busy}
+                  >
+                    <X aria-hidden="true" className="size-3.5" />
+                  </IconButton>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="mt-5 border-t border-hairline pt-4">
+          <h2 className="text-sm font-semibold text-ink">消息</h2>
+          {messages.length === 0 ? (
+            <p className="mt-2 text-xs leading-relaxed text-ink-muted">
+              {hasSavedSpec
+                ? "描述想改的内容；模型只会提出可审阅的规格提案。"
+                : "先说清楚主题与目标，助手会继续追问并收敛五个维度。"}
+            </p>
+          ) : (
+            <ol className="mt-3 flex flex-col gap-2">
+              {messages.map((message) => {
+                const proposalStatus = resolveProposalMessageStatus(
+                  proposals,
+                  message.messageId,
+                );
+                return (
+                  <li
+                    key={message.messageId}
+                    className={
+                      message.role === "user"
+                        ? "ml-5 rounded-md bg-surface-sunken px-3 py-2.5"
+                        : "mr-5 rounded-md border border-hairline bg-canvas px-3 py-2.5"
+                    }
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-2xs font-semibold text-ink-muted">
+                        {message.role === "user" ? "你" : "策划助手"}
+                      </span>
+                      <time className="text-2xs tabular-nums text-ink-muted">
+                        {formatMessageTime(message.at)}
+                      </time>
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink">
+                      {message.text}
+                    </p>
+                    {proposalStatus !== null && (
+                      <p
+                        className={
+                          proposalStatus.pending
+                            ? "mt-2 text-xs font-medium text-proof"
+                            : "mt-2 text-xs text-ink-muted"
+                        }
+                      >
+                        {proposalStatus.label}
+                      </p>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+      </div>
+
+      <div className="shrink-0 border-t border-hairline bg-canvas px-4 py-4">
+        {hasSavedSpec && (
+          <div className="mb-3">
+            <SegmentedGroup label="改稿作用域" className="w-full">
+              <SegmentedItem
+                className="flex-1"
+                selected={scope === "entry"}
+                onClick={() => onScopeChange("entry")}
+                disabled={pending || busy || selectedEntry === null}
+              >
+                单条目
+              </SegmentedItem>
+              <SegmentedItem
+                className="flex-1"
+                selected={scope === "deck"}
+                onClick={() => onScopeChange("deck")}
+                disabled={pending || busy}
+              >
+                全 Deck
+              </SegmentedItem>
+            </SegmentedGroup>
+            {scope === "entry" && (
+              <p className="mt-2 truncate text-xs text-ink-muted">
+                当前目标：
+                <span className="font-medium text-ink-secondary">
+                  {selectedEntry?.pageType ||
+                    selectedEntry?.specEntryId ||
+                    "无可用条目"}
+                </span>
+              </p>
+            )}
+          </div>
+        )}
+        <Textarea
+          className="min-h-24 resize-y"
+          value={composerText}
+          onChange={(event) => onComposerChange(event.target.value)}
+          onKeyDown={(event) => {
+            if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+              event.preventDefault();
+              onSubmit();
+            }
+          }}
+          placeholder={
+            pending
+              ? "先处理右侧提案"
+              : hasSavedSpec
+                ? "例如：把当前页压缩成三个结论"
+                : "例如：做一份面向产品团队的季度复盘"
+          }
+          aria-label="策划消息"
+          disabled={pending || busy || guardReason !== null}
+        />
+        {guardReason !== null && (
+          <p className="mt-2 text-xs leading-relaxed text-proof">
+            {guardReason}
+          </p>
+        )}
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <span className="text-2xs text-ink-muted">⌘/Ctrl + Enter 发送</span>
+          <Button
+            variant={composerPrimary ? "primary" : "secondary"}
+            onClick={onSubmit}
+            disabled={
+              composerText.trim() === "" ||
+              guardReason !== null ||
+              pending ||
+              (hasSavedSpec && scope === "entry" && selectedEntry === null)
+            }
+            loading={busy}
+          >
+            <Send aria-hidden="true" className="size-3.5" />
+            {hasSavedSpec ? "生成改稿提案" : "发送"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProposalReview({
+  before,
+  proposal,
+  preview,
+  selection,
+  busy,
+  onSelectionChange,
+  onAccept,
+  onReject,
+}: {
+  readonly before: ContentSpec | null;
+  readonly proposal: StoredPlanningProposal;
+  readonly preview: PlanningProposalPreview | null;
+  readonly selection: PlanningProposalSelection;
+  readonly busy: boolean;
+  readonly onSelectionChange: (selection: PlanningProposalSelection) => void;
+  readonly onAccept: () => void;
+  readonly onReject: () => void;
+}) {
+  const sections = buildProposalDiffSections(
+    before,
+    proposal.candidate,
+    selection,
+  );
+  const selectable = proposal.scope === "deck";
+  const canAccept =
+    preview !== null &&
+    (selection.includeStyle || selection.specEntryIds.length > 0);
+
+  function toggleSection(sectionId: string, checked: boolean): void {
+    if (!selectable) return;
+    if (sectionId === "style") {
+      onSelectionChange({ ...selection, includeStyle: checked });
+      return;
+    }
+    const ids = new Set(selection.specEntryIds);
+    if (checked) ids.add(sectionId);
+    else ids.delete(sectionId);
+    onSelectionChange({ ...selection, specEntryIds: [...ids] });
+  }
+
+  return (
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+      <div className="flex items-start justify-between gap-6 border-b border-hairline pb-4">
+        <div>
+          <p className="text-2xs font-semibold tracking-wide text-proof">
+            待确认提案
+          </p>
+          <h2 className="mt-1 text-xl font-semibold text-ink">
+            {proposal.kind === "initial-draft" ? "规格初稿" : "规格改稿"}
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-ink-secondary">
+            逐字段核对 before /
+            after。只有变化字段使用校对红；接受之前不会写入权威规格。
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <Button variant="secondary" onClick={onReject} disabled={busy}>
+            拒绝提案
+          </Button>
+          <Button
+            variant="primary"
+            onClick={onAccept}
+            disabled={!canAccept}
+            loading={busy}
+          >
+            <Check aria-hidden="true" className="size-3.5" />
+            接受提案
+          </Button>
+        </div>
+      </div>
+
+      {preview === null ? (
+        <p className="text-sm text-ink-muted">正在计算提案影响…</p>
+      ) : (
+        <Panel className="flex items-center justify-between gap-4 px-4 py-3">
+          <span className="text-sm text-ink-secondary">确认后的新增影响</span>
+          <span className="text-sm font-semibold tabular-nums text-proof">
+            {preview.willDrift.length} 页已过时 · {preview.willMiss.length}{" "}
+            页失联
+          </span>
+        </Panel>
+      )}
+
+      {sections.length === 0 ? (
+        <Panel className="p-5 text-sm text-ink-muted">
+          这份提案与当前规格没有字段差异，请拒绝后继续说明修改目标。
+        </Panel>
+      ) : (
+        sections.map((section) => (
+          <Panel
+            key={section.id}
+            as="section"
+            className={section.selected ? "p-5" : "p-5 opacity-60"}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-ink">
+                  {section.label}
+                </p>
+                <p className="mt-0.5 text-2xs text-ink-muted">
+                  {section.fields.filter((field) => field.changed).length}{" "}
+                  个字段变化
+                </p>
+              </div>
+              {selectable && (
+                <Checkbox
+                  label="纳入本次接受"
+                  checked={section.selected}
+                  onChange={(event) =>
+                    toggleSection(section.id, event.target.checked)
+                  }
+                  disabled={busy}
+                />
+              )}
+            </div>
+            <div className="mt-4 flex flex-col gap-3">
+              {section.fields.map((field) => (
+                <div key={field.field}>
+                  <p
+                    className={
+                      field.changed
+                        ? "text-xs font-semibold text-proof"
+                        : "text-xs font-semibold text-ink-muted"
+                    }
+                  >
+                    {field.label}
+                    {!field.changed && " · 未变化"}
+                  </p>
+                  <div className="mt-1.5 grid grid-cols-2 gap-3">
+                    <DiffValue
+                      label="Before"
+                      value={field.before}
+                      changed={field.changed}
+                      side="before"
+                    />
+                    <DiffValue
+                      label="After"
+                      value={field.after}
+                      changed={field.changed}
+                      side="after"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        ))
+      )}
+    </div>
+  );
+}
+
+function ProposalDecisionWriteFailure(): React.JSX.Element {
+  return (
+    <div className="mx-auto w-full max-w-3xl">
+      <Panel className="border-state-stale p-5">
+        <p className="text-2xs font-semibold tracking-wide text-state-stale">
+          规格已保存 · 会话留痕未完成
+        </p>
+        <h2 className="mt-1 text-xl font-semibold text-ink">
+          不要再次接受这份提案
+        </h2>
+        <p className="mt-3 text-sm leading-relaxed text-ink-secondary">
+          规格写入已经成功，但 accepted 决策未能追加到 planning/session.jsonl。
+          为避免重复写入，当前窗口不再提供接受或拒绝入口；请保留这条警告并检查会话文件写入问题。
+        </p>
+      </Panel>
+    </div>
+  );
+}
+
+function DiffValue({
+  label,
+  value,
+  changed,
+  side,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly changed: boolean;
+  readonly side: "before" | "after";
+}) {
+  return (
+    <div
+      className={
+        changed && side === "after"
+          ? "rounded-sm border border-proof bg-proof-wash px-3 py-2.5"
+          : "rounded-sm border border-hairline bg-surface px-3 py-2.5"
+      }
+    >
+      <p className="text-2xs font-semibold text-ink-muted">{label}</p>
+      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-ink">
+        {value || "（空）"}
+      </p>
+    </div>
+  );
+}
+
 function HistoryPanel({
   history,
   saving,
@@ -926,7 +1758,7 @@ function HistoryPanel({
   readonly onRollback: (record: SpecChangeRecord) => void;
 }) {
   return (
-    <aside className="w-80 shrink-0 overflow-y-auto border-r border-hairline bg-surface px-4 py-5">
+    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5">
       <div className="mb-4 flex items-center gap-2">
         <Clock3 aria-hidden="true" className="size-4 text-ink-muted" />
         <h2 className="text-sm font-semibold text-ink">变更历史</h2>
@@ -947,7 +1779,7 @@ function HistoryPanel({
           ))
         )}
       </div>
-    </aside>
+    </div>
   );
 }
 
@@ -1074,6 +1906,19 @@ function formatHistoryTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value));
+}
+
+function formatMessageTime(value: string): string {
+  return new Intl.DateTimeFormat("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function formatBytes(value: number): string {
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${Math.ceil(value / 1024)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatHistoryEntry(entry: ContentSpecEntry | null): string {

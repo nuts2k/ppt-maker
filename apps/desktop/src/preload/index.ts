@@ -2,6 +2,15 @@ import type {
   ApplySpecChangeResult,
   ContentSpec,
   PdfExtractionReport,
+  PlanningAcceptProposalResult,
+  PlanningChangeScope,
+  PlanningConversationSnapshot,
+  PlanningMaterialEntry,
+  PlanningMaterialsResult,
+  PlanningProposalPreview,
+  PlanningProposalResult,
+  PlanningProposalSelection,
+  PlanningRejectProposalResult,
   SpecChangeRecord,
   TextReviewDocument,
 } from "@ppt-maker/core";
@@ -90,6 +99,63 @@ const api: IpcApi = {
       ipcRenderer.invoke("deck:rollback-spec-change", deckPath, recordId),
     readExtractionReport: (reportPath: string): Promise<PdfExtractionReport> =>
       ipcRenderer.invoke("deck:read-extraction-report", reportPath),
+  },
+  planning: {
+    load: (deckPath: string): Promise<PlanningConversationSnapshot> =>
+      ipcRenderer.invoke("planning:load", deckPath),
+    sendMessage: (
+      deckPath: string,
+      text: string,
+    ): Promise<PlanningConversationSnapshot> =>
+      ipcRenderer.invoke("planning:send-message", deckPath, text),
+    draftSpec: (deckPath: string): Promise<PlanningProposalResult> =>
+      ipcRenderer.invoke("planning:draft-spec", deckPath),
+    proposeChange: (
+      deckPath: string,
+      text: string,
+      scope: PlanningChangeScope,
+    ): Promise<PlanningProposalResult> =>
+      ipcRenderer.invoke("planning:propose-change", deckPath, text, scope),
+    previewProposal: (
+      deckPath: string,
+      proposalMessageId: string,
+      selection: PlanningProposalSelection,
+    ): Promise<PlanningProposalPreview> =>
+      ipcRenderer.invoke(
+        "planning:preview-proposal",
+        deckPath,
+        proposalMessageId,
+        selection,
+      ),
+    acceptProposal: (
+      deckPath: string,
+      proposalMessageId: string,
+      selection: PlanningProposalSelection,
+    ): Promise<PlanningAcceptProposalResult> =>
+      ipcRenderer.invoke(
+        "planning:accept-proposal",
+        deckPath,
+        proposalMessageId,
+        selection,
+      ),
+    rejectProposal: (
+      deckPath: string,
+      proposalMessageId: string,
+    ): Promise<PlanningRejectProposalResult> =>
+      ipcRenderer.invoke(
+        "planning:reject-proposal",
+        deckPath,
+        proposalMessageId,
+      ),
+    listMaterials: (deckPath: string): Promise<PlanningMaterialsResult> =>
+      ipcRenderer.invoke("planning:list-materials", deckPath),
+    importMaterial: (deckPath: string): Promise<PlanningMaterialEntry | null> =>
+      ipcRenderer.invoke("planning:import-material", deckPath),
+    removeMaterial: (
+      deckPath: string,
+      name: string,
+    ): Promise<PlanningMaterialsResult> =>
+      ipcRenderer.invoke("planning:remove-material", deckPath, name),
   },
   slide: {
     loadReview: (workspacePath: string): Promise<TextReviewDocument | null> =>

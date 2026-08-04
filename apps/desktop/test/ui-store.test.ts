@@ -5,11 +5,13 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
+import { usePlanningConversationStore } from "../src/renderer/stores/planning-conversation-store.js";
 import { usePlanningStore } from "../src/renderer/stores/planning-store.js";
 import { useUIStore } from "../src/renderer/stores/ui-store.js";
 
 beforeEach(() => {
   usePlanningStore.getState().reset();
+  usePlanningConversationStore.getState().reset();
   useUIStore.getState().reset();
 });
 
@@ -140,6 +142,8 @@ describe("useUIStore planning actions", () => {
     expect(state.selectedBlockId).toBeNull();
     expect(usePlanningStore.getState().justCreated).toBe(true);
     expect(usePlanningStore.getState().loadedDeckPath).toBeNull();
+    expect(usePlanningConversationStore.getState().deckPath).toBeNull();
+    expect(usePlanningConversationStore.getState().snapshot).toBeNull();
   });
 });
 

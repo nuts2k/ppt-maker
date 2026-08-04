@@ -1,5 +1,6 @@
 import { useActivityStore } from "@/stores/activity-store";
 import { useDeckStore } from "@/stores/deck-store";
+import { usePlanningConversationStore } from "@/stores/planning-conversation-store";
 import { usePlanningStore } from "@/stores/planning-store";
 import { useRunStore } from "@/stores/run-store";
 import { useSlideStore } from "@/stores/slide-store";
@@ -44,6 +45,9 @@ const deps: WorkspaceSwitchDeps = {
      */
     useSourceTaskStore.getState().reset();
     usePlanningStore.getState().reset();
+    usePlanningConversationStore
+      .getState()
+      .reset(useDeckStore.getState().deckPath);
     useUIStore.getState().reset();
   },
 };
@@ -76,7 +80,10 @@ export async function createEmptyPlanningWorkspace(
       return;
     }
     deps.resetOtherStores();
-    await usePlanningStore.getState().load(deckPath, true);
+    await Promise.all([
+      usePlanningStore.getState().load(deckPath, true),
+      usePlanningConversationStore.getState().load(deckPath),
+    ]);
     if (useDeckStore.getState().deckPath !== deckPath) return;
     useUIStore.getState().openPlanning();
   } catch {

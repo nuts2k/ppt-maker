@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { usePlanningConversationStore } from "./planning-conversation-store.js";
 import { usePlanningStore } from "./planning-store.js";
 
 /**
@@ -149,6 +150,7 @@ export const useUIStore = create<UIState>((set) => ({
 
   openPlanningForNewDeck() {
     usePlanningStore.getState().prepareNewDeck();
+    usePlanningConversationStore.getState().reset();
     set({ currentView: "planning", selectedBlockId: null });
   },
 

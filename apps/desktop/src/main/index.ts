@@ -4,6 +4,7 @@ import { app, BrowserWindow } from "electron";
 import { ActivityLog } from "./activity-log.js";
 import { registerActivityHandlers } from "./ipc/activity.js";
 import { registerDeckHandlers } from "./ipc/deck.js";
+import { registerPlanningHandlers } from "./ipc/planning.js";
 import { registerSlideHandlers } from "./ipc/slide.js";
 import { registerSystemHandlers } from "./ipc/system.js";
 import { DeckRunner } from "./runner/deck-runner.js";
@@ -64,6 +65,7 @@ app.whenReady().then(() => {
 
   registerSystemHandlers();
   registerDeckHandlers(runner, sourceTasks, activityLog);
+  registerPlanningHandlers(runner, sourceTasks);
   registerSlideHandlers(activityLog);
   registerActivityHandlers(activityLog);
 

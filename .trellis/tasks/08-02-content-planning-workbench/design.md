@@ -176,29 +176,47 @@ const SpecProposalSchema = z.object({
 ## 5. planning 会话文件布局
 
 ```ts
-const PLANNING_MESSAGE_V = 1;
+const PLANNING_SESSION_RECORD_V = 1;
 
 interface PlanningMessage {
   readonly v: 1;
+  readonly kind: "message";
   readonly messageId: string;        // uuid
   readonly at: string;               // ISO
   readonly role: "user" | "assistant";
   readonly text: string;
   /** 该轮若带提案，原样存下（含被否决的） */
   readonly proposal: unknown | null;
-  /** 提案被接受时，指向 spec-history.jsonl 的 recordId */
-  readonly acceptedAs: string | null;
+  /** 仅 assistant 的策划提问消息携带；必须能从文件重建五维度进度 */
+  readonly dimensions: unknown | null;
   /** 模型调用可追溯；第三方网关不回传 x-request-id 时如实记 null，不伪造 */
   readonly requestId: string | null;
   readonly model: string | null;
 }
+
+interface PlanningProposalDecision {
+  readonly v: 1;
+  readonly kind: "proposal-decision";
+  readonly decisionId: string;       // uuid
+  readonly at: string;               // ISO
+  readonly proposalMessageId: string;
+  readonly outcome: "accepted" | "rejected";
+  /** accepted 时指向 spec-history.jsonl 的 recordId；rejected 时为 null */
+  readonly acceptedAs: string | null;
+}
+
+type PlanningSessionRecord = PlanningMessage | PlanningProposalDecision;
 ```
 
 一个 deck 一条会话流，追加写。切 deck 即切文件；**不跨 deck 复用会话**。
 
-策划提问（D6）的维度状态同样落在 assistant 消息里，作为 `proposal` 之外的一个字段
-由子任务③ 细化——父任务只约定「维度状态必须可从会话文件重建」，否则重开工作台后
-进度条会归零，而对话内容还在，两者不一致。
+提案消息必须在确认前追加，后来发生的接受 / 拒绝因此不能回写原行；否则“追加式”只是文档措辞，
+实现仍需整文件重写。决策使用独立记录追加，读取时按 `proposalMessageId` 折叠状态。这样被否决提案
+可检索、已接受提案可关联 `SpecChangeRecord.conversationRef`，进程中断也不会改坏既有会话行。
+
+策划提问（D6）的维度状态落在 assistant 消息的 `dimensions` 字段，具体 schema 由子任务③
+细化——父任务只约定「维度状态必须可从会话文件重建」，否则重开工作台后进度条会归零，
+而对话内容还在，两者不一致。
 
 ## 6. D7 放宽的口径
 

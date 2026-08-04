@@ -12,6 +12,15 @@ import type {
   CleanPlateChecks,
   ContentSpec,
   PdfExtractionReport,
+  PlanningAcceptProposalResult,
+  PlanningChangeScope,
+  PlanningConversationSnapshot,
+  PlanningMaterialEntry,
+  PlanningMaterialsResult,
+  PlanningProposalPreview,
+  PlanningProposalResult,
+  PlanningProposalSelection,
+  PlanningRejectProposalResult,
   PptxCheckReport,
   SlideSourceKind,
   SourceAcceptanceMode,
@@ -470,6 +479,46 @@ export interface IpcApi {
     ): Promise<ApplySpecChangeResult>;
     /** 读回一份已落盘的抽取报告（活动日志的「查看报告」） */
     readExtractionReport(reportPath: string): Promise<PdfExtractionReport>;
+  };
+  /**
+   * 多轮策划会话的跨进程入口。
+   *
+   * 类型全部来自 core；main 负责运行时 schema 校验、原生文件选择和 runner 互斥，
+   * 会话折叠、唯一 pending 与提案落盘规则由 CLI 策划服务拥有。
+   */
+  planning: {
+    load(deckPath: string): Promise<PlanningConversationSnapshot>;
+    sendMessage(
+      deckPath: string,
+      text: string,
+    ): Promise<PlanningConversationSnapshot>;
+    draftSpec(deckPath: string): Promise<PlanningProposalResult>;
+    proposeChange(
+      deckPath: string,
+      text: string,
+      scope: PlanningChangeScope,
+    ): Promise<PlanningProposalResult>;
+    previewProposal(
+      deckPath: string,
+      proposalMessageId: string,
+      selection: PlanningProposalSelection,
+    ): Promise<PlanningProposalPreview>;
+    acceptProposal(
+      deckPath: string,
+      proposalMessageId: string,
+      selection: PlanningProposalSelection,
+    ): Promise<PlanningAcceptProposalResult>;
+    rejectProposal(
+      deckPath: string,
+      proposalMessageId: string,
+    ): Promise<PlanningRejectProposalResult>;
+    listMaterials(deckPath: string): Promise<PlanningMaterialsResult>;
+    /** 文件路径只由 main 的原生选择框产生；取消选择返回 null。 */
+    importMaterial(deckPath: string): Promise<PlanningMaterialEntry | null>;
+    removeMaterial(
+      deckPath: string,
+      name: string,
+    ): Promise<PlanningMaterialsResult>;
   };
   slide: {
     loadReview(workspacePath: string): Promise<TextReviewDocument | null>;

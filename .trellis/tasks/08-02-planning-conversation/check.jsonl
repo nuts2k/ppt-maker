@@ -1,1 +1,10 @@
-{"_example": "Fill with {\"file\": \"<path>\", \"reason\": \"<why>\"}. Put spec/research files only — no code paths. Run `python3 .trellis/scripts/get_context.py --mode packages` to list available specs. Delete this line once real entries are added."}
+{"file":".trellis/spec/backend/index.md","reason":"确认实现覆盖后端规范索引列出的契约、错误与质量门，不漏层级"}
+{"file":".trellis/spec/backend/contracts.md","reason":"检查三道闸、完整条目而非 patch、确认前预告、代码分配 id、规格变化只产生漂移是否全部落地"}
+{"file":".trellis/spec/backend/error-handling.md","reason":"核对 provider/session/materials/部分成功错误是否显式且保持稳定错误语义"}
+{"file":".trellis/spec/backend/quality-guidelines.md","reason":"核对跨进程与持久化 schema、正常/边界/错误用例、Node24 与提交前全量命令"}
+{"file":".trellis/spec/frontend/state-management.md","reason":"核对 conversation store 是否按 deck 身份作废请求、reset 是否误伤新请求、耐久会话是否被瞬态状态覆盖"}
+{"file":".trellis/spec/frontend/quality-guidelines.md","reason":"核对分段控件语义、纯函数测试、关键断言变异验证、静态扫描命令与正反用例"}
+{"file":".trellis/spec/guides/verification-coverage-thinking-guide.md","reason":"拒绝/接受/重开/材料 fixture 不能只有单元素或止步 IPC 成功；检查自动步骤是否冒充人工 UI 验收"}
+{"file":".trellis/spec/guides/silent-failure-thinking-guide.md","reason":"重点找 provider 毫秒失败被报成功、session/materials 与界面不一致、写入部分成功无告警、切 deck 迟到响应"}
+{"file":".trellis/spec/guides/cross-layer-thinking-guide.md","reason":"核对消息、维度、proposal、decision、preview 与 recordId 跨五层形状和消费端一致"}
+{"file":"DESIGN.md","reason":"视觉走查六态、唯一 primary、proof 只用于差异/待处理、空态密度、tabular-nums 与 reduced-motion"}
