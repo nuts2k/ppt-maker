@@ -461,3 +461,37 @@ V1 桌面工作台被判定用户体验不合格（无批量执行、无进度/�
 ### Status
 
 [DONE] 子任务① 完工并提交。下一步：子任务② `08-02-planning-view` 走 Phase 1。
+
+
+## Session 8: 完成内容策划工作台与付费走查
+
+**Date**: 2026-08-04
+**Task**: 完成内容策划工作台与付费走查
+**Branch**: `main`
+
+### Summary
+
+完成 planning 视图、规格编辑与历史回滚、批量重生成接线及竞态守卫；全仓 877 条测试通过，并在独立副本上经用户确认完成 1 页真实付费重生成，验证 reference_text 新 SHA、规格指纹和未选页零变化。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8e5289f` | (see git log) |
+| `1ebcfa6` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
