@@ -495,3 +495,37 @@ V1 桌面工作台被判定用户体验不合格（无批量执行、无进度/�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 9: 完成 M6 策划对话与真机验收
+
+**Date**: 2026-08-04
+**Task**: 完成 M6 策划对话与真机验收
+**Branch**: `main`
+
+### Summary
+
+实现多轮策划提问、初稿与对话式改稿、提案 diff、材料、会话恢复及 Electron UI；完成 948 项测试与真实 gpt-5.6-luna、最小一页 gpt-image-2、strict PPTX 验收，记录 clean 重试和锁屏限制。
+
+### Main Changes
+
+- Detailed change bullets were not supplied; see the summary above.
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5d83edf` | (see git log) |
+| `fd8a4eb` | (see git log) |
+
+### Testing
+
+- Validation was not recorded for this session.
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
