@@ -1,0 +1,6 @@
+{"file": ".trellis/spec/guides/verification-coverage-thinking-guide.md", "reason": "验收里有三条容易只测「happy path」就放过：只勾 1 条时其余 5 条必须没被建、未知 id 必须一页都没建、读规格失败必须静默降级。按本文的覆盖判据逐条核"}
+{"file": ".trellis/spec/guides/silent-failure-thinking-guide.md", "reason": "本任务有两处刻意的静默降级（控制台读规格失败退回原文案）与一处禁止静默（建页部分失败必须分别报出）。须核对哪些该出声、哪些不该，别把两者做反"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "核心风险是渲染层的待建页口径与 CLI collectGeneratedPages 不一致——界面上的 N 与实际建出的页数对不上，而付费确认写的正是这个 N"}
+{"file": ".trellis/spec/backend/quality-guidelines.md", "reason": "CLI 侧 T1 的质量口径：可选参数省略时行为必须逐字不变，既有 deck-generate 用例一条断言都不许改"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "渲染层断言须变异验证；本任务须变异验证的是「只勾 1 条 → entryIds 长度为 1」与「dirty 时禁用」两条，它们失效时界面看起来完全正常"}
+{"file": "DESIGN.md", "reason": "检查新增的「待建页」一档是否与既有两档共用同一套视觉语言，以及完成提示、禁用态、空态是否符合六态要求"}

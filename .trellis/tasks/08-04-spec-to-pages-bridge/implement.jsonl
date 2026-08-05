@@ -1,0 +1,7 @@
+{"file": "DESIGN.md", "reason": "CLAUDE.md 硬性要求：所有前端界面必须遵从。本任务在既有面板里加第三档，栅格、勾选控件、标题层级、空态处理、全屏唯一 primary 都要与既有两档一致"}
+{"file": ".trellis/spec/backend/contracts.md", "reason": "〈规格写入唯一入口与变更日志〉界定 applySpecChange 的地位。本任务只读规格不写规格，须确认建页路径不越过该入口；另含批量选页错误码口径（整体拒绝、不部分执行），T1 的未知 entryIds 沿用它"}
+{"file": ".trellis/spec/backend/error-handling.md", "reason": "SPEC_PAGE_NOT_FOUND 已登记「整体拒绝，不部分执行」。T1 复用该错误码而非新增，且校验必须前移到建页循环之前——否则建到第 3 页才发现 id 错，钱已经花了"}
+{"file": ".trellis/spec/frontend/state-management.md", "reason": "本任务同时读 planning-store 的 spec 与 deck-store 的 slides 算待建页，正踩「一个判据兼职两件事」「会话层盖住耐久层」两条；建页完成后 refreshStatus 的时序也在其覆盖范围"}
+{"file": ".trellis/spec/frontend/quality-guidelines.md", "reason": "渲染层规则须测在纯函数产物上（本仓无 DOM 测试库）——classifyPendingEntries 与 buildCreatePagesConfirm 因此必须是纯函数；断言须做变异验证"}
+{"file": ".trellis/spec/frontend/component-guidelines.md", "reason": "T4 把 SourceTaskBar 从 ConsolePage 局部组件提取为共享组件，放置位置与组件边界按本文规约"}
+{"file": ".trellis/spec/guides/cross-layer-thinking-guide.md", "reason": "本任务贯穿 CLI → IPC → store → 页面四层，最大风险正是跨层口径不一致：渲染层算待建页必须与 CLI collectGeneratedPages 的两次过滤（排除 removed、只认 generated）逐条对齐"}
