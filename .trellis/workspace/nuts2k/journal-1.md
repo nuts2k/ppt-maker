@@ -529,3 +529,57 @@ V1 桌面工作台被判定用户体验不合格（无批量执行、无进度/�
 ### Next Steps
 
 - None - task complete
+
+
+## Session 10: M6 收尾——子任务①归档、父级集成验收、路线图回写
+
+**Date**: 2026-08-04
+**Task**: 08-02-content-planning-workbench（父）/ 08-02-spec-edit-and-history（子①）
+**Branch**: `main`
+
+### Summary
+
+换机器后接续。本轮不写产品代码，只做 M6 的流程收尾：核对并归档遗留为 `in_progress` 的
+子任务①，对父任务逐条做 A1–A9 集成验收并回写证据，最后把 M6 在 `ROADMAP.md` 标记为已完成。
+路线图父任务由 7/8 变为 8/8，M6 全部三个子任务归档。
+
+### Main Changes
+
+**环境**：新机器首次跑 `pnpm typecheck` 时 `apps/cli` 报 40 处 `has no exported member`，
+全部指向 `@ppt-maker/core` 的 planning 契约——`core/dist` 是拉取前的旧产物。
+`pnpm --filter @ppt-maker/core build` 后消失。换机说明已记载此坑，本轮再次验证有效。
+
+**子任务①核对与归档**（提交 `6761902`）
+
+- 代码与真实走查早在 `51a1823` 完成，只是旧流程遗留 `in_progress`，**未重做任何代码**。
+- T1–T7 交付物齐全；T5 三条命令 `spec-apply` / `spec-history` / `spec-rollback` 均在
+  `apps/cli/src/index.ts:810/843/865` 注册；T9 沉淀在库（三个错误码 + contracts 两节）。
+- A①-8 复检：`rg writeDeckContentSpec`（排除 test）只剩定义与 `spec-edit.ts`，无第二条写入路径。
+- 在 `implement.md` 顶部加完工核对块，**未回填 T1–T9 的复选框**——没有逐条重跑就不假装勾过。
+
+**父任务集成验收**（提交 `83e6e74`）
+
+- A1–A9 九条全部满足，逐条对到子任务证据，写进父 `prd.md` 新增〈集成验收结论〉。
+- A7 由本轮亲自复核：`git diff 51a1823^..HEAD --` 三个契约文件输出为空，M6 全程逐字未变。
+- A9 实测 948（core 156 / desktop 527 / CLI 265），原文基线 774 已过时，以 948 为新基线。
+- **父级不重复付费**：A1/A2/A4/A8 的真实出图证据已由 ②③ 留档，重跑只是重复花钱。
+
+**路线图回写**（提交 `24b1580`）：M6 状态改已完成并补完成证据段；顶部改 M0–M6；
+M7 注明为下一里程碑且尚未规划。
+
+### Testing
+
+- `pnpm format:check` ✓ / `pnpm typecheck` ✓ / `pnpm test` **948 项 / 89 文件全通过**（EXIT=0）/
+  `pnpm build` ✓（含 Swift OCR 与 PDF renderer）。工作区干净。
+- 注意：`pnpm test 2>&1 | tail -30` 会让退出码变成 `tail` 的，掩盖真实失败。本轮改为重定向到
+  文件后单独取 `$?`，才拿到可信的 EXIT=0。以后跑全量检查别用管道尾接。
+
+### Status
+
+[OK] **Completed** —— M6 内容策划工作台全部完工归档，路线图 8/8。
+
+### Next Steps
+
+- 下一里程碑 M7「可靠性与本地交付」尚未规划：异常恢复、备份、日志诊断、依赖预检、
+  macOS 打包、数据迁移、Windows 兼容性调研。计划 Trellis 子任务 `local-product-hardening`。
+- 开 M7 前先走 Phase 1 规划，不要在没有任务规划时直接开新代码。
