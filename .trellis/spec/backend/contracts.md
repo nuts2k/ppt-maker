@@ -1131,6 +1131,12 @@ applyRollbackToSpec(current, target): ContentSpec;
 与单页的差别只有三处：一次确认覆盖 N 页、进度按页汇报、单页失败不终止其余页。
 选页要么全中要么整体拒绝，不做「部分匹配就开跑」——确认框按 N 页给用户看，实跑 N-1 页是静默不一致。
 
+**「整体拒绝」适用于每一个按次计费的选择集**，不是批量重生成的专属规定。`deck generate` 的
+`entryIds`（M6 子任务④）照此落地：过滤点在 `reconcileDeckSpec` 之后、建页循环之前，未知条目
+在建 deck 之前就整体拒绝；进度分母与 `skipped` 都取过滤后的集合，**省略该参数时与引入它之前
+逐字同义**。分母不跟着过滤，界面上的「第 1/6 页」就与实际执行次数对不上，而那个数字正是
+付费确认里给用户看的那个。
+
 **规格写入与执行任务互斥**：`applySpecChange` / `rollbackSpecChange` 不得与 `DeckRunner` 或
 `SourceTaskRunner` 并发。批量重生成会逐页读取规格、替换源图，部分路径还会追加
 `revisionNotes`；并发保存一份先前加载的草稿会把任务刚写入的内容静默覆盖。renderer 的禁用只负责
@@ -1147,6 +1153,8 @@ applyRollbackToSpec(current, target): ContentSpec;
 | `planning/` 被删后回滚 | 同上——能力可用性随目录消失，deck 加载不受影响 |
 | `--all-drifted` 选不出页 | `SPEC_SELECTION_EMPTY` |
 | `--pages` 含未知标签 | `SPEC_PAGE_NOT_FOUND`，**整体拒绝** |
+| `deck generate` 的 `entryIds` 为空数组 | `SPEC_SELECTION_EMPTY`；**省略**该参数才表示建全部新增条目 |
+| `deck generate` 的 `entryIds` 含规格里没有的条目 | `SPEC_PAGE_NOT_FOUND`，**整体拒绝**且在建 deck 之前判掉；已建过页的条目不算未知，落既有 `skipped` |
 | 流水线或建页任务执行中保存/回滚规格 | main IPC 拒绝，规格与历史零改动 |
 | 建页任务执行中创建空 Deck 或导出 | main IPC 拒绝，不切换工作区、不读取中间态 |
 
