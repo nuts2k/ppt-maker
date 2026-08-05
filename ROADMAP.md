@@ -442,6 +442,10 @@ Trellis 父任务：`08-02-content-planning-workbench`
 
 计划 Trellis 子任务：`local-product-hardening`
 
+规划前先读 [KNOWN-ISSUES.md](./KNOWN-ISSUES.md)：其中第一组（任务状态与结果只活在 renderer
+内存里，四条同源）与 3.1（`clean_plate` 尺寸硬编码致 manifest 说假话）均属本里程碑范围，
+应纳入规划输入而非另起任务。
+
 ## 5. 关键决策点
 
 ### M1 后
