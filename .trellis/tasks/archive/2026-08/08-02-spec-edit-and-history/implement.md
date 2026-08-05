@@ -1,5 +1,24 @@
 # 执行计划：规格编辑与变更日志底座（M6 子任务①）
 
+> **完工核对（2026-08-04，归档前）**：本任务代码与真实走查在提交 `51a1823` 即已完成，
+> 旧流程遗留状态为 `in_progress`。归档前重新核对，无缺口：
+>
+> - T1–T7 交付物齐全：`packages/core/src/planning-contracts.ts`、
+>   `apps/cli/src/deck/planning-store.ts`、`spec-edit.ts`、`regenerate-batch.ts`、
+>   `apps/cli/test/deck-zero-page.test.ts`；`index.ts` 三条命令 `spec-apply` / `spec-history` /
+>   `spec-rollback` 均已注册。
+> - A①-8：`rg writeDeckContentSpec`（排除 test）只剩定义与 `spec-edit.ts` 调用，无第二条写入路径。
+> - A①-5：`git diff 51a1823^..HEAD -- content-spec-contracts.ts constants.ts page-generation.ts`
+>   为空，M6 全程生成侧契约逐字未变。
+> - A①-6：`format:check` / `typecheck` / `test` / `build` 全绿；测试 948 项
+>   （core 156 / desktop 527 / CLI 265），远高于本任务基线 774。
+> - T9 沉淀已在库：三个错误码登记于 `.trellis/spec/backend/error-handling.md:31-33`，
+>   `contracts.md:1071` 已有〈规格写入唯一入口与变更日志〉一节。
+> - 本机首次核对时 `apps/cli` typecheck 因 `core/dist` 过期报 40 处假失败，
+>   先跑 `pnpm --filter @ppt-maker/core build` 即消失（换机说明已记载此坑）。
+>
+> 下方 T1–T9 复选框保持提交时的原样，未回填勾选。
+
 顺序是硬的：T1 → T9。每个 T 完成即为一个可独立 revert 的提交点。
 T4 是本任务**唯一改动既有行为**的一步，单独成提交，出问题只回滚它。
 
