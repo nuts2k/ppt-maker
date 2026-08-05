@@ -1,6 +1,7 @@
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import type { ContentSpec, TextReviewDocument } from "@ppt-maker/core";
 import { imageSize } from "image-size";
 import { describe, expect, it } from "vitest";
@@ -525,6 +526,282 @@ describe("deck generate 的对账与追加（C10 / C14）", () => {
         generate: fakeGenerator(buffer),
       }),
     ).rejects.toMatchObject({ code: "UPLOAD_CONFIRMATION_REQUIRED" });
+    await expect(
+      readFile(join(deckPath, "deck-manifest.json")),
+    ).rejects.toThrow();
+  });
+});
+
+/**
+ * 目录内容快照：整张「相对路径 → sha256」映射整体比对。
+ * 「一页都没建」要靠它证明——只比 deck-manifest.json 会漏掉半路建出的页目录。
+ */
+async function hashTree(root: string): Promise<Record<string, string>> {
+  const tree: Record<string, string> = {};
+  const entries = await readdir(root, { recursive: true, withFileTypes: true });
+  for (const entry of entries) {
+    if (!entry.isFile()) {
+      continue;
+    }
+    const absolute = join(entry.parentPath, entry.name);
+    tree[relative(root, absolute)] = createHash("sha256")
+      .update(await readFile(absolute))
+      .digest("hex");
+  }
+  return tree;
+}
+
+function buildThreeEntrySpec(): ContentSpec {
+  const spec = buildSpec();
+  return {
+    ...spec,
+    entries: [
+      entryAt(spec, 0),
+      entryAt(spec, 1),
+      {
+        specEntryId: "entry-003",
+        pageType: "summary",
+        textGroups: [{ label: "结语", items: ["谢谢"] }],
+        visualIntent: "居中单行",
+        revisionNotes: [],
+      },
+    ],
+  };
+}
+
+/** 计次生成器：按次计费的东西，断言「调了几次」比断言「建了几页」更贴近成本 */
+function countingGenerator(buffer: Buffer): {
+  generate: OpenAiImageGenerator;
+  calls: () => number;
+} {
+  let calls = 0;
+  const inner = fakeGenerator(buffer);
+  return {
+    generate: async (params) => {
+      calls += 1;
+      return inner(params);
+    },
+    calls: () => calls,
+  };
+}
+
+describe("deck generate 的条目子集（entryIds）", () => {
+  it("只建勾选的条目，其余落进 skipped，调用次数等于勾选数", async () => {
+    const { deckPath, specPath, buffer } = await setupDeck(
+      buildThreeEntrySpec(),
+    );
+    const counter = countingGenerator(buffer);
+    const progress: { index: number; total: number }[] = [];
+
+    const result = await runDeckGenerate({
+      deckPath,
+      specPath,
+      entryIds: ["entry-001", "entry-003"],
+      confirmUpload: true,
+      generate: counter.generate,
+      onProgress: (event) => {
+        if (event.phase === "start") {
+          progress.push({ index: event.index, total: event.total });
+        }
+      },
+    });
+
+    expect(result.created.map((page) => page.specEntryId)).toEqual([
+      "entry-001",
+      "entry-003",
+    ]);
+    // 页号按建页顺序递增，未选中的条目不占号
+    expect(result.created.map((page) => page.pageLabel)).toEqual([
+      "page-01",
+      "page-02",
+    ]);
+    expect(result.skipped).toEqual(["entry-002"]);
+    expect(counter.calls()).toBe(2);
+    // 进度分母取过滤后的集合，否则界面上的「第 1/3 页」与实际执行次数对不上
+    expect(progress).toEqual([
+      { index: 1, total: 2 },
+      { index: 2, total: 2 },
+    ]);
+    // 全量对账不受 entryIds 影响：调用方靠它知道这一轮之后还剩哪些条目待建
+    expect(
+      result.reconciliation.newEntries.map((entry) => entry.specEntryId),
+    ).toEqual(["entry-001", "entry-002", "entry-003"]);
+  });
+
+  it("省略 entryIds 时建全部新增条目（默认路径不变）", async () => {
+    const { deckPath, specPath, buffer } = await setupDeck(
+      buildThreeEntrySpec(),
+    );
+    const counter = countingGenerator(buffer);
+
+    const result = await runDeckGenerate({
+      deckPath,
+      specPath,
+      confirmUpload: true,
+      generate: counter.generate,
+    });
+
+    expect(result.created.map((page) => page.specEntryId)).toEqual([
+      "entry-001",
+      "entry-002",
+      "entry-003",
+    ]);
+    expect(result.skipped).toEqual([]);
+    expect(counter.calls()).toBe(3);
+  });
+
+  it("未知 id 整体拒绝：抛 SPEC_PAGE_NOT_FOUND 且一页都没建", async () => {
+    const { deckPath, specPath, buffer } = await setupDeck(
+      buildThreeEntrySpec(),
+    );
+    // 先建出前两页，留下 entry-003 待建：此后 deck 内已有权威规格，重跑不带 --spec
+    await runDeckGenerate({
+      deckPath,
+      specPath,
+      entryIds: ["entry-001", "entry-002"],
+      confirmUpload: true,
+      generate: fakeGenerator(buffer),
+    });
+    const before = await hashTree(deckPath);
+    // 前置断言：快照必须真的装着那两页。`hashTree` 若哪天退化成返回空对象，
+    // 下面的 `toEqual(before)` 会变成 `{}` 与 `{}` 相比——一条永远绿的空断言。
+    expect(Object.keys(before).length).toBeGreaterThan(2);
+    expect(
+      Object.keys(before).filter((path) => path.startsWith("slides/page-02/"))
+        .length,
+    ).toBeGreaterThan(0);
+    const counter = countingGenerator(buffer);
+
+    await expect(
+      runDeckGenerate({
+        deckPath,
+        // 合法 id 与未知 id 混在一起：合法的那条也不许建
+        entryIds: ["entry-003", "entry-404"],
+        confirmUpload: true,
+        generate: counter.generate,
+      }),
+    ).rejects.toMatchObject({ code: "SPEC_PAGE_NOT_FOUND" });
+
+    expect(counter.calls()).toBe(0);
+    expect(await hashTree(deckPath)).toEqual(before);
+  });
+
+  it("未知 id 在建 deck 之前就判掉：不留半成品目录", async () => {
+    const { deckPath, specPath, buffer } = await setupDeck(
+      buildThreeEntrySpec(),
+    );
+    const counter = countingGenerator(buffer);
+
+    await expect(
+      runDeckGenerate({
+        deckPath,
+        specPath,
+        entryIds: ["entry-404"],
+        confirmUpload: true,
+        generate: counter.generate,
+      }),
+    ).rejects.toMatchObject({ code: "SPEC_PAGE_NOT_FOUND" });
+
+    expect(counter.calls()).toBe(0);
+    await expect(
+      readFile(join(deckPath, "deck-manifest.json")),
+    ).rejects.toThrow();
+  });
+
+  it("--spec 打在既有 deck 上时未知 id 也不写盘：规格与变更日志都没动", async () => {
+    // 「不留半成品目录」只守住了新建 deck 那一支。既有 deck 上 `--spec` 会走
+    // `applySpecChange`——覆盖 deck 内权威规格并追加一条变更记录。校验若晚一步，
+    // 目录还在、页也还在，但规格已经被换掉了，谁都看不出来。
+    const { parent, deckPath, specPath, buffer } = await setupDeck();
+    await runDeckGenerate({
+      deckPath,
+      specPath,
+      confirmUpload: true,
+      generate: fakeGenerator(buffer),
+    });
+    const before = await hashTree(deckPath);
+    expect(
+      Object.keys(before).filter((path) => path.includes("content-spec"))
+        .length,
+    ).toBeGreaterThan(0);
+
+    // 换一份**内容不同**的规格：校验一旦晚于 applySpecChange，磁盘必然出现 diff
+    const nextSpecPath = await writeSpecFile(
+      await mkdtemp(join(parent, "next-spec-")),
+      buildSpec({ style: { description: "改过的风格：橙色主色、窄留白" } }),
+    );
+    const counter = countingGenerator(buffer);
+
+    await expect(
+      runDeckGenerate({
+        deckPath,
+        specPath: nextSpecPath,
+        entryIds: ["entry-404"],
+        confirmUpload: true,
+        generate: counter.generate,
+      }),
+    ).rejects.toMatchObject({ code: "SPEC_PAGE_NOT_FOUND" });
+
+    expect(counter.calls()).toBe(0);
+    expect(await hashTree(deckPath)).toEqual(before);
+  });
+
+  it("已经建过页的 id 不算未知：不报错，落进 skipped", async () => {
+    const { deckPath, specPath, buffer } = await setupDeck();
+    await runDeckGenerate({
+      deckPath,
+      specPath,
+      confirmUpload: true,
+      generate: fakeGenerator(buffer),
+    });
+    const counter = countingGenerator(buffer);
+
+    // 界面勾选来自可能稍旧的页面快照；「刚被别处建掉的条目」不该让整批失败
+    const rerun = await runDeckGenerate({
+      deckPath,
+      entryIds: ["entry-001"],
+      confirmUpload: true,
+      generate: counter.generate,
+    });
+
+    expect(rerun.created).toEqual([]);
+    expect(rerun.skipped).toEqual(["entry-001", "entry-002"]);
+    expect(counter.calls()).toBe(0);
+  });
+
+  it("重复 id 只建一次：按次计费的东西不能因为传两遍就调两遍", async () => {
+    const { deckPath, specPath, buffer } = await setupDeck(
+      buildThreeEntrySpec(),
+    );
+    const counter = countingGenerator(buffer);
+
+    // 现在靠「在 newEntries 上 filter」天然去重；若哪天改成在 entryIds 上 map 取条目，
+    // 这里会当场变成两次生成调用（两页、两笔钱），而没有任何东西会报错。
+    const result = await runDeckGenerate({
+      deckPath,
+      specPath,
+      entryIds: ["entry-002", "entry-002"],
+      confirmUpload: true,
+      generate: counter.generate,
+    });
+
+    expect(counter.calls()).toBe(1);
+    expect(result.created.map((page) => page.specEntryId)).toEqual([
+      "entry-002",
+    ]);
+  });
+
+  it("entryIds 为空数组时拒绝，且一个字节都不写", async () => {
+    const { deckPath, specPath, buffer } = await setupDeck();
+    await expect(
+      runDeckGenerate({
+        deckPath,
+        specPath,
+        entryIds: [],
+        confirmUpload: true,
+        generate: fakeGenerator(buffer),
+      }),
+    ).rejects.toMatchObject({ code: "SPEC_SELECTION_EMPTY" });
     await expect(
       readFile(join(deckPath, "deck-manifest.json")),
     ).rejects.toThrow();

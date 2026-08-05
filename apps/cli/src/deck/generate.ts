@@ -37,6 +37,16 @@ export interface DeckGenerateOptions {
   /** 外部规格文件；deck 内已有权威副本时可省略（等价于「只对账、补缺页」） */
   readonly specPath?: string;
   readonly name?: string;
+  /**
+   * 只建这些规格条目；**省略＝建全部 `newEntries`**，与引入本参数之前逐字同义。
+   *
+   * 「未知」的判据是**规格里根本没有这个条目**——整体拒绝，一页都不建。已经建过页的
+   * 条目（在规格里、但不在 `newEntries` 里）**不算未知**，它落进既有的 `skipped` 口径：
+   * 调用方（界面勾选）的待建列表来自一份可能稍旧的页面快照，把「刚刚在别处被建掉的
+   * 条目」判成错误会让一次正常的补页整批失败；而幂等跳过本来就是 `deck generate`
+   * 的既定行为（prd F6），这里没有理由另立一套。
+   */
+  readonly entryIds?: readonly string[];
   readonly confirmUpload: boolean;
   readonly generate?: OpenAiImageGenerator;
   readonly onBeforeUpload?: (notice: UploadNotice) => void;
@@ -69,7 +79,10 @@ export interface DeckGenerateResult {
   readonly deckPath: string;
   readonly created: DeckGeneratePageResult[];
   readonly failed: DeckGenerateFailure[];
-  /** 已存在且 specEntryId 匹配的条目（断点续跑跳过的那些） */
+  /**
+   * 本次没建的条目：已存在且 specEntryId 匹配的（断点续跑跳过的那些），
+   * 以及给了 `entryIds` 时没被选中的那些。
+   */
   readonly skipped: string[];
   readonly reconciliation: SpecReconciliation;
 }
@@ -83,6 +96,34 @@ async function pathExists(path: string): Promise<boolean> {
       return false;
     }
     throw error;
+  }
+}
+
+/**
+ * `entryIds` 里出现规格中不存在的条目时**整体拒绝**，不部分执行。
+ *
+ * 沿用 `deck regenerate --pages` 的既有口径（`SPEC_PAGE_NOT_FOUND`，
+ * `spec/backend/error-handling.md` 已登记「整体拒绝，不部分执行」），不新增错误码：
+ * 确认框按 N 条给用户看，实跑 N-1 条属于静默不一致，而这里每一条都要花钱。
+ */
+function assertKnownEntryIds(
+  spec: ContentSpec,
+  entryIds: readonly string[] | undefined,
+): void {
+  if (entryIds === undefined) {
+    return;
+  }
+  const known = spec.entries.map((entry) => entry.specEntryId);
+  const knownSet = new Set(known);
+  const unknown = entryIds.filter((entryId) => !knownSet.has(entryId));
+  if (unknown.length > 0) {
+    throw new FoundationError(
+      "SPEC_PAGE_NOT_FOUND",
+      `内容规格里找不到条目：${unknown.join(", ")}。当前可选条目：${
+        known.join(", ") || "（空）"
+      }`,
+      { unknown, available: known },
+    );
   }
 }
 
@@ -173,6 +214,15 @@ export async function runDeckGenerate(
     );
   }
 
+  // 空数组是「一条都没选」，不是「建全部」——后者要省略这个参数。
+  // 静默什么都不做会让调用方以为建过了，而它按次计费，说清楚比省事重要。
+  if (options.entryIds !== undefined && options.entryIds.length === 0) {
+    throw new FoundationError(
+      "SPEC_SELECTION_EMPTY",
+      "entryIds 为空：没有指定任何要建的规格条目（省略该参数才表示建全部新增条目）",
+    );
+  }
+
   const deckPath = resolve(options.deckPath);
   // 会失败的校验一律前移：规格文件不合格时一个字节都还没写。
   // 读规格排在建 deck 之后的话，`--spec 坏文件 --deck 新路径` 会先建出一个空 deck 再抛错。
@@ -185,6 +235,13 @@ export async function runDeckGenerate(
           // 绝对路径进日志既冗长，也把用户目录结构写进了 deck。
           fileName: basename(options.specPath),
         };
+  // 同一条纪律：`entryIds` 的未知 id 也在建 deck 之前就判掉，不留半成品目录。
+  // 外部规格与它落盘后的副本条目集合相同（`applySpecChange` 只强制沿用
+  // specId/createdAt，不动 entries），因此在这里校验外部规格与校验副本等价。
+  // 没有外部规格时规格来自 deck 内部，校验点在下面读到它之后——那条路径不新建 deck。
+  if (external !== null) {
+    assertKnownEntryIds(external.spec, options.entryIds);
+  }
 
   // deck 不存在则创建、存在则按页序追加末尾（与子任务② 的 `deck extract` 同构）。
   // 混合来源的 deck（父任务 A2）正是靠按页序依次调用不同来源的命令实现，
@@ -208,7 +265,11 @@ export async function runDeckGenerate(
       { deckPath },
     );
   }
-  if (external !== null) {
+  if (external === null) {
+    // deck 内规格这条路径不会新建 deck（新建的 deck 必然带着 --spec 进来），
+    // 因此这里抛错同样零副作用。外部规格那一支已在建 deck 之前校验过。
+    assertKnownEntryIds(spec, options.entryIds);
+  } else {
     // 复制进 deck 成为权威副本；此后 deck 内那份才是漂移判定的基准。
     //
     // 走统一写入入口而非直调 `writeDeckContentSpec`：变更日志靠写入路径捎带落盘，
@@ -231,11 +292,24 @@ export async function runDeckGenerate(
   }
 
   const pages = await collectGeneratedPages(deck);
+  // `reconciliation` 始终是**全量**对账结果（不受 entryIds 影响），调用方靠它知道
+  // 这一轮之后还剩哪些条目待建；本次实际要建的是下面过滤出的 `targets`。
   const reconciliation = reconcileDeckSpec(spec, pages);
+  // 条目子集只在 `newEntries` 里挑：顺序仍按规格条目顺序（页号因此确定），
+  // 重复 id 由 Set 成员判定天然只建一次。省略 entryIds 时 `targets` 就是 `newEntries`
+  // 本身，下面的 `skipped` / `total` / 循环三处因此与引入本参数之前逐字同义。
+  const selection =
+    options.entryIds === undefined ? null : new Set(options.entryIds);
+  const targets =
+    selection === null
+      ? reconciliation.newEntries
+      : reconciliation.newEntries.filter((entry) =>
+          selection.has(entry.specEntryId),
+        );
   const skipped = spec.entries
     .filter(
       (entry) =>
-        !reconciliation.newEntries.some(
+        !targets.some(
           (candidate) => candidate.specEntryId === entry.specEntryId,
         ),
     )
@@ -243,11 +317,13 @@ export async function runDeckGenerate(
 
   const created: DeckGeneratePageResult[] = [];
   const failed: DeckGenerateFailure[] = [];
-  const total = reconciliation.newEntries.length;
+  // 进度分母取过滤后的集合：给了 entryIds 还按 newEntries 报「第 1/6 页」，
+  // 界面上的进度就与实际执行次数对不上。
+  const total = targets.length;
 
   // 串行：网关限流未知，串行最安全（`scripts/generate-m2-pages.ts` 已有先例）。
   // 单页失败不中断整批——一次批量里第 7 页出错不该让前 6 页白跑。
-  for (const [index, entry] of reconciliation.newEntries.entries()) {
+  for (const [index, entry] of targets.entries()) {
     options.onProgress?.({
       specEntryId: entry.specEntryId,
       index: index + 1,
