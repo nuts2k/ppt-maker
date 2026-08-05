@@ -583,3 +583,66 @@ M7 注明为下一里程碑且尚未规划。
 - 下一里程碑 M7「可靠性与本地交付」尚未规划：异常恢复、备份、日志诊断、依赖预检、
   macOS 打包、数据迁移、Windows 兼容性调研。计划 Trellis 子任务 `local-product-hardening`。
 - 开 M7 前先走 Phase 1 规划，不要在没有任务规划时直接开新代码。
+
+---
+
+## Session 11: 规格产出到建页的衔接
+
+**Date**: 2026-08-05
+**Task**: 08-04-spec-to-pages-bridge（已归档）
+**Branch**: `main`
+
+### Summary
+
+补上 M6 三个子任务之间的接缝：规格已经在 deck 里了，界面上却没有一条直达的「按这份规格把页建出来」。
+策划页「规格影响」面板新增「待建页」一档，CLI `runDeckGenerate` 加可选 `entryIds`，
+`SourceTaskBar` 提取为跨视图共享组件，控制台零页空态改为指路策划工作台。
+
+### Main Changes
+
+**提交四次**（按 design §7 的回滚点分开）
+
+- `57347a5` feat(cli)：`entryIds` 条目子集。三种入参语义不得混同——省略＝建全部、
+  `[]` 抛 `SPEC_SELECTION_EMPTY`、含未知 id 整体拒绝。「未知」的判据是**规格里根本没有这个条目**，
+  已建过页的 id 不算未知、落既有 `skipped`。校验前移到建 deck 之前，两支都不留半成品目录。
+  省略路径上 `targets` 就是 `newEntries` 同一个数组引用，既有断言一条未改。
+- `c9f356d` feat(desktop)：待建页一档 + 建页动作 + 进度可见 + 空态指路 + IPC 两处可选放宽。
+- `2492491` style(cli)：`extract.ts` 两处 `useLiteralKeys`，**HEAD 上既有的红**，与本任务无关，
+  因 A11 要求四关全绿顺手修掉，单独成提交不并进 T1 回滚点。
+- `99a8135` docs(spec)：错误码口径扩写 + 「按次计费命令里校验必须前移」+ 静默失败指南新增一条。
+
+**并行执行方式**：三路 implement 子代理（CLI / 纯函数+IPC / 控制台）按文件切分无重叠，
+随后两路独立 check 子代理复核，共修出 4 处真缺陷（切 deck 竞态、四处缺 `tabular-nums`、
+脏草稿时空态说假话、静态断言的静默截断洞）。
+
+### Testing
+
+- 四关全绿：`format:check` / `typecheck` / `test` **1000** / `build`。
+  基线由 948 升到 1000（core 156 / desktop 571 / CLI 273）。
+- **真机走查花 2 次图像生成**，A1–A5/A7/A8 逐条通过，A6 失败分支未实测标 `[~]`。
+- 走查抓到一个纯函数测不到的缺陷：完成提示把「用户取消勾选」导致的 `skipped` 说成
+  「此前已经建过页」。根子是 CLI 侧扩容了 `skipped` 语义，而**默认全选时新增那一类恒为 0，
+  文案怎么写都是绿的**——当时 15 条用例没有一条走过「取消勾选后建页」。修法是换判据
+  （`requested − created − failed`）而非改文案，并已真机复验。
+
+### Environment / 方法学
+
+- 原生确认框（`dialog.showMessageBox`）会阻塞 main 进程，此时 CDP 整个卡住。
+  解法是 System Events（需终端辅助功能权限）：先 `set frontmost`，再
+  **按名字**点 `button 2`——`button 1` 与回车都是「取消」（`system.ts:89` 的 `defaultId: 1`，
+  付费动作的刻意设计）。按屏幕坐标点会点到别的窗口。
+- 重启 dev server 时若命令超时被移到后台，会起出第二个实例。先 `pkill` 确认残留为 0 再启。
+
+### Status
+
+[OK] **Completed** —— 任务已归档，工作区干净。
+
+### Next Steps
+
+- **遗留 0（新暴露）**：建页的**逐条失败原因不落盘**——`source-task-runner` 的 `record()`
+  只写一条汇总记录。因此完成提示里原本那句「逐条原因见活动日志」是指向空处的假话，
+  本轮删掉了那句而不是补记录。要补需改 main 侧改为逐条写，那时 A6 才有稳定取证对象。
+- **遗留 1**：`handleRegenerate` 建完跳回控制台、`handleCreatePages` 留在本页，两个按钮上下并排
+  行为不一致。本任务改变了前者的理由（`SourceTaskBar` 现在策划页也看得见），建议后续统一。
+- **遗留 2**：失联页（missing）那一档仍只有文案没有动作，PRD 已列为 Out of Scope，另开任务。
+- **M7「可靠性与本地交付」仍未规划**，开工前先走 Phase 1。
