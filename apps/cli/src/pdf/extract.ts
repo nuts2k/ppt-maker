@@ -73,11 +73,11 @@ export function extractionFailureDetails(
   if (!(error instanceof FoundationError) || error.details === undefined) {
     return null;
   }
-  const parsed = PdfExtractionReportSchema.safeParse(error.details["report"]);
+  const parsed = PdfExtractionReportSchema.safeParse(error.details.report);
   if (!parsed.success) {
     return null;
   }
-  const reportPath = error.details["reportPath"];
+  const reportPath = error.details.reportPath;
   return {
     reportPath: typeof reportPath === "string" ? reportPath : null,
     report: parsed.data,
