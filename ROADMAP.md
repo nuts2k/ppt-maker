@@ -1,6 +1,6 @@
 # PPT Maker 路线图
 
-> 状态：执行中（M0–M5 已完成；M6 内容策划工作台执行中；其后 M7 可靠性与本地交付）
+> 状态：执行中（M0–M6 已完成；下一里程碑 M7 可靠性与本地交付，待开始）
 >
 > 目标用户：开发者本人
 >
@@ -291,7 +291,7 @@ Trellis 父任务：`07-31-page-sources-and-content-generation`
 
 ### M6 内容策划工作台
 
-状态：**执行中**（2026-08-02 规划完成，D1–D9 已定）
+状态：**已完成**（2026-08-02 规划完成，D1–D9 已定；2026-08-04 三个子任务全部归档并通过父级集成验收）
 
 目标：把「一句构思」变成一份可执行的内容规格，让 `generated` 来源不必手写规格。
 
@@ -409,9 +409,24 @@ Trellis 父任务：`08-02-content-planning-workbench`
 | ② | `08-02-planning-view` | 桌面端：新增 `AppView` `planning`、条目列表与逐字段编辑器、已过时页清单与勾选确认 | ① |
 | ③ | `08-02-planning-conversation` | 策划提问 provider、会话落盘、改稿提案与 diff 确认、背景材料输入 | ①② |
 
+#### 完成证据（2026-08-04）
+
+父任务 `08-02-content-planning-workbench` 逐条核对 A1–A9 全部满足，详见其归档 `prd.md`
+〈集成验收结论〉。要点：
+
+- 零页 deck 从一句构思经两轮 `gpt-5.6-luna` 提问收敛五维度 → 6 条初稿 → 建页 → 真实出图 →
+  OCR/AI 复核 → clean → 原生 PPTX → `deck export --strict`，全程未手写 JSON。
+- 两条硬验收均通过：批量重生成时未勾选页字节不变（做过变异验证）；旧格式 deck
+  （`~/test/ppttest-2026-07-25`，无 `source`）只读命令跑完目录内容零变化且不产生 `planning/`。
+- 生成侧契约零改动：`ContentSpecSchema` / `specViewFingerprintValues` /
+  `buildPageGenerationPrompt` / `SCHEMA_VERSION` 在 M6 全程 `git diff` 为空。
+- `planning/` 是可删旁路，移走后 `status` / `run` / `export --strict` 仍成功。
+- D5「模型可提案、不可直接落盘」的放宽已回写 `.trellis/spec/backend/contracts.md`。
+- 测试基线 774 → **948**（core 156 / desktop 527 / CLI 265）。
+
 ### M7 可靠性与本地交付
 
-状态：待开始
+状态：待开始（M6 完成后的下一里程碑，尚未规划）
 
 > 原为 M6，因新立「M6 内容策划工作台」而顺延，内容不变。
 
