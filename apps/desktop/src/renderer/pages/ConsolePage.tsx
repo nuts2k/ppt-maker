@@ -1,5 +1,5 @@
-import { LoaderCircle, Plus, RefreshCw } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { Plus, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { ActivityPanel } from "@/components/console/ActivityPanel";
 import { DeckEmptyState } from "@/components/console/DeckEmptyState";
 import { ExtractionReportHost } from "@/components/console/ExtractionReportPanel";
@@ -7,8 +7,15 @@ import { RunControlBar } from "@/components/console/RunControlBar";
 import { SlideCardGrid } from "@/components/console/SlideCardGrid";
 import { SourcePicker } from "@/components/console/SourcePicker";
 import { TodoQueuePanel } from "@/components/console/TodoQueuePanel";
+import { SourceTaskBar } from "@/components/SourceTaskBar";
 import { Button, Panel, SegmentedGroup, SegmentedItem } from "@/components/ui";
-import { sourceTaskBlockedReason } from "@/lib/source-task-core";
+import {
+  buildEmptyDeckCopy,
+  type DeckSpecSnapshot,
+  pendingSpecCount,
+  probeDeckSpec,
+  specForDeck,
+} from "@/lib/console-empty-view";
 import { cn } from "@/lib/utils";
 import { useActivityStore } from "@/stores/activity-store";
 import { useDeckStore } from "@/stores/deck-store";
@@ -27,8 +34,10 @@ import { type ConsoleFilter, useUIStore } from "@/stores/ui-store";
  * 3. 页面级次要操作（添加页面 / 刷新 / 改规格）——执行相关操作一律归 RunControlBar，
  *    导出归 TopNav，此处只放不影响流水线状态的工具动作。
  *
- * 本页同时持有**来源选择模态**与**建页任务条**：新建 deck 期间 `deckPath` 仍是
+ * 本页同时渲染**来源选择模态**与**建页任务条**：新建 deck 期间 `deckPath` 仍是
  * null，空态与已打开 deck 两条分支都要能看见进度，放进更下层的组件会漏掉其中一条。
+ * 任务条本身是 `components/SourceTaskBar`（跨视图共用，策划页也发起建页），
+ * 由 source-task-store 自驱动，这里只决定它挂在哪。
  *
  * 筛选的硬约束（见 .trellis/spec/frontend/state-management.md「一个判据兼职两件事」）：
  * 切换常驻可见、不折叠不藏菜单；筛选**只影响本页列表渲染**，不影响任何判据、
@@ -72,6 +81,51 @@ export function ConsolePage(): React.JSX.Element {
     () => slides.filter((slide) => !slide.removed),
     [slides],
   );
+
+  /*
+   * 零页时读一次 deck 内规格，用于空态指路（R7）。
+   *
+   * 只在零页时读：有页可看的时候这个数字没有任何用处，没必要为它发 IPC。
+   * 视图切到策划工作台时本页整个卸载（App.tsx 是条件渲染），改完规格回来会重读，
+   * 因此不需要额外的失效通道。
+   *
+   * 切 deck 竞态是**两道**，缺一不可（见 .trellis/spec/frontend/state-management.md）：
+   * cleanup 的 `cancelled` 挡迟到的写入，`specForDeck` 挡已经写在 state 里的上一个
+   * deck 的值——后者靠 effect 时序追不上，只能把归属做进数据本身。
+   */
+  const [specSnapshot, setSpecSnapshot] = useState<DeckSpecSnapshot | null>(
+    null,
+  );
+  const emptyDeck = deckPath !== null && activeSlides.length === 0;
+  useEffect(() => {
+    if (deckPath === null || !emptyDeck) {
+      setSpecSnapshot(null);
+      return;
+    }
+    let cancelled = false;
+    void probeDeckSpec(() => window.api.deck.readDeckSpec(deckPath)).then(
+      (spec) => {
+        if (!cancelled) setSpecSnapshot({ deckPath, spec });
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [deckPath, emptyDeck]);
+
+  // 建完页后 slides 变化即自动收缩，不必重读规格
+  const pendingSpecEntries = useMemo(
+    () => pendingSpecCount(specForDeck(specSnapshot, deckPath), slides),
+    [specSnapshot, deckPath, slides],
+  );
+
+  /*
+   * 「改规格」与空态里的「去策划工作台」是同一个动作的两个入口，禁用理由因此
+   * 只写一处——两句各写一份，迟早只改其中一句。
+   */
+  const planningBlockedReason = sourceTaskRunning
+    ? "建页任务正在执行，请等它结束后再修改规格"
+    : null;
 
   /*
    * 待处理集合与右侧队列同源：筛选口径与卡片上显示的待办原因都取这一份，
@@ -148,11 +202,7 @@ export function ConsolePage(): React.JSX.Element {
                 variant="ghost"
                 onClick={openPlanning}
                 disabled={loading || sourceTaskRunning}
-                title={
-                  sourceTaskRunning
-                    ? "建页任务正在执行，请等它结束后再修改规格"
-                    : undefined
-                }
+                title={planningBlockedReason ?? undefined}
               >
                 改规格
               </Button>
@@ -181,6 +231,9 @@ export function ConsolePage(): React.JSX.Element {
                 filtered={filter === "todo" && activeSlides.length > 0}
                 allCount={activeSlides.length}
                 onShowAll={() => setFilter("all")}
+                pendingSpecEntries={pendingSpecEntries}
+                onOpenPlanning={openPlanning}
+                planningBlockedReason={planningBlockedReason}
               />
             )}
           </div>
@@ -203,68 +256,6 @@ export function ConsolePage(): React.JSX.Element {
           deckPath={pickerTarget === "new" ? null : deckPath}
           onClose={closePicker}
         />
-      )}
-    </div>
-  );
-}
-
-/**
- * 建页任务条 —— 抽取 / 生成这类长任务的进度、被挡下的理由与错误。
- *
- * **空态不占版面**：三样都没有时整条不渲染，而不是留一条写着「暂无任务」
- * 的空条（DESIGN.md）。它与 `RunControlBar` 分开是因为两者互斥而非并列：
- * 同一时刻最多只有一个在动。
- *
- * 「被互斥挡下」必须在这里说出来。它不是失败（什么都没跑坏），也不是成功结果
- * （`GenerateResultPanel` 与抽取报告都只认 `accepted`），落在两者中间——不渲染的
- * 话，用户点完「追加页面」只看到模态关掉，界面一动不动，理由静静躺在 store 里。
- */
-function SourceTaskBar({
-  className,
-}: {
-  className?: string;
-}): React.JSX.Element | null {
-  const running = useSourceTaskStore((s) => s.running);
-  const index = useSourceTaskStore((s) => s.index);
-  const total = useSourceTaskStore((s) => s.total);
-  const message = useSourceTaskStore((s) => s.message);
-  const error = useSourceTaskStore((s) => s.error);
-  const result = useSourceTaskStore((s) => s.lastResult);
-  const dismiss = useSourceTaskStore((s) => s.dismissResult);
-
-  // 被挡下用 state-stale 而不是 state-failed：没有任何东西失败，是「现在不能跑」，
-  // 且理由本身就写着下一步该做什么（先停止流水线 / 等建页任务结束）
-  const blocked = sourceTaskBlockedReason(result);
-
-  if (!running && error === null && blocked === null) return null;
-
-  return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      {running && (
-        <Panel className="flex items-center gap-3 bg-surface px-4 py-3">
-          <LoaderCircle
-            aria-hidden="true"
-            className="size-3.5 shrink-0 animate-spin text-state-running motion-reduce:animate-none"
-          />
-          <span className="min-w-0 flex-1 truncate text-sm tabular-nums text-ink">
-            {buildSourceTaskText(index, total, message)}
-          </span>
-        </Panel>
-      )}
-      {blocked !== null && (
-        <Panel className="flex items-center gap-3 bg-surface px-4 py-3">
-          <span className="min-w-0 flex-1 text-sm font-medium text-state-stale">
-            {blocked}
-          </span>
-          <Button size="sm" variant="ghost" onClick={dismiss}>
-            知道了
-          </Button>
-        </Panel>
-      )}
-      {error !== null && (
-        <p className="rounded-sm bg-state-failed/10 px-3 py-2 text-sm font-medium text-state-failed">
-          {error}
-        </p>
       )}
     </div>
   );
@@ -320,20 +311,6 @@ function GenerateResultPanel({
   );
 }
 
-/** 进度文案：总数未知（抽取在渲染前不知道有几页能过 16:9）时只报序号 */
-function buildSourceTaskText(
-  index: number,
-  total: number,
-  message: string,
-): string {
-  const parts: string[] = [];
-  if (index > 0) {
-    parts.push(total > 0 ? `第 ${index}/${total} 项` : `第 ${index} 项`);
-  }
-  if (message !== "") parts.push(message);
-  return parts.length > 0 ? parts.join(" · ") : "建页任务执行中…";
-}
-
 /**
  * 「全部 N / 待处理 M」切换 —— 常驻可见，不折叠不藏菜单。
  *
@@ -378,23 +355,50 @@ function FilterSwitch({
   );
 }
 
-/** 空态不写「暂无内容」，而是说明当前看到的是什么、下一步能点什么 */
+/**
+ * 空态不写「暂无内容」，而是说明当前看到的是什么、下一步能点什么。
+ *
+ * 零页那一支的措辞由 `buildEmptyDeckCopy` 给：规格里还有条目没建页时写明条数并
+ * 指向策划工作台，否则退回「从图片 / PDF / 规格文件添加」的兜底说法。
+ * 判断落在纯函数里是为了能被测——本项目没有 DOM 测试库。
+ */
 function GridEmptyState({
   filtered,
   allCount,
   onShowAll,
+  pendingSpecEntries,
+  onOpenPlanning,
+  planningBlockedReason,
 }: {
   filtered: boolean;
   allCount: number;
   onShowAll: () => void;
+  /** 规格里尚未建页的条目数；读不到规格时为 null */
+  pendingSpecEntries: number | null;
+  onOpenPlanning: () => void;
+  /** 现在不能去策划工作台的理由；能去则为 null。与工具栏「改规格」同源 */
+  planningBlockedReason: string | null;
 }): React.JSX.Element {
   if (!filtered) {
+    const copy = buildEmptyDeckCopy(pendingSpecEntries);
     return (
       <div className="flex flex-col items-center gap-2 py-16 text-center">
-        <p className="text-sm font-medium text-ink">当前 Deck 还没有任何页面</p>
-        <p className="text-sm text-ink-muted">
-          用右上角「添加页面」从图片、PDF 或内容规格加进来。
+        <p className="text-sm font-medium text-ink">{copy.title}</p>
+        <p className="max-w-prose text-sm tabular-nums text-ink-muted">
+          {copy.body}
         </p>
+        {copy.actionLabel !== null && (
+          <Button
+            className="mt-1"
+            size="sm"
+            variant="secondary"
+            onClick={onOpenPlanning}
+            disabled={planningBlockedReason !== null}
+            title={planningBlockedReason ?? undefined}
+          >
+            {copy.actionLabel}
+          </Button>
+        )}
       </div>
     );
   }

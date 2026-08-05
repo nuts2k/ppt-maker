@@ -304,7 +304,19 @@ export type SourceTaskRequest =
     }
   | {
       readonly kind: "generate";
-      readonly specPath: string;
+      /**
+       * 外部规格文件。**省略即用 deck 内已有的权威规格**——`runDeckGenerate` 的
+       * `specPath` 本来就是可选的（省略时读 `loadDeckContentSpec`，等价于
+       * 「只对账、补缺页」），策划工作台的「按规格建页」走的正是这条路。
+       */
+      readonly specPath?: string;
+      /**
+       * 只建这些规格条目；省略即建全部 `newEntries`（与改动前逐字同义）。
+       *
+       * 建页按次计费，用户在待建页一档里逐条勾选，勾选集合即执行集合。
+       * 未知 id 由 CLI 侧**整体拒绝**，不部分执行。
+       */
+      readonly entryIds?: readonly string[];
       readonly deckName?: string;
     }
   | {

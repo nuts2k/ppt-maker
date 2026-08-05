@@ -28,6 +28,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { SourceTaskBar } from "@/components/SourceTaskBar";
 import {
   Button,
   Checkbox,
@@ -48,8 +49,17 @@ import {
 } from "@/lib/planning-conversation-core";
 import {
   buildRegenerateBatchConfirm,
+  type CreatePagesSummary,
   classifyOutdatedPages,
+  createPagesFlow,
+  hasSpecImpact,
   isEmptyChangeRecord,
+  pendingEntrySummaries,
+  resolveCreatePagesAction,
+  selectedPendingEntryIds,
+  specActionBlockedReason,
+  specImpactEmptyCopy,
+  summarizeCreatePages,
 } from "@/lib/planning-core";
 import { startSourceTask } from "@/lib/source-task";
 import { createEmptyPlanningWorkspace } from "@/lib/workspace-switch";
@@ -153,6 +163,22 @@ export function PlanningPage(): React.JSX.Element {
   const specWriteBlocked = sourceTaskRunning || pipelineRunning;
   const [summary, setSummary] = useState("");
   const [selectedPages, setSelectedPages] = useState<Set<string>>(new Set());
+  const [selectedEntries, setSelectedEntries] = useState<Set<string>>(
+    new Set(),
+  );
+  /*
+   * 本页发起的那次建页的结果。
+   *
+   * 不读 store 的 `lastResult`：那是全局最近一次建页任务，控制台的 SourcePicker
+   * 跑过一次之后再进策划页，会凭空冒出一条不属于这次操作的完成提示。本地状态只在
+   * 这里点了「建立所选 N 页」并拿到受理结果时才写。
+   *
+   * 被互斥挡下（`accepted: false`）与抛异常两条路都不写这里，各有各的渲染者，
+   * 见 `CreatePagesResult` 上的说明。
+   */
+  const [createResult, setCreateResult] = useState<CreatePagesSummary | null>(
+    null,
+  );
   const [sidebarView, setSidebarView] = useState<"conversation" | "history">(
     "conversation",
   );
@@ -199,6 +225,22 @@ export function PlanningPage(): React.JSX.Element {
   useEffect(() => {
     setSelectedPages(new Set(driftedPageLabels));
   }, [driftedPageLabels]);
+
+  /*
+   * 待建条目取 `saved`（磁盘现值）而**不是** `editable`（`draft ?? saved`）。
+   *
+   * 建页由 CLI 读磁盘上的规格：草稿里新加的条目在磁盘上根本不存在，算进「待建 N 条」
+   * 会让付费确认框上的数字大于实际会建出的页数——而那个数字正是付费门槛的全部依据。
+   * 脏草稿另有按钮禁用兜底，但两道防线各管一头：这里管数字准不准，那里管能不能点。
+   */
+  const pendingEntries = useMemo(
+    () => pendingEntrySummaries(saved, slides),
+    [saved, slides],
+  );
+
+  useEffect(() => {
+    setSelectedEntries(new Set(pendingEntries.map((e) => e.specEntryId)));
+  }, [pendingEntries]);
 
   async function handleBack(): Promise<void> {
     if (dirty) {
@@ -256,6 +298,41 @@ export function PlanningPage(): React.JSX.Element {
     );
     resetPlanning();
     backToConsole();
+  }
+
+  /**
+   * 按当前规格把待建条目建成页。
+   *
+   * 与上面的 `handleRegenerate` 刻意不同：**建完留在本页**，不 `resetPlanning`、
+   * 不 `backToConsole`（父任务 D5）。规格产出之后往往还要继续改，自动跳走会把人
+   * 从正在做的事里拽出来；「去控制台」留给用户自己点。
+   */
+  async function handleCreatePages(): Promise<void> {
+    if (deckPath === null) return;
+    const entryIds = selectedPendingEntryIds(pendingEntries, selectedEntries);
+    const result = await createPagesFlow(
+      {
+        confirm: (options) => window.api.system.confirm(options),
+        start: (request) =>
+          startSourceTask({ deckPath, createNew: false }, request),
+      },
+      entryIds,
+    );
+    // null＝用户取消 / 一条都没勾 / 结果被丢弃（切了工作区），三种都不该留提示；
+    // 被互斥挡下由 SourceTaskBar 说，不写进这里
+    if (result?.accepted !== true) return;
+    /*
+     * 结果要配上「用户勾了几条」才说得清楚：CLI 的 `skipped` 把「此前已建过」与
+     * 「本次没勾选」混在一起，只看它必然把用户自己取消的勾选说成「已经建过页」
+     * （走查实测）。判据在 `summarizeCreatePages`。
+     */
+    setCreateResult(
+      summarizeCreatePages({
+        requested: entryIds.length,
+        created: result.created,
+        failed: result.failed,
+      }),
+    );
   }
 
   const pendingProposal = conversation?.session.pendingProposal ?? null;
@@ -387,6 +464,15 @@ export function PlanningPage(): React.JSX.Element {
         </div>
       )}
 
+      {/* 建页进度、被互斥挡下的理由与执行错误。三样都没有时整条不渲染 */}
+      <SourceTaskBar className="shrink-0 px-6 pt-3" />
+
+      <CreatePagesResult
+        result={createResult}
+        onDismiss={() => setCreateResult(null)}
+        onGoConsole={() => void handleBack()}
+      />
+
       <div className="flex min-h-0 flex-1">
         <PlanningSidebar
           view={sidebarView}
@@ -451,21 +537,20 @@ export function PlanningPage(): React.JSX.Element {
                 selectedEntryId={selectedEntryId}
                 onSelectEntry={selectConversationEntry}
               />
-              <OutdatedPages
+              <SpecImpactPanel
+                pending={pendingEntries}
                 drifted={outdated.drifted}
                 missing={outdated.missing}
-                selected={selectedPages}
+                selectedPages={selectedPages}
+                selectedEntries={selectedEntries}
                 dirty={dirty}
                 running={sourceTaskRunning || pipelineRunning}
-                onToggle={(pageLabel, checked) =>
-                  setSelectedPages((current) => {
-                    const next = new Set(current);
-                    if (checked) next.add(pageLabel);
-                    else next.delete(pageLabel);
-                    return next;
-                  })
+                onTogglePage={(pageLabel, checked) =>
+                  setSelectedPages((current) =>
+                    toggled(current, pageLabel, checked),
+                  )
                 }
-                onToggleAll={(checked) =>
+                onToggleAllPages={(checked) =>
                   setSelectedPages(
                     checked
                       ? new Set(
@@ -474,6 +559,21 @@ export function PlanningPage(): React.JSX.Element {
                       : new Set(),
                   )
                 }
+                onToggleEntry={(specEntryId, checked) =>
+                  setSelectedEntries((current) =>
+                    toggled(current, specEntryId, checked),
+                  )
+                }
+                onToggleAllEntries={(checked) =>
+                  setSelectedEntries(
+                    checked
+                      ? new Set(
+                          pendingEntries.map((entry) => entry.specEntryId),
+                        )
+                      : new Set(),
+                  )
+                }
+                onCreatePages={() => void handleCreatePages()}
                 onRegenerate={() => void handleRegenerate()}
               />
             </div>
@@ -1054,75 +1154,225 @@ function EntryEditor({
   );
 }
 
-function OutdatedPages({
+/**
+ * 建页完成提示。
+ *
+ * ## 三种结局各由谁渲染
+ *
+ * | 结局 | 渲染者 |
+ * |---|---|
+ * | 受理并跑完（`accepted: true`） | 本组件 |
+ * | 被互斥挡下（`accepted: false`） | `SourceTaskBar` 的 `sourceTaskBlockedReason` 分支 |
+ * | 抛异常 | `SourceTaskBar` 的 error 分支（`runSourceTask` 的 catch 写进 store） |
+ *
+ * 三者互斥且都有人画，不存在「点完什么都没发生」的缝（见静默失败诊断指南）。
+ *
+ * ## 它与控制台 `GenerateResultPanel` 的关系
+ *
+ * 两者读的**不是同一份数据**：那边读 store 的 `lastResult`（全局最近一次任务），
+ * 这边读本页发起那次的本地结果。两块面板长在互斥的两个视图上，永远不会同屏。
+ * 点「去控制台」过去后，控制台会用同一次任务的 store 结果再显示一遍——这是**刻意
+ * 保留**的：那块面板带着「去确认」，把用户直接送进逐张确认源图的下一步，而这一步
+ * 不该在策划页重复给（用户可能只是想接着改规格）。
+ *
+ * **不吞失败**，也**不替用户自己的操作编理由**：数字与措辞一律由
+ * `summarizeCreatePages` 给出（它为什么不看 `result.skipped`，见那里的说明）。
+ * 本组件只负责画，不做任何算术——上一版就是在这里就地读 `skipped`，把用户刚刚
+ * 取消勾选的 3 条说成「此前已经建过页」。
+ */
+function CreatePagesResult({
+  result,
+  onDismiss,
+  onGoConsole,
+}: {
+  readonly result: CreatePagesSummary | null;
+  readonly onDismiss: () => void;
+  readonly onGoConsole: () => void;
+}): React.JSX.Element | null {
+  if (result === null) return null;
+
+  return (
+    <div className="shrink-0 border-b border-hairline bg-surface px-6 py-3">
+      <div className="flex items-center gap-3">
+        <span className="min-w-0 flex-1 text-sm tabular-nums text-ink">
+          已建立 {result.created} 页
+          {result.failed > 0 && (
+            <span className="font-medium text-state-failed">
+              ，失败 {result.failed} 条
+            </span>
+          )}
+          。{result.notes.join("")}
+        </span>
+        <Button size="sm" variant="secondary" onClick={onGoConsole}>
+          去控制台
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onDismiss}>
+          知道了
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** 勾选框的通用切换：不可变地增删一个 id */
+function toggled(
+  current: ReadonlySet<string>,
+  id: string,
+  checked: boolean,
+): Set<string> {
+  const next = new Set(current);
+  if (checked) next.add(id);
+  else next.delete(id);
+  return next;
+}
+
+/**
+ * 「规格影响」面板：待建页 / 已过时 / 失联页面三档。
+ *
+ * 三类**任一非空**即渲染（判据在 `hasSpecImpact`）。待建页与已过时共用同一套栅格、
+ * 勾选控件与标题层级：两档并排而视觉不一致，会让人以为它们是两种不同性质的东西。
+ * 失联页面仍然只有文案没有动作——删页是破坏性操作，且正确处置往往是恢复规格条目。
+ */
+function SpecImpactPanel({
+  pending,
   drifted,
   missing,
-  selected,
+  selectedPages,
+  selectedEntries,
   dirty,
   running,
-  onToggle,
-  onToggleAll,
+  onTogglePage,
+  onToggleAllPages,
+  onToggleEntry,
+  onToggleAllEntries,
+  onCreatePages,
   onRegenerate,
 }: {
+  readonly pending: ReturnType<typeof pendingEntrySummaries>;
   readonly drifted: ReturnType<typeof classifyOutdatedPages>["drifted"];
   readonly missing: ReturnType<typeof classifyOutdatedPages>["missing"];
-  readonly selected: ReadonlySet<string>;
+  readonly selectedPages: ReadonlySet<string>;
+  readonly selectedEntries: ReadonlySet<string>;
   readonly dirty: boolean;
   readonly running: boolean;
-  readonly onToggle: (pageLabel: string, checked: boolean) => void;
-  readonly onToggleAll: (checked: boolean) => void;
+  readonly onTogglePage: (pageLabel: string, checked: boolean) => void;
+  readonly onToggleAllPages: (checked: boolean) => void;
+  readonly onToggleEntry: (specEntryId: string, checked: boolean) => void;
+  readonly onToggleAllEntries: (checked: boolean) => void;
+  readonly onCreatePages: () => void;
   readonly onRegenerate: () => void;
 }) {
-  if (drifted.length === 0 && missing.length === 0) {
+  if (
+    !hasSpecImpact({
+      pending: pending.length,
+      drifted: drifted.length,
+      missing: missing.length,
+    })
+  ) {
     return (
       <Panel as="section" className="p-5">
         <h2 className="text-lg font-semibold text-ink">规格影响</h2>
         <p className="mt-2 text-sm text-ink-muted">
-          当前没有已过时或失联页面；零页 Deck 也会保持这个空态。
+          {specImpactEmptyCopy(dirty)}
         </p>
       </Panel>
     );
   }
   const selectedCount = drifted.filter((slide) =>
-    selected.has(slide.pageLabel),
+    selectedPages.has(slide.pageLabel),
   ).length;
+  const selectedEntryCount = selectedPendingEntryIds(
+    pending,
+    selectedEntries,
+  ).length;
+  const createAction = resolveCreatePagesAction({
+    selectedCount: selectedEntryCount,
+    dirty,
+    running,
+  });
 
   return (
     <Panel as="section" className="p-5">
-      <div className="flex items-start justify-between gap-5">
-        <div>
-          <h2 className="text-lg font-semibold text-ink">规格影响</h2>
-          <p className="mt-1 text-xs leading-relaxed text-ink-muted">
-            清单来自当前 Deck 的全量状态，不只包含上一次保存新增的过时页。
+      <h2 className="text-lg font-semibold text-ink">规格影响</h2>
+      <p className="mt-1 text-xs leading-relaxed text-ink-muted">
+        清单来自当前 Deck 的全量状态，不只包含上一次保存新增的过时页。
+      </p>
+
+      {pending.length > 0 && (
+        <div className="mt-5">
+          <div className="flex items-center justify-between gap-4 border-b border-hairline pb-2">
+            <h3 className="text-sm font-semibold tabular-nums text-proof">
+              待建页 {pending.length} 条
+            </h3>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                label="全选"
+                checked={selectedEntryCount === pending.length}
+                onChange={(event) => onToggleAllEntries(event.target.checked)}
+              />
+              <Button
+                className="tabular-nums"
+                variant="secondary"
+                size="sm"
+                onClick={onCreatePages}
+                disabled={createAction.disabled}
+                title={createAction.title ?? undefined}
+              >
+                {createAction.label}
+              </Button>
+            </div>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
+            这些规格条目还没有对应页面。建页按次计费，建好后每页都需要你逐张确认源图。
           </p>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {pending.map((entry) => (
+              <Checkbox
+                key={entry.specEntryId}
+                // 标题长度不可控，必须能换行；`items-start` 让勾选框对齐首行
+                className="items-start break-words rounded-sm border border-hairline px-3 py-2"
+                label={`${entry.pageType || "未填页型"} · ${entry.title}`}
+                hint={`规格条目 ${entry.specEntryId}`}
+                checked={selectedEntries.has(entry.specEntryId)}
+                onChange={(event) =>
+                  onToggleEntry(entry.specEntryId, event.target.checked)
+                }
+              />
+            ))}
+          </div>
         </div>
-        {drifted.length > 0 && (
-          <Button
-            variant="secondary"
-            onClick={onRegenerate}
-            disabled={selectedCount === 0 || dirty || running}
-            title={
-              dirty
-                ? "请先保存规格，再按磁盘现值重生成"
-                : running
-                  ? "已有建页任务正在执行"
-                  : undefined
-            }
-          >
-            重生成所选 {selectedCount} 页
-          </Button>
-        )}
-      </div>
+      )}
 
       {drifted.length > 0 && (
         <div className="mt-5">
-          <div className="flex items-center justify-between border-b border-hairline pb-2">
-            <h3 className="text-sm font-semibold text-proof">已过时</h3>
-            <Checkbox
-              label="全选"
-              checked={selectedCount === drifted.length}
-              onChange={(event) => onToggleAll(event.target.checked)}
-            />
+          <div className="flex items-center justify-between gap-4 border-b border-hairline pb-2">
+            <h3 className="text-sm font-semibold tabular-nums text-proof">
+              已过时 {drifted.length} 页
+            </h3>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                label="全选"
+                checked={selectedCount === drifted.length}
+                onChange={(event) => onToggleAllPages(event.target.checked)}
+              />
+              <Button
+                className="tabular-nums"
+                variant="secondary"
+                size="sm"
+                onClick={onRegenerate}
+                disabled={selectedCount === 0 || dirty || running}
+                // 与建页那档同源：措辞只差动作词，两处各写一份迟早只改一份
+                title={
+                  specActionBlockedReason({
+                    dirty,
+                    running,
+                    verb: "重生成",
+                  }) ?? undefined
+                }
+              >
+                重生成所选 {selectedCount} 页
+              </Button>
+            </div>
           </div>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {drifted.map((slide) => (
@@ -1130,9 +1380,9 @@ function OutdatedPages({
                 key={slide.slideId}
                 className="rounded-sm border border-hairline px-3 py-2"
                 label={slide.pageLabel}
-                checked={selected.has(slide.pageLabel)}
+                checked={selectedPages.has(slide.pageLabel)}
                 onChange={(event) =>
-                  onToggle(slide.pageLabel, event.target.checked)
+                  onTogglePage(slide.pageLabel, event.target.checked)
                 }
               />
             ))}

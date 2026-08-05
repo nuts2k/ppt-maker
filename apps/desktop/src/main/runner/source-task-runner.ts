@@ -178,7 +178,16 @@ export class SourceTaskRunner {
       case "generate": {
         const result = await runDeckGenerate({
           deckPath,
-          specPath: request.specPath,
+          // 不传 specPath 即让 CLI 读 deck 内的权威规格（策划工作台「按规格建页」）。
+          // 传 `specPath: undefined` 与省略在 TS 上等价，但这里显式条件展开，
+          // 与同文件其它可选参数的写法保持一致，读起来就是「没有就不传」。
+          ...(request.specPath === undefined
+            ? {}
+            : { specPath: request.specPath }),
+          // 条目子集原样下传：勾了哪几条就建哪几条，桌面端不在这里替 CLI 做筛选
+          ...(request.entryIds === undefined
+            ? {}
+            : { entryIds: request.entryIds }),
           ...(request.deckName === undefined ? {} : { name: request.deckName }),
           // 付费门槛在界面侧（原生确认框），到这一步用户已经明确同意
           confirmUpload: true,
