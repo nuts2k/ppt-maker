@@ -646,3 +646,64 @@ M7 注明为下一里程碑且尚未规划。
   行为不一致。本任务改变了前者的理由（`SourceTaskBar` 现在策划页也看得见），建议后续统一。
 - **遗留 2**：失联页（missing）那一档仍只有文案没有动作，PRD 已列为 Out of Scope，另开任务。
 - **M7「可靠性与本地交付」仍未规划**，开工前先走 Phase 1。
+
+---
+
+## Session 12: M7 前的遗留盘点与「休眠后退回初始界面」根因排查
+
+**Date**: 2026-08-05
+**Task**: 无（未创建 Trellis 任务；纯调查与文档）
+**Branch**: `main`
+
+### Summary
+
+M7 开工前先盘遗留。把散在任务归档、走查记录与本机记忆里的条目集中为仓库文档
+`KNOWN-ISSUES.md`（动因：多机器开发，只记在本机记忆里换机就丢）。期间用真机走查
+回答了两个使用中冒出来的问题，其中一个查出了产品级缺陷。
+
+### Main Changes
+
+**提交 `a56ece0` `docs: 新增已知遗留问题清单并在 M7 规划入口指路`**
+
+- `KNOWN-ISSUES.md` 9 条，三组归类：任务状态只活在 renderer 内存里 / 策划工作台交互 / 独立项。
+  每条标注代码位置与**取证强度**（`已核实` = 本轮读过代码或实测，`转述` = 来自更早记录未重新核对），
+  防止转述被后来者当成实锤。开头写明收录标准与「修完即删条目、不留墓碑」的维护约定。
+- `ROADMAP.md` 的 M7 段加指路：第一组与 3.1 属本里程碑范围，作为规划输入而非另起任务。
+
+**查明「休眠后客户端退回打开 deck 界面」的根因**（KNOWN-ISSUES 1.3）
+
+现象是锁屏离开后回来，客户端回到初始界面，重选原 deck 发现建页产物完好。取证链：
+
+1. CDP 读 navigation timing —— `navType === "reload"`，`timeOrigin` 晚于进程启动 → 页面重载过。
+2. `ps -p` 对比 —— main 54805 / renderer 54835 的 PID 与启动时一致 → 排除渲染进程崩溃重建。
+3. grep main 侧 —— 无任何 `reload` / `render-process-gone` 代码 → 排除应用自触发。
+4. `vite@7.3.6/dist/client/client.mjs:865-870` —— 连接丢失后 `waitForSuccessfulPing()` → `location.reload()`。
+
+**根因分两层，不要混为一谈**：直接触发器是 vite 的正常行为（仅 dev）；底层缺陷是 `deckPath`
+零持久化，**生产版本正常退出再打开同样记不住上次的 deck**，这才是 M7 该收的。
+
+**回答「建页途中离开策划页会怎样」**（KNOWN-ISSUES 1.2）：任务在 main 继续跑完、`SourceTaskBar`
+由全局 store 驱动故进度跟得上、收尾照常、竞态守卫按 deckPath 比对故不丢结果；**丢的只有完成汇总**，
+因为它是 `PlanningPage.tsx:179` 的局部 `useState`，`App.tsx:41` 条件渲染一卸载就没了。
+与「逐条失败原因不落盘」叠加＝中途离开 + 部分失败时，失败了哪几条在界面任何地方都查不到。
+
+顺带查出遗留「两个动作行为不一致」比原先记的更深一层：`handleRegenerate` 与 `handleCreatePages`
+**结果载体也不同**（store 的 `lastResult` vs 局部 state），统一时光改跳转不够。
+
+**用户实测反馈**：建页入口发现性差——「规格影响」面板在 `SpecEditor` 下方，长规格要滚到底才看得见，
+而它是策划页唯一的「下一步」动作。已收进 KNOWN-ISSUES 2.1。
+
+### Testing
+
+- 只跑 `pnpm format:check`（EXIT=0，279 文件）。本轮未改任何代码，未跑全量四关。
+- 桌面端 dev server 全程运行，走查为只读探测（CDP `Runtime.evaluate`），未触发任何付费接口。
+
+### Status
+
+[OK] **Completed** —— 遗留已落盘为跨机器可读的文档，M7 规划输入就绪。
+
+### Next Steps
+
+- **规划 M7「可靠性与本地交付」**，先读 `KNOWN-ISSUES.md`，走 Trellis Phase 1，
+  计划子任务 `local-product-hardening`。
+- 换机说明见 `machine-switch-2026-08-05.md`。
