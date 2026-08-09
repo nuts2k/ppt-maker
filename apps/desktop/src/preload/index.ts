@@ -64,8 +64,9 @@ const api: IpcApi = {
       deckPath: string,
       outputPath: string,
       strict?: boolean,
+      mode?: "native" | "original",
     ): Promise<DeckExportResult> =>
-      ipcRenderer.invoke("deck:export", deckPath, outputPath, strict),
+      ipcRenderer.invoke("deck:export", deckPath, outputPath, strict, mode),
     addSlide: (
       deckPath: string,
       imagePath: string,

@@ -1,6 +1,6 @@
-import { Upload, X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Button, Checkbox, IconButton } from "@/components/ui";
+import { ChevronDown, Upload, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Button, Checkbox, IconButton, MenuItem, Panel } from "@/components/ui";
 import {
   type DoctorNotice,
   exportNotice,
@@ -45,6 +45,8 @@ export function TopNav(): React.JSX.Element {
   const [switchConfirm, setSwitchConfirm] = useState<WorkspaceAction | null>(
     null,
   );
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,18 +66,41 @@ export function TopNav(): React.JSX.Element {
   const running = runStatus !== "idle";
   const exportDisabled = !deckPath || exporting || running || sourceTaskRunning;
 
-  async function runExport(): Promise<void> {
+  // 点击外部关闭导出下拉菜单
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    function onPointerDown(event: MouseEvent): void {
+      const node = exportMenuRef.current;
+      if (node && !node.contains(event.target as Node))
+        setExportMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [exportMenuOpen]);
+
+  // 记住待确认导出使用的 mode，以便 doctor 警告确认后沿用
+  const pendingExportMode = useRef<"native" | "original">("native");
+
+  async function runExport(mode: "native" | "original"): Promise<void> {
     if (!deckPath) return;
-    const outputPath = await window.api.system.saveFileDialog("output.pptx");
+    const defaultName =
+      mode === "original" ? "output-original.pptx" : "output.pptx";
+    const outputPath = await window.api.system.saveFileDialog(defaultName);
     if (!outputPath) return;
     setExporting(true);
     setExportResult(null);
     try {
-      const result = await window.api.deck.export(deckPath, outputPath, strict);
-      setExportResult({
-        ok: true,
-        message: `导出成功：${result.nativeSlides} 页原生 + ${result.placeholderSlides} 页占位 → ${result.outputPath}`,
-      });
+      const result = await window.api.deck.export(
+        deckPath,
+        outputPath,
+        strict,
+        mode,
+      );
+      const label =
+        mode === "original"
+          ? `导出原图成功：${result.totalSlides} 页 → ${result.outputPath}`
+          : `导出成功：${result.nativeSlides} 页原生 + ${result.placeholderSlides} 页占位 → ${result.outputPath}`;
+      setExportResult({ ok: true, message: label });
       void useDeckStore.getState().refreshStatus();
     } catch (err) {
       setExportResult({
@@ -88,19 +113,21 @@ export function TopNav(): React.JSX.Element {
   }
 
   /** PRD F5.1：环境问题不阻止打开与复核，但导出前必须警告一次 */
-  function handleExportClick(): void {
+  function handleExportClick(mode: "native" | "original"): void {
     if (!deckPath) return;
+    setExportMenuOpen(false);
     const notice = exportNotice(report);
     if (notice !== null) {
+      pendingExportMode.current = mode;
       setExportConfirm(notice);
       return;
     }
-    void runExport();
+    void runExport(mode);
   }
 
   function handleConfirmExport(): void {
     setExportConfirm(null);
-    void runExport();
+    void runExport(pendingExportMode.current);
   }
 
   /** PRD R5：确认发生在开目录框之前，避免用户选完目录才被拦下 */
@@ -160,26 +187,54 @@ export function TopNav(): React.JSX.Element {
 
           {/*
             导出是次要变体：全屏唯一的主行动是控制台的「处理全部」（DESIGN.md
-            `Buttons`）。两个墨底按钮同屏会让用户分不清这一步该先点哪个，
-            而在流程上导出恰恰是最后一步。
+            `Buttons`）。split button：主体导出修改后版本，下拉箭头展开「导出原图」。
           */}
-          <Button
-            variant="secondary"
-            className="shrink-0"
-            onClick={handleExportClick}
-            disabled={exportDisabled}
-            loading={exporting}
-            title={
-              running
-                ? "流水线执行中不可导出"
-                : sourceTaskRunning
-                  ? "建页任务执行中不可导出"
-                  : undefined
-            }
-          >
-            {!exporting && <Upload aria-hidden="true" className="size-3.5" />}
-            {exporting ? "导出中…" : "导出 PPTX"}
-          </Button>
+          <div className="relative shrink-0" ref={exportMenuRef}>
+            <div className="flex">
+              <Button
+                variant="secondary"
+                className="shrink-0 rounded-r-none border-r-0"
+                onClick={() => handleExportClick("native")}
+                disabled={exportDisabled}
+                loading={exporting}
+                title={
+                  running
+                    ? "流水线执行中不可导出"
+                    : sourceTaskRunning
+                      ? "建页任务执行中不可导出"
+                      : undefined
+                }
+              >
+                {!exporting && (
+                  <Upload aria-hidden="true" className="size-3.5" />
+                )}
+                {exporting ? "导出中…" : "导出 PPTX"}
+              </Button>
+              <Button
+                variant="secondary"
+                className="shrink-0 rounded-l-none px-1.5"
+                disabled={exportDisabled}
+                onClick={() => setExportMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={exportMenuOpen}
+              >
+                <ChevronDown aria-hidden="true" className="size-3.5" />
+              </Button>
+            </div>
+            {exportMenuOpen && (
+              <Panel
+                elevation="raised"
+                className="absolute right-0 top-full z-dropdown mt-1 w-44 p-1"
+              >
+                <MenuItem onClick={() => handleExportClick("native")}>
+                  导出 PPTX
+                </MenuItem>
+                <MenuItem onClick={() => handleExportClick("original")}>
+                  导出原图 PPTX
+                </MenuItem>
+              </Panel>
+            )}
+          </div>
         </div>
       </div>
 

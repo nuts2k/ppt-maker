@@ -447,6 +447,7 @@ export interface IpcApi {
       deckPath: string,
       outputPath: string,
       strict?: boolean,
+      mode?: "native" | "original",
     ): Promise<DeckExportResult>;
     addSlide(
       deckPath: string,

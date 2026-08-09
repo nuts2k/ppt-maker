@@ -7,7 +7,7 @@ import {
   loadDeckContentSpec,
   readContentSpecFile,
 } from "@cli/deck/content-spec.js";
-import { exportDeckPptx } from "@cli/deck/export.js";
+import { type ExportMode, exportDeckPptx } from "@cli/deck/export.js";
 import { listSpecChangeRecords } from "@cli/deck/planning-store.js";
 import { removeSlideFromDeck } from "@cli/deck/remove-slide.js";
 import { runDeckSpecDraft } from "@cli/deck/spec-draft.js";
@@ -295,6 +295,7 @@ export function registerDeckHandlers(
       deckPath: string,
       outputPath: string,
       strict?: boolean,
+      mode?: ExportMode,
     ): Promise<DeckExportResult> => {
       if (sourceTasks.isRunning()) {
         throw new Error("建页任务正在执行，请等它结束后再导出");
@@ -304,6 +305,7 @@ export function registerDeckHandlers(
           deckPath: resolve(deckPath),
           outputPath,
           ...(strict === true ? { strict: true } : {}),
+          ...(mode !== undefined ? { mode } : {}),
         });
         await log(
           deckPath,

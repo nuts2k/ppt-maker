@@ -30,11 +30,14 @@ import {
 const REVIEW_OUTPUT_PATH = "stages/review/text-blocks.json";
 const MASK_PATH = "stages/mask/mask.png";
 
+export type ExportMode = "native" | "original";
+
 export interface ExportDeckOptions {
   readonly deckPath: string;
   readonly outputPath: string;
   readonly strict?: boolean;
   readonly fontFace?: string;
+  readonly mode?: ExportMode;
 }
 
 export interface ExportDeckResult {
@@ -150,7 +153,9 @@ export async function exportDeckPptx(
     prepared.push({ entry, completed, slideWorkspacePath, pageLabel });
   }
 
-  if (options.strict === true) {
+  const useOriginal = options.mode === "original";
+
+  if (options.strict === true && !useOriginal) {
     const incomplete = prepared
       .filter((item) => !item.completed)
       .map((item) => item.pageLabel);
@@ -165,7 +170,7 @@ export async function exportDeckPptx(
 
   const slides: DeckSlideInput[] = [];
   for (const item of prepared) {
-    if (item.completed) {
+    if (!useOriginal && item.completed) {
       slides.push(
         await buildNativeSlide(item.slideWorkspacePath, item.pageLabel),
       );
