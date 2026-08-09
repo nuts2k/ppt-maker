@@ -537,45 +537,56 @@ export function PlanningPage(): React.JSX.Element {
                 selectedEntryId={selectedEntryId}
                 onSelectEntry={selectConversationEntry}
               />
-              <SpecImpactPanel
-                pending={pendingEntries}
-                drifted={outdated.drifted}
-                missing={outdated.missing}
-                selectedPages={selectedPages}
-                selectedEntries={selectedEntries}
-                dirty={dirty}
-                running={sourceTaskRunning || pipelineRunning}
-                onTogglePage={(pageLabel, checked) =>
-                  setSelectedPages((current) =>
-                    toggled(current, pageLabel, checked),
-                  )
-                }
-                onToggleAllPages={(checked) =>
-                  setSelectedPages(
-                    checked
-                      ? new Set(
-                          outdated.drifted.map((slide) => slide.pageLabel),
-                        )
-                      : new Set(),
-                  )
-                }
-                onToggleEntry={(specEntryId, checked) =>
-                  setSelectedEntries((current) =>
-                    toggled(current, specEntryId, checked),
-                  )
-                }
-                onToggleAllEntries={(checked) =>
-                  setSelectedEntries(
-                    checked
-                      ? new Set(
-                          pendingEntries.map((entry) => entry.specEntryId),
-                        )
-                      : new Set(),
-                  )
-                }
-                onCreatePages={() => void handleCreatePages()}
-                onRegenerate={() => void handleRegenerate()}
-              />
+              {hasSpecImpact({
+                pending: pendingEntries.length,
+                drifted: outdated.drifted.length,
+                missing: outdated.missing.length,
+              }) && (
+                <div className="border-t border-hairline pt-6">
+                  <h2 className="mb-4 text-lg font-semibold text-ink">
+                    下一步
+                  </h2>
+                  <SpecImpactPanel
+                    pending={pendingEntries}
+                    drifted={outdated.drifted}
+                    missing={outdated.missing}
+                    selectedPages={selectedPages}
+                    selectedEntries={selectedEntries}
+                    dirty={dirty}
+                    running={sourceTaskRunning || pipelineRunning}
+                    onTogglePage={(pageLabel, checked) =>
+                      setSelectedPages((current) =>
+                        toggled(current, pageLabel, checked),
+                      )
+                    }
+                    onToggleAllPages={(checked) =>
+                      setSelectedPages(
+                        checked
+                          ? new Set(
+                              outdated.drifted.map((slide) => slide.pageLabel),
+                            )
+                          : new Set(),
+                      )
+                    }
+                    onToggleEntry={(specEntryId, checked) =>
+                      setSelectedEntries((current) =>
+                        toggled(current, specEntryId, checked),
+                      )
+                    }
+                    onToggleAllEntries={(checked) =>
+                      setSelectedEntries(
+                        checked
+                          ? new Set(
+                              pendingEntries.map((entry) => entry.specEntryId),
+                            )
+                          : new Set(),
+                      )
+                    }
+                    onCreatePages={() => void handleCreatePages()}
+                    onRegenerate={() => void handleRegenerate()}
+                  />
+                </div>
+              )}
             </div>
           )}
         </main>
@@ -854,7 +865,7 @@ function EntryEditor({
     >
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-2xs font-semibold text-ink-muted">
+          <p className="text-2xs font-semibold tabular-nums text-ink-muted">
             页面 {index + 1}
           </p>
           <p className="truncate text-xs text-ink-muted">{entry.specEntryId}</p>
@@ -898,143 +909,96 @@ function EntryEditor({
         </IconButton>
       </div>
 
-      <label
-        htmlFor={`page-type-${entry.specEntryId}`}
-        className="mt-5 flex flex-col gap-1.5 text-sm font-medium text-ink"
-      >
-        页型
-        <Input
-          id={`page-type-${entry.specEntryId}`}
-          value={entry.pageType}
-          onChange={(event) =>
-            onChange((current) => ({
-              ...current,
-              pageType: event.target.value,
-            }))
-          }
-          placeholder="例如：cover、architecture、timeline"
-          disabled={disabled}
-        />
-      </label>
+      {!selected && (
+        <p className="mt-1 truncate text-xs text-ink-muted">
+          {entry.pageType || "未设页型"} · {entry.textGroups.length} 组文字
+        </p>
+      )}
 
-      <div className="mt-5 border-t border-hairline pt-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-semibold text-ink">页面文字</h3>
-            <p className="mt-1 text-xs leading-relaxed text-state-stale">
-              这些文字同时是该页 OCR 复核的比对基准，重生成后会一并更新。
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              onChange((current) => ({
-                ...current,
-                textGroups: [...current.textGroups, { label: "", items: [""] }],
-              }))
-            }
-            disabled={disabled}
+      {selected && (
+        <>
+          <label
+            htmlFor={`page-type-${entry.specEntryId}`}
+            className="mt-5 flex flex-col gap-1.5 text-sm font-medium text-ink"
           >
-            <Plus aria-hidden="true" className="size-3.5" />
-            添加分组
-          </Button>
-        </div>
+            页型
+            <Input
+              id={`page-type-${entry.specEntryId}`}
+              value={entry.pageType}
+              onChange={(event) =>
+                onChange((current) => ({
+                  ...current,
+                  pageType: event.target.value,
+                }))
+              }
+              placeholder="例如：cover、architecture、timeline"
+              disabled={disabled}
+            />
+          </label>
 
-        <div className="mt-3 flex flex-col gap-3">
-          {entry.textGroups.map((group, groupIndex) => (
-            <Panel
-              // textGroups 契约没有持久 ID；控件均为受控输入，索引变化不会保留局部状态。
-              // biome-ignore lint/suspicious/noArrayIndexKey: 不为渲染凭空扩充持久契约
-              key={`${entry.specEntryId}-group-${groupIndex}`}
-              elevation="sunken"
-              className="p-3"
-            >
-              <div className="flex items-center gap-2">
-                <Input
-                  value={group.label}
-                  onChange={(event) =>
-                    onChange((current) => ({
-                      ...current,
-                      textGroups: current.textGroups.map((candidate, index) =>
-                        index === groupIndex
-                          ? { ...candidate, label: event.target.value }
-                          : candidate,
-                      ),
-                    }))
-                  }
-                  placeholder="分组名称，例如：标题、流程阶段"
-                  aria-label={`第 ${groupIndex + 1} 组名称`}
-                  disabled={disabled}
-                />
-                <IconButton
-                  label="删除文字分组"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() =>
-                    onChange((current) => ({
-                      ...current,
-                      textGroups: current.textGroups.filter(
-                        (_, index) => index !== groupIndex,
-                      ),
-                    }))
-                  }
-                  disabled={disabled}
-                >
-                  <Trash2 aria-hidden="true" className="size-3.5" />
-                </IconButton>
+          <div className="mt-5 border-t border-hairline pt-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-semibold text-ink">页面文字</h3>
+                <p className="mt-1 text-xs leading-relaxed text-state-stale">
+                  这些文字同时是该页 OCR 复核的比对基准，重生成后会一并更新。
+                </p>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  onChange((current) => ({
+                    ...current,
+                    textGroups: [
+                      ...current.textGroups,
+                      { label: "", items: [""] },
+                    ],
+                  }))
+                }
+                disabled={disabled}
+              >
+                <Plus aria-hidden="true" className="size-3.5" />
+                添加分组
+              </Button>
+            </div>
 
-              <div className="mt-2 flex flex-col gap-2">
-                {group.items.map((item, itemIndex) => (
-                  <div
-                    // items 是纯字符串且无 ID；受控输入删除后直接由规格数组重绘。
-                    // biome-ignore lint/suspicious/noArrayIndexKey: 不为渲染凭空扩充持久契约
-                    key={`${entry.specEntryId}-${groupIndex}-item-${itemIndex}`}
-                    className="flex items-center gap-2"
-                  >
+            <div className="mt-3 flex flex-col gap-3">
+              {entry.textGroups.map((group, groupIndex) => (
+                <Panel
+                  // textGroups 契约没有持久 ID；控件均为受控输入，索引变化不会保留局部状态。
+                  // biome-ignore lint/suspicious/noArrayIndexKey: 不为渲染凭空扩充持久契约
+                  key={`${entry.specEntryId}-group-${groupIndex}`}
+                  elevation="sunken"
+                  className="p-3"
+                >
+                  <div className="flex items-center gap-2">
                     <Input
-                      value={item}
+                      value={group.label}
                       onChange={(event) =>
                         onChange((current) => ({
                           ...current,
                           textGroups: current.textGroups.map(
                             (candidate, index) =>
                               index === groupIndex
-                                ? {
-                                    ...candidate,
-                                    items: candidate.items.map(
-                                      (candidateItem, candidateIndex) =>
-                                        candidateIndex === itemIndex
-                                          ? event.target.value
-                                          : candidateItem,
-                                    ),
-                                  }
+                                ? { ...candidate, label: event.target.value }
                                 : candidate,
                           ),
                         }))
                       }
-                      placeholder="页面上真实出现的一条文字"
-                      aria-label={`第 ${groupIndex + 1} 组第 ${itemIndex + 1} 条文字`}
+                      placeholder="分组名称，例如：标题、流程阶段"
+                      aria-label={`第 ${groupIndex + 1} 组名称`}
                       disabled={disabled}
                     />
                     <IconButton
-                      label="删除这条文字"
+                      label="删除文字分组"
                       size="sm"
                       variant="ghost"
                       onClick={() =>
                         onChange((current) => ({
                           ...current,
-                          textGroups: current.textGroups.map(
-                            (candidate, index) =>
-                              index === groupIndex
-                                ? {
-                                    ...candidate,
-                                    items: candidate.items.filter(
-                                      (_, index) => index !== itemIndex,
-                                    ),
-                                  }
-                                : candidate,
+                          textGroups: current.textGroups.filter(
+                            (_, index) => index !== groupIndex,
                           ),
                         }))
                       }
@@ -1043,113 +1007,180 @@ function EntryEditor({
                       <Trash2 aria-hidden="true" className="size-3.5" />
                     </IconButton>
                   </div>
-                ))}
-                <Button
-                  className="self-start"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    onChange((current) => ({
-                      ...current,
-                      textGroups: current.textGroups.map((candidate, index) =>
-                        index === groupIndex
-                          ? { ...candidate, items: [...candidate.items, ""] }
-                          : candidate,
-                      ),
-                    }))
-                  }
-                  disabled={disabled}
-                >
-                  <Plus aria-hidden="true" className="size-3.5" />
-                  添加文字
-                </Button>
-              </div>
-            </Panel>
-          ))}
-        </div>
-      </div>
 
-      <label
-        htmlFor={`visual-intent-${entry.specEntryId}`}
-        className="mt-5 flex flex-col gap-1.5 text-sm font-medium text-ink"
-      >
-        视觉意图
-        <Textarea
-          id={`visual-intent-${entry.specEntryId}`}
-          className="min-h-24 resize-y"
-          value={entry.visualIntent}
-          onChange={(event) =>
-            onChange((current) => ({
-              ...current,
-              visualIntent: event.target.value,
-            }))
-          }
-          placeholder="描述版式、画面结构和视觉重点；这里的文字不会进入 OCR 基准"
-          disabled={disabled}
-        />
-      </label>
+                  <div className="mt-2 flex flex-col gap-2">
+                    {group.items.map((item, itemIndex) => (
+                      <div
+                        // items 是纯字符串且无 ID；受控输入删除后直接由规格数组重绘。
+                        // biome-ignore lint/suspicious/noArrayIndexKey: 不为渲染凭空扩充持久契约
+                        key={`${entry.specEntryId}-${groupIndex}-item-${itemIndex}`}
+                        className="flex items-center gap-2"
+                      >
+                        <Input
+                          value={item}
+                          onChange={(event) =>
+                            onChange((current) => ({
+                              ...current,
+                              textGroups: current.textGroups.map(
+                                (candidate, index) =>
+                                  index === groupIndex
+                                    ? {
+                                        ...candidate,
+                                        items: candidate.items.map(
+                                          (candidateItem, candidateIndex) =>
+                                            candidateIndex === itemIndex
+                                              ? event.target.value
+                                              : candidateItem,
+                                        ),
+                                      }
+                                    : candidate,
+                              ),
+                            }))
+                          }
+                          placeholder="页面上真实出现的一条文字"
+                          aria-label={`第 ${groupIndex + 1} 组第 ${itemIndex + 1} 条文字`}
+                          disabled={disabled}
+                        />
+                        <IconButton
+                          label="删除这条文字"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            onChange((current) => ({
+                              ...current,
+                              textGroups: current.textGroups.map(
+                                (candidate, index) =>
+                                  index === groupIndex
+                                    ? {
+                                        ...candidate,
+                                        items: candidate.items.filter(
+                                          (_, index) => index !== itemIndex,
+                                        ),
+                                      }
+                                    : candidate,
+                              ),
+                            }))
+                          }
+                          disabled={disabled}
+                        >
+                          <Trash2 aria-hidden="true" className="size-3.5" />
+                        </IconButton>
+                      </div>
+                    ))}
+                    <Button
+                      className="self-start"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        onChange((current) => ({
+                          ...current,
+                          textGroups: current.textGroups.map(
+                            (candidate, index) =>
+                              index === groupIndex
+                                ? {
+                                    ...candidate,
+                                    items: [...candidate.items, ""],
+                                  }
+                                : candidate,
+                          ),
+                        }))
+                      }
+                      disabled={disabled}
+                    >
+                      <Plus aria-hidden="true" className="size-3.5" />
+                      添加文字
+                    </Button>
+                  </div>
+                </Panel>
+              ))}
+            </div>
+          </div>
 
-      <div className="mt-5 border-t border-hairline pt-5">
-        <div className="flex items-center justify-between gap-4">
-          <h3 className="text-sm font-semibold text-ink">调整说明</h3>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              onChange((current) => ({
-                ...current,
-                revisionNotes: [...current.revisionNotes, ""],
-              }))
-            }
-            disabled={disabled}
+          <label
+            htmlFor={`visual-intent-${entry.specEntryId}`}
+            className="mt-5 flex flex-col gap-1.5 text-sm font-medium text-ink"
           >
-            <Plus aria-hidden="true" className="size-3.5" />
-            添加说明
-          </Button>
-        </div>
-        <div className="mt-2 flex flex-col gap-2">
-          {entry.revisionNotes.map((note, noteIndex) => (
-            <div
-              // revisionNotes 契约是字符串数组且无 ID；这里没有非受控局部状态。
-              // biome-ignore lint/suspicious/noArrayIndexKey: 不为渲染凭空扩充持久契约
-              key={`${entry.specEntryId}-note-${noteIndex}`}
-              className="flex items-center gap-2"
-            >
-              <Input
-                value={note}
-                onChange={(event) =>
-                  onChange((current) => ({
-                    ...current,
-                    revisionNotes: current.revisionNotes.map(
-                      (candidate, index) =>
-                        index === noteIndex ? event.target.value : candidate,
-                    ),
-                  }))
-                }
-                placeholder="例如：减少装饰元素，突出结论"
-                aria-label={`第 ${noteIndex + 1} 条调整说明`}
-                disabled={disabled}
-              />
-              <IconButton
-                label="删除调整说明"
-                size="sm"
+            视觉意图
+            <Textarea
+              id={`visual-intent-${entry.specEntryId}`}
+              className="min-h-24 resize-y"
+              value={entry.visualIntent}
+              onChange={(event) =>
+                onChange((current) => ({
+                  ...current,
+                  visualIntent: event.target.value,
+                }))
+              }
+              placeholder="描述版式、画面结构和视觉重点；这里的文字不会进入 OCR 基准"
+              disabled={disabled}
+            />
+          </label>
+
+          <div className="mt-5 border-t border-hairline pt-5">
+            <div className="flex items-center justify-between gap-4">
+              <h3 className="text-sm font-semibold text-ink">调整说明</h3>
+              <Button
                 variant="ghost"
+                size="sm"
                 onClick={() =>
                   onChange((current) => ({
                     ...current,
-                    revisionNotes: current.revisionNotes.filter(
-                      (_, index) => index !== noteIndex,
-                    ),
+                    revisionNotes: [...current.revisionNotes, ""],
                   }))
                 }
                 disabled={disabled}
               >
-                <Trash2 aria-hidden="true" className="size-3.5" />
-              </IconButton>
+                <Plus aria-hidden="true" className="size-3.5" />
+                添加说明
+              </Button>
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="mt-2 flex flex-col gap-2">
+              {entry.revisionNotes.map((note, noteIndex) => (
+                <div
+                  // revisionNotes 契约是字符串数组且无 ID；这里没有非受控局部状态。
+                  // biome-ignore lint/suspicious/noArrayIndexKey: 不为渲染凭空扩充持久契约
+                  key={`${entry.specEntryId}-note-${noteIndex}`}
+                  className="flex items-center gap-2"
+                >
+                  <Input
+                    value={note}
+                    onChange={(event) =>
+                      onChange((current) => ({
+                        ...current,
+                        revisionNotes: current.revisionNotes.map(
+                          (candidate, index) =>
+                            index === noteIndex
+                              ? event.target.value
+                              : candidate,
+                        ),
+                      }))
+                    }
+                    placeholder="例如：减少装饰元素，突出结论"
+                    aria-label={`第 ${noteIndex + 1} 条调整说明`}
+                    disabled={disabled}
+                  />
+                  <IconButton
+                    label="删除调整说明"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      onChange((current) => ({
+                        ...current,
+                        revisionNotes: current.revisionNotes.filter(
+                          (_, index) => index !== noteIndex,
+                        ),
+                      }))
+                    }
+                    disabled={disabled}
+                  >
+                    <Trash2 aria-hidden="true" className="size-3.5" />
+                  </IconButton>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </Panel>
   );
 }
@@ -1290,6 +1321,11 @@ function SpecImpactPanel({
     dirty,
     running,
   });
+  const regenBlockedReason = specActionBlockedReason({
+    dirty,
+    running,
+    verb: "重生成",
+  });
 
   return (
     <Panel as="section" className="p-5">
@@ -1322,6 +1358,11 @@ function SpecImpactPanel({
               </Button>
             </div>
           </div>
+          {createAction.disabled && createAction.title !== null && (
+            <p className="mt-2 text-xs text-ink-secondary">
+              {createAction.title}
+            </p>
+          )}
           <p className="mt-2 text-xs leading-relaxed text-ink-secondary">
             这些规格条目还没有对应页面。建页按次计费，建好后每页都需要你逐张确认源图。
           </p>
@@ -1362,18 +1403,17 @@ function SpecImpactPanel({
                 onClick={onRegenerate}
                 disabled={selectedCount === 0 || dirty || running}
                 // 与建页那档同源：措辞只差动作词，两处各写一份迟早只改一份
-                title={
-                  specActionBlockedReason({
-                    dirty,
-                    running,
-                    verb: "重生成",
-                  }) ?? undefined
-                }
+                title={regenBlockedReason ?? undefined}
               >
                 重生成所选 {selectedCount} 页
               </Button>
             </div>
           </div>
+          {regenBlockedReason !== null && (
+            <p className="mt-2 text-xs text-ink-secondary">
+              {regenBlockedReason}
+            </p>
+          )}
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
             {drifted.map((slide) => (
               <Checkbox
@@ -1690,10 +1730,10 @@ function ConversationPanel({
                     }
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-2xs font-semibold text-ink-muted">
+                      <span className="text-2xs font-semibold text-ink-secondary">
                         {message.role === "user" ? "你" : "策划助手"}
                       </span>
-                      <time className="text-2xs tabular-nums text-ink-muted">
+                      <time className="text-2xs tabular-nums text-ink-secondary">
                         {formatMessageTime(message.at)}
                       </time>
                     </div>
@@ -1844,9 +1884,7 @@ function ProposalReview({
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
       <div className="flex items-start justify-between gap-6 border-b border-hairline pb-4">
         <div>
-          <p className="text-2xs font-semibold tracking-wide text-proof">
-            待确认提案
-          </p>
+          <p className="text-2xs font-semibold text-proof">待确认提案</p>
           <h2 className="mt-1 text-xl font-semibold text-ink">
             {proposal.kind === "initial-draft" ? "规格初稿" : "规格改稿"}
           </h2>
@@ -1899,7 +1937,7 @@ function ProposalReview({
                 <p className="truncate text-sm font-semibold text-ink">
                   {section.label}
                 </p>
-                <p className="mt-0.5 text-2xs text-ink-muted">
+                <p className="mt-0.5 text-2xs tabular-nums text-ink-muted">
                   {section.fields.filter((field) => field.changed).length}{" "}
                   个字段变化
                 </p>
@@ -1956,7 +1994,7 @@ function ProposalDecisionWriteFailure(): React.JSX.Element {
   return (
     <div className="mx-auto w-full max-w-3xl">
       <Panel className="border-state-stale p-5">
-        <p className="text-2xs font-semibold tracking-wide text-state-stale">
+        <p className="text-2xs font-semibold text-state-stale">
           规格已保存 · 会话留痕未完成
         </p>
         <h2 className="mt-1 text-xl font-semibold text-ink">
@@ -2123,10 +2161,10 @@ function HistoryField({
   return (
     <div className="mb-3 text-xs leading-relaxed last:mb-0">
       <p className="font-semibold text-ink-secondary">{label}</p>
-      <p className="mt-1 border-l-2 border-hairline pl-2 text-ink-muted">
+      <p className="mt-1 rounded-sm bg-surface-sunken px-2 py-1 text-ink-secondary">
         前：{before || "（空）"}
       </p>
-      <p className="mt-1 border-l-2 border-proof pl-2 text-ink">
+      <p className="mt-1 rounded-sm bg-proof-wash px-2 py-1 text-ink">
         后：{after || "（空）"}
       </p>
     </div>

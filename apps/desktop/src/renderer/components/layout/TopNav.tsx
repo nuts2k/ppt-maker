@@ -127,7 +127,7 @@ export function TopNav(): React.JSX.Element {
           品牌名弱化为一枚标识：这是一个单窗口工具，用户从不需要辨认自己在哪个应用里，
           顶栏第一顺位应当是「当前是哪个 deck」。
         */}
-        <span className="shrink-0 text-2xs font-semibold uppercase tracking-wide text-ink-muted">
+        <span className="shrink-0 text-2xs font-semibold text-ink-muted">
           PPT Maker
         </span>
 

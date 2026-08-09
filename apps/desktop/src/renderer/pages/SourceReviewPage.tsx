@@ -487,7 +487,7 @@ export function SourceReviewPage(): React.JSX.Element {
           {imageLoading ? (
             <p
               aria-busy="true"
-              className="flex items-center gap-2 text-sm text-ink-muted"
+              className="flex items-center gap-2 text-sm text-ink-secondary"
             >
               <LoaderCircle
                 aria-hidden="true"
@@ -502,7 +502,7 @@ export function SourceReviewPage(): React.JSX.Element {
               className="h-full w-full object-contain"
             />
           ) : (
-            <p className="text-sm text-ink-muted">读不到这一页的源图</p>
+            <p className="text-sm text-ink-secondary">读不到这一页的源图</p>
           )}
         </div>
       </div>
@@ -592,6 +592,11 @@ export function SourceReviewPage(): React.JSX.Element {
                 <RefreshCw aria-hidden="true" className="size-3.5" />
                 {armed ? "确认重新生成？" : "重新生成"}
               </Button>
+              {armed && (
+                <p className="shrink-0 text-xs text-proof">
+                  将调用图像生成（按次付费）
+                </p>
+              )}
             </div>
           )}
 
@@ -606,6 +611,9 @@ export function SourceReviewPage(): React.JSX.Element {
             换源
           </Button>
         </div>
+        {busy && busyReason && (
+          <p className="w-full text-xs text-ink-secondary">{busyReason}</p>
+        )}
       </div>
 
       <ThumbnailStrip
@@ -677,8 +685,10 @@ function ThumbnailTile({
       title={`${entry.pageLabel}${entry.accepted ? " · 已确认" : " · 待确认"}`}
       className={cn(
         THUMB_TILE,
-        "aspect-video hover:border-border",
-        selected ? "border-border-strong" : "border-hairline",
+        "aspect-video",
+        selected
+          ? "border-border-strong hover:border-border-strong"
+          : "border-hairline hover:border-border",
       )}
     >
       {url !== null ? (
@@ -688,7 +698,7 @@ function ThumbnailTile({
           className="h-full w-full object-contain"
         />
       ) : (
-        <span className="flex h-full w-full items-center justify-center text-2xs text-ink-muted">
+        <span className="flex h-full w-full items-center justify-center text-2xs text-ink-secondary">
           {entry.pageLabel}
         </span>
       )}

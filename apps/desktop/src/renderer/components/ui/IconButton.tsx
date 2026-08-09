@@ -1,4 +1,5 @@
 import type { VariantProps } from "class-variance-authority";
+import { LoaderCircle } from "lucide-react";
 import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 import { buttonVariants, ICON_BUTTON_SIZE } from "./variants";
@@ -8,6 +9,10 @@ import { buttonVariants, ICON_BUTTON_SIZE } from "./variants";
  *
  * `label` 是必填的：图标按钮没有可见文字，不给无障碍名等于对读屏用户不可用。
  * 它同时充当原生 tooltip，鼠标用户也能确认这个图标是干什么的。
+ *
+ * 六态：default / hover / focus-visible / active / disabled / loading。
+ * MenuItem / Field / Segmented 不适用 loading（菜单项不做异步、字段由内部输入承载、
+ * 选择器不异步），因此只有 IconButton 补齐。
  */
 
 export interface IconButtonProps
@@ -18,6 +23,8 @@ export interface IconButtonProps
     VariantProps<typeof buttonVariants> {
   /** 无障碍名 + 原生 tooltip。必填 */
   readonly label: string;
+  /** 载入中：显示转圈并自动禁用 */
+  readonly loading?: boolean;
   readonly type?: "button" | "submit" | "reset";
 }
 
@@ -30,6 +37,8 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       shape,
       selected,
       label,
+      loading = false,
+      disabled,
       children,
       ...rest
     },
@@ -41,7 +50,8 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         type="button"
         aria-label={label}
         title={label}
-        // 与 Button 同一条规矩：选中态的语义由组件出，不许调用方另写
+        disabled={disabled === true || loading}
+        aria-busy={loading || undefined}
         aria-pressed={selected ?? undefined}
         className={cn(
           buttonVariants({ variant, size, shape, selected }),
@@ -50,7 +60,14 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         )}
         {...rest}
       >
-        {children}
+        {loading ? (
+          <LoaderCircle
+            aria-hidden="true"
+            className="size-3.5 animate-spin motion-reduce:animate-none"
+          />
+        ) : (
+          children
+        )}
       </button>
     );
   },

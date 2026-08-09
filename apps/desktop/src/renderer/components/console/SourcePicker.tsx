@@ -637,10 +637,10 @@ function GeneratedForm({
                     key={page.specEntryId}
                     className="flex min-w-0 items-baseline gap-2 text-sm text-ink-secondary"
                   >
-                    <span className="shrink-0 tabular-nums text-ink-muted">
+                    <span className="shrink-0 tabular-nums text-ink-secondary">
                       {index + 1}
                     </span>
-                    <span className="shrink-0 text-2xs text-ink-muted">
+                    <span className="shrink-0 text-2xs text-ink-secondary">
                       {page.pageType}
                     </span>
                     <span className="truncate" title={page.title}>
