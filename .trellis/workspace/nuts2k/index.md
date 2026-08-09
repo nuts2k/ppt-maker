@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 10
-- **Last Active**: 2026-08-04
+- **Total Sessions**: 13
+- **Last Active**: 2026-08-09
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~585 | Active |
+| `journal-1.md` | ~760 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,9 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 13 | 2026-08-09 | M5/M6 前端界面 Impeccable 设计评审与修复 | `71eeea6` | `main` |
+| 12 | 2026-08-05 | M7 前的遗留盘点与「休眠后退回初始界面」根因排查 | `a56ece0` | `main` |
+| 11 | 2026-08-05 | 规格产出到建页的衔接 | `57347a5`, `c9f356d`, `2492491`, `99a8135` | `main` |
 | 10 | 2026-08-04 | M6 收尾——子任务①归档、父级集成验收、路线图回写 | `6761902`, `83e6e74`, `ecdaca3`, `24b1580` | `main` |
 | 9 | 2026-08-04 | 完成 M6 策划对话与真机验收 | `5d83edf`, `fd8a4eb` | `main` |
 | 8 | 2026-08-04 | 完成内容策划工作台与付费走查 | `8e5289f`, `1ebcfa6` | `main` |
@@ -45,7 +48,10 @@
 
 ## 接续说明
 
-- [machine-switch-2026-08-04.md](./machine-switch-2026-08-04.md) — **当前最新，新机器 / 新会话先读这个**。
+- [machine-switch-2026-08-09.md](./machine-switch-2026-08-09.md) — **当前最新，新机器 / 新会话先读这个**。
+  Impeccable critique 修复已提交，任务待归档，M7 仍未规划。测试基线 1000。
+- [machine-switch-2026-08-05.md](./machine-switch-2026-08-05.md) — Session 12 后的换机说明。
+- [machine-switch-2026-08-04.md](./machine-switch-2026-08-04.md) —
   含 948 测试基线、远端同步核对、新机器命令、31M 真机证据目录与非 Git 迁移清单。
   其中〈明天真正的下一步〉三条已于 Session 10 全部执行完毕：子任务①已归档、M6 父任务
   已集成验收并归档、路线图已回写。**当前实际下一步是规划 M7，不是再收尾 M6。**

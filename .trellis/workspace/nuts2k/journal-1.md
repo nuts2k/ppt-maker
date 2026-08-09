@@ -707,3 +707,53 @@ M7 开工前先盘遗留。把散在任务归档、走查记录与本机记忆�
 - **规划 M7「可靠性与本地交付」**，先读 `KNOWN-ISSUES.md`，走 Trellis Phase 1，
   计划子任务 `local-product-hardening`。
 - 换机说明见 `machine-switch-2026-08-05.md`。
+
+
+## Session 13: M5/M6 前端界面 Impeccable 设计评审与修复
+
+**Date**: 2026-08-09
+**Task**: 08-09-m5m6-ui-critique-fixes (in_progress)
+**Branch**: `main`
+
+### Summary
+
+对 M5/M6 新增的全部前端界面跑 Impeccable critique（双代理评审），得分 28/40，
+修复全部 3P1 + 2P2 发现。
+
+### Main Changes
+
+**提交 `71eeea6` `fix(desktop): M5/M6 前端界面设计修复（Impeccable critique 28→30+）`**
+
+- R1: HistoryField `border-l-2 border-proof` side-stripe → `bg-proof-wash` 背景区分
+- R2: EntryEditor 默认折叠（选中展开 + 折叠态显示摘要）；SpecImpactPanel 降为
+  "下一步"区块，只在有影响时渲染
+- R3: SourceReviewPage 重生成 armed 态添加可见付费文案（不再仅 title）
+- R4: 5 处 `ink-muted` on `surface-sunken` 改为 `ink-secondary`（4.49:1 → 7.77:1）
+- R5: IconButton 补 `loading` prop 完成六态（MenuItem/Field/Segmented 标注不适用）
+- R6: TopNav/PlanningPage tracking-wide eyebrow 移除；缩略图选中 hover 修复；
+  EntryEditor/ProposalReview 计数补 tabular-nums；SpecImpactPanel/SourceReviewPage
+  disabled reason 从 title-only 改为可见文案
+
+**并行执行方式**：T1–T4 四路 implement 子代理按文件切分无重叠并行，T5–T6 主会话串行。
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `71eeea6` | fix(desktop): M5/M6 前端界面设计修复（Impeccable critique 28→30+） |
+
+### Testing
+
+- 四关全绿：`format:check` / `typecheck` / `test` **1000** / `build`
+- 测试基线不变：1000（core 156 / desktop 571 / CLI 273）
+- 未跑真机走查（本轮无 dev server）
+
+### Status
+
+[OK] **Completed** —— 代码已提交。A12（重跑 critique 验证分数）可选。
+
+### Next Steps
+
+- 归档任务 `08-09-m5m6-ui-critique-fixes`
+- **M7「可靠性与本地交付」仍未规划**，开工前走 Phase 1
+- 换机说明见 `machine-switch-2026-08-09.md`
