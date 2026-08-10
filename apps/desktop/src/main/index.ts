@@ -1,6 +1,6 @@
 import { join, resolve } from "node:path";
 import { config as loadDotenv } from "dotenv";
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, dialog } from "electron";
 import { ActivityLog } from "./activity-log.js";
 import { registerActivityHandlers } from "./ipc/activity.js";
 import { registerDeckHandlers } from "./ipc/deck.js";
@@ -9,6 +9,22 @@ import { registerSlideHandlers } from "./ipc/slide.js";
 import { registerSystemHandlers } from "./ipc/system.js";
 import { DeckRunner } from "./runner/deck-runner.js";
 import { SourceTaskRunner } from "./runner/source-task-runner.js";
+
+process.on("uncaughtException", (error) => {
+  console.error("[uncaughtException]", error);
+  dialog
+    .showMessageBox({
+      type: "error",
+      title: "发生未预期的错误",
+      message: error.message,
+      detail: error.stack,
+    })
+    .catch(() => {});
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
+});
 
 // Electron cwd 是 apps/desktop/，CLI 函数需要项目根目录
 const projectRoot = resolve(app.getAppPath(), "../..");
