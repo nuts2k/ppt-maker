@@ -14,14 +14,13 @@ import OpenAI, { type Uploadable } from "openai";
 export const OPENAI_IMAGE_MODEL = "gpt-image-2";
 export const CLEAN_PLATE_QUALITY = "high";
 export const CLEAN_PLATE_OUTPUT_FORMAT = "png";
-export const CLEAN_PLATE_PROMPT_VERSION = "m1-clean-plate-v4";
+export const CLEAN_PLATE_PROMPT_VERSION = "m1-clean-plate-v5";
 
-// 版本化去字规则提示词，核心为用户确认的两段规则（prd R6 / design §10）：
-// 只移除独立版式文字字形；保留全部容器与对象内符号，不简化图标、不改构图。
 export const CLEAN_PLATE_PROMPT = [
   "你在编辑一张 16:9 演示文稿页面。任务是擦除 mask 透明区域内的文字，生成干净的背景底板。",
   "在 mask 透明区域内：彻底擦除所有可见的文字笔画，把文字原位置修复成与周围完全一致的背景、容器填充或渐变。无论文字大小，修复区域必须与周围背景无缝融合，不得出现灰色条状占位、色块或任何可见修补痕迹。",
   "在 mask 不透明区域：保持原样不做任何修改，包括其中的文字、图标、图表和所有视觉元素。",
+  "严格边界约束：只修改 mask 透明区域内的像素。即使透明区域与周围的装饰图案、词云、图表、插画在视觉上属于同一个卡片或容器，也绝对不能改动透明区域以外的任何内容。不透明区域的每一个像素都必须与原图完全一致。",
   "修复约束：文字被擦除后其承载容器（标题栏、卡片、按钮、边框、阴影等）必须保持完整。不改变页面构图、图标、箭头、图表、插画、颜色与渐变。不新增任何文字或图形。",
 ].join("\n");
 
