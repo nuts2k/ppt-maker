@@ -9,7 +9,7 @@ import { specViewFingerprintValues } from "@ppt-maker/core";
 import { sha256Values } from "../slide/workspace.js";
 
 /** 随提示词骨架变更递增；进 `GeneratedSource.promptVersion` 与 `ProviderCallRecord` */
-export const PAGE_GENERATION_PROMPT_VERSION = "m5-generate-v1";
+export const PAGE_GENERATION_PROMPT_VERSION = "m5-generate-v2";
 
 /**
  * 「该页生成时的完整规格视图」的指纹（design §2.3）。
@@ -66,7 +66,11 @@ export function buildPageGenerationPrompt(
   }
 
   lines.push(
-    "Render every listed text exactly as written, in Microsoft YaHei. Do not add, translate, paraphrase, or omit any text.",
+    "Rendering quality constraints:",
+    "- Render as if producing a 4K (3840×2160) high-fidelity output. Every element must be crisp and detailed at that resolution, even though the output canvas may be smaller.",
+    "- All text must be rendered at a legible, presentation-appropriate size. The smallest text on the slide must be no smaller than 14pt equivalent. Do NOT render tiny, decorative, or watermark-sized text anywhere.",
+    "- All text must appear razor-sharp with clean edges — no blur, anti-aliasing artifacts, or fuzzy strokes. Treat text clarity as the highest priority.",
+    "- Use Microsoft YaHei font. Render every listed text exactly as written. Do not add, translate, paraphrase, or omit any text.",
   );
   return lines.join("\n");
 }
