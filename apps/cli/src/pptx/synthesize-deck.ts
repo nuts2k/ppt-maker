@@ -57,8 +57,6 @@ interface SynthPresentation {
 const PptxGenJS =
   PptxGenJSModule.default as unknown as new () => SynthPresentation;
 
-const PLACEHOLDER_LABEL = "待完成";
-
 export interface DeckSlideInput {
   readonly type: "native" | "placeholder";
   readonly cleanPlatePath?: string;
@@ -120,7 +118,6 @@ function addNativeSlide(
 function addPlaceholderSlide(
   pptx: SynthPresentation,
   input: DeckSlideInput,
-  fontFace: string,
 ): void {
   const slide = pptx.addSlide();
   slide.addImage({
@@ -129,23 +126,6 @@ function addPlaceholderSlide(
     y: 0,
     w: PPTX_WIDE_WIDTH_INCHES,
     h: PPTX_WIDE_HEIGHT_INCHES,
-  });
-
-  const labelWidth = 6;
-  const labelHeight = 1.5;
-  slide.addText(PLACEHOLDER_LABEL, {
-    x: (PPTX_WIDE_WIDTH_INCHES - labelWidth) / 2,
-    y: (PPTX_WIDE_HEIGHT_INCHES - labelHeight) / 2,
-    w: labelWidth,
-    h: labelHeight,
-    fontFace,
-    fontSize: 36,
-    color: "000000",
-    bold: true,
-    align: "center",
-    valign: "middle",
-    margin: 0,
-    fill: { color: "FFFFFF", transparency: 30 },
   });
 }
 
@@ -173,7 +153,7 @@ export async function synthesizeDeckPptx(input: {
       addNativeSlide(pptx, slide, input.fontFace);
       nativeSlides += 1;
     } else {
-      addPlaceholderSlide(pptx, slide, input.fontFace);
+      addPlaceholderSlide(pptx, slide);
       placeholderSlides += 1;
     }
   }
