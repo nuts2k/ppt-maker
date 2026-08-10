@@ -27,3 +27,6 @@
 
 # TypeScript incremental build metadata.
 *.tsbuildinfo
+
+# 本地实验 / 临时脚本。
+/scratch/
